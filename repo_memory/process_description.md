@@ -14,6 +14,13 @@
 4. 遍历每个库解析 `appmanifest_*.acf`
 5. 默认仅对 `steamlib[].game` 范围内 appid 解析 `appworkshop_*.acf`
 6. 生成 `database` 结构并保存
+7. 自动发现失败时，必须回退到手动指定库路径并继续流程
+
+## 数据维护流程
+1. 永远允许用户手动维护 `steamlib`（CRUD）
+2. `liveupdate`：按 `steamlib` 变化增量刷新 `game` / `dommod`
+3. `regen`：清空 `game` / `dommod` 后按最新 `steamlib` 全量重建
+4. 仅当无可用工作目录时提示用户介入
 
 ## 数据契约分工
 - 术语冻结：`TERMINOLOGY.md`

@@ -5,6 +5,7 @@ __all__ = [
     "pathstyle",
     "paths",
     "iojson",
+    "database_ops",
     "schema",
     "validation",
 ]

@@ -155,7 +155,7 @@ class ContractTests(unittest.TestCase):
     # ── schema-error path (invalid branch_decisions type) ────────────────────
 
     def test_schema_error_path_conforms(self) -> None:
-        result = compute_mapping({"mod": []}, {}, branch_decisions=["bad"])
+        result = compute_mapping({"mod": []}, {}, branch_decisions=["bad"]) # type: ignore[arg-type]
         _assert_valid(self, result)
         self.assertTrue(result["errors"])
         self.assertEqual(result["final_mapping"], [])

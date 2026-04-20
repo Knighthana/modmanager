@@ -7,6 +7,10 @@
 2. 组合标识字段固定为 `mixed_id`
 3. 游戏 mod 列表字段固定为 `mods_found`
 4. 路径风格字段固定为 `OS.workingpathstyle` 与 `OS.steamlibpathstyle`
+5. 自动发现失败时必须回退手动指定并继续流程
+6. 永远允许用户手动指定 `steamapps` 目录
+7. 不以“完整/不完整”作为发现判定条件，仅在无可用工作目录时要求用户介入
+8. `steamlib` 必须提供 CRUD；并提供 `liveupdate` 与 `regen` 两个维护接口
 
 ## 历史名处理
 - `islbfdvdflocate` / `islbfvdflocate`：废弃
@@ -25,6 +29,8 @@
 4. 已完成：对应测试断言新增并通过。
 5. 已完成：治理硬约束补丁落盘（违规后果、Plan 授权例外、迁移完成度模板）。
 6. 已完成：VDF 解析三项修复（根 key 大小写兼容、apps/games 双 key 兼容、path 自动追加 steamapps）。
+7. 已完成：手动指定能力与数据维护接口契约冻结（CRUD/liveupdate/regen）。
+8. 已完成：`database_ops` 接口落地（discover_with_fallback、steamlib/game CRUD、liveupdate、regen、integrity check）。
 
 ## 测试快照（2026-04-21）
 - `tests.test_steam_scanner`：19/19 通过
@@ -34,6 +40,10 @@
 - `tests.test_steam_scanner`：21/21 通过（新增 apps key + steamapps 后缀测试）
 - `unittest discover -s tests -p test_*.py`：136/136 通过
 - WSL 实机：3 库 / 86 游戏 / 73 mod（E 盘不存在时静默返回，无异常）
+
+## 接口回归（2026-04-21）
+- `tests.test_database_ops`：8/8 通过
+- `unittest discover -s tests -p test_*.py`：144/144 通过
 
 ## 来源
 - `repo_memory/TERMINOLOGY.md`

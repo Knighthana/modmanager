@@ -19,6 +19,10 @@ def get_output_schema() -> dict[str, Any]:
     global _SCHEMA
     if _SCHEMA is None:
         _SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    
+    if _SCHEMA is None:
+        raise RuntimeError("Output schema failed to load")
+     
     return _SCHEMA
 
 
