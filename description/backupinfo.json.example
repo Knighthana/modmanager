@@ -1,0 +1,71 @@
+{
+  "filefoldertree_status": "ready",
+  "filefoldertree": {
+    "name": "root",
+    "type": "folder",
+    "children": [
+      {
+        "name": "media",
+        "type": "folder",
+        "children": [
+          {
+            "name": "packages",
+            "type": "folder",
+            "children": [
+              {
+                "name": "GFL_Castling",
+                "type": "folder",
+                "children": [
+                  {
+                    "name": "orange_cat.ico",
+                    "type": "file",
+                    "isbackuped": true,
+                    "hashtype": "sha256",
+                    "hashvalue": "a9bbb0755f80a61a9296ed3e9be7934286b536abb9f2e8e3e4b57c9fb35d9ee4"
+                  }
+                ]
+              },
+              {
+                "name": "optional",
+                "type": "folder",
+                "children": [
+                  {
+                    "name": "花式准星",
+                    "type": "folder",
+                    "children": [
+                      {
+                        "name": "crosshair_good.png",
+                        "type": "file",
+                        "isbackuped": true,
+                        "hashtype": "sha256",
+                        "hashvalue": "d2468de1970eca59fc9c1d9f0534d2fb6596f7a274acc87fb68293725f082e59"
+                      },
+                      {
+                        "name": "crosshair_poor.png",
+                        "type": "file",
+                        "isbackuped": false,
+                        "hashtype":"invalid",
+                        "hashvalue":"0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "comment": {
+    "string1": "`filefoldertree_status`的值可以是`ready`, `error`",
+    "string2": "当文件中没有`filefoldertree`时, 启动建树流程:",
+    "string3": "首先创建`filefoldertree_status`属性, 其值为`error`, 然后开始建树流程",
+    "string4": "建树流程完成后, 创建`filefoldertree`属性, 其值为建树结果, 同时把`filefoldertree_status`的值改为`ready`",
+    "string5": "`filefoldertree`是一个树形结构, 代表了游戏目录下的所有文件和文件夹, 以及它们的备份状态和哈希值等信息",
+    "string6": "`filefoldertree`上的任何节点本身在被创建之后就不可修改, 不可被删除, 不可增加新的节点, 只有",
+    "string7": "`file`节点的`isbackuped`、`hashtype`、`hashvalue`属性可以被单向修改一次",
+    "string8": "`isbackuped`只能从`false`改为`true`, 不能从`true`改回`false`, `hashtype`只能从`invalid`改为一个合法的哈希类型, 不能从一个合法的哈希类型改回`invalid`, `hashvalue`只能从`0`改为一个合法的哈希值, 不能从一个合法的哈希值改回`0`",
+    "string9": "除了这三个属性的单向修改以外, 如果在建树流程完成后, 任何时候, 任何原因, 任何方式, 任何人, 试图修改`filefoldertree`中的任何节点, 那么都应该被拒绝, 报告, 记录日志, 然后不进行修改"
+  }
+}

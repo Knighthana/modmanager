@@ -1,0 +1,244 @@
+"""Tests for input validation module."""
+
+import unittest
+
+from modmanager_cli.validation import validate_config, validate_database
+
+
+class ValidateConfigTests(unittest.TestCase):
+    def test_valid_minimal_config(self):
+        config = {"mod": []}
+        errs = validate_config(config)
+        self.assertEqual(errs, [])
+
+    def test_valid_single_mod(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "hold",
+                    "actionlist": [],
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertEqual(errs, [])
+
+    def test_config_not_dict(self):
+        errs = validate_config([])
+        self.assertTrue(any("E_CONFIG_INVALID" in e for e in errs))
+
+    def test_config_missing_mod_key(self):
+        errs = validate_config({"other": []})
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "mod" in e for e in errs))
+
+    def test_mod_not_list(self):
+        errs = validate_config({"mod": "not_a_list"})
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "list" in e for e in errs))
+
+    def test_mod_entry_not_dict(self):
+        errs = validate_config({"mod": ["string_entry"]})
+        self.assertTrue(any("E_CONFIG_INVALID" in e for e in errs))
+
+    def test_mixed_id_missing(self):
+        errs = validate_config({"mod": [{"other_field": "value"}]})
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "mixed_id" in e for e in errs))
+
+    def test_mixed_id_not_string(self):
+        errs = validate_config({"mod": [{"mixed_id": 123}]})
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "mixed_id" in e for e in errs))
+
+    def test_mixed_id_empty(self):
+        errs = validate_config({"mod": [{"mixed_id": ""}]})
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "empty" in e for e in errs))
+
+    def test_mixed_id_invalid_format(self):
+        errs = validate_config({"mod": [{"mixed_id": "270150"}]})  # missing modid part
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "appid:modid" in e for e in errs))
+
+    def test_mixed_id_not_unique(self):
+        config = {
+            "mod": [
+                {"mixed_id": "270150:100", "sub": [], "def_destin": "270150:0", "def_action": "hold", "actionlist": []},
+                {"mixed_id": "270150:100", "sub": [], "def_destin": "270150:0", "def_action": "hold", "actionlist": []},
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "not unique" in e for e in errs))
+
+    def test_def_destin_invalid_format(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "invalid_format",
+                    "def_action": "hold",
+                    "actionlist": [],
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "def_destin" in e for e in errs))
+
+    def test_actionlist_not_list(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "hold",
+                    "actionlist": "not_a_list",
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "actionlist" in e for e in errs))
+
+    def test_actionlist_item_not_dict(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "hold",
+                    "actionlist": ["not_a_dict"],
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e for e in errs))
+
+    def test_actionlist_missing_from_for_replace(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "replace",
+                    "actionlist": [{"into": "data/"}],  # missing 'from'
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "from" in e for e in errs))
+
+    def test_actionlist_missing_into_for_replace(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "replace",
+                    "actionlist": [{"from": "file.txt"}],  # missing 'into'
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "into" in e for e in errs))
+
+    def test_actionlist_destin_invalid_format(self):
+        config = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "hold",
+                    "actionlist": [
+                        {
+                            "action": "replace",
+                            "from": "file.txt",
+                            "into": "data/",
+                            "destin": "bad_format",
+                        }
+                    ],
+                }
+            ]
+        }
+        errs = validate_config(config)
+        self.assertTrue(any("E_CONFIG_INVALID" in e and "destin" in e for e in errs))
+
+
+class ValidateDatabaseTests(unittest.TestCase):
+    def test_valid_minimal_database(self):
+        database = {"game": []}
+        errs = validate_database(database)
+        self.assertEqual(errs, [])
+
+    def test_valid_single_game(self):
+        database = {
+            "game": [
+                {
+                    "appid": "270150",
+                    "basepath": "/mnt/c/Games/MyGame",
+                    "modpath": "/mnt/d/Workshop/mods",
+                }
+            ]
+        }
+        errs = validate_database(database)
+        self.assertEqual(errs, [])
+
+    def test_database_not_dict(self):
+        errs = validate_database([])
+        self.assertTrue(any("E_DATABASE_INVALID" in e for e in errs))
+
+    def test_database_missing_game_key(self):
+        errs = validate_database({"other": []})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "game" in e for e in errs))
+
+    def test_game_not_list(self):
+        errs = validate_database({"game": "not_a_list"})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "list" in e for e in errs))
+
+    def test_game_entry_not_dict(self):
+        errs = validate_database({"game": ["string_entry"]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e for e in errs))
+
+    def test_appid_missing(self):
+        errs = validate_database({"game": [{"basepath": "/path", "modpath": "/path"}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "appid" in e for e in errs))
+
+    def test_appid_not_string(self):
+        errs = validate_database({"game": [{"appid": 123, "basepath": "/path", "modpath": "/path"}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "appid" in e for e in errs))
+
+    def test_appid_empty(self):
+        errs = validate_database({"game": [{"appid": "", "basepath": "/path", "modpath": "/path"}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "empty" in e for e in errs))
+
+    def test_appid_not_unique(self):
+        database = {
+            "game": [
+                {"appid": "270150", "basepath": "/path1", "modpath": "/path1"},
+                {"appid": "270150", "basepath": "/path2", "modpath": "/path2"},
+            ]
+        }
+        errs = validate_database(database)
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "not unique" in e for e in errs))
+
+    def test_basepath_missing(self):
+        errs = validate_database({"game": [{"appid": "270150", "modpath": "/path"}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "basepath" in e for e in errs))
+
+    def test_basepath_not_string(self):
+        errs = validate_database({"game": [{"appid": "270150", "basepath": 123, "modpath": "/path"}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "basepath" in e for e in errs))
+
+    def test_modpath_missing(self):
+        errs = validate_database({"game": [{"appid": "270150", "basepath": "/path"}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "modpath" in e for e in errs))
+
+    def test_modpath_not_string(self):
+        errs = validate_database({"game": [{"appid": "270150", "basepath": "/path", "modpath": 123}]})
+        self.assertTrue(any("E_DATABASE_INVALID" in e and "modpath" in e for e in errs))
+
+
+if __name__ == "__main__":
+    unittest.main()

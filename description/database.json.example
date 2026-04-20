@@ -1,0 +1,109 @@
+{
+  "comment":{
+    "string1": "这个文件是一个示例文件, 旨在展示`database.json`的结构",
+    "string2": "`database.json`是一个由程序自行探索系统后生成的文件, 所以不应该作为启动的前置条件, 也不应该由用户手动编辑",
+    "string3": "`database.json`高度与具体的硬件和正在运行的操作系统相关, 因此它的细节可能会因人而异",
+    "string4": "steamlib可以通过自动搜索或手动指定来装入",
+    "string5": "dommod是指那些`config.json`中sub不为空的mod, 但这不意味着它们不是其他mod的sub, 这只是意味着“它们有需要被备份的‘可能性’”"
+  },
+  "OS":{
+    "workingpathstyle" : "linux",
+    "steamlibpathstyle": "windows"
+  },
+  "steamlib": [
+    {
+      "path": "/mnt/c/Program Files (x86)/Steam/steamapps/",
+      "islbfdvdflocate": true,
+      "game": ["228980"],
+      "comment":{
+        "string1": "注意路径中间的空格!!!",
+        "string2": "`islbfvdflocate`的意思是那个记录了所有硬盘上所有Steam库的`libraryfolders.vdf`文件在这里", 
+        "string3": "并不是每个`libraryfolders.vdf`中都有全部有效信息, 但, 凡有`islbfvdflocate`这条且为`true`的都要检查一遍",
+        "string4": "通过解析主要的`libraryfolders.vdf`来获取本机所有steamlibrary的位置, 以及所有已经安装游戏的APPID",
+        "string5": "比如显示硬盘C中只有一个游戏228980(其实并不是一个游戏), 但是解析的时候不管"
+      }
+    },
+    {
+      "path": "/mnt/d/Games/steamapps/",
+      "game": ["10", "70", "17410", "17480", "34330", "107410", "270150", "244160", "431960", "616720", "362890", "1611600", "1776970"]
+    }
+  ],
+  "game": [
+    {
+      "appid": "241100",
+      "name": "!unknown",
+      "localdate": 0,
+      "basepath": "!unknown",
+      "modpath": "/mnt/c/Program Files (x86)/Steam/steamapps/workshop/content/241100/",
+      "itemid": ["2760274693"],
+      "comment":{
+        "string1": "然后去`steamapps/workshop/`检查所有的`appworkshop_*.acf`, 把所有的mod都解析出来",
+        "string2": "比如发现了文件`appworkshop_241100.acf`, 查阅解析自libraryfolders.vdf从而获取的`game`列表, 发现没有这个游戏",
+        "string3": "默认设置下, 不在game列表中的mod会被忽略, 因此不会去解析`appworkshop_241100.acf`",
+        "string4": "但如果用户手动打开了相关开关，要求`贪婪解析`greedy parsing, 那么即便这个游戏没有被解析出来, 只要关于它的acf文件存在, 也会被解析出来",
+        "string5": "这个例子中, 由于`appworkshop_241100.acf`存在, 因此即便`241100`这个游戏没有被解析出来, 只要用户打开了`贪婪解析`, 那么这个mod `2760274693`也会被解析出来",
+        "string6": "如果用户没有打开`贪婪解析`, 那么这个mod就不会被解析出来, 因此也不会出现在后续的管理界面中",
+        "string7": "然而这其实是个手柄配置文件, 所以默认设置下不解析也是完全OK的",
+        "string8": "但如果用户想要用本软件管理这些手柄配置文件, 那么就需要打开`贪婪解析`, 或者手动添加这个APPID和路径进行登记, 以便于解析出这个mod来",
+        "string9": "总之, 现在还不计划做贪婪解析功能"
+      }
+    },
+    {
+      "appid": "107410",
+      "name": "ARMA 3",
+      "localdate": 1774295847,
+      "basepath": "/mnt/d/Games/steamapps/common/ARMA 3/",
+      "modpath": "/mnt/d/Games/steamapps/workshop/content/107410/",
+      "itemid": ["2077161380"],
+      "comment":{
+        "string1": "注意路径中间的空格!!!"
+      }
+    },
+    {
+      "appid": "270150",
+      "name": "Running With Rifles",
+      "localdate": 1776603485,
+      "basepath": "/mnt/d/Games/steamapps/common/RunningWithRifles/",
+      "modpath": "/mnt/d/Games/steamapps/workshop/content/270150/",
+      "itemid":["2606099273", "3425312546", "3426079135", "3428584891", "3430161019"],
+      "comment":{
+        "string1": "通过解析`appworkshop_270150.acf`可以获取mod列表与其中的`timeupdated`",
+        "string2": "记得顺便把涉及到的`dommod`的`localdate`属性顺便填了, 免得要反复开关文件"
+      }
+    },
+    {
+      "appid": "431960",
+      "name": "Wallpaper Engine",
+      "localdate": 1757007735,
+      "basepath": "/mnt/d/Games/steamapps/common/WallpaperEngine/",
+      "modpath": "/mnt/d/Games/steamapps/workshop/content/431960/",
+      "itemid": ["874191436", "1157286724", "1338478663", "1527623272", "1537154952", "1569123137", "1907789984", "1907792126", "2178773700", "2577261722", "2767307399", "2806004944", "2841535605", "2848727800", "2864184078", "2895926515", "2899457005", "2902848760", "2911234797", "2921159653", "2927240804", "3011491384", "3022378896", "3151026040", "3165343031", "3304096058", "3518367902"]
+    },
+    {
+      "appid": "616720",
+      "name": "Live2DViewerEX",
+      "localdate": 1757007735,
+      "basepath": "/mnt/d/Games/steamapps/common/Live2DViewerEX/",
+      "modpath": "/mnt/d/Games/steamapps/workshop/content/616720/",
+      "itemid": ["921515078"]
+    }
+  ],
+  "dommod": [
+    {
+      "appitemid": "270150:2606099273",
+      "localdate": 1776317725,
+      "path": "/mnt/d/Games/steamapps/workshop/content/270150/2606099273/"
+    }
+  ],
+  "history": {
+    "comment": {
+      "string1": "这一部分与具体的UI有关, history内部的这些对象仅供参考, 根据实际情况新增或者删除并调整结构"
+    },
+    "ui": {
+      "locale": "zh_CN"
+    },
+    "layout": {
+      "games_panel_ratio": 0.33
+    }
+  }
+}

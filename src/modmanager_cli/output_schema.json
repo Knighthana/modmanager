@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComputeMappingOutput",
+  "description": "Schema for the dict returned by modmanager_cli.engine.compute_mapping().",
+  "type": "object",
+  "required": ["warnings", "errors", "forest", "final_mapping"],
+  "additionalProperties": false,
+  "properties": {
+    "warnings": {
+      "description": "Non-fatal diagnostic messages.  Each string begins with a W_ code.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "errors": {
+      "description": "Fatal diagnostic messages.  Each string begins with an E_ code.  When non-empty, final_mapping MUST be empty.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "forest": {
+      "description": "File-mapping forest.  Each node is the destination file with its chain of change-requests.  Always present, even when errors exist.",
+      "type": "array",
+      "items": {"$ref": "#/definitions/ForestNode"}
+    },
+    "final_mapping": {
+      "description": "Resolved one-to-one file mappings.  Empty when errors is non-empty or any branch is unresolved.",
+      "type": "array",
+      "items": {"$ref": "#/definitions/FinalMappingEntry"}
+    }
+  },
+  "definitions": {
+    "ChangeRequest": {
+      "description": "A single source-to-destination file operation.",
+      "type": "object",
+      "required": ["path", "action", "mixed_id", "hashtype", "hashvalue"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Absolute path of the source file, or '!' for a delete sentinel.",
+          "type": "string"
+        },
+        "action": {
+          "description": "File operation semantics.",
+          "type": "string",
+          "enum": ["hold", "replace", "create", "delete", "rename_then_replace", "clear_then_copy"]
+        },
+        "mixed_id": {
+          "description": "appid:modid of the mod introducing this change.",
+          "type": "string",
+          "pattern": "^[^:]+:.+$"
+        },
+        "hashtype": {
+          "description": "Hash algorithm identifier (e.g. 'sha256').  'invalid' means not yet computed.",
+          "type": "string"
+        },
+        "hashvalue": {
+          "description": "Hex digest of the source file, or '' / '0' when not yet known.",
+          "type": "string"
+        }
+      }
+    },
+    "ForestNode": {
+      "description": "A destination file node in the mapping forest.",
+      "type": "object",
+      "required": ["path", "changerequest"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Absolute path of the destination file (key of this forest node).",
+          "type": "string"
+        },
+        "changerequest": {
+          "description": "Ordered list of candidate change-requests targeting this file.",
+          "type": "array",
+          "items": {"$ref": "#/definitions/ChangeRequest"}
+        },
+        "destin_mixed_id": {
+          "description": "appid:modid of the mod that owns this destination file.  Absent for legacy nodes.",
+          "type": "string",
+          "pattern": "^[^:]+:.+$"
+        },
+        "warning": {
+          "description": "Present and set to 'W_FOREST_BRANCHING' when more than one candidate exists.",
+          "type": "string",
+          "enum": ["W_FOREST_BRANCHING"]
+        },
+        "candidates": {
+          "description": "Source paths of all candidates, in deterministic sort order.  Present only when warning is set.",
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "FinalMappingEntry": {
+      "description": "A resolved one-to-one mapping entry.",
+      "type": "object",
+      "required": ["path", "request"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Absolute path of the destination file.",
+          "type": "string"
+        },
+        "request": {
+          "description": "The winning change-request, or null when the target has no source (vacuous node).",
+          "oneOf": [
+            {"$ref": "#/definitions/ChangeRequest"},
+            {"type": "null"}
+          ]
+        }
+      }
+    }
+  }
+}

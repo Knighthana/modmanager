@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modmanger-cli"
+version = "0.1.0"
+description = "File mapping and backup rule engine for workshop mods"
+requires-python = ">=3.10"
+dependencies = [
+    "vdf>=0.4.0",
+    "jsonschema>=3.2.0",
+]
+
+[project.scripts]
+modmanger-cli = "modmanager_cli.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

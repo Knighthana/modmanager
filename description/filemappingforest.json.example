@@ -1,0 +1,82 @@
+[
+  {
+    "path": "/mnt/d/Games/steamapps/workshop/content/270150/2606099273/media/packages/GFL_Castling/textures/gkw_ump45.png",
+    "mixed_id": "270150:2606099273",
+    "hashtype": "sha256",
+    "hashvalue": "437ef9046463f489fabaeb2db759623ef566d0a51d0f37e28d51dd70df01b21d",
+    "changerequest": [
+      {
+        "path": "/mnt/d/Games/steamapps/workshop/content/270150/3428584891/weaponpics/1.6/gkw_ump45.png",
+        "action": "replace",
+        "mixed_id": "270150:3428584891",
+        "hashtype": "sha256",
+        "hashvalue": "18ab7edc8dc7357e2f6985f0cbc6b5f87da19f01a4dd2baa1f8890907c6681f9",
+        "changerequest": [
+          {
+            "path": "/mnt/d/Games/steamapps/workshop/content/270150/prepare_and_receive/ump45/is/my/waifu/and/beloved.png",
+            "action": "rename_then_replace",
+            "mixed_id": "270150:prepare_and_receive",
+            "hashtype": "sha256",
+            "hashvalue": "52145999999999999999999999999999999999999999999999999999999999999"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/mnt/d/Games/steamapps/workshop/content/270150/2606099273/media/packages/GFL_Castling/particles/1_bomb.particle",
+    "mixed_id": "270150:2606099273",
+    "hashtype": "sha256",
+    "hashvalue": "0",
+    "changerequest": [
+      {
+        "path": "/mnt/d/Games/steamapps/workshop/content/270150/3430161019/bomb_range/particles（c4实心圈）/1_bomb.particle",
+        "action": "create",
+        "mixed_id": "270150:3430161019",
+        "hashtype": "sha256",
+        "hashvalue": ""
+      }
+    ],
+    "comment":{
+      "string1": "这个文件在mod2606099273中不存在, 因此其sha256为0",
+      "string2": "但在mod3430161019中存在指向这个位置的`action`, 因此需要创建这个假文件节点",
+      "string3": "即便是假文件节点, 也有正常的`changerequest`属性, 以便于后续的处理",
+      "string4": "例如`changerequest`中第一个对象, 由于它指向了一个不存在的文件, 因此它的`action`是create"
+    }
+  },
+  {
+    "path": "/mnt/d/Games/steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/soundtrack1.wav",
+    "mixed_id": "270150:0",
+    "hashtype": "sha256",
+    "hashvalue": "",
+    "changerequest": [
+      {
+        "path": "/mnt/d/Games/steamapps/workshop/content/270150/3445750210/media/packages/vanilla/maps/lobby/soundtrack1.wav",
+        "action": "replace",
+        "mixed_id": "270150:3445750210",
+        "hashtype": "sha256",
+        "hashvalue": "63e874ce84d709e2507d471f4024bd5b237334c2c1a1e5547414091474978c5e"
+      }
+    ]
+  },
+  {
+    "path": "/mnt/d/Games/steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/soundtrack2.wav",
+    "mixed_id": "270150:0",
+    "hashtype": "sha256",
+    "hashvalue": "d38fc804ab41193237964341c34d132f841a69b1fdea0e6e60e01073fd2badff",
+    "changerequest": [
+      {
+        "path": "!",
+        "action": "delete",
+        "mixed_id": "270150:3445750210",
+        "hashtype": "sha256",
+        "hashvalue": "0",
+        "comment": {
+          "string1": "这个文件在mod3445750210中被要求删除, 因此它的`action`是delete",
+          "string2": "又因为没有真实文件替代, 所以它的`hashvalue`是0",
+          "string3": "这种状况将持续到解析完毕森林建立, 或是changerequest中有其他文件被要求创建或者替换到这个位置, 从而替代了这个被删除的假文件为止"
+        }
+      }
+    ]
+  }
+]

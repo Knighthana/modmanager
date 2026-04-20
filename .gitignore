@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build / distribution
+*.egg-info/
+dist/
+build/
+
+# Test artefacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Runtime output (contains local machine paths, not tracked)
+*.log
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
