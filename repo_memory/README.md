@@ -45,6 +45,20 @@
 2. 例外任务必须在任务单中写明：授权来源、有效期、影响字段、回收动作。
 3. 例外结束后，必须在 `MEMORY_SYNC_INDEX.md` 追加回收记录；未回收前不得进入下一阶段。
 
+## Replace-only 接口边界
+1. 替换接口只做“替换执行”这一件事，不负责备份绑定、凭证校验、配置解析。
+2. 替换接口输入必须是上游已决议的映射结果；若存在历史映射影响，需由上游先决议“当前有效源”。
+3. 本阶段允许在 M1 之外实现 replace_service，后续可并入 M1。
+
+## backup_dir 解耦边界
+1. `backup_ops` 仅消费并校验传入的目录字符串，不负责目录命名规则生成。
+2. 目录字符串生成由独立 builder 模块负责（prefix + id + updatetimehex + 可选路径拼接）。
+3. `bakprefix`/`bakignore` 归属上游编排与构建层，不在 `backup_ops` 内硬编码。
+
+## Plan 检查契约
+1. Plan 接到检查需求、文档核验或疑似执行异常时，必须额外检查 `work_memo/` 是否存在相关线索。
+2. `work_memo/` 仅提供排障上下文，不作为契约裁决依据；契约冲突仍以 `repo_memory/` 为准。
+
 ## 字段主名（冻结）
 - `contains_libraryfolders_vdf`
 - `OS.workingpathstyle`
