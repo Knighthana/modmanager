@@ -29,3 +29,32 @@
 4. 若复核通过，执行一次 git 提交。
 5. 建议提交标题：`docs: finalize implement handoff for deferred M1 work`
 6. 建议提交说明：`align description wording with repo_memory authority`; `persist handoff checkpoint and deferred M1 boundaries`
+
+## Near-term Forest Visualization
+1. `forest_visual` 核心模块。
+2. ASCII renderer。
+3. DOT renderer。
+4. DOT -> SVG renderer。
+5. 目标：先让人能稳定看到 forest 的形状。
+
+## M3 Backlog: Forest Visualization Expansion
+1. HTML fragment。
+2. HTML standalone。
+3. Plot renderer。
+4. trace/meta 扩展字段的可视化兼容验证。
+
+## M4 Backlog: GUI Visualization And Interaction
+1. hover 整链高亮。
+2. 分叉节点超链接与详情展示。
+3. 用户选枝 UI。
+4. 外部 annotator / transformer / custom visualizer 插件运行链。
+5. 老浏览器 fallback 与 GUI 集成策略。
+
+## Visualization Compatibility Rule
+1. 可视化模块只依赖当前最小必需字段建图。
+2. 未来 M1 patch 若在 `forest` / `changerequest` 中增加 trace/meta 标签，可视化模块必须容忍未知扩展字段并可透传到中间模型。
+
+## Document Persistence Checklist (Before Coding)
+1. 在 `FOREST_VISUALIZATION_DESIGN.md` 固化数据流、坑位清单、Go/No-Go、最小验收用例。
+2. 在 `IMPLEMENTATION_BRIEF.md` 记录“文档先行”开工门槛。
+3. 在 `MEMORY_SYNC_INDEX.md` 追加本轮开发指导文档同步记录。

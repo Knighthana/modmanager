@@ -37,3 +37,5 @@
 | 2026-04-22 | 用户决策（目录职责治理 + 示例同步） | README.md / description/workflow_restrict.md / json.example 布局 | implementation-agent | synced | 固化角色矩阵；description 默认非实现输入；示例单向同步 repo_memory -> description；新增 work_memo 临时区 |
 | 2026-04-22 | 用户决策（replace/builder/meta_tag 文档持久化） | README.md / TERMINOLOGY.md / IMPLEMENTATION_BRIEF.md / RULE_AGGREGATION_DESIGN.md / REPLACE_SERVICE_DESIGN.md / BACKUP_DIR_BUILDER_DESIGN.md / TASKLIST.md | implementation-agent | synced | 固化“今天不改 M1、未来可并入 M1”阶段策略；新增 A/E 历史映射风险定义与 Future M1 Patch 清单 |
 | 2026-04-22 | 用户决策（文档收工交接包） | description/workflow_restrict.md / TASKLIST.md / MEMORY_SYNC_INDEX.md | implementation-agent | synced | 统一“默认忽略 + Plan 可授权例外”口径；补收工 checkpoint 与建议提交信息 |
+| 2026-04-22 | 用户决策（forest 可视化范围收缩与排期） | IMPLEMENTATION_BRIEF.md / FOREST_VISUALIZATION_DESIGN.md / TASKLIST.md / MEMORY_SYNC_INDEX.md | implementation-agent | synced | 近期仅 core + ASCII + DOT + DOT->SVG；HTML/Plot 入 M3；GUI 交互与插件运行链入 M4；保留未来 M1 trace/meta 扩展兼容 |
+| 2026-04-22 | 用户决策（forest 最小绘图系统开发指导） | FOREST_VISUALIZATION_DESIGN.md / IMPLEMENTATION_BRIEF.md / TASKLIST.md / MEMORY_SYNC_INDEX.md | implementation-agent | synced | 固化数据流、预排坑位、Go/No-Go、最小验收用例；确认本轮仅文档持久化 |

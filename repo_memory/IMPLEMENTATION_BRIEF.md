@@ -116,3 +116,18 @@
 1. 风险核心：避免“本该使用 A 的位置误用为 E”。
 2. 典型情形：目录外同名 A 实际已被历史替换覆盖，当前可见文件名与语义不一致。
 3. 处置原则：替换执行前由历史映射解析层给出“当前有效源”，replace 接口只执行，不裁决。
+
+## Forest 视觉表达近期范围（2026-04-22）
+1. 近期仅实现四部分：`forest_visual` 核心模块、ASCII renderer、DOT renderer、DOT -> SVG renderer。
+2. 近期目标是“先让人能看到 forest 的形状”，不是完成 GUI。
+3. 可视化模块保持独立后处理，不修改 `compute_mapping` 主链与当前 `output_schema`。
+4. 未来 M1 patch 可能为 `forest` / `changerequest` 增加 trace/meta 标签；可视化设计必须兼容未知扩展字段，避免字段绑定过死。
+
+## Forest 可视化里程碑排期（2026-04-22）
+1. 近期：core + ASCII + DOT + DOT -> SVG。
+2. M3：HTML fragment、HTML standalone、Plot renderer、trace/meta 可视化兼容验证。
+3. M4：GUI hover 整链高亮、分叉节点超链接、用户选枝 UI、插件运行链、老浏览器 fallback。
+
+## Forest 可视化开工门槛（文档先行）
+1. 实现前必须先阅读 `FOREST_VISUALIZATION_DESIGN.md` 的数据流、坑位清单、Go/No-Go 与验收用例。
+2. 本轮若仅做文档持久化，不允许改动 `src/`、`tests/`、`pyproject.toml`。

@@ -2,7 +2,7 @@
 
 请转向`repo_memory/README.md`
 
-此文档只用于Plan沟通
+仅用于 user 与 Plan 的沟通与草案整理
 
 历史说明+指向 repo_memory
 
