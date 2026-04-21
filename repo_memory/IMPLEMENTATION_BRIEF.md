@@ -82,7 +82,15 @@
 | Phase 10: 差异备份执行 | done | `run_differential_backup` 可调用 | 已完成 |
 | Phase 11: final_mapping 替换执行 | done | `apply_final_mapping` 含 gate 检查 | 已完成 |
 | Phase 12: 从备份恢复 | done | `restore_from_backup`，hash 一致跳过 I/O | 已完成 |
+| Phase 13: 脏数据/冲突治理 | done | dirty-state 检测 + conflict 检查 + orphan 报告/可选删除 | 已完成 |
 | CLI backup/apply/restore 命令 | done | 命令入口可调用 | 已完成 |
+| CLI restore --delete-orphans | done | 手动确认后删除 orphan，默认仅报告 | 已完成 |
+
+## 本轮结果（Phase 13）
+- 新增能力：`detect_dirty_state`、`inspect_conflict`、orphan 报告与 `delete_orphan_files`
+- CLI：`restore` 新增 `--delete-orphans`，默认保守策略（只报告不删除）
+- 测试：`tests.test_backup_ops` 41/41 通过
+- 全量：194/194 通过
 
 ## 下一轮执行清单（收敛）
 1. 视发布需求决定是否补齐 game CRUD CLI 对外命令。

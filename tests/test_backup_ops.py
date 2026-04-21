@@ -11,9 +11,12 @@ from modmanager_cli.backup_ops import (
     apply_final_mapping,
     build_filefoldertree_with_hashes,
     check_backup_gate,
+    delete_orphan_files,
+    detect_dirty_state,
     finalize_backup_dir,
     get_game_backup_id,
     init_backup_dir,
+    inspect_conflict,
     load_backup_info,
     restore_from_backup,
     run_differential_backup,
@@ -438,3 +441,66 @@ class TestRestoreFromBackup(TestCase):
             self.assertEqual(len(result["restored"]), 2)
             self.assertEqual(orig1.read_bytes(), b"aaa")
             self.assertEqual(orig2.read_bytes(), b"bbb")
+
+
+# ── Phase 13: dirty state / conflict / orphan governance ─────────────────────
+
+class TestPhase13Governance(TestCase):
+    def test_detect_dirty_state_for_error_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bdir = str(Path(tmp) / "backup")
+            init_backup_dir(bdir)  # status=error
+            result = detect_dirty_state(bdir)
+            self.assertTrue(result["dirty"])
+            self.assertTrue(any("E_BACKUP_DIRTY_STATE" in e for e in result["errors"]))
+
+    def test_detect_dirty_state_clean_after_finalize(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bdir = str(Path(tmp) / "backup")
+            init_backup_dir(bdir)
+            (Path(bdir) / "file.txt").write_bytes(b"ok")
+            finalize_backup_dir(bdir)
+            result = detect_dirty_state(bdir)
+            self.assertFalse(result["dirty"])
+            self.assertEqual(result["errors"], [])
+
+    def test_inspect_conflict_detects_backup_tamper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orig = Path(tmp) / "orig" / "x.txt"
+            orig.parent.mkdir()
+            orig.write_bytes(b"before")
+            bdir = str(Path(tmp) / "backup")
+            run_differential_backup(bdir, [str(orig)])
+
+            mirrored = Path(bdir) / str(orig).lstrip("/")
+            mirrored.write_bytes(b"tampered")
+
+            result = inspect_conflict(bdir)
+            self.assertFalse(result["clean"])
+            self.assertTrue(any("E_ENTITY_CONFLICT" in c for c in result["conflicts"]))
+
+    def test_restore_reports_orphans(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orig = Path(tmp) / "game" / "keep.txt"
+            orig.parent.mkdir(parents=True)
+            orig.write_bytes(b"original")
+            bdir = str(Path(tmp) / "backup")
+            run_differential_backup(bdir, [str(orig)])
+
+            orig.write_bytes(b"changed")
+            orphan = Path(tmp) / "game" / "new_orphan.txt"
+            orphan.write_bytes(b"orphan")
+
+            result = restore_from_backup(bdir)
+            self.assertTrue(result["ok"])
+            self.assertIn(str(orphan), result.get("orphans", []))
+            self.assertTrue(any("E_EXTERNAL_FILE_ORPHAN" in w for w in result.get("warnings", [])))
+
+    def test_delete_orphan_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orphan = Path(tmp) / "orphan.txt"
+            orphan.write_bytes(b"x")
+            result = delete_orphan_files([str(orphan)])
+            self.assertTrue(result["ok"])
+            self.assertFalse(orphan.exists())
+            self.assertIn(str(orphan), result["deleted"])

@@ -4,6 +4,8 @@ from typing import Any
 
 from .backup_ops import (
     apply_final_mapping,
+    delete_orphan_files,
+    detect_dirty_state,
     restore_from_backup,
     run_differential_backup,
 )
@@ -92,6 +94,11 @@ def build_db_parser() -> argparse.ArgumentParser:
     restore = sub.add_parser("restore", help="Restore files from a backup directory")
     restore.add_argument("--backup-dir", required=True, help="Path to backup directory")
     restore.add_argument("--files", nargs="*", help="Specific files to restore (default: all)")
+    restore.add_argument(
+        "--delete-orphans",
+        action="store_true",
+        help="Delete reported orphan files after restore",
+    )
     restore.add_argument("--out", help="Write result json to file; stdout if omitted")
 
     return parser
@@ -246,10 +253,29 @@ def _handle_apply(args: argparse.Namespace) -> int:
 
 def _handle_restore(args: argparse.Namespace) -> int:
     target_files = args.files or None
+    dirty = detect_dirty_state(args.backup_dir)
     try:
         result = restore_from_backup(args.backup_dir, target_files)
     except Exception as exc:
         return _emit_error(f"restore failed: {exc}")
+
+    if dirty.get("dirty"):
+        warnings = list(result.get("warnings", []))
+        warnings.extend(dirty.get("errors", []))
+        result["warnings"] = warnings
+        result["dirty_state"] = {
+            "dirty": True,
+            "partial_files": dirty.get("partial_files", []),
+        }
+
+    if args.delete_orphans and result.get("orphans"):
+        delete_result = delete_orphan_files(result["orphans"])
+        result["orphan_deletion"] = delete_result
+        if not delete_result.get("ok", False):
+            result["ok"] = False
+            result_errors = list(result.get("errors", []))
+            result_errors.extend(delete_result.get("errors", []))
+            result["errors"] = result_errors
 
     _print_or_write(result, args.out)
     return 0 if result.get("ok") else 2

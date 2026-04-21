@@ -53,6 +53,14 @@
 - CLI 新增命令：`backup`、`apply`、`restore`
 - M1 核心文件未修改，adapter 层通过调用 M1 实现编排
 
+## Phase 13 脏数据/冲突治理回归（2026-04-21）
+
+- 全量测试：194/194 通过
+- `backup_ops.py` 新增：`detect_dirty_state`、`inspect_conflict`、`delete_orphan_files`
+- `restore_from_backup` 扩展：返回 `orphans` 与 `warnings`，默认仅报告 orphan
+- CLI 新增：`restore --delete-orphans`（显式开关触发删除）
+- 决策落盘：路径进入边界后立即规范化；执行时序为“计算 -> 建树备份 -> 替换 -> 恢复/冲突治理”
+
 
 - `tests.test_cli_database_ops`：9/9 通过
 - `unittest discover -s tests -p test_*.py`：153/153 通过
