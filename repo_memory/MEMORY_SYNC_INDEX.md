@@ -34,3 +34,4 @@
 | 2026-04-21 | /memories/session/plan.md (P0-P2) | IMPLEMENTATION_BRIEF.md / doc_contract_snapshot.md | implementation-agent | synced | 备份/替换/恢复模块实现（Phase 7-12），189/189 |
 | 2026-04-21 | /memories/session/plan.md (Phase 13) | OPEN_CONFLICTS.md / IMPLEMENTATION_BRIEF.md / doc_contract_snapshot.md | implementation-agent | synced | Phase 13 落地（dirty-state/conflict/orphan），194/194 |
 | 2026-04-21 | 用户决策（冲突 #2/#3 拍板） | OPEN_CONFLICTS.md / IMPLEMENTATION_BRIEF.md | implementation-agent | synced | 关闭 #2 两阶段 hash 校验、#3 结构冻结+单向演进措辞；实现无需改动 |
+| 2026-04-22 | 用户决策（目录职责治理 + 示例同步） | README.md / description/workflow_restrict.md / json.example 布局 | implementation-agent | synced | 固化角色矩阵；description 默认非实现输入；示例单向同步 repo_memory -> description；新增 work_memo 临时区 |

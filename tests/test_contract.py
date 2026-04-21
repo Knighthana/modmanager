@@ -83,9 +83,9 @@ class SchemaLoadTests(unittest.TestCase):
 class ContractTests(unittest.TestCase):
     """Every output path of compute_mapping must satisfy the schema."""
 
-    # ── empty config ──────────────────────────────────────────────────────────
+    # ── empty aggregated rule set ─────────────────────────────────────────────
 
-    def test_empty_config_conforms(self) -> None:
+    def test_empty_aggregated_rule_set_conforms(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = _mk_db(tmp_path)
@@ -104,7 +104,7 @@ class ContractTests(unittest.TestCase):
             src = tmp_path / "mods" / "10"
             src.mkdir(parents=True)
             (src / "a.txt").write_text("x", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "1:10",
@@ -115,7 +115,7 @@ class ContractTests(unittest.TestCase):
                     }
                 ]
             }
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
             self.assertEqual(result["errors"], [])
             self.assertEqual(len(result["forest"]), 1)
@@ -138,7 +138,7 @@ class ContractTests(unittest.TestCase):
             target_dir = tmp_path / "game" / "dest"
             target_dir.mkdir(parents=True)
             (target_dir / "a.txt").write_text("old", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "1:10",
@@ -149,7 +149,7 @@ class ContractTests(unittest.TestCase):
                     }
                 ]
             }
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
 
     # ── schema-error path (invalid branch_decisions type) ────────────────────
@@ -170,7 +170,7 @@ class ContractTests(unittest.TestCase):
                 mroot = tmp_path / "mods" / modid
                 mroot.mkdir(parents=True)
                 (mroot / "a.txt").write_text("x", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "1:10",
@@ -188,7 +188,7 @@ class ContractTests(unittest.TestCase):
                     },
                 ]
             }
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
             self.assertTrue(any(e.startswith("E_CLEAR_THEN_COPY_CONFLICT") for e in result["errors"]))
             self.assertEqual(result["final_mapping"], [])
@@ -203,7 +203,7 @@ class ContractTests(unittest.TestCase):
                 (tmp_path / "mods" / modid).mkdir(parents=True)
             (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "1:10",
@@ -228,7 +228,7 @@ class ContractTests(unittest.TestCase):
                     },
                 ]
             }
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
             # branched node must carry 'warning' and 'candidates'
             branched = [n for n in result["forest"] if n.get("warning") == "W_FOREST_BRANCHING"]
@@ -247,7 +247,7 @@ class ContractTests(unittest.TestCase):
                 (tmp_path / "mods" / modid).mkdir(parents=True)
             (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "1:10",
@@ -272,10 +272,10 @@ class ContractTests(unittest.TestCase):
                     },
                 ]
             }
-            forest_result = compute_mapping(config, db)
+            forest_result = compute_mapping(aggregated_rule_set, db)
             branched = forest_result["forest"][0]
             decisions = {branched["path"]: branched["candidates"][0]}
-            result = compute_mapping(config, db, branch_decisions=decisions)
+            result = compute_mapping(aggregated_rule_set, db, branch_decisions=decisions)
             _assert_valid(self, result)
             self.assertFalse(result["errors"])
             self.assertEqual(len(result["final_mapping"]), 1)
@@ -293,7 +293,7 @@ class ContractTests(unittest.TestCase):
                 (tmp_path / "mods" / modid).mkdir(parents=True)
             (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "1:10",
@@ -318,9 +318,9 @@ class ContractTests(unittest.TestCase):
                     },
                 ]
             }
-            forest_result = compute_mapping(config, db)
+            forest_result = compute_mapping(aggregated_rule_set, db)
             target = forest_result["forest"][0]["path"]
-            result = compute_mapping(config, db, branch_decisions={target: "/no/such/file.txt"})
+            result = compute_mapping(aggregated_rule_set, db, branch_decisions={target: "/no/such/file.txt"})
             _assert_valid(self, result)
             self.assertTrue(any("E_BRANCH_DECISION_INVALID_SOURCE" in e for e in result["errors"]))
 

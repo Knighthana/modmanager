@@ -28,7 +28,7 @@ def _emit_error(message: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Compute file mapping forest and final mapping.")
-    parser.add_argument("--config", required=True, help="Path to config json")
+    parser.add_argument("--aggregated-rule-set", required=True, help="Path to aggregated_rule_set json")
     parser.add_argument("--database", required=True, help="Path to database json")
     parser.add_argument("--decisions", help="Optional branch decision json")
     parser.add_argument("--out", help="Write result json to file; stdout if omitted")
@@ -77,14 +77,14 @@ def build_db_parser() -> argparse.ArgumentParser:
     regen.add_argument("--greedy-parsing", action="store_true")
 
     backup = sub.add_parser("backup", help="Back up target files before applying a mapping")
-    backup.add_argument("--config", required=True, help="Path to config json")
+    backup.add_argument("--aggregated-rule-set", required=True, help="Path to aggregated_rule_set json")
     backup.add_argument("--database", required=True, help="Path to database json")
     backup.add_argument("--backup-dir", required=True, help="Directory to store backup")
     backup.add_argument("--decisions", help="Optional branch decisions json")
     backup.add_argument("--out", help="Write result json to file; stdout if omitted")
 
     apply_cmd = sub.add_parser("apply", help="Apply final mapping to disk (backup gate required)")
-    apply_cmd.add_argument("--config", required=True, help="Path to config json")
+    apply_cmd.add_argument("--aggregated-rule-set", required=True, help="Path to aggregated_rule_set json")
     apply_cmd.add_argument("--database", required=True, help="Path to database json")
     apply_cmd.add_argument("--backup-dir", required=True, help="Path to existing backup directory")
     apply_cmd.add_argument("--decisions", help="Optional branch decisions json")
@@ -194,14 +194,18 @@ def _handle_regen(args: argparse.Namespace) -> int:
 
 def _handle_backup(args: argparse.Namespace) -> int:
     try:
-        config = load_json_file(args.config)
+        aggregated_rule_set = load_json_file(args.aggregated_rule_set)
         database = load_json_file(args.database)
         decisions = load_json_file(args.decisions) if args.decisions else {}
     except Exception as exc:
         return _emit_error(f"failed to load inputs: {exc}")
 
     try:
-        mapping_result = compute_mapping(config=config, database=database, branch_decisions=decisions)
+        mapping_result = compute_mapping(
+            aggregated_rule_set=aggregated_rule_set,
+            database=database,
+            branch_decisions=decisions,
+        )
     except Exception as exc:
         return _emit_error(f"compute_mapping failed: {exc}")
 
@@ -224,14 +228,18 @@ def _handle_backup(args: argparse.Namespace) -> int:
 
 def _handle_apply(args: argparse.Namespace) -> int:
     try:
-        config = load_json_file(args.config)
+        aggregated_rule_set = load_json_file(args.aggregated_rule_set)
         database = load_json_file(args.database)
         decisions = load_json_file(args.decisions) if args.decisions else {}
     except Exception as exc:
         return _emit_error(f"failed to load inputs: {exc}")
 
     try:
-        mapping_result = compute_mapping(config=config, database=database, branch_decisions=decisions)
+        mapping_result = compute_mapping(
+            aggregated_rule_set=aggregated_rule_set,
+            database=database,
+            branch_decisions=decisions,
+        )
     except Exception as exc:
         return _emit_error(f"compute_mapping failed: {exc}")
 
@@ -310,7 +318,7 @@ def main() -> int:
     args = parser.parse_args(argv)
 
     try:
-        config = load_json_file(args.config)
+        aggregated_rule_set = load_json_file(args.aggregated_rule_set)
         database = load_json_file(args.database)
         decisions = {}
         if args.decisions:
@@ -319,7 +327,11 @@ def main() -> int:
         return _emit_error(f"failed to load inputs: {exc}")
 
     try:
-        result = compute_mapping(config=config, database=database, branch_decisions=decisions)
+        result = compute_mapping(
+            aggregated_rule_set=aggregated_rule_set,
+            database=database,
+            branch_decisions=decisions,
+        )
     except Exception as exc:
         return _emit_error(f"compute_mapping failed: {exc}")
 

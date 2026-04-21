@@ -4,7 +4,7 @@
     "string2": "`database.json`是一个由程序自行探索系统后生成的文件, 所以不应该作为启动的前置条件, 也不应该由用户手动编辑",
     "string3": "`database.json`高度与具体的硬件和正在运行的操作系统相关, 因此它的细节可能会因人而异",
     "string4": "steamlib可以通过自动搜索或手动指定来装入",
-    "string5": "dommod是指那些`config.json`中sub不为空的mod, 但这不意味着它们不是其他mod的sub, 这只是意味着“它们有需要被备份的‘可能性’”"
+    "string5": "dommod是指那些`aggregated_rule_set.json`中sub不为空的mod, 但这不意味着它们不是其他mod的sub, 这只是意味着“它们有需要被备份的‘可能性’”"
   },
   "OS":{
     "workingpathstyle" : "linux",

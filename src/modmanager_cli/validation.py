@@ -1,4 +1,4 @@
-"""Input validation for config and database structures per M1 Phase 1 specification."""
+"""Input validation for aggregated rule set and database structures per M1 Phase 1 specification."""
 
 from __future__ import annotations
 
@@ -7,14 +7,14 @@ from typing import Any
 from .paths import split_mixed_id
 
 
-def validate_config(config: Any) -> list[str]:
-    """Validate config structure and constraints.
+def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
+    """Validate aggregated rule set structure and constraints.
 
     Returns list of error strings (empty means valid).
 
     Checks:
-    1. config must be a dict
-    2. config['mod'] must be a list
+    1. aggregated_rule_set must be a dict
+    2. aggregated_rule_set['mod'] must be a list
     3. Each mod entry must have 'mixed_id' as string
     4. All mixed_id must be unique
     5. All mixed_id must be in appid:modid format
@@ -24,42 +24,42 @@ def validate_config(config: Any) -> list[str]:
     errors: list[str] = []
 
     # Check top-level structure
-    if not isinstance(config, dict):
-        return [f"E_CONFIG_INVALID: config must be dict, got {type(config).__name__}"]
+    if not isinstance(aggregated_rule_set, dict):
+        return [f"E_AGGREGATED_RULE_SET_INVALID: aggregated_rule_set must be dict, got {type(aggregated_rule_set).__name__}"]
 
-    if "mod" not in config:
-        return [f"E_CONFIG_INVALID: config missing 'mod' key"]
+    if "mod" not in aggregated_rule_set:
+        return [f"E_AGGREGATED_RULE_SET_INVALID: aggregated_rule_set missing 'mod' key"]
 
-    mods = config["mod"]
+    mods = aggregated_rule_set["mod"]
     if not isinstance(mods, list):
-        return [f"E_CONFIG_INVALID: config['mod'] must be list, got {type(mods).__name__}"]
+        return [f"E_AGGREGATED_RULE_SET_INVALID: aggregated_rule_set['mod'] must be list, got {type(mods).__name__}"]
 
     # Track seen mixed_ids for uniqueness
     seen_mixed_ids: set[str] = set()
 
     for idx, mod_obj in enumerate(mods):
         if not isinstance(mod_obj, dict):
-            errors.append(f"E_CONFIG_INVALID: config['mod'][{idx}] must be dict, got {type(mod_obj).__name__}")
+            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: aggregated_rule_set['mod'][{idx}] must be dict, got {type(mod_obj).__name__}")
             continue
 
         # Check mixed_id
         mixed_id = mod_obj.get("mixed_id")
         if not isinstance(mixed_id, str):
-            errors.append(f"E_CONFIG_INVALID: mod[{idx}]['mixed_id'] must be string, got {type(mixed_id).__name__ if mixed_id is not None else 'null'}")
+            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['mixed_id'] must be string, got {type(mixed_id).__name__ if mixed_id is not None else 'null'}")
             continue
 
         if not mixed_id:
-            errors.append(f"E_CONFIG_INVALID: mod[{idx}]['mixed_id'] cannot be empty string")
+            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['mixed_id'] cannot be empty string")
             continue
 
         # Check mixed_id format
         if split_mixed_id(mixed_id) is None:
-            errors.append(f"E_CONFIG_INVALID: mod[{idx}]['mixed_id'] {mixed_id!r} must be appid:modid format")
+            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['mixed_id'] {mixed_id!r} must be appid:modid format")
             continue
 
         # Check uniqueness
         if mixed_id in seen_mixed_ids:
-            errors.append(f"E_CONFIG_INVALID: mod[{idx}]['mixed_id'] {mixed_id!r} is not unique")
+            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['mixed_id'] {mixed_id!r} is not unique")
             continue
         seen_mixed_ids.add(mixed_id)
 
@@ -67,17 +67,17 @@ def validate_config(config: Any) -> list[str]:
         destin = mod_obj.get("def_destin")
         if destin and isinstance(destin, str):
             if split_mixed_id(destin) is None:
-                errors.append(f"E_CONFIG_INVALID: mod[{idx}]['def_destin'] {destin!r} must be appid:modid format")
+                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['def_destin'] {destin!r} must be appid:modid format")
 
         # Check actionlist
         actionlist = mod_obj.get("actionlist", [])
         if not isinstance(actionlist, list):
-            errors.append(f"E_CONFIG_INVALID: mod[{idx}]['actionlist'] must be list, got {type(actionlist).__name__}")
+            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'] must be list, got {type(actionlist).__name__}")
             continue
 
         for item_idx, item in enumerate(actionlist):
             if not isinstance(item, dict):
-                errors.append(f"E_CONFIG_INVALID: mod[{idx}]['actionlist'][{item_idx}] must be dict, got {type(item).__name__}")
+                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] must be dict, got {type(item).__name__}")
                 continue
 
             action = item.get("action", mod_obj.get("def_action", "hold"))
@@ -86,17 +86,17 @@ def validate_config(config: Any) -> list[str]:
 
             # Non-hold actions require 'from' and 'into'
             if "from" not in item or not isinstance(item.get("from"), str):
-                errors.append(f"E_CONFIG_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from' string field")
+                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from' string field")
 
             if "into" not in item or not isinstance(item.get("into"), str):
-                errors.append(f"E_CONFIG_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into' string field")
+                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into' string field")
 
             # Check destin in actionlist item
             if "destin" in item:
                 destin_item = item["destin"]
                 if isinstance(destin_item, str) and destin_item:
                     if split_mixed_id(destin_item) is None:
-                        errors.append(f"E_CONFIG_INVALID: mod[{idx}]['actionlist'][{item_idx}]['destin'] {destin_item!r} must be appid:modid format")
+                        errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}]['destin'] {destin_item!r} must be appid:modid format")
 
     return errors
 
@@ -162,4 +162,4 @@ def validate_database(database: Any) -> list[str]:
     return errors
 
 
-__all__ = ["validate_config", "validate_database"]
+__all__ = ["validate_aggregated_rule_set", "validate_database"]

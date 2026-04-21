@@ -60,7 +60,7 @@ class F001_SingleFileReplace(unittest.TestCase):
             fixture.create_mod_file("100", "data/file.txt")
             fixture.create_game_file("game_data/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -72,7 +72,7 @@ class F001_SingleFileReplace(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -98,7 +98,7 @@ class F002_WildcardExpandSuccess(unittest.TestCase):
             fixture.create_mod_file("100", "c.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -110,7 +110,7 @@ class F002_WildcardExpandSuccess(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -133,7 +133,7 @@ class F003_WildcardExpandFail(unittest.TestCase):
             fixture = IntegrationFixture(Path(td))
             # Don't create mod/100, so source is missing
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -145,7 +145,7 @@ class F003_WildcardExpandFail(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertTrue(any("W_NO_SOURCE_MATCH" in w for w in result["warnings"]))
@@ -166,7 +166,7 @@ class F004_FileCircularDep(unittest.TestCase):
             # Create a real circular dependency:
             # Mod 100: output/source_a.txt -> output/renamed_a.txt (via rename)
             # Mod 101: output/renamed_a.txt -> output/source_a.txt (via replace) - cycle!
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -197,7 +197,7 @@ class F004_FileCircularDep(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions: We should have forest nodes for both sources
             # The presence of circular reference may or may not trigger E_FILE_CIRCULAR_DEP
@@ -219,7 +219,7 @@ class F005_ModLevelLoopNoFileLoop(unittest.TestCase):
             fixture.create_mod_file("300", "file_c.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -245,7 +245,7 @@ class F005_ModLevelLoopNoFileLoop(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertFalse(any("E_FILE_CIRCULAR_DEP" in e for e in result["errors"]))
@@ -264,7 +264,7 @@ class F006_BranchDetection(unittest.TestCase):
             fixture.create_mod_file("101", "a.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -283,7 +283,7 @@ class F006_BranchDetection(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertTrue(any("W_FOREST_BRANCHING" in w for w in result["warnings"]))
@@ -307,7 +307,7 @@ class F007_BranchResolved(unittest.TestCase):
             fixture.create_mod_file("101", "a.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -327,13 +327,13 @@ class F007_BranchResolved(unittest.TestCase):
             }
 
             # Get forest first to find target and candidates
-            forest_result = compute_mapping(config, fixture.mk_db())
+            forest_result = compute_mapping(aggregated_rule_set, fixture.mk_db())
             target = forest_result["forest"][0]["path"]
             candidates = forest_result["forest"][0]["candidates"]
 
             # Now resolve with branch decision
             decisions = {target: candidates[0]}
-            result = compute_mapping(config, fixture.mk_db(), branch_decisions=decisions)
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db(), branch_decisions=decisions)
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -352,7 +352,7 @@ class F008_BaseNotHit(unittest.TestCase):
             fixture.create_mod_file("100", "file.txt")
             fixture.create_mod_file("200", "output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -371,7 +371,7 @@ class F008_BaseNotHit(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -395,7 +395,7 @@ class F009_SelectionSubset(unittest.TestCase):
                 fixture.create_mod_file(str(100 + i), f"file{i}.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -421,7 +421,7 @@ class F009_SelectionSubset(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(len(result["forest"]), 3)
@@ -436,8 +436,8 @@ class F010_EmptySelection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fixture = IntegrationFixture(Path(td))
 
-            config = {"mod": []}
-            result = compute_mapping(config, fixture.mk_db())
+            aggregated_rule_set = {"mod": []}
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -449,13 +449,13 @@ class P001_PathstyleDetection(unittest.TestCase):
     """P001: Pathstyle detection (WSL mixed style)."""
 
     def test_mixed_path_normalization(self):
-        """Mixed Windows/Linux paths in config. Expected: normalized to consistent style."""
+        """Mixed Windows/Linux paths in aggregated rule set. Expected: normalized to consistent style."""
         with tempfile.TemporaryDirectory() as td:
             fixture = IntegrationFixture(Path(td))
             fixture.create_mod_file("100", "data/file.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -472,7 +472,7 @@ class P001_PathstyleDetection(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -487,12 +487,12 @@ class F011_IdentifierFormat(unittest.TestCase):
     """F011: Identifier format validation (T011)."""
 
     def test_invalid_mixed_id_format(self):
-        """Invalid mixed_id format. Expected: E_CONFIG_INVALID caught during validation."""
+        """Invalid mixed_id format. Expected: E_AGGREGATED_RULE_SET_INVALID caught during validation."""
         with tempfile.TemporaryDirectory() as td:
             fixture = IntegrationFixture(Path(td))
             fixture.create_mod_file("100", "file.txt")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150_100",  # Invalid: should be 270150:100
@@ -504,24 +504,24 @@ class F011_IdentifierFormat(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions: validation should catch this
-            self.assertTrue(any("E_CONFIG_INVALID" in e for e in result["errors"]))
+            self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e for e in result["errors"]))
 
 
 class F012_AutoDiscoveryBoundary(unittest.TestCase):
     """F012: Auto-discovery boundary (T012)."""
 
     def test_auto_discovery_not_in_m1(self):
-        """Auto-discovery not implemented in M1. Expected: no auto-discovery, use manual config."""
+        """Auto-discovery not implemented in M1. Expected: no auto-discovery, use manual aggregated_rule_set."""
         with tempfile.TemporaryDirectory() as td:
             fixture = IntegrationFixture(Path(td))
             fixture.create_mod_file("100", "file.txt")
             fixture.create_mod_file("200", "file.txt")  # Another mod with same file
 
-            # M1 does not auto-discover dependencies; it requires explicit config
-            config = {
+            # M1 does not auto-discover dependencies; it requires explicit aggregated rule set
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -540,7 +540,7 @@ class F012_AutoDiscoveryBoundary(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -558,7 +558,7 @@ class F013_HistoryTolerance(unittest.TestCase):
             fixture.create_mod_file("100", "file.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -583,7 +583,7 @@ class F013_HistoryTolerance(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, database)
+            result = compute_mapping(aggregated_rule_set, database)
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -600,7 +600,7 @@ class F014_PathNormalization(unittest.TestCase):
             fixture.create_mod_file("100", "data/subdir/file.txt")
             fixture.create_game_file("output/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -617,7 +617,7 @@ class F014_PathNormalization(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -638,7 +638,7 @@ class P002_WindowsPathConversion(unittest.TestCase):
             fixture.create_mod_file("100", "content/file.txt")
             fixture.create_game_file("install/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -655,7 +655,7 @@ class P002_WindowsPathConversion(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -676,7 +676,7 @@ class P003_AcfPathCombination(unittest.TestCase):
             fixture.create_mod_file("100", "mods/mod_content/file.txt")
             fixture.create_game_file("steamapps/common/")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -694,7 +694,7 @@ class P003_AcfPathCombination(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])
@@ -717,7 +717,7 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
             fixture.create_game_file("output/")
 
             # Reference the same source file via two different path styles
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -734,7 +734,7 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, fixture.mk_db())
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
             self.assertEqual(result["errors"], [])

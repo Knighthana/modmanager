@@ -3,8 +3,8 @@
     "string1": "这个文件是一个示例文件, 旨在展示`database.json`的结构",
     "string2": "`database.json`是一个由程序自行探索系统后生成的文件, 所以不应该作为启动的前置条件, 也不应该由用户手动编辑",
     "string3": "`database.json`高度与具体的硬件和正在运行的操作系统相关, 因此它的细节可能会因人而异",
-    "string4": "steamlib可以通过自动搜索或手动指定来装入, 手动指定是必须能力,不是可选能力",
-    "string5": "dommod是指那些`config.json`中sub不为空的mod, 但这不意味着它们不是其他mod的sub, 这只是意味着“它们有需要被备份的‘可能性’”"
+    "string4": "steamlib可以通过自动搜索或手动指定来装入",
+    "string5": "dommod是指那些`aggregated_rule_set.json`中sub不为空的mod, 但这不意味着它们不是其他mod的sub, 这只是意味着“它们有需要被备份的‘可能性’”"
   },
   "OS":{
     "workingpathstyle" : "linux",
@@ -17,10 +17,9 @@
       "game": ["228980"],
       "comment":{
         "string1": "注意路径中间的空格!!!",
-        "string2": "`contains_libraryfolders_vdf`的意思是那个记录了所有硬盘上所有Steam库的`libraryfolders.vdf`文件在这里", 
-        "string3": "并不是每个`libraryfolders.vdf`中都有全部有效信息, 但, 凡有`contains_libraryfolders_vdf`这条且为`true`的都要检查一遍",
-        "string4": "通过解析主要的`libraryfolders.vdf`来获取本机所有steamlibrary的位置, 以及所有已经安装游戏的APPID",
-        "string5": "比如显示硬盘C中只有一个游戏228980(其实并不是一个游戏), 但是解析的时候不管"
+        "string2": "`contains_libraryfolders_vdf=true`表示该库路径中存在主`libraryfolders.vdf`",
+        "string3": "应先解析主`libraryfolders.vdf`扩展发现其他Steam库, 再继续扫描游戏与mod",
+        "string4": "该字段命名已冻结，不再使用`islbfdvdflocate`等历史拼写"
       }
     },
     {
@@ -44,7 +43,8 @@
         "string5": "这个例子中, 由于`appworkshop_241100.acf`存在, 因此即便`241100`这个游戏没有被解析出来, 只要用户打开了`贪婪解析`, 那么这个mod `2760274693`也会被解析出来",
         "string6": "如果用户没有打开`贪婪解析`, 那么这个mod就不会被解析出来, 因此也不会出现在后续的管理界面中",
         "string7": "然而这其实是个手柄配置文件, 所以默认设置下不解析也是完全OK的",
-        "string8": "但如果用户想要用本软件管理这些手柄配置文件, 那么就需要打开`贪婪解析`, 或者手动添加这个APPID和路径进行登记, 以便于解析出这个mod来"
+        "string8": "但如果用户想要用本软件管理这些手柄配置文件, 那么就需要打开`贪婪解析`, 或者手动添加这个APPID和路径进行登记, 以便于解析出这个mod来",
+        "string9": "总之, 现在还不计划做贪婪解析功能"
       }
     },
     {

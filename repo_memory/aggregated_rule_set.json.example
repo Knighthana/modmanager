@@ -2,7 +2,7 @@
   "game": [
     {
       "appid": "270150",
-      "modid": ["2606099273", "3428584891", "3430161019", "3445750210", "modder_will_name_this_local_mod_whatever_as_their_will", "prepare_and_receive", "not_ever_rule_is_valid"]
+      "modid": ["2606099273", "3428584891", "3430161019", "3445750210", "modder_will_name_this_local_mod_whatever_as_their_will", "prepare_and_receive", "not_every_rule_is_valid"]
     }
   ],
   "mod": [
@@ -79,7 +79,7 @@
           "comment": {
             "string1": "这个对象的`destin`是`270150:0`, 这意味着它的目标是游戏base文件`steamapps/common/RunningWithRifles`",
             "string2": "这个对象的`action`是`create`, 这意味着它要创建一个新文件",
-            "string3": "`create`与`replace`的区别在于, `config.json`的作者使用`create`有意告诉你, 那个位置“之前不该有文件”",
+            "string3": "`create`与`replace`的区别在于, `aggregated_rule_set.json`的作者使用`create`有意告诉你, 那个位置“之前不该有文件”",
             "string4": "如果没有文件, 那么皆大欢喜, 用shell解释就是 `cp steamapps/workshop/content/270150/3428584891/weaponpics/castears_kawaii.png steamapps/common/RunningWithRifles/media/textures/castears_kawaii.png`",
             "string5": "如果已经有文件了呢？该怎么办？向日志中添加一条:",
             "string6": "yyyymmddHHMMSS 创建`castears_kawaii.png`前已经于`steamapps/common/RunningWithRifles/media/textures/`发现同名文件",

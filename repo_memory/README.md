@@ -14,9 +14,20 @@
 4. 按 `IMPLEMENTATION_BRIEF.md` 执行
 
 ## 同步规则
-- `description/` 作为历史样例来源，不再作为当前实现指挥入口
-- 当前实现以 `repo_memory/` 为准
-- 后续若同步回 `description/`，需保持字段主名一致
+- `description/` 仅作为用户与 Plan 的沟通目录，不作为 implement 默认输入
+- 当前实现与契约以 `repo_memory/` 为准
+- `json.example` 采用单向同步：`repo_memory/` -> `description/`
+- implement 禁止将 `description/` 反向写回 `repo_memory/`
+
+## 角色职责矩阵
+
+| 角色 | description | repo_memory | work_memo |
+|---|---|---|---|
+| user | 读/写 | 可读 | 不使用 |
+| plan | 读/写 | 读/写（主维护） | 可读（必要时） |
+| implement | 默认忽略；仅在 Plan 明确任务下写入 | 必读（实现指导） | 读/写（自管临时记忆） |
+
+说明：`work_memo/` 为 implement 的临时工作区，不进入契约决策链，不作为字段或流程依据。
 
 ## 执行门禁
 1. 实现任务必须引用本目录中的文档路径；缺失路径视为无效任务单。

@@ -207,9 +207,9 @@ class CliDatabaseOpsTests(unittest.TestCase):
 
     def test_legacy_mode_missing_errors_key_defaults_to_success(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            config_path = Path(td) / "config.json"
+            aggregated_rule_set_path = Path(td) / "aggregated_rule_set.json"
             db_path = Path(td) / "database.json"
-            write_json_file(config_path, {"mod": []})
+            write_json_file(aggregated_rule_set_path, {"mod": []})
             write_json_file(db_path, {"game": []})
 
             with patch("modmanager_cli.cli.compute_mapping", return_value={"forest": [], "final_mapping": []}):
@@ -217,8 +217,8 @@ class CliDatabaseOpsTests(unittest.TestCase):
                     "sys.argv",
                     [
                         "modmanger-cli",
-                        "--config",
-                        str(config_path),
+                        "--aggregated-rule-set",
+                        str(aggregated_rule_set_path),
                         "--database",
                         str(db_path),
                     ],
@@ -229,17 +229,17 @@ class CliDatabaseOpsTests(unittest.TestCase):
 
     def test_legacy_mode_invalid_json_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            config_path = Path(td) / "config.json"
+            aggregated_rule_set_path = Path(td) / "aggregated_rule_set.json"
             db_path = Path(td) / "database.json"
-            config_path.write_text("{bad-json", encoding="utf-8")
+            aggregated_rule_set_path.write_text("{bad-json", encoding="utf-8")
             write_json_file(db_path, {"game": []})
 
             with patch(
                 "sys.argv",
                 [
                     "modmanger-cli",
-                    "--config",
-                    str(config_path),
+                    "--aggregated-rule-set",
+                    str(aggregated_rule_set_path),
                     "--database",
                     str(db_path),
                 ],

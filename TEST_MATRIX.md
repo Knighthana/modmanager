@@ -61,13 +61,13 @@
 
 | 编号 | 夹具名称 | M1 测试 | 核心场景 | 验证指标 |
 |-----|---------|--------|---------|---------|
-| **F011** | 标识规范 | T011 | 无效 mixed_id 格式 | `E_CONFIG_INVALID` 错误 |
-| **F012** | 自动发现边界 | T012 | M1 无自动发现，仅手动 config | 无自动发现，依赖显式 sub 声明 |
+| **F011** | 标识规范 | T011 | 无效 mixed_id 格式 | `E_AGGREGATED_RULE_SET_INVALID` 错误 |
+| **F012** | 自动发现边界 | T012 | M1 无自动发现，仅手动 aggregated rule set | 无自动发现，依赖显式 sub 声明 |
 | **F013** | History 容忍 | T013 | 允许 schema 外的字段 | 无错误，字段被忽略 |
 | **F014** | 路径规范化 | T014 | 混合风格路径归一化 | 输出均为 Linux 风格 (forward slash) |
 
 **验证目标**：
-- ✅ 输入校验在第一道 (validate_config)
+- ✅ 输入校验在第一道 (validate_aggregated_rule_set)
 - ✅ Schema 外字段容错
 - ✅ 跨平台路径兼容
 
@@ -96,7 +96,7 @@
 | 模块 | 测试类 | 用例数 | 覆盖范围 |
 |-----|--------|--------|---------|
 | **engine.py** | `EngineTests`, `ValidateForestRootsTests` | 18 | 核心算法、环检测、分枝处理、森林验证 |
-| **validation.py** | `ValidateConfigTests`, `ValidateDatabaseTests` | 30 | Config 9 约束 + Database 6 约束 |
+| **validation.py** | `ValidateAggregatedRuleSetTests`, `ValidateDatabaseTests` | 30 | Aggregated rule set 9 约束 + Database 6 约束 |
 | **pathstyle.py** | `TestDetectPathstyle`, `TestConvertPath`, `TestNormalize` | 16 | 风格检测、路径转换、规范化 |
 | **paths.py** | `PathsModuleTests` | 8 | mixed_id 操作、路径构造 |
 | **iojson.py** | `IoJsonTests` | 3 | JSON 读写 |
@@ -107,7 +107,7 @@
 
 | 类别 | 覆盖 | 状态 |
 |-----|------|-----|
-| **输入校验** | 15 项约束（9 config + 6 database） | ✅ 全覆盖 |
+| **输入校验** | 15 项约束（9 aggregated rule set + 6 database） | ✅ 全覆盖 |
 | **核心规则** | 6 条 M1 规则 + 环检测 + 分枝 | ✅ 全覆盖 |
 | **路径处理** | 检测、转换、规范化 | ✅ 全覆盖 |
 | **输出契约** | JSON Schema 验证 | ✅ 全覆盖 |

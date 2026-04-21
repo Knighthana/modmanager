@@ -7,7 +7,7 @@
 1. 跨平台路径作为键前，先做规范化并折叠重复分隔符。
 2. 工具模块必须进入生产主流程，避免只在测试里可用。
 3. compute_mapping 输入校验顺序固定：
-   - validate_config
+   - validate_aggregated_rule_set
    - validate_database
    - validate_branch_decisions
    首错即停。

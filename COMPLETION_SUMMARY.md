@@ -67,7 +67,7 @@
 ### 15 项输入约束
 
 ```
-Config 约束（9 项）：
+Aggregated rule set 约束（9 项）：
   ✅ mixed_id 格式 (colon-separated)
   ✅ mixed_id 唯一性
   ✅ actionlist 完整性（from/into）
@@ -127,8 +127,8 @@ Database 约束（6 项）：
 
 | # | 名称 | 场景 | 验证 |
 |---|------|------|------|
-| F011 | 标识规范 | 无效 mixed_id | ✅ E_CONFIG_INVALID |
-| F012 | 自动发现 | M1 无此功能 | ✅ 仅手动 config |
+| F011 | 标识规范 | 无效 mixed_id | ✅ E_AGGREGATED_RULE_SET_INVALID |
+| F012 | 自动发现 | M1 无此功能 | ✅ 仅手动 aggregated rule set |
 | F013 | History 容忍 | schema 外字段 | ✅ 无错误，忽略 |
 | F014 | 路径规范 | 混合风格路径 | ✅ 归一化为 Linux |
 
@@ -155,7 +155,7 @@ iojson → cli
 ```
 
 ### 2. 完整的错误处理
-- **E_CONFIG_INVALID**：输入配置错误（15 项约束）
+- **E_AGGREGATED_RULE_SET_INVALID**：输入聚合规则集错误（15 项约束）
 - **E_DATABASE_INVALID**：数据库配置错误
 - **E_FILE_CIRCULAR_DEP**：文件级成环
 - **E_BRANCH_DECISION_INVALID**：分枝决策无效
@@ -249,8 +249,8 @@ cat TEST_MATRIX.md
 
 ### 1. 前置校验（Defense in Depth）
 ```
-compute_mapping(config, database, branch_decisions):
-  ├─ validate_config(config)           // 第一道防线
+compute_mapping(aggregated_rule_set, database, branch_decisions):
+  ├─ validate_aggregated_rule_set(aggregated_rule_set) // 第一道防线
   ├─ validate_database(database)       // 第二道防线
   ├─ validate_branch_decisions_schema  // 第三道防线
   └─ 仅处理有效输入

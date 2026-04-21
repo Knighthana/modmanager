@@ -2,17 +2,17 @@
 
 import unittest
 
-from modmanager_cli.validation import validate_config, validate_database
+from modmanager_cli.validation import validate_aggregated_rule_set, validate_database
 
 
-class ValidateConfigTests(unittest.TestCase):
-    def test_valid_minimal_config(self):
-        config = {"mod": []}
-        errs = validate_config(config)
+class ValidateAggregatedRuleSetTests(unittest.TestCase):
+    def test_valid_minimal_aggregated_rule_set(self):
+        aggregated_rule_set = {"mod": []}
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertEqual(errs, [])
 
     def test_valid_single_mod(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -23,53 +23,53 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertEqual(errs, [])
 
-    def test_config_not_dict(self):
-        errs = validate_config([])
-        self.assertTrue(any("E_CONFIG_INVALID" in e for e in errs))
+    def test_aggregated_rule_set_not_dict(self):
+        errs = validate_aggregated_rule_set([])
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e for e in errs))
 
-    def test_config_missing_mod_key(self):
-        errs = validate_config({"other": []})
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "mod" in e for e in errs))
+    def test_aggregated_rule_set_missing_mod_key(self):
+        errs = validate_aggregated_rule_set({"other": []})
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "mod" in e for e in errs))
 
     def test_mod_not_list(self):
-        errs = validate_config({"mod": "not_a_list"})
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "list" in e for e in errs))
+        errs = validate_aggregated_rule_set({"mod": "not_a_list"})
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "list" in e for e in errs))
 
     def test_mod_entry_not_dict(self):
-        errs = validate_config({"mod": ["string_entry"]})
-        self.assertTrue(any("E_CONFIG_INVALID" in e for e in errs))
+        errs = validate_aggregated_rule_set({"mod": ["string_entry"]})
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e for e in errs))
 
     def test_mixed_id_missing(self):
-        errs = validate_config({"mod": [{"other_field": "value"}]})
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "mixed_id" in e for e in errs))
+        errs = validate_aggregated_rule_set({"mod": [{"other_field": "value"}]})
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "mixed_id" in e for e in errs))
 
     def test_mixed_id_not_string(self):
-        errs = validate_config({"mod": [{"mixed_id": 123}]})
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "mixed_id" in e for e in errs))
+        errs = validate_aggregated_rule_set({"mod": [{"mixed_id": 123}]})
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "mixed_id" in e for e in errs))
 
     def test_mixed_id_empty(self):
-        errs = validate_config({"mod": [{"mixed_id": ""}]})
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "empty" in e for e in errs))
+        errs = validate_aggregated_rule_set({"mod": [{"mixed_id": ""}]})
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "empty" in e for e in errs))
 
     def test_mixed_id_invalid_format(self):
-        errs = validate_config({"mod": [{"mixed_id": "270150"}]})  # missing modid part
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "appid:modid" in e for e in errs))
+        errs = validate_aggregated_rule_set({"mod": [{"mixed_id": "270150"}]})  # missing modid part
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "appid:modid" in e for e in errs))
 
     def test_mixed_id_not_unique(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {"mixed_id": "270150:100", "sub": [], "def_destin": "270150:0", "def_action": "hold", "actionlist": []},
                 {"mixed_id": "270150:100", "sub": [], "def_destin": "270150:0", "def_action": "hold", "actionlist": []},
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "not unique" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "not unique" in e for e in errs))
 
     def test_def_destin_invalid_format(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -80,11 +80,11 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "def_destin" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "def_destin" in e for e in errs))
 
     def test_actionlist_not_list(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -95,11 +95,11 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "actionlist" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "actionlist" in e for e in errs))
 
     def test_actionlist_item_not_dict(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -110,11 +110,11 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e for e in errs))
 
     def test_actionlist_missing_from_for_replace(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -125,11 +125,11 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "from" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "from" in e for e in errs))
 
     def test_actionlist_missing_into_for_replace(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -140,11 +140,11 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "into" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "into" in e for e in errs))
 
     def test_actionlist_destin_invalid_format(self):
-        config = {
+        aggregated_rule_set = {
             "mod": [
                 {
                     "mixed_id": "270150:100",
@@ -162,8 +162,8 @@ class ValidateConfigTests(unittest.TestCase):
                 }
             ]
         }
-        errs = validate_config(config)
-        self.assertTrue(any("E_CONFIG_INVALID" in e and "destin" in e for e in errs))
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "destin" in e for e in errs))
 
 
 class ValidateDatabaseTests(unittest.TestCase):

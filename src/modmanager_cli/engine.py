@@ -11,7 +11,7 @@ from .paths import (
     mod_root_from_mixed_id,
     normalize_posix,
 )
-from .validation import validate_config, validate_database
+from .validation import validate_aggregated_rule_set, validate_database
 
 
 VALID_ACTIONS = {"hold", "replace", "create", "delete", "rename_then_replace", "clear_then_copy"}
@@ -209,13 +209,13 @@ def validate_forest_roots(
     return warnings
 
 
-def compute_mapping(config: dict[str, Any], database: dict[str, Any], branch_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any], branch_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
     branch_decisions = branch_decisions or {}
 
     # ── input structure validation ──────────────────────────────────────────────
-    config_errors = validate_config(config)
-    if config_errors:
-        return {"warnings": [], "errors": config_errors, "forest": [], "final_mapping": []}
+    aggregated_rule_set_errors = validate_aggregated_rule_set(aggregated_rule_set)
+    if aggregated_rule_set_errors:
+        return {"warnings": [], "errors": aggregated_rule_set_errors, "forest": [], "final_mapping": []}
 
     database_errors = validate_database(database)
     if database_errors:
@@ -229,7 +229,7 @@ def compute_mapping(config: dict[str, Any], database: dict[str, Any], branch_dec
     errors: list[str] = []
 
     game_index = build_game_index(database)
-    mods = [m for m in config.get("mod", []) if isinstance(m, dict)]
+    mods = [m for m in aggregated_rule_set.get("mod", []) if isinstance(m, dict)]
     mod_index = {m.get("mixed_id", ""): m for m in mods if isinstance(m.get("mixed_id"), str)}
 
     valid_actor_mods: set[str] = set()

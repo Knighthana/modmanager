@@ -1,15 +1,11 @@
-历史草案，不作为实现依据
+历史草案，不作为实现依据。
 
-请转向`repo_memory/README.md`
+目录职责：
+1. `description/` 仅用于 user 与 Plan 的沟通与草案整理。
+2. implement 默认忽略 `description/`，不得据此推导实现规则。
+3. 仅当 Plan 任务单明确要求时，implement 才可在 `description/` 写入指定文件。
 
-此文档只用于Plan沟通
-
-历史说明+指向 repo_memory
-
-我需要你用尽可能已有、成熟、可以找到现成仓库的方案作为工具去完成构建，Python是一个思路；
-
-具体的工作流中，我希望你减少临时`shell`直接命令输入，而是尽可能将高频使用的场景封装为脚本；
-
-我希望对于阶段性测试用例，我希望尽可能是在确定边界之后，创建确实存在的文件之后，以其副本作为测试对象；如果还存在需求对不齐的情况，就去修改原始文件，再重新创建副本；避免用脚本**临时**生成测试样本，用完删除的情况；
-
-GUI的Web方面也尽可能用现有成熟的工作流；
+执行入口：
+1. 实现约束与契约请转向 `repo_memory/README.md`。
+2. 若 `description/` 与 `repo_memory/` 内容冲突，以 `repo_memory/` 为准。
+3. `json.example` 的维护采用单向同步：`repo_memory/` -> `description/`。

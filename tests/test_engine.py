@@ -40,7 +40,7 @@ class EngineTests(unittest.TestCase):
             target_dir.mkdir(parents=True)
             (target_dir / "a.txt").write_text("old", encoding="utf-8")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -52,7 +52,7 @@ class EngineTests(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_CREATE_TARGET_EXISTS_OVERWRITE" in w for w in result["warnings"]))
             self.assertFalse(result["errors"])
             self.assertTrue(result["final_mapping"])
@@ -66,7 +66,7 @@ class EngineTests(unittest.TestCase):
                 mroot.mkdir(parents=True)
                 (mroot / "a.txt").write_text("x", encoding="utf-8")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -85,7 +85,7 @@ class EngineTests(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any(e.startswith("E_CLEAR_THEN_COPY_CONFLICT") for e in result["errors"]))
             self.assertEqual(result["final_mapping"], [])
 
@@ -99,7 +99,7 @@ class EngineTests(unittest.TestCase):
             dst_mod.mkdir(parents=True)
             (src_mod / "a.txt").write_text("x", encoding="utf-8")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -118,7 +118,7 @@ class EngineTests(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_SUB_NOT_RECOGNIZED" in w for w in result["warnings"]))
             self.assertEqual(result["forest"], [])
 
@@ -126,7 +126,7 @@ class EngineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = self._mk_db(tmp_path)
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:local_dev_mod",
@@ -138,7 +138,7 @@ class EngineTests(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_LOCAL_MOD_MISSING" in w for w in result["warnings"]))
             self.assertEqual(result["forest"], [])
 
@@ -152,7 +152,7 @@ class EngineTests(unittest.TestCase):
             (tmp_path / "mods" / "100" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
 
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -178,7 +178,7 @@ class EngineTests(unittest.TestCase):
                 ]
             }
 
-            result = compute_mapping(config, db)
+            result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_FOREST_BRANCHING_UNRESOLVED" in w for w in result["warnings"]))
             self.assertEqual(result["final_mapping"], [])
             self.assertTrue(result["forest"])
@@ -243,7 +243,7 @@ class EngineTests(unittest.TestCase):
             src = tmp_path / "mods" / "100"
             src.mkdir(parents=True)
             (src / "a.txt").write_text("x", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -255,7 +255,7 @@ class EngineTests(unittest.TestCase):
                 ]
             }
             # Provide a decision for a target that doesn't branch
-            result = compute_mapping(config, db, branch_decisions={"/nonexistent/target": "/some/src"})
+            result = compute_mapping(aggregated_rule_set, db, branch_decisions={"/nonexistent/target": "/some/src"})
             self.assertTrue(any("W_BRANCH_DECISION_SUPERFLUOUS" in w for w in result["warnings"]))
 
     def test_branch_decision_invalid_source_is_error(self) -> None:
@@ -266,7 +266,7 @@ class EngineTests(unittest.TestCase):
                 (tmp_path / "mods" / modid).mkdir(parents=True)
             (tmp_path / "mods" / "100" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -292,12 +292,12 @@ class EngineTests(unittest.TestCase):
                 ]
             }
             # Build forest first to get the actual target path
-            forest_result = compute_mapping(config, db)
+            forest_result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(forest_result["forest"])
             branched_target = forest_result["forest"][0]["path"]
 
             # Provide a decision with a wrong source
-            result = compute_mapping(config, db, branch_decisions={branched_target: "/wrong/source.txt"})
+            result = compute_mapping(aggregated_rule_set, db, branch_decisions={branched_target: "/wrong/source.txt"})
             self.assertTrue(any("E_BRANCH_DECISION_INVALID_SOURCE" in e for e in result["errors"]))
             self.assertEqual(result["final_mapping"], [])
 
@@ -309,7 +309,7 @@ class EngineTests(unittest.TestCase):
                 (tmp_path / "mods" / modid).mkdir(parents=True)
             (tmp_path / "mods" / "100" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
-            config = {
+            aggregated_rule_set = {
                 "mod": [
                     {
                         "mixed_id": "270150:100",
@@ -334,12 +334,12 @@ class EngineTests(unittest.TestCase):
                     },
                 ]
             }
-            forest_result = compute_mapping(config, db)
+            forest_result = compute_mapping(aggregated_rule_set, db)
             branched = forest_result["forest"][0]
             target = branched["path"]
             chosen_src = branched["candidates"][0]
 
-            result = compute_mapping(config, db, branch_decisions={target: chosen_src})
+            result = compute_mapping(aggregated_rule_set, db, branch_decisions={target: chosen_src})
             self.assertFalse(result["errors"])
             self.assertEqual(len(result["final_mapping"]), 1)
             self.assertEqual(result["final_mapping"][0]["path"], target)
