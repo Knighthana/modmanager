@@ -11,6 +11,135 @@ from modmanager_cli.iojson import load_json_file, write_json_file
 
 
 class CliDatabaseOpsTests(unittest.TestCase):
+    def test_visualize_ascii_command_outputs_text(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            forest_path = Path(td) / "forest.json"
+            write_json_file(
+                forest_path,
+                {
+                    "forest": [
+                        {
+                            "path": "/dst/a.txt",
+                            "changerequest": [
+                                {
+                                    "path": "/src/a.txt",
+                                    "action": "replace",
+                                    "mixed_id": "270150:100",
+                                    "hashtype": "sha256",
+                                    "hashvalue": "abc",
+                                }
+                            ],
+                        }
+                    ]
+                },
+            )
+
+            with patch(
+                "sys.argv",
+                [
+                    "modmanger-cli",
+                    "visualize",
+                    "--forest",
+                    str(forest_path),
+                    "--format",
+                    "ascii",
+                ],
+            ):
+                with patch("sys.stdout", new_callable=io.StringIO) as out:
+                    code = main()
+
+            self.assertEqual(code, 0)
+            self.assertIn("FOREST", out.getvalue())
+
+    def test_visualize_unsupported_format_returns_code_3(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            forest_path = Path(td) / "forest.json"
+            write_json_file(forest_path, {"forest": []})
+
+            with patch(
+                "sys.argv",
+                [
+                    "modmanger-cli",
+                    "visualize",
+                    "--forest",
+                    str(forest_path),
+                    "--format",
+                    "badfmt",
+                ],
+            ):
+                with patch("sys.stderr", new_callable=io.StringIO) as err:
+                    code = main()
+
+            self.assertEqual(code, 3)
+            self.assertIn("unsupported visualization format", err.getvalue())
+
+    def test_visualize_svg_missing_dot_returns_code_4(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            forest_path = Path(td) / "forest.json"
+            write_json_file(forest_path, {"forest": [{"path": "/dst/a.txt", "changerequest": []}]})
+
+            with patch("modmanager_cli.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
+                with patch(
+                    "sys.argv",
+                    [
+                        "modmanger-cli",
+                        "visualize",
+                        "--forest",
+                        str(forest_path),
+                        "--format",
+                        "svg",
+                    ],
+                ):
+                    with patch("sys.stderr", new_callable=io.StringIO) as err:
+                        code = main()
+
+            self.assertEqual(code, 4)
+            self.assertIn("graphviz 'dot' command not found", err.getvalue())
+
+    def test_visualize_write_failure_returns_code_6(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            forest_path = Path(td) / "forest.json"
+            out_path = Path(td) / "out.txt"
+            write_json_file(
+                forest_path,
+                {
+                    "forest": [
+                        {
+                            "path": "/dst/a.txt",
+                            "changerequest": [
+                                {
+                                    "path": "/src/a.txt",
+                                    "action": "replace",
+                                    "mixed_id": "270150:100",
+                                    "hashtype": "sha256",
+                                    "hashvalue": "abc",
+                                }
+                            ],
+                        }
+                    ]
+                },
+            )
+
+            with patch("modmanager_cli.cli.Path.write_text", side_effect=OSError("disk full")):
+                with patch(
+                    "sys.argv",
+                    [
+                        "modmanger-cli",
+                        "visualize",
+                        "--forest",
+                        str(forest_path),
+                        "--format",
+                        "ascii",
+                        "--out",
+                        str(out_path),
+                    ],
+                ):
+                    with patch("sys.stderr", new_callable=io.StringIO) as err:
+                        code = main()
+
+            self.assertEqual(code, 6)
+            self.assertIn("failed to write visualization output", err.getvalue())
+
     def test_steamlib_add_command_updates_database_file(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             db_path = Path(td) / "database.json"

@@ -1,5 +1,6 @@
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 
 from .backup_ops import (
@@ -18,12 +19,17 @@ from .database_ops import (
     update_manual_steamlib,
 )
 from .engine import compute_mapping
+from .forest_visual import VisualizationError, visualize_payload
 from .iojson import dumps_pretty, load_json_file, write_json_file
 
 
 def _emit_error(message: str) -> int:
+    return _emit_error_with_code(message, 2)
+
+
+def _emit_error_with_code(message: str, code: int) -> int:
     print(dumps_pretty({"errors": [message]}, ensure_ascii=False, indent=2), file=sys.stderr)
-    return 2
+    return code
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -101,6 +107,14 @@ def build_db_parser() -> argparse.ArgumentParser:
     )
     restore.add_argument("--out", help="Write result json to file; stdout if omitted")
 
+    return parser
+
+
+def build_visualize_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Render forest JSON to ascii/dot/svg.")
+    parser.add_argument("--forest", required=True, help="Path to forest json or compute result json")
+    parser.add_argument("--format", default="ascii", help="ascii | dot | svg")
+    parser.add_argument("--out", help="Write rendered output to file; stdout if omitted")
     return parser
 
 
@@ -289,6 +303,29 @@ def _handle_restore(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 2
 
 
+def _handle_visualize(args: argparse.Namespace) -> int:
+    try:
+        payload = load_json_file(args.forest)
+    except Exception as exc:
+        return _emit_error_with_code(f"failed to load forest input: {exc}", 2)
+
+    try:
+        rendered = visualize_payload(payload, args.format)
+    except VisualizationError as exc:
+        return _emit_error_with_code(str(exc), exc.code)
+    except Exception as exc:
+        return _emit_error_with_code(f"visualization failed: {exc}", 5)
+
+    if args.out:
+        try:
+            Path(args.out).write_text(rendered, encoding="utf-8")
+        except Exception as exc:
+            return _emit_error_with_code(f"failed to write visualization output: {exc}", 6)
+    else:
+        print(rendered)
+    return 0
+
+
 def run_db_cli(argv: list[str]) -> int:
     parser = build_db_parser()
     args = parser.parse_args(argv)
@@ -311,6 +348,11 @@ def run_db_cli(argv: list[str]) -> int:
 
 def main() -> int:
     argv = sys.argv[1:]
+    if argv and argv[0] == "visualize":
+        parser = build_visualize_parser()
+        args = parser.parse_args(argv[1:])
+        return _handle_visualize(args)
+
     if argv and argv[0] in {"steamlib", "liveupdate", "regen", "backup", "apply", "restore"}:
         return run_db_cli(argv)
 
