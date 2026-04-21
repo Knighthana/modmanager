@@ -367,7 +367,7 @@ def compute_mapping(config: dict[str, Any], database: dict[str, Any], branch_dec
             continue
 
         # deterministic ordering: numeric contentid ascending, then custom_id lexicographic
-        def _sort_key(r: dict[str, Any]) -> tuple[int, str, str]:
+        def _sort_key(r: dict[str, Any]) -> tuple[int, int, str]:
             mid = r.get("mixed_id", "")
             modid = mid.split(":", 1)[1] if ":" in mid else mid
             is_custom = 0 if modid.isdigit() else 1
