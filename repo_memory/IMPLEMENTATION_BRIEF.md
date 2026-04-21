@@ -92,6 +92,16 @@
 - 测试：`tests.test_backup_ops` 41/41 通过
 - 全量：194/194 通过
 
+## 开放冲突关闭记录
+
+| 冲突 | 结论 | 状态 |
+|---|---|---|
+| #2 hash 占位与合法值边界 | 两阶段校验：写入仅检查不倒退，展示层按 invalid/0 vs sha256/hex 渲染 | closed 2026-04-21 |
+| #3 filefoldertree 结构冻结 vs 属性演进 | 结构冻结 + 仅 file 节点三字段单向变更，其余拒绝并报错 | closed 2026-04-21 |
+
+实现验证：`engine._check_filefoldertree_transition` 已完全符合两项决策，无需改代码。
+全量回归：194/194（验证于 d1743be，关闭冲突为纯文档操作）。
+
 ## 下一轮执行清单（收敛）
 1. 视发布需求决定是否补齐 game CRUD CLI 对外命令。
 2. 增加一条 CLI `--out` 文件真实 I/O 集成用例（liveupdate/regen）。
