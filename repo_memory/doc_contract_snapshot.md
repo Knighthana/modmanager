@@ -45,6 +45,13 @@
 - `tests.test_database_ops`：8/8 通过
 - `unittest discover -s tests -p test_*.py`：144/144 通过
 
+## 稳健性收敛回归（2026-04-21）
+- `tests.test_cli_database_ops`：9/9 通过
+- `unittest discover -s tests -p test_*.py`：153/153 通过
+- 已完成：CLI 异常出口统一（输入读取失败、liveupdate/regen 失败、输出写入失败统一返回 code=2）
+- 已完成：legacy 模式 `result.errors` 缺省兼容（`result.get("errors", [])`）
+- 待跟踪：如需对外发布，补充 CLI 用户文档示例与 game CRUD CLI 对齐
+
 ## 来源
 - `repo_memory/TERMINOLOGY.md`
 - `repo_memory/STEAM_DISCOVERY.md`
