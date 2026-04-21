@@ -45,7 +45,15 @@
 - `tests.test_database_ops`：8/8 通过
 - `unittest discover -s tests -p test_*.py`：144/144 通过
 
-## 稳健性收敛回归（2026-04-21）
+## 备份/替换/恢复模块回归（2026-04-21）
+
+- 全量测试：189/189 通过
+- 新增模块：`backup_ops.py`（Phase 7-12 实现）
+- 新增测试：`test_backup_ops.py`（36 个测试，全部通过）
+- CLI 新增命令：`backup`、`apply`、`restore`
+- M1 核心文件未修改，adapter 层通过调用 M1 实现编排
+
+
 - `tests.test_cli_database_ops`：9/9 通过
 - `unittest discover -s tests -p test_*.py`：153/153 通过
 - 已完成：CLI 异常出口统一（输入读取失败、liveupdate/regen 失败、输出写入失败统一返回 code=2）

@@ -71,6 +71,19 @@
 - 治理补丁：已落盘并通过回归验证
 - WSL 实机扫描：3 库 / 86 游戏 / 73 mod（C/D/E 三盘全部发现）
 
+## 备份/替换/恢复模块（Phase 7-12）
+
+| 任务 | 状态 | 验收 | 备注 |
+|---|---|---|---|
+| Phase 7: backup_id 生成（acf LastUpdated→hex） | done | `get_game_backup_id` 可调用 | 已完成 |
+| Phase 8: filefoldertree 建树 + sha256 | done | `build_filefoldertree_with_hashes` 可调用 | 已完成 |
+| Phase 8: backup 目录生命周期（init/finalize） | done | status: error→ready | 已完成 |
+| Phase 9: 替换前门禁（backup gate） | done | `check_backup_gate` 返回错误码 | 已完成 |
+| Phase 10: 差异备份执行 | done | `run_differential_backup` 可调用 | 已完成 |
+| Phase 11: final_mapping 替换执行 | done | `apply_final_mapping` 含 gate 检查 | 已完成 |
+| Phase 12: 从备份恢复 | done | `restore_from_backup`，hash 一致跳过 I/O | 已完成 |
+| CLI backup/apply/restore 命令 | done | 命令入口可调用 | 已完成 |
+
 ## 下一轮执行清单（收敛）
 1. 视发布需求决定是否补齐 game CRUD CLI 对外命令。
 2. 增加一条 CLI `--out` 文件真实 I/O 集成用例（liveupdate/regen）。

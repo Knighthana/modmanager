@@ -2,6 +2,11 @@ import argparse
 import sys
 from typing import Any
 
+from .backup_ops import (
+    apply_final_mapping,
+    restore_from_backup,
+    run_differential_backup,
+)
 from .database_ops import (
     add_manual_steamlib,
     list_steamlibs,
@@ -68,6 +73,26 @@ def build_db_parser() -> argparse.ArgumentParser:
     regen.add_argument("--out", help="Write result json to file; stdout if omitted")
     regen.add_argument("--working-pathstyle", default="linux", choices=["linux", "windows"])
     regen.add_argument("--greedy-parsing", action="store_true")
+
+    backup = sub.add_parser("backup", help="Back up target files before applying a mapping")
+    backup.add_argument("--config", required=True, help="Path to config json")
+    backup.add_argument("--database", required=True, help="Path to database json")
+    backup.add_argument("--backup-dir", required=True, help="Directory to store backup")
+    backup.add_argument("--decisions", help="Optional branch decisions json")
+    backup.add_argument("--out", help="Write result json to file; stdout if omitted")
+
+    apply_cmd = sub.add_parser("apply", help="Apply final mapping to disk (backup gate required)")
+    apply_cmd.add_argument("--config", required=True, help="Path to config json")
+    apply_cmd.add_argument("--database", required=True, help="Path to database json")
+    apply_cmd.add_argument("--backup-dir", required=True, help="Path to existing backup directory")
+    apply_cmd.add_argument("--decisions", help="Optional branch decisions json")
+    apply_cmd.add_argument("--dry-run", action="store_true", help="Check gate but do not touch files")
+    apply_cmd.add_argument("--out", help="Write result json to file; stdout if omitted")
+
+    restore = sub.add_parser("restore", help="Restore files from a backup directory")
+    restore.add_argument("--backup-dir", required=True, help="Path to backup directory")
+    restore.add_argument("--files", nargs="*", help="Specific files to restore (default: all)")
+    restore.add_argument("--out", help="Write result json to file; stdout if omitted")
 
     return parser
 
@@ -160,6 +185,76 @@ def _handle_regen(args: argparse.Namespace) -> int:
     return 0 if not result.get("errors") else 2
 
 
+def _handle_backup(args: argparse.Namespace) -> int:
+    try:
+        config = load_json_file(args.config)
+        database = load_json_file(args.database)
+        decisions = load_json_file(args.decisions) if args.decisions else {}
+    except Exception as exc:
+        return _emit_error(f"failed to load inputs: {exc}")
+
+    try:
+        mapping_result = compute_mapping(config=config, database=database, branch_decisions=decisions)
+    except Exception as exc:
+        return _emit_error(f"compute_mapping failed: {exc}")
+
+    if mapping_result.get("errors"):
+        return _emit_error(f"mapping has errors: {mapping_result['errors']}")
+
+    final_mapping = mapping_result.get("final_mapping", [])
+    if not final_mapping:
+        return _emit_error("no final_mapping produced; resolve branch conflicts first")
+
+    files_to_backup = [entry["path"] for entry in final_mapping if entry.get("path")]
+    try:
+        result = run_differential_backup(args.backup_dir, files_to_backup)
+    except Exception as exc:
+        return _emit_error(f"backup failed: {exc}")
+
+    _print_or_write(result, args.out)
+    return 0 if result.get("ok") else 2
+
+
+def _handle_apply(args: argparse.Namespace) -> int:
+    try:
+        config = load_json_file(args.config)
+        database = load_json_file(args.database)
+        decisions = load_json_file(args.decisions) if args.decisions else {}
+    except Exception as exc:
+        return _emit_error(f"failed to load inputs: {exc}")
+
+    try:
+        mapping_result = compute_mapping(config=config, database=database, branch_decisions=decisions)
+    except Exception as exc:
+        return _emit_error(f"compute_mapping failed: {exc}")
+
+    if mapping_result.get("errors"):
+        return _emit_error(f"mapping has errors: {mapping_result['errors']}")
+
+    final_mapping = mapping_result.get("final_mapping", [])
+    if not final_mapping:
+        return _emit_error("no final_mapping produced; resolve branch conflicts first")
+
+    try:
+        result = apply_final_mapping(final_mapping, args.backup_dir, dry_run=args.dry_run)
+    except Exception as exc:
+        return _emit_error(f"apply failed: {exc}")
+
+    _print_or_write(result, args.out)
+    return 0 if result.get("ok") else 2
+
+
+def _handle_restore(args: argparse.Namespace) -> int:
+    target_files = args.files or None
+    try:
+        result = restore_from_backup(args.backup_dir, target_files)
+    except Exception as exc:
+        return _emit_error(f"restore failed: {exc}")
+
+    _print_or_write(result, args.out)
+    return 0 if result.get("ok") else 2
+
+
 def run_db_cli(argv: list[str]) -> int:
     parser = build_db_parser()
     args = parser.parse_args(argv)
@@ -170,13 +265,19 @@ def run_db_cli(argv: list[str]) -> int:
         return _handle_liveupdate(args)
     if args.command == "regen":
         return _handle_regen(args)
+    if args.command == "backup":
+        return _handle_backup(args)
+    if args.command == "apply":
+        return _handle_apply(args)
+    if args.command == "restore":
+        return _handle_restore(args)
 
     return 2
 
 
 def main() -> int:
     argv = sys.argv[1:]
-    if argv and argv[0] in {"steamlib", "liveupdate", "regen"}:
+    if argv and argv[0] in {"steamlib", "liveupdate", "regen", "backup", "apply", "restore"}:
         return run_db_cli(argv)
 
     parser = build_parser()
