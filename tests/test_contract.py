@@ -77,6 +77,33 @@ class SchemaLoadTests(unittest.TestCase):
         )
         self.assertEqual(errs, [])
 
+    def test_validate_output_accepts_change_request_ref_fields(self) -> None:
+        errs = validate_output_collect(
+            {
+                "warnings": [],
+                "errors": [],
+                "forest": [
+                    {
+                        "path": "/dst/a.txt",
+                        "changerequest": [
+                            {
+                                "path": "/src/a.txt",
+                                "action": "replace",
+                                "action_order": 0,
+                                "provenance_ref": "404",
+                                "sidecar_ref": "404",
+                                "mixed_id": "1:10",
+                                "hashtype": "sha256",
+                                "hashvalue": "",
+                            }
+                        ],
+                    }
+                ],
+                "final_mapping": [],
+            }
+        )
+        self.assertEqual(errs, [])
+
 
 # ── contract tests against actual compute_mapping output ─────────────────────
 

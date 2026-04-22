@@ -83,6 +83,21 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
         errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "def_destin" in e for e in errs))
 
+    def test_def_destin_none_allowed(self):
+        aggregated_rule_set = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "none",
+                    "def_action": "hold",
+                    "actionlist": [],
+                }
+            ]
+        }
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertEqual(errs, [])
+
     def test_actionlist_not_list(self):
         aggregated_rule_set = {
             "mod": [
@@ -166,6 +181,30 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
         }
         errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "destin" in e for e in errs))
+
+    def test_actionlist_destin_none_allowed(self):
+        aggregated_rule_set = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "replace",
+                    "actionlist": [
+                        {
+                            "action": "replace",
+                            "from": ["file.txt"],
+                            "from_type": "file",
+                            "into": ["data/"],
+                            "into_type": "path",
+                            "destin": "none",
+                        }
+                    ],
+                }
+            ]
+        }
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertEqual(errs, [])
 
     def test_actionlist_rejects_file_and_path_type(self):
         aggregated_rule_set = {

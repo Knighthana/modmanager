@@ -7,6 +7,10 @@ from typing import Any
 from .paths import split_mixed_id
 
 
+def _is_none_destin(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().lower() == "none"
+
+
 def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
     """Validate aggregated rule set structure and constraints.
 
@@ -19,7 +23,7 @@ def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
     4. All mixed_id must be unique
     5. All mixed_id must be in appid:modid format
     6. actionlist items must have 'from' and 'into' if not action=='hold'
-    7. 'destin' must be appid:modid format when provided
+    7. 'destin' must be appid:modid format or 'none' when provided
     """
     errors: list[str] = []
 
@@ -66,8 +70,8 @@ def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
         # Check destin if present
         destin = mod_obj.get("def_destin")
         if destin and isinstance(destin, str):
-            if split_mixed_id(destin) is None:
-                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['def_destin'] {destin!r} must be appid:modid format")
+            if not _is_none_destin(destin) and split_mixed_id(destin) is None:
+                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['def_destin'] {destin!r} must be appid:modid format or 'none'")
 
         # Check actionlist
         actionlist = mod_obj.get("actionlist", [])
@@ -143,8 +147,8 @@ def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
             if "destin" in item:
                 destin_item = item["destin"]
                 if isinstance(destin_item, str) and destin_item:
-                    if split_mixed_id(destin_item) is None:
-                        errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}]['destin'] {destin_item!r} must be appid:modid format")
+                    if not _is_none_destin(destin_item) and split_mixed_id(destin_item) is None:
+                        errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}]['destin'] {destin_item!r} must be appid:modid format or 'none'")
 
     return errors
 

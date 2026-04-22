@@ -43,6 +43,18 @@
           "type": "string",
           "enum": ["hold", "replace", "create", "delete", "rename_then_replace", "clear_then_copy"]
         },
+        "action_order": {
+          "description": "Runtime-injected action ordering hint. Defaults to 0 when missing or unreliable.",
+          "type": "integer"
+        },
+        "provenance_ref": {
+          "description": "Action-level origin reference. Falls back to '404' when missing or empty.",
+          "type": "string"
+        },
+        "sidecar_ref": {
+          "description": "Action-level sidecar reference. Falls back to '404' when missing or empty.",
+          "type": "string"
+        },
         "mixed_id": {
           "description": "appid:modid of the mod introducing this change.",
           "type": "string",

@@ -30,6 +30,45 @@ def _norm(path: str) -> str:
     return normalize_posix(path)
 
 
+def _is_none_destin(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().lower() == "none"
+
+
+def _normalize_ref_string(value: Any) -> str:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return "404"
+
+
+def _normalize_action_order(value: Any) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return value
+    return 0
+
+
+def _build_change_request(
+    *,
+    path: str,
+    action: str,
+    mixed_id: str,
+    hashtype: str,
+    hashvalue: str,
+    item: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "path": path,
+        "action": action,
+        "action_order": _normalize_action_order(item.get("action_order")),
+        "provenance_ref": _normalize_ref_string(item.get("provenance_ref")),
+        "sidecar_ref": _normalize_ref_string(item.get("sidecar_ref")),
+        "mixed_id": mixed_id,
+        "hashtype": hashtype,
+        "hashvalue": hashvalue,
+    }
+
+
 def _expand_sources(source_root: str, source_expr: str, source_type: str = "file") -> list[str]:
     source_root_path = Path(source_root)
     pattern_path = normalize_posix(source_expr)
@@ -281,6 +320,10 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             if action == "hold":
                 continue
 
+            if _is_none_destin(destin):
+                warnings.append(f"W_DESTIN_NONE_SKIPPED: {actor_id}#{idx}:action={action}:destin=none")
+                continue
+
             if destin in mod_index and destin != actor_id:
                 target_sub = mod_index[destin].get("sub", [])
                 if actor_id not in target_sub:
@@ -315,13 +358,14 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                     target = _norm(str(Path(dest_root) / _norm(into_target)))
                     mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
                     mapping[target]["changerequest"].append(
-                        {
-                            "path": "!",
-                            "action": "delete",
-                            "mixed_id": actor_id,
-                            "hashtype": "sha256",
-                            "hashvalue": "0",
-                        }
+                        _build_change_request(
+                            path="!",
+                            action="delete",
+                            mixed_id=actor_id,
+                            hashtype="sha256",
+                            hashvalue="0",
+                            item=item,
+                        )
                     )
                 continue
 
@@ -368,13 +412,14 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
 
                     mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
                     mapping[target]["changerequest"].append(
-                        {
-                            "path": _norm(src_file),
-                            "action": action,
-                            "mixed_id": actor_id,
-                            "hashtype": "sha256",
-                            "hashvalue": "",
-                        }
+                        _build_change_request(
+                            path=_norm(src_file),
+                            action=action,
+                            mixed_id=actor_id,
+                            hashtype="sha256",
+                            hashvalue="",
+                            item=item,
+                        )
                     )
                     edges.setdefault(_norm(src_file), set()).add(target)
 

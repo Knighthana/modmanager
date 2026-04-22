@@ -142,6 +142,239 @@ class EngineTests(unittest.TestCase):
             self.assertTrue(any("W_LOCAL_MOD_MISSING" in w for w in result["warnings"]))
             self.assertEqual(result["forest"], [])
 
+    def test_non_hold_action_with_none_destin_is_skipped_with_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+            (src_mod / "a.txt").write_text("x", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "none",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            self.assertTrue(any("W_DESTIN_NONE_SKIPPED" in w for w in result["warnings"]))
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["final_mapping"], [])
+
+    def test_hold_action_with_none_destin_produces_no_none_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "none",
+                        "def_action": "hold",
+                        "actionlist": [{"into": ["d/"], "into_type": "path"}],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            self.assertFalse(any("W_DESTIN_NONE_SKIPPED" in w for w in result["warnings"]))
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["final_mapping"], [])
+
+    def test_all_non_hold_actions_with_none_destin_are_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+            (src_mod / "a.txt").write_text("x", encoding="utf-8")
+
+            action_items = [
+                {
+                    "action": "replace",
+                    "from": ["a.txt"],
+                    "from_type": "file",
+                    "into": ["d_replace/"],
+                    "into_type": "path",
+                    "destin": "none",
+                },
+                {
+                    "action": "create",
+                    "from": ["a.txt"],
+                    "from_type": "file",
+                    "into": ["d_create/"],
+                    "into_type": "path",
+                    "destin": "none",
+                },
+                {
+                    "action": "delete",
+                    "into": ["d_delete/a.txt"],
+                    "into_type": "file",
+                    "destin": "none",
+                },
+                {
+                    "action": "rename_then_replace",
+                    "from": ["a.txt"],
+                    "from_type": "file",
+                    "into": ["d_rename/"],
+                    "into_type": "path",
+                    "nwname": "renamed.txt",
+                    "destin": "none",
+                },
+                {
+                    "action": "clear_then_copy",
+                    "from": ["a.txt"],
+                    "from_type": "file",
+                    "into": ["d_clear/"],
+                    "into_type": "path",
+                    "destin": "none",
+                },
+            ]
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": action_items,
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["final_mapping"], [])
+            none_warnings = [w for w in result["warnings"] if "W_DESTIN_NONE_SKIPPED" in w]
+            self.assertEqual(len(none_warnings), len(action_items))
+
+    def test_action_level_none_destin_overrides_valid_parent_destin(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+            (src_mod / "a.txt").write_text("x", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "action": "replace",
+                                "destin": "none",
+                                "from": ["a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            self.assertTrue(any("W_DESTIN_NONE_SKIPPED" in w for w in result["warnings"]))
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(result["final_mapping"], [])
+
+    def test_ref_fields_are_propagated_to_forest_and_final_mapping(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+            (src_mod / "a.txt").write_text("x", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                                "provenance_ref": "rule_base_path_2:demo.json",
+                                "action_order": 7,
+                                "sidecar_ref": "sidecar/provenance/demo.json",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            request = result["forest"][0]["changerequest"][0]
+            self.assertEqual(request["provenance_ref"], "rule_base_path_2:demo.json")
+            self.assertEqual(request["action_order"], 7)
+            self.assertEqual(request["sidecar_ref"], "sidecar/provenance/demo.json")
+            self.assertEqual(result["final_mapping"][0]["request"]["provenance_ref"], "rule_base_path_2:demo.json")
+
+    def test_missing_ref_fields_fall_back_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+            (src_mod / "a.txt").write_text("x", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                                "provenance_ref": "",
+                                "sidecar_ref": None,
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            request = result["forest"][0]["changerequest"][0]
+            self.assertEqual(request["provenance_ref"], "404")
+            self.assertEqual(request["sidecar_ref"], "404")
+            self.assertEqual(request["action_order"], 0)
+
     def test_unresolved_branch_blocks_final_mapping(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
