@@ -160,7 +160,8 @@
             "string1": "`clear_then_copy`的意思是clear`into`下与`from`同名的文件或者目录, 然后再复制`from`的内容到`into`下",
             "string2": "`clear_then_copy`是一个过渡期语法, 之后它将被更加正式且语义明确的连续的delete、create两条action所替代",
             "string3": "在新 DSL 中, `from_type=path` 与 `into_type=path` 的语义是复制目录本身, 因此结果是目标下出现 `.../maps/lobby/`",
-            "string4": "如果想表达复制目录内容, 就必须把来源写成文件语义, 例如 `from_type=file` 配合 `from=[\"media/packages/vanilla/maps/lobby/*\"]`"
+            "string4": "如果想表达复制目录内容, 就必须把来源写成文件语义, 例如 `from_type=file` 配合 `from=[\"media/packages/vanilla/maps/lobby/*\"]`",
+            "string5": "同理, 如果想表达 shell 里的 `cp -r src/* dest/`, 也必须拆成两条 action: `src/*/` 用 `from_type=path`, `src/*` 用 `from_type=file`"
           }
         },
         {
@@ -186,6 +187,36 @@
         "string3": "`readme`的意思是说这个mod有自述文件, 因此GUI上尽量展示模组的自述文件内容, 或者提供打开自述内容的超链接",
         "string4": "`readme`的值是一个相对于mod根目录的路径, 因此这个自述文件的路径是`steamapps/workshop/content/270150/3445750210/readme.md`"
       }
+    },
+    {
+      "mixed_id": "270150:3425312546",
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": ["shiplander v1.9/*/"],
+          "from_type": "path",
+          "into": ["media/packages/GFL_Castling/maps/"],
+          "into_type": "path",
+          "comment": {
+            "string1": "这是目录 glob 的合法样例: `from_type=path` 配合 `*` 匹配多个直接子目录",
+            "string2": "每个命中的目录都会按 path->path 语义复制目录本身, 例如 `src1/`、`src2/`、`src3/` 分别落到 `.../maps/src1/`、`.../maps/src2/`、`.../maps/src3/`",
+            "string3": "这里不会把目录先递进展开成文件集合, 因为目录语义和文件语义必须显式区分"
+          }
+        },
+        {
+          "from": ["shiplander v1.9/*"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/maps/"],
+          "into_type": "path",
+          "comment": {
+            "string1": "这是 DSL 中等价表达 `cp -r shiplander v1.9/* media/packages/GFL_Castling/maps/` 的第二条 action",
+            "string2": "`from_type=file` 的 glob 只匹配直接命中的文件, 不会把子目录一起带上",
+            "string3": "与上一条目录型 action 组合后, 才完整覆盖 shell 里文件项与目录项同时复制的效果"
+          }
+        }
+      ]
     },
     {
       "mixed_id": "270150:modder_will_name_this_local_mod_whatever_as_their_will",

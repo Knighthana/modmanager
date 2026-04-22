@@ -29,6 +29,9 @@
 4. 冻结 `delete` 语义：只读 `into` 与 `into_type`；`from` / `from_type` 完全忽略。
 5. 冻结冲突规则：同 action 多源同目标报 `E_ACTION_INTERNAL_COLLISION`；`delete` 与非 `delete` 同目标同批报错。
 6. 冻结兼容期策略：保留 `rename_then_replace`，但视为兼容 action，不再作为主路径能力扩展中心。
+7. 冻结类型体系：不支持 `file_and_path`；`from_type` / `into_type` 仅允许 `file|path`。
+8. 冻结等价表达：`cp -r src/* dest/` 必须拆成两条 action，一条目录型，一条文件型。
+9. 冻结支持场景：`from_type=path` + 目录 glob（如 `shiplander v1.9/*/`）属于 DSL 内支持场景；当前缺口若存在，归因于执行层实现不完整，而非边界外需求。
 
 ## Implement Handoff Notes
 1. `def_action=hold` 只影响未显式声明 `action` 的子条目；显式非 `hold` 子条目仍正常处理。

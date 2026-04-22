@@ -56,3 +56,5 @@
 3. 若 `_type=path`，对应列表项必须全部以 `/` 结尾；否则直接失败。
 4. 若单条 action 的 `from` 为多值或含 glob，同时 `into` 也为多值，直接失败。
 5. 非法输入以 fail-fast 为准，不生成带猜测语义的 `aggregated_rule_set`。
+6. 聚合层不引入 `file_and_path` 之类的混合类型，也不把 `from_type=file` 的 glob 自动扩成“文件+目录一起处理”。
+7. 若规则作者想表达 `cp -r src/* dest/` 的效果，必须显式拆成“目录 action”与“文件 action”两条规则，而不是依赖单条混合语义。

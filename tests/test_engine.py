@@ -404,6 +404,79 @@ class EngineTests(unittest.TestCase):
             self.assertTrue(e.startswith("E_FILE_CIRCULAR_DEP:"))
             self.assertIn(" -> ", e)
 
+    def test_path_glob_expands_directories_for_path_to_path(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_root = tmp_path / "mods" / "100" / "v1.9"
+            (src_root / "src1").mkdir(parents=True)
+            (src_root / "src2").mkdir(parents=True)
+            (src_root / "src3").mkdir(parents=True)
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["v1.9/*/"],
+                                "from_type": "path",
+                                "into": ["maps/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+
+            self.assertEqual(result["errors"], [])
+            targets = {entry["path"] for entry in result["final_mapping"]}
+            self.assertIn(str(tmp_path / "game" / "maps" / "src1").replace("\\", "/"), targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src2").replace("\\", "/"), targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src3").replace("\\", "/"), targets)
+
+    def test_file_glob_does_not_pull_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_root = tmp_path / "mods" / "100" / "src"
+            src_root.mkdir(parents=True)
+            (src_root / "top.txt").write_text("x", encoding="utf-8")
+            (src_root / "nested").mkdir()
+            (src_root / "nested" / "deep.txt").write_text("y", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["src/*"],
+                                "from_type": "file",
+                                "into": ["out/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+
+            self.assertEqual(result["errors"], [])
+            targets = {entry["path"] for entry in result["final_mapping"]}
+            self.assertIn(str(tmp_path / "game" / "out" / "top.txt").replace("\\", "/"), targets)
+            self.assertNotIn(str(tmp_path / "game" / "out" / "nested").replace("\\", "/"), targets)
+            self.assertNotIn(str(tmp_path / "game" / "out" / "deep.txt").replace("\\", "/"), targets)
+
 
 if __name__ == "__main__":
     unittest.main()

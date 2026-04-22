@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +30,7 @@ def _norm(path: str) -> str:
     return normalize_posix(path)
 
 
-def _expand_sources(source_root: str, source_expr: str) -> list[str]:
+def _expand_sources(source_root: str, source_expr: str, source_type: str = "file") -> list[str]:
     source_root_path = Path(source_root)
     pattern_path = normalize_posix(source_expr)
     has_glob = any(ch in pattern_path for ch in "*?[]")
@@ -42,17 +41,29 @@ def _expand_sources(source_root: str, source_expr: str) -> list[str]:
     matches: list[str] = []
     if not source_root_path.exists():
         return []
-    for found in source_root_path.rglob("*"):
-        if not found.is_file():
-            continue
-        rel = normalize_posix(str(found.relative_to(source_root_path)))
-        if fnmatch(rel, pattern_path):
-            matches.append(str(found))
+    for found in sorted(source_root_path.glob(pattern_path), key=lambda p: normalize_posix(str(p.relative_to(source_root_path)))):
+        if source_type == "path":
+            if not found.is_dir():
+                continue
+        else:
+            if not found.is_file():
+                continue
+        matches.append(str(found))
     return matches
 
 
-def _target_for(dest_root: str, into_expr: str, source_file: str, nwname: str | None) -> str:
+def _target_for(
+    dest_root: str,
+    into_expr: str,
+    source_file: str,
+    nwname: str | None,
+    *,
+    from_type: str = "file",
+    into_type: str = "path",
+) -> str:
     dest = Path(dest_root) / normalize_posix(into_expr)
+    if from_type == "path" and into_type == "path":
+        return str(dest / Path(source_file).name)
     name = nwname if nwname else Path(source_file).name
     return str(dest / name)
 
@@ -327,8 +338,10 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
 
             # Expand all sources from all from_list entries
             all_sources: list[str] = []
+            from_type = item.get("from_type", "file")
+            into_type = item.get("into_type", "path")
             for src_expr in from_list:
-                sources = _expand_sources(source_root, src_expr)
+                sources = _expand_sources(source_root, src_expr, source_type=from_type)
                 if not sources:
                     warnings.append(f"W_NO_SOURCE_MATCH: {actor_id}#{idx}:{src_expr}")
                 else:
@@ -340,7 +353,16 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             # For each into entry, process all sources
             for into_target in into_list:
                 for src_file in all_sources:
-                    target = _norm(_target_for(dest_root, into_target, src_file, nwname if isinstance(nwname, str) else None))
+                    target = _norm(
+                        _target_for(
+                            dest_root,
+                            into_target,
+                            src_file,
+                            nwname if isinstance(nwname, str) else None,
+                            from_type=from_type,
+                            into_type=into_type,
+                        )
+                    )
                     if action == "create" and Path(target).exists():
                         warnings.append(f"W_CREATE_TARGET_EXISTS_OVERWRITE: {target}")
 

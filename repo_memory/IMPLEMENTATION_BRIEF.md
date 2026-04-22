@@ -141,6 +141,9 @@
 6. `into_type=file` 时，`from_type` 必须为 `file`；不接受 path -> file 兜底。
 7. 若单条 action 的 `from` 为多值或包含 glob，则同条 action 的 `into` 不得为多值；系统不做笛卡尔扩展。
 8. `path -> path` 的语义固定为复制目录本身，即 `cp -r src/ dest/` 产出 `dest/src/`。
+9. `from_type=file` 的 glob 只匹配文件，不隐式携带目录递归或“文件+目录混合命中”语义。
+10. 若想表达 `cp -r src/* dest/` 的效果，必须拆成两条 action：一条 `from=["src/*/"] + from_type=path` 复制目录项，一条 `from=["src/*"] + from_type=file` 复制文件项。
+11. 当 `from_type=path` 且 `from` 含 glob（例如 `shiplander v1.9/*/`）时，展开单位是目录实体；每个命中的目录各自生成一个目标目录映射，例如 `maps/src1/`、`maps/src2/`、`maps/src3/`。
 
 ## action 解析与校验分流（2026-04-22）
 1. 校验绑定在 action 处理路径上，不使用一个覆盖全部 action 的大一统校验器。

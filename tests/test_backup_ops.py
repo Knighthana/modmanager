@@ -247,6 +247,21 @@ class TestRunDifferentialBackup(TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(len(result["backed_up"]), 3)
 
+    def test_backs_up_existing_directory_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_dir = Path(tmp) / "orig" / "dir1"
+            src_dir.mkdir(parents=True)
+            (src_dir / "a.txt").write_bytes(b"a")
+            (src_dir / "nested").mkdir()
+            (src_dir / "nested" / "b.txt").write_bytes(b"b")
+
+            bdir = str(Path(tmp) / "backup")
+            result = run_differential_backup(bdir, [str(src_dir)])
+
+            self.assertTrue(result["ok"])
+            self.assertTrue((Path(bdir) / Path(str(src_dir)).as_posix().lstrip("/") / "a.txt").exists())
+            self.assertTrue((Path(bdir) / Path(str(src_dir)).as_posix().lstrip("/") / "nested" / "b.txt").exists())
+
 
 # ── Phase 11: apply_final_mapping ────────────────────────────────────────────
 
@@ -379,6 +394,22 @@ class TestApplyFinalMapping(TestCase):
             self.assertTrue(result["ok"])
             self.assertFalse((target_dir / "old_file.png").exists())
             self.assertEqual(dest.read_bytes(), b"new")
+
+    def test_replace_copies_directory_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_dir = Path(tmp) / "src" / "dir1"
+            src_dir.mkdir(parents=True)
+            (src_dir / "a.txt").write_bytes(b"a")
+            (src_dir / "nested").mkdir()
+            (src_dir / "nested" / "b.txt").write_bytes(b"b")
+
+            dest = Path(tmp) / "game" / "maps" / "dir1"
+            bdir = self._ready_backup(tmp)
+            result = apply_final_mapping([self._entry(str(dest), str(src_dir))], bdir)
+
+            self.assertTrue(result["ok"])
+            self.assertEqual((dest / "a.txt").read_bytes(), b"a")
+            self.assertEqual((dest / "nested" / "b.txt").read_bytes(), b"b")
 
 
 # ── Phase 12: restore_from_backup ─────────────────────────────────────────────

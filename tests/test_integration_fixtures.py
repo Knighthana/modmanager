@@ -769,5 +769,82 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
             self.assertNotIn("\\", windows_path)
 
 
+class P005_PathGlobDirectoryExpansion(unittest.TestCase):
+    def test_shiplander_style_path_glob_creates_directory_targets(self):
+        with tempfile.TemporaryDirectory() as td:
+            fixture = IntegrationFixture(Path(td))
+            fixture.create_mod_file("100", "shiplander v1.9/src1/a.txt")
+            fixture.create_mod_file("100", "shiplander v1.9/src2/b.txt")
+            fixture.create_mod_file("100", "shiplander v1.9/src3/c.txt")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["shiplander v1.9/*/"],
+                                "from_type": "path",
+                                "into": ["media/packages/GFL_Castling/maps/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
+
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(len(result["final_mapping"]), 3)
+            targets = {entry["path"] for entry in result["final_mapping"]}
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src1") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src2") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src3") for path in targets))
+
+    def test_two_actions_cover_cp_r_src_star_dest(self):
+        with tempfile.TemporaryDirectory() as td:
+            fixture = IntegrationFixture(Path(td))
+            fixture.create_mod_file("100", "src/root.txt")
+            fixture.create_mod_file("100", "src/dir1/a.txt")
+            fixture.create_mod_file("100", "src/dir2/b.txt")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["src/*/"],
+                                "from_type": "path",
+                                "into": ["dest/"],
+                                "into_type": "path",
+                            },
+                            {
+                                "from": ["src/*"],
+                                "from_type": "file",
+                                "into": ["dest/"],
+                                "into_type": "path",
+                            },
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, fixture.mk_db())
+
+            self.assertEqual(result["errors"], [])
+            targets = {entry["path"] for entry in result["final_mapping"]}
+            self.assertTrue(any(path.endswith("/dest/dir1") for path in targets))
+            self.assertTrue(any(path.endswith("/dest/dir2") for path in targets))
+            self.assertTrue(any(path.endswith("/dest/root.txt") for path in targets))
+
+
 if __name__ == "__main__":
     unittest.main()

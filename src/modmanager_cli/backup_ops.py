@@ -328,7 +328,10 @@ def run_differential_backup(
         dest = backup_path / rel
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(src), str(dest))
+            if src.is_dir():
+                shutil.copytree(str(src), str(dest), dirs_exist_ok=True)
+            else:
+                shutil.copy2(str(src), str(dest))
             backed_up.append(target)
         except OSError as exc:
             errors.append(f"E_BACKUP_COPY_FAILED: {target}: {exc}")
@@ -428,7 +431,10 @@ def apply_final_mapping(
         dest_path = Path(target)
         try:
             dest_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(src_path), str(dest_path))
+            if src_path.is_dir():
+                shutil.copytree(str(src_path), str(dest_path), dirs_exist_ok=True)
+            else:
+                shutil.copy2(str(src_path), str(dest_path))
             applied.append(target)
         except OSError as exc:
             errors.append(f"E_COPY_FAILED: {target}: {exc}")

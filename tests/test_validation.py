@@ -167,6 +167,28 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
         errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "destin" in e for e in errs))
 
+    def test_actionlist_rejects_file_and_path_type(self):
+        aggregated_rule_set = {
+            "mod": [
+                {
+                    "mixed_id": "270150:100",
+                    "sub": [],
+                    "def_destin": "270150:0",
+                    "def_action": "replace",
+                    "actionlist": [
+                        {
+                            "from": ["src/*"],
+                            "from_type": "file_and_path",
+                            "into": ["dest/"],
+                            "into_type": "path",
+                        }
+                    ],
+                }
+            ]
+        }
+        errs = validate_aggregated_rule_set(aggregated_rule_set)
+        self.assertTrue(any("from_type" in e and "file, path" in e for e in errs))
+
 
 class ValidateDatabaseTests(unittest.TestCase):
     def test_valid_minimal_database(self):
