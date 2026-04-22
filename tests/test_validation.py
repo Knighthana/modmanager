@@ -121,7 +121,7 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
                     "sub": [],
                     "def_destin": "270150:0",
                     "def_action": "replace",
-                    "actionlist": [{"into": "data/"}],  # missing 'from'
+                    "actionlist": [{"into": ["data/"], "into_type": "path"}],  # missing 'from'
                 }
             ]
         }
@@ -136,7 +136,7 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
                     "sub": [],
                     "def_destin": "270150:0",
                     "def_action": "replace",
-                    "actionlist": [{"from": "file.txt"}],  # missing 'into'
+                    "actionlist": [{"from": ["file.txt"], "from_type": "file"}],  # missing 'into'
                 }
             ]
         }
@@ -154,8 +154,10 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
                     "actionlist": [
                         {
                             "action": "replace",
-                            "from": "file.txt",
-                            "into": "data/",
+                            "from": ["file.txt"],
+                            "from_type": "file",
+                            "into": ["data/"],
+                            "into_type": "path",
                             "destin": "bad_format",
                         }
                     ],

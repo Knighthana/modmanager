@@ -281,13 +281,15 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 warnings.append(f"W_MISSING_DEST_ROOT: {actor_id}#{idx}:{destin}")
                 continue
 
-            into = item.get("into")
-            if not isinstance(into, str) or not into:
+            into_list = item.get("into")
+            if not isinstance(into_list, list) or not into_list:
                 warnings.append(f"W_MISSING_INTO: {actor_id}#{idx}")
                 continue
 
             if action == "clear_then_copy":
-                key = _norm(str(Path(dest_root) / _norm(into)))
+                # For clear_then_copy, use first into entry for key
+                into_key = into_list[0] if into_list else ""
+                key = _norm(str(Path(dest_root) / _norm(into_key)))
                 prev = clear_copy_dirs.get(key)
                 if prev and prev != actor_id:
                     errors.append(f"E_CLEAR_THEN_COPY_CONFLICT: {key}: {prev} vs {actor_id}")
@@ -295,22 +297,26 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 clear_copy_dirs[key] = actor_id
 
             if action == "delete":
-                # delete rules still map a synthetic source to destination
-                target = _norm(str(Path(dest_root) / _norm(into)))
-                mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
-                mapping[target]["changerequest"].append(
-                    {
-                        "path": "!",
-                        "action": "delete",
-                        "mixed_id": actor_id,
-                        "hashtype": "sha256",
-                        "hashvalue": "0",
-                    }
-                )
+                # delete rules: iterate over into list, each entry is a deletion target
+                # from/from_type are ignored for delete
+                into_type = item.get("into_type", "path")
+                for into_target in into_list:
+                    target = _norm(str(Path(dest_root) / _norm(into_target)))
+                    mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
+                    mapping[target]["changerequest"].append(
+                        {
+                            "path": "!",
+                            "action": "delete",
+                            "mixed_id": actor_id,
+                            "hashtype": "sha256",
+                            "hashvalue": "0",
+                        }
+                    )
                 continue
 
-            src_expr = item.get("from")
-            if not isinstance(src_expr, str) or not src_expr:
+            # For non-delete actions, process from list
+            from_list = item.get("from")
+            if not isinstance(from_list, list) or not from_list:
                 warnings.append(f"W_MISSING_FROM: {actor_id}#{idx}")
                 continue
 
@@ -319,27 +325,36 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 warnings.append(f"W_MISSING_NWNAME: {actor_id}#{idx}")
                 continue
 
-            sources = _expand_sources(source_root, src_expr)
-            if not sources:
-                warnings.append(f"W_NO_SOURCE_MATCH: {actor_id}#{idx}:{src_expr}")
+            # Expand all sources from all from_list entries
+            all_sources: list[str] = []
+            for src_expr in from_list:
+                sources = _expand_sources(source_root, src_expr)
+                if not sources:
+                    warnings.append(f"W_NO_SOURCE_MATCH: {actor_id}#{idx}:{src_expr}")
+                else:
+                    all_sources.extend(sources)
+            
+            if not all_sources:
                 continue
 
-            for src_file in sources:
-                target = _norm(_target_for(dest_root, into, src_file, nwname if isinstance(nwname, str) else None))
-                if action == "create" and Path(target).exists():
-                    warnings.append(f"W_CREATE_TARGET_EXISTS_OVERWRITE: {target}")
+            # For each into entry, process all sources
+            for into_target in into_list:
+                for src_file in all_sources:
+                    target = _norm(_target_for(dest_root, into_target, src_file, nwname if isinstance(nwname, str) else None))
+                    if action == "create" and Path(target).exists():
+                        warnings.append(f"W_CREATE_TARGET_EXISTS_OVERWRITE: {target}")
 
-                mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
-                mapping[target]["changerequest"].append(
-                    {
-                        "path": _norm(src_file),
-                        "action": action,
-                        "mixed_id": actor_id,
-                        "hashtype": "sha256",
-                        "hashvalue": "",
-                    }
-                )
-                edges.setdefault(_norm(src_file), set()).add(target)
+                    mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
+                    mapping[target]["changerequest"].append(
+                        {
+                            "path": _norm(src_file),
+                            "action": action,
+                            "mixed_id": actor_id,
+                            "hashtype": "sha256",
+                            "hashvalue": "",
+                        }
+                    )
+                    edges.setdefault(_norm(src_file), set()).add(target)
 
     for cycle in find_cycles(edges):
         chain = " -> ".join(cycle)

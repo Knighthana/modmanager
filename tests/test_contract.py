@@ -111,7 +111,7 @@ class ContractTests(unittest.TestCase):
                         "sub": [],
                         "def_destin": "1:0",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "dest/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -145,7 +145,7 @@ class ContractTests(unittest.TestCase):
                         "sub": [],
                         "def_destin": "1:0",
                         "def_action": "create",
-                        "actionlist": [{"from": "a.txt", "into": "dest/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -177,14 +177,14 @@ class ContractTests(unittest.TestCase):
                         "sub": [],
                         "def_destin": "1:0",
                         "def_action": "replace",
-                        "actionlist": [{"action": "clear_then_copy", "from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"action": "clear_then_copy", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
                         "sub": [],
                         "def_destin": "1:0",
                         "def_action": "replace",
-                        "actionlist": [{"action": "clear_then_copy", "from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"action": "clear_then_copy", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -210,14 +210,14 @@ class ContractTests(unittest.TestCase):
                         "sub": [],
                         "def_destin": "1:20",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
                         "sub": [],
                         "def_destin": "1:20",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:20",
@@ -254,14 +254,14 @@ class ContractTests(unittest.TestCase):
                         "sub": [],
                         "def_destin": "1:20",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
                         "sub": [],
                         "def_destin": "1:20",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:20",
@@ -300,14 +300,14 @@ class ContractTests(unittest.TestCase):
                         "sub": [],
                         "def_destin": "1:20",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
                         "sub": [],
                         "def_destin": "1:20",
                         "def_action": "replace",
-                        "actionlist": [{"from": "a.txt", "into": "d/"}],
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:20",

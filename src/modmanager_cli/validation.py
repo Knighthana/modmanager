@@ -84,12 +84,60 @@ def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
             if action == "hold":
                 continue
 
-            # Non-hold actions require 'from' and 'into'
-            if "from" not in item or not isinstance(item.get("from"), str):
-                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from' string field")
+            # Non-hold and non-delete actions require 'from' and 'into' as list[string]
+            # delete is special: from/from_type are ignored, so they can be missing
+            if action != "delete":
+                from_list = item.get("from")
+                if not isinstance(from_list, list) or not from_list or not all(isinstance(f, str) for f in from_list):
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from' list[string] field")
+            
+            into_list = item.get("into")
+            if not isinstance(into_list, list) or not into_list or not all(isinstance(t, str) for t in into_list):
+                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into' list[string] field")
+                continue  # Skip further checks if into is invalid
 
-            if "into" not in item or not isinstance(item.get("into"), str):
-                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into' string field")
+            # Non-hold and non-delete actions require from_type and into_type
+            if action != "delete":
+                from_type = item.get("from_type")
+                if from_type not in {"file", "path"}:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from_type' in {{file, path}}")
+                
+                into_type = item.get("into_type")
+                if into_type not in {"file", "path"}:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into_type' in {{file, path}}")
+                    continue  # Skip further checks if into_type is invalid
+
+                # Rule 1: if from is multi-value or contains glob, into cannot be multi-value
+                from_is_multi = len(from_list) > 1 if isinstance(from_list, list) else False
+                from_has_glob = any("*" in f or "?" in f or "[" in f for f in (from_list if isinstance(from_list, list) else []))
+                into_is_multi = len(into_list) > 1
+                if (from_is_multi or from_has_glob) and into_is_multi:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] forbids multi-source to multi-target in single action")
+
+                # Rule 4: into_type=file requires from_type=file
+                if into_type == "file" and from_type != "file":
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] into_type=file requires from_type=file")
+
+                # Rule 5: _type=path requires all paths end with /
+                if from_type == "path":
+                    for f_idx, f in enumerate(from_list if isinstance(from_list, list) else []):
+                        if not f.endswith("/"):
+                            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] from[{f_idx}] from_type=path requires path to end with /")
+                if into_type == "path":
+                    for t_idx, t in enumerate(into_list):
+                        if not t.endswith("/"):
+                            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] into[{t_idx}] into_type=path requires path to end with /")
+            elif action == "delete":
+                # delete: only check into_type
+                into_type = item.get("into_type")
+                if into_type not in {"file", "path"}:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into_type' in {{file, path}}")
+                else:
+                    # Rule 5 for delete: into_type=path requires all paths end with /
+                    if into_type == "path":
+                        for t_idx, t in enumerate(into_list):
+                            if not t.endswith("/"):
+                                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: mod[{idx}]['actionlist'][{item_idx}] into[{t_idx}] into_type=path requires path to end with /")
 
             # Check destin in actionlist item
             if "destin" in item:
