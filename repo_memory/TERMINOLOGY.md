@@ -35,15 +35,20 @@
 - `bakignore`：备份/恢复扫描时的忽略规则集合（路径/通配）
 - 约束：`backup_ops` 只消费最终目录字符串，不负责生成规则
 
-## 8. 规则元数据
+## 8. 本地路径别名与动作引用
+- `path_alias`：本地用户配置中的路径别名列表
+- `path_handle`：路径别名项中的引用句柄，供 `provenance_ref` 使用
+- `path_target`：路径别名项对应的本地文件系统根目录
 - `rule_meta_tag`：规则级元数据容器（不直接表达替换动作）
-- `action_meta_tag`：动作级元数据容器（用于溯源与辅助决议）
+- `provenance_ref`：动作级来源引用，格式为 `path_handle:relative_path`
+- `sidecar_ref`：动作级外置扩展引用；缺失或空值时回退为 `404` 并记录 warning
 - `source_trace_map`：聚合输出的侧车溯源结构，与 `aggregated_rule_set` 并行存在
 
 ## 9. 作者与规则名回退
-- `mainauthor` 为空：`anonymousauthor`
+- `rulenamespace` 为空：`anonymousnamespace`
 - `rulename` 为空：`unknownrulename`
 
 ## 10. 执行顺序辅助字段
-- `actionorder`：仅用于树生成后的分支辅助决议
-- 可为空；为空、相等或不可判定时，必须回退人工拍板
+- `action_order`：聚合器或 GUI 在运行时注入的动作顺序，类型必须为 int
+- 默认值为 `0`，表示未指定或不可靠，不做猜测补全
+- 命中过程冲突且 `action_order` 相等，或任一冲突方的 `action_order=0` 时，必须直接抛错

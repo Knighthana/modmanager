@@ -110,7 +110,10 @@
 ## 新增阶段策略（2026-04-22）
 1. 今天不改 M1：近期演示阶段优先保持 M1 稳定。
 2. 先在 M1 外实现：replace_service、backup_dir_builder、rule aggregation sidecar。
-3. 未来可并入 M1：当外层机制稳定后，将 `action_meta_tag` 传导等能力并入引擎主链。
+3. 未来可并入 M1：当外层机制稳定后，将 `provenance_ref`、`action_order`、`sidecar_ref` 传导等能力并入引擎主链。
+4. `_ref` 缺失或空值时统一回退为 `404` 并记录 warning，不允许直接崩溃。
+5. `description/` 仅用于 user-plan 交流；implement 默认以 `repo_memory/` 为标准源。
+6. delete 捋枝必须按树结构语义执行：先提升并重挂子节点，再移除 delete 结点及其删除目标，禁止产生孤儿枝。
 
 ## 历史映射风险定义（replace）
 1. 风险核心：避免“本该使用 A 的位置误用为 E”。

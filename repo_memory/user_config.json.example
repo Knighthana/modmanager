@@ -1,0 +1,25 @@
+{
+  "schema_namespace": "KMM_UserConfig",
+  "schema_version": "knighthana@0.0.1",
+  "file_example_URL": "https://raw.githubusercontent.com/knighthana/",
+  "comment": {
+    "string1": "这是一个示例文件"
+  },
+  "path_alias":[
+    {
+      "description": "本机kmmrule存储位置1",
+      "path_handle": "rule_base_path_1",
+      "path_target": "/home/knighthana/workspace/modmanager_cli/"
+    },
+    {
+      "description": "本机kmmrule存储位置2",
+      "path_handle": "rule_base_path_2",
+      "path_target": "/home/knighthana/workspace/modmanager_cli/description/"
+    },
+    {
+      "description": "本机kmmrule存储位置3",
+      "path_handle": "rule_base_path_3",
+      "path_target": "/home/knighthana/workspace/modmanager_cli/description/rules/"
+    }
+  ]
+}

@@ -8,6 +8,9 @@
       {
         "path": "/mnt/d/Games/steamapps/workshop/content/270150/3428584891/weaponpics/1.6/gkw_ump45.png",
         "action": "replace",
+        "action_order": 0,
+        "provenance_ref": "rule_base_path_2:kmm_rule_RWR-khn_CT-castears-z2414_Replace.json",
+        "sidecar_ref": "sidecar/provenance/kmm.knighthana.provenancesidecar-20260423.json",
         "mixed_id": "270150:3428584891",
         "hashtype": "sha256",
         "hashvalue": "18ab7edc8dc7357e2f6985f0cbc6b5f87da19f01a4dd2baa1f8890907c6681f9",
@@ -15,6 +18,9 @@
           {
             "path": "/mnt/d/Games/steamapps/workshop/content/270150/prepare_and_receive/ump45/is/my/waifu/and/beloved.png",
             "action": "rename_then_replace",
+            "action_order": 0,
+            "provenance_ref": "404",
+            "sidecar_ref": "404",
             "mixed_id": "270150:prepare_and_receive",
             "hashtype": "sha256",
             "hashvalue": "52145999999999999999999999999999999999999999999999999999999999999"
@@ -32,6 +38,9 @@
       {
         "path": "/mnt/d/Games/steamapps/workshop/content/270150/3430161019/bomb_range/particles（c4实心圈）/1_bomb.particle",
         "action": "create",
+        "action_order": 0,
+        "provenance_ref": "404",
+        "sidecar_ref": "404",
         "mixed_id": "270150:3430161019",
         "hashtype": "sha256",
         "hashvalue": ""
@@ -53,6 +62,9 @@
       {
         "path": "/mnt/d/Games/steamapps/workshop/content/270150/3445750210/media/packages/vanilla/maps/lobby/soundtrack1.wav",
         "action": "replace",
+        "action_order": 0,
+        "provenance_ref": "404",
+        "sidecar_ref": "404",
         "mixed_id": "270150:3445750210",
         "hashtype": "sha256",
         "hashvalue": "63e874ce84d709e2507d471f4024bd5b237334c2c1a1e5547414091474978c5e"
@@ -68,6 +80,9 @@
       {
         "path": "!",
         "action": "delete",
+        "action_order": 0,
+        "provenance_ref": "404",
+        "sidecar_ref": "404",
         "mixed_id": "270150:3445750210",
         "hashtype": "sha256",
         "hashvalue": "0",

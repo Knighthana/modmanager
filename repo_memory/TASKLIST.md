@@ -2,18 +2,25 @@
 
 ## Future M1 Patch（暂缓，非今日执行）
 
-### P1: meta_tag 传导并入 M1
-1. 在 changerequest 中传导 `action_meta_tag`。
-2. 让 forest/final_mapping 保留可回溯标签。
-3. 更新 `output_schema` 以反映新字段。
-4. 补齐 schema/engine/contract 测试。
+### P1: _ref 传导并入 M1
+1. 在 changerequest 中传导 `provenance_ref`、`action_order`、`sidecar_ref`。
+2. `_ref` 缺失或空值时回退为 `404` 并记录 warning，不得直接崩溃。
+3. 让 forest/final_mapping 保留可回溯字段。
+4. 更新 `output_schema` 以反映新字段。
+5. 补齐 schema/engine/contract 测试。
 
-### P2: actionorder 辅助决议并入 M1
-1. 仅在树生成后用于分支辅助决策。
-2. `actionorder` 为空、相等、不可判定时回退人工拍板。
-3. 保留用户强制手动选择开关。
+### P2: action_order 冲突决议并入 M1
+1. `action_order` 仅接受 int，默认值为 `0`。
+2. 仅在树生成后用于分支辅助决策，不得作为规则正确性的兜底来源。
+3. 命中过程冲突且双方 `action_order` 相等，或任一方为 `0` 时，直接抛错。
+4. 保留用户强制手动选择开关，但不做隐式自动仲裁。
 
-### P3: replace 历史映射补丁并入 M1
+### P3: delete 捋枝并入 M1
+1. 命中 delete 结点时，必须先提升其子节点并重挂到祖父结点。
+2. 若祖父结点不存在，则提升后的子节点成为新的根层节点。
+3. 完成重挂后再移除 delete 结点及其删除目标，禁止产生孤儿枝。
+
+### P4: replace 历史映射补丁并入 M1
 1. 把 M1 外的历史映射解析层并入引擎主链。
 2. 解决“应使用 A 却误用 E”的历史覆盖风险。
 3. 保持与备份语义兼容，不引入“强制备份源文件”语义。
@@ -37,6 +44,8 @@
 1. `def_action=hold` 只影响未显式声明 `action` 的子条目；显式非 `hold` 子条目仍正常处理。
 2. `hold` 条目不进入解析链，因此不应要求其提供 `from`、`into`、`from_type`、`into_type`。
 3. 两份 `aggregated_rule_set.json.example` 必须保持 repo_memory -> description 的单向镜像同步。
+4. `description/` 只用于 user-plan 交流；implement 默认以 `repo_memory/` 为标准源。
+5. `user_config.json.example` 的权威样例位于 `repo_memory/`，字段固定为 `path_alias`、`path_handle`、`path_target`。
 
 ## Closeout Follow-up
 1. 统一 `description/workflow_restrict.md` 与 `repo_memory/README.md` 的口径：保持“默认忽略 + Plan 可授权例外”。
