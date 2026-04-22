@@ -27,6 +27,17 @@
             "string7":"但如果`actionlist`中的对象有自己的`action`, 则处理该对象时以它自己的`action`为准",
             "string8":"此处对象没有`action`属性, 且亲代`def_action`为`hold`, 因此不处理, 不操作, 就晾在这里不管"
           }
+        },
+        {
+          "destin": "270150:3428584891",
+          "action": "delete",
+          "into": ["media/packages/GFL_Castling/textures/legacy_unused.png"],
+          "into_type": "file",
+          "comment": {
+            "string1": "这个对象显式声明了`action=delete`, 因此不会继承父级的`hold`",
+            "string2": "delete 只读取`into`与`into_type`, `from`和`from_type`即便存在也会被忽略",
+            "string3": "因此它仍然会被正常处理, 不会因为父级`def_action=hold`而被跳过"
+          }
         }
       ]
     },
@@ -39,8 +50,10 @@
       "def_action": "replace",
       "actionlist": [
         {
-          "from": "weaponpics/1.6/*.png",
-          "into": "media/packages/GFL_Castling/textures/",
+          "from": ["weaponpics/1.6/*.png"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/textures/"],
+          "into_type": "path",
           "comment": {
             "string1": "对象中没有`destin`或者`action`属性",
             "string2": "因此使用mod对象`270150:3428584891`也就是其亲代的`def_destin`和`def_action`作为值",
@@ -55,8 +68,10 @@
         {
           "destin": "270150:2606099273",
           "action": "replace",
-          "from": "weaponpics/1.7/*.png",
-          "into": "media/packages/GFL_Castling/textures/",
+          "from": ["weaponpics/1.7/*.png"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/textures/"],
+          "into_type": "path",
           "comment": {
             "string1": "这个对象明确指定了`destin`和`action`, 因此以它自己的`destin`和`action`为准",
             "string2": "`destin`是`270150:2606099273`, `action`是`replace`",
@@ -68,14 +83,18 @@
 
         },
         {
-          "from": "weaponpics/重装部队/*",
-          "into": "media/packages/GFL_Castling/textures/"
+          "from": ["weaponpics/重装部队/*"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/textures/"],
+          "into_type": "path"
         },
         {
           "destin": "270150:0",
           "action": "create",
-          "from": "weaponpics/castears_kawaii.png",
-          "into": "media/textures/",
+          "from": ["weaponpics/castears_kawaii.png"],
+          "from_type": "file",
+          "into": ["media/textures/"],
+          "into_type": "path",
           "comment": {
             "string1": "这个对象的`destin`是`270150:0`, 这意味着它的目标是游戏base文件`steamapps/common/RunningWithRifles`",
             "string2": "这个对象的`action`是`create`, 这意味着它要创建一个新文件",
@@ -99,19 +118,33 @@
       "def_action": "create",
       "actionlist": [
         {
-          "from": "bomb_range/particles（c4实心圈）/*.particle",
-          "into": "media/packages/GFL_Castling/particles/",
+          "from": ["bomb_range/particles（c4实心圈）/*.particle"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/particles/"],
+          "into_type": "path",
           "comment":{
             "string1": "`def_action`为`create`意味着每一条操作如果没有明确指定`action`, 就默认为`create`",
             "string2": "参照前面说过的`create`的方法处理就好"
+          }
+        },
+        {
+          "action": "create",
+          "from": ["bomb_range/ui/radius_marker.png"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/particles/", "media/packages/GFL_Castling/textures/"],
+          "into_type": "path",
+          "comment": {
+            "string1": "这是合法的 into 多值样例: 单一源文件扇出到多个目标目录",
+            "string2": "因为 `from` 只有一个值, 所以不会触发多源多目标禁令",
+            "string3": "如果 `from` 也是多值或含多个展开结果, 那就必须直接报错, 不做笛卡尔扩展"
           }
         }
       ]
     },
     {
       "mixed_id": "270150:3445750210",
-      "preview": "preview.jpg",
-      "readme": "readme.md",
+      "preview": ["preview.jpg"],
+      "readme": ["readme.md"],
       "sub": [],
       "def_destin": "270150:0",
       "def_action": "replace",
@@ -119,16 +152,21 @@
         {
           "destin" : "270150:0",
           "action": "clear_then_copy",
-          "from": "media/packages/vanilla/maps/lobby/*",
-          "into": "media/packages/vanilla/maps/lobby/",
+          "from": ["media/packages/vanilla/maps/lobby/"],
+          "from_type": "path",
+          "into": ["media/packages/vanilla/maps/"],
+          "into_type": "path",
           "comment":{
             "string1": "`clear_then_copy`的意思",
-            "string2": "用shell解释就是 `rm -rf steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/ && mkdir -p steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/ && cp -r steamapps/workshop/content/270150/3445750210/media/packages/vanilla/maps/lobby/* steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/`"
+            "string2": "在新 DSL 中, `from_type=path` 与 `into_type=path` 的语义是复制目录本身, 因此结果是目标下出现 `.../maps/lobby/`",
+            "string3": "如果想表达复制目录内容, 就必须把来源写成文件语义, 例如 `from_type=file` 配合 `from=[\"media/packages/vanilla/maps/lobby/*\"]`"
           }
         },
         {
-          "from": "media/packages/vanilla/maps/lobby/scene.xml",
-          "into": "media/packages/vanilla/maps/lobby/",
+          "from": ["media/packages/vanilla/maps/lobby/scene.xml"],
+          "from_type": "file",
+          "into": ["media/packages/vanilla/maps/lobby/"],
+          "into_type": "path",
           "comment" : {
             "string1" : "上一个对象进行了clear_then_copy, 这意味着",
             "string2" : "此时`steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/`应当是",
@@ -157,8 +195,10 @@
         {
           "action": "rename_then_replace",
           "nwname": "hotkeys.xml",
-          "from": "reqingyouhao/media/wsmxswrp.yaml",
-          "into": "media/packages/GFL_Castling/",
+          "from": ["reqingyouhao/media/wsmxswrp.yaml"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/hotkeys.xml"],
+          "into_type": "file",
           "comment": {
             "string1": "这个mod是一个本地模组, 不是steam上的模组, modder在发布模组之前可能需要先测试自己的mod的兼容性",
             "string2": "它的`id`中的`modder_will_name_this_local_mod_whatever_as_their_will`部分是模组作者自己定义的,",
@@ -168,8 +208,8 @@
             "string6": "这意味着它无法与任何`270150/`目录下的其他mod撞`id`",
             "string7": "这个模组的作用是替换掉`270150:2606099273`中的一些文件, 以达到修改游戏的目的",
             "string8": "它的def_destin是`270150:2606099273`, 这意味着它默认操作的目标是`270150:2606099273`, 也就是前面说过的那个mod",
-            "string9": "它的`action`是`rename_then_replace`, 这意味着需要先将原始文件以另一个名字放到规定目录中",
-            "string10": "因此他必须有一个`nwname`属性来指定重命名后的文件名; 否则是无效的——报告, 记录日志, 下一条",
+            "string9": "`into` 现在已经可以直接指向文件, 所以这个 action 处于兼容期语义",
+            "string10": "因此他仍然保留`nwname`属性来表达旧写法, 但主路径能力已经由 `into_type=file` 承担",
             "string11": "用shell解释即`cp -r steamapps/workshop/content/270150/modder_will_name_this_local_mod_whatever_as_their_will/reqingyouhao/media/wsmxswrp.yaml steamapps/workshop/content/270150/2606099273/media/packages/GFL_Castling/hotkeys.xml`",
             "string12": "可能有疑惑，`yaml`改成`xml`能发挥作用吗? 对此我的建议是: “关我屁事, 找写规则的人去”, 这个工具只负责管理文件"
           }
@@ -185,8 +225,10 @@
         {
           "action": "rename_then_replace",
           "nwname": "gkw_ump45.png",
-          "from": "ump45/is/my/waifu/and/beloved.png",
-          "into": "weaponpics/1.6/",
+          "from": ["ump45/is/my/waifu/and/beloved.png"],
+          "from_type": "file",
+          "into": ["weaponpics/1.6/gkw_ump45.png"],
+          "into_type": "file",
           "comment": {
             "string1": "这个mod是一个本地模组",
             "string2": "如之前说过的, 用shell解释就是`cp -r steamapps/workshop/content/270150/prepare_and_receive/ump45/is/my/waifu/and/beloved.png steamapps/workshop/content/270150/3428584891/weaponpics/1.6/gkw_ump45.png`",
@@ -205,8 +247,10 @@
       "def_action": "replace",
       "actionlist": [
         {
-          "from": "hit/and/run/hikinige.ai",
-          "into": "media/packages/GFL_Castling/factions/",
+          "from": ["hit/and/run/hikinige.ai"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/factions/"],
+          "into_type": "path",
           "comment":{
             "string1": "乍看这个文件似乎应该被移入270150:2606099273中, 但是",
             "string2": "270150:2606099273的`sub`属性中没有它, 这意味着它不受270150:2606099273的承认",

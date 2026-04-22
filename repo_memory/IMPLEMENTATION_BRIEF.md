@@ -131,3 +131,33 @@
 ## Forest 可视化开工门槛（文档先行）
 1. 实现前必须先阅读 `FOREST_VISUALIZATION_DESIGN.md` 的数据流、坑位清单、Go/No-Go 与验收用例。
 2. 本轮若仅做文档持久化，不允许改动 `src/`、`tests/`、`pyproject.toml`。
+
+## aggregated_rule_set DSL 冻结（2026-04-22）
+1. M1 近期只接收 `aggregated_rule_set`；单条 `kmm_rule` 的聚合发生在 M1 外。
+2. `from` 与 `into` 在规则层统一为 `list[string]`；不再接受 string 或 string|list 混写。
+3. 非 `hold` 且非 `delete` 的 action，必须显式提供 `from_type` 与 `into_type`，取值仅允许 `file` 或 `path`。
+4. `delete` 只读取 `into` 与 `into_type`；`from` 与 `from_type` 完全忽略，写了也无效。
+5. 若 `_type=path`，则对应列表中的每一项都必须以 `/` 结尾；否则直接报错。
+6. `into_type=file` 时，`from_type` 必须为 `file`；不接受 path -> file 兜底。
+7. 若单条 action 的 `from` 为多值或包含 glob，则同条 action 的 `into` 不得为多值；系统不做笛卡尔扩展。
+8. `path -> path` 的语义固定为复制目录本身，即 `cp -r src/ dest/` 产出 `dest/src/`。
+
+## action 解析与校验分流（2026-04-22）
+1. 校验绑定在 action 处理路径上，不使用一个覆盖全部 action 的大一统校验器。
+2. `replace` 与 `create` 共享同一套写入型校验流程；以后若差异扩大再拆分。
+3. `delete` 使用独立校验流程，仅检查 `into` 与 `into_type`。
+4. `rename_then_replace` 与 `clear_then_copy` 复用写入型校验，再追加各自的兼容字段约束。
+5. 明确禁止把相同前置条件的校验逻辑复制到多个 action 分支中。
+
+## hold 规则（2026-04-22）
+1. 只有最终解析结果为 `hold` 的 action 才会被跳过。
+2. 跳过的定义是：不校验、不解析、不展开、不参与冲突分析、不进入 final mapping。
+3. 若父级 `def_action=hold`，且子 action 未显式声明 `action`，则该子 action 继承为 `hold` 并被直接忽略。
+4. 若父级 `def_action=hold`，但子 action 显式声明了非 `hold` action，则以子 action 为准，按对应流程正常校验与解析。
+5. 任意对象中显式写出的 `action=hold` 条目，同样直接忽略。
+
+## 冲突分层（2026-04-22）
+1. 同一 `mixed_id`、同一 `actionlist` 内，按书写顺序执行。
+2. 同一 action 展开后若多个源命中同一目标文件，直接报 `E_ACTION_INTERNAL_COLLISION`。
+3. `delete` 与非 `delete` 若在同批次命中同一目标，直接报错，不做隐式抵消。
+4. 不同 `mixed_id` 之间的冲突仍进入 branch 系统处理。

@@ -39,3 +39,4 @@
 | 2026-04-22 | 用户决策（文档收工交接包） | description/workflow_restrict.md / TASKLIST.md / MEMORY_SYNC_INDEX.md | implementation-agent | synced | 统一“默认忽略 + Plan 可授权例外”口径；补收工 checkpoint 与建议提交信息 |
 | 2026-04-22 | 用户决策（forest 可视化范围收缩与排期） | IMPLEMENTATION_BRIEF.md / FOREST_VISUALIZATION_DESIGN.md / TASKLIST.md / MEMORY_SYNC_INDEX.md | implementation-agent | synced | 近期仅 core + ASCII + DOT + DOT->SVG；HTML/Plot 入 M3；GUI 交互与插件运行链入 M4；保留未来 M1 trace/meta 扩展兼容 |
 | 2026-04-22 | 用户决策（forest 最小绘图系统开发指导） | FOREST_VISUALIZATION_DESIGN.md / IMPLEMENTATION_BRIEF.md / TASKLIST.md / MEMORY_SYNC_INDEX.md | implementation-agent | synced | 固化数据流、预排坑位、Go/No-Go、最小验收用例；确认本轮仅文档持久化 |
+| 2026-04-22 | 用户决策（aggregated_rule_set DSL 冻结） | IMPLEMENTATION_BRIEF.md / TASKLIST.md / RULE_AGGREGATION_DESIGN.md / aggregated_rule_set.json.example / description/TODO.md | implementation-agent | synced | 冻结 list[string] + type 契约；hold 仅在最终解析为 hold 时跳过；delete 只读 into；path->path 复制目录本身；repo_memory 示例已同步到 description |

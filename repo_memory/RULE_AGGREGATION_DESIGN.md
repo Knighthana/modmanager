@@ -38,3 +38,21 @@
 ## 与 M1 的边界
 - 当前阶段：M1 不改，M1 仍只接收 `aggregated_rule_set`。
 - 未来阶段：可将 `action_meta_tag` 传导能力并入 M1。
+
+## aggregated_rule_set 归一化补充（2026-04-22）
+1. 聚合层输出的 action 中，`from` 与 `into` 统一归一化为 `list[string]`。
+2. 对于非 `hold` 且非 `delete` 的 action，聚合层必须保留显式的 `from_type` 与 `into_type`；缺失不得猜测修复。
+3. 对于 `delete`，聚合层只需保证 `into` 与 `into_type` 可用；`from` 与 `from_type` 可以缺省，也可以原样保留但下游忽略。
+4. 对于最终解析为 `hold` 的 action，聚合层不需要为其补齐类型字段，因为执行层会直接跳过。
+
+## action 继承规则补充（2026-04-22）
+1. `def_action` 只作为子 action 缺省 `action` 的默认值。
+2. 若子 action 显式声明了 `action`，则永远以子 action 为准，不再受父级 `def_action` 覆盖。
+3. 因此 `def_action=hold` 只会让“未显式写 action 的子条目”变成 skipped action，不会吞掉显式的 `replace`、`create`、`delete`、`rename_then_replace`、`clear_then_copy`。
+
+## 非法规则处理原则（2026-04-22）
+1. 聚合层不负责把 path/file 混乱写法“修正成能跑”。
+2. `into_type=file` 且 `from_type=path` 直接失败。
+3. 若 `_type=path`，对应列表项必须全部以 `/` 结尾；否则直接失败。
+4. 若单条 action 的 `from` 为多值或含 glob，同时 `into` 也为多值，直接失败。
+5. 非法输入以 fail-fast 为准，不生成带猜测语义的 `aggregated_rule_set`。

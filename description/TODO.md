@@ -21,21 +21,35 @@ TODO LIST
 
 到时候WebUI做轮换展示；
 
+状态：Frozen
+1. `preview` / `readme` 已冻结为 `list[string]`。
+2. repo_memory 示例为权威版本，description 示例只做镜像同步。
+
 ## delete方法
 
 应该允许在"action"中直接使用`delete`作为操作方法；
 
-既然`from`计划被做成表，那么应该用`from`列表表示需要删除的文件；
+用`into`作为需要删掉的目标；
 
-`into`字段填`void`，算作`delete`的规范；
+`from`字段直接忽略；
 
-应该特别注意，解析`delete`的行动是将`from`作为目标的`path`，给目标挂一个类型为`delete`的`changerequest`的
+实际行为是，`delete`掉`into`；
+
+状态：Frozen
+1. `delete` 只读取 `into` 与 `into_type`。
+2. `from` 与 `from_type` 完全忽略，写了也无效。
+3. 旧方案中的 `into=void` / `from` 反转为目标路径，不采用。
 
 # action rule comlex
 
 ## `"from"` list
 
 应该考虑把`action`的`from`做成列表，这样可以少写好几次`action`；
+
+状态：Frozen
+1. `from` 与 `into` 均冻结为 `list[string]`。
+2. 非 `delete` / 非最终 `hold` action 需要配套 `from_type` / `into_type`。
+3. 不接受多源多目标同条 action 的笛卡尔扩展。
 
 ## revert select
 
@@ -76,6 +90,10 @@ TODO LIST
 比如某些汉化mod；
 
 如果能增加一个执行自定义脚本的功能，这样的话modder只需要把rule放在content页面，让用户复制粘贴就好；
+
+状态：Pending
+1. 脚本相关能力保留为未来扩展方向。
+2. 当前轮次只允许在文档与示例层预留，不进入运行时。
 
 # base64导入规则
 

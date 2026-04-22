@@ -22,6 +22,19 @@
 - 文档持久化与边界冻结。
 - 不修改 M1 执行逻辑。
 
+## Current Doc Freeze: aggregated_rule_set DSL
+1. 冻结 `from` / `into` 为 `list[string]`，补 `from_type` / `into_type` 显式类型契约。
+2. 冻结 action 分流：`replace`/`create` 共享写入校验，`delete` 单独校验，`hold` 直接忽略。
+3. 冻结 `path -> path` 语义为复制目录本身，不接受“复制内容”式兜底解释。
+4. 冻结 `delete` 语义：只读 `into` 与 `into_type`；`from` / `from_type` 完全忽略。
+5. 冻结冲突规则：同 action 多源同目标报 `E_ACTION_INTERNAL_COLLISION`；`delete` 与非 `delete` 同目标同批报错。
+6. 冻结兼容期策略：保留 `rename_then_replace`，但视为兼容 action，不再作为主路径能力扩展中心。
+
+## Implement Handoff Notes
+1. `def_action=hold` 只影响未显式声明 `action` 的子条目；显式非 `hold` 子条目仍正常处理。
+2. `hold` 条目不进入解析链，因此不应要求其提供 `from`、`into`、`from_type`、`into_type`。
+3. 两份 `aggregated_rule_set.json.example` 必须保持 repo_memory -> description 的单向镜像同步。
+
 ## Closeout Follow-up
 1. 统一 `description/workflow_restrict.md` 与 `repo_memory/README.md` 的口径：保持“默认忽略 + Plan 可授权例外”。
 2. 追加收工 checkpoint 到 `MEMORY_SYNC_INDEX.md`，标记本轮实现交接已完成。
