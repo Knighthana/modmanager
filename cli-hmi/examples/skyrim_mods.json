@@ -1,0 +1,70 @@
+{
+  "warnings": [],
+  "errors": [],
+  "forest": [
+    {
+      "path": "/games/skyrim",
+      "changerequest": [],
+      "destin_mixed_id": "489830:base"
+    },
+    {
+      "path": "/games/skyrim/mods/graphics",
+      "changerequest": [],
+      "destin_mixed_id": "489830:graphics-pack"
+    },
+    {
+      "path": "/games/skyrim/mods/graphics/enb",
+      "changerequest": [
+        {
+          "path": "/mods/enb/enb_source",
+          "action": "replace",
+          "mixed_id": "489830:enb-v1",
+          "hashtype": "sha256",
+          "hashvalue": "1111aaaa"
+        }
+      ],
+      "destin_mixed_id": "489830:graphics-pack"
+    },
+    {
+      "path": "/games/skyrim/mods/graphics/grass",
+      "changerequest": [
+        {
+          "path": "/mods/grass/grass_v2",
+          "action": "replace",
+          "mixed_id": "489830:grass-v2",
+          "hashtype": "sha256",
+          "hashvalue": "2222bbbb"
+        },
+        {
+          "path": "/mods/grass/grass_v3",
+          "action": "replace",
+          "mixed_id": "489830:grass-v3",
+          "hashtype": "sha256",
+          "hashvalue": "3333cccc"
+        }
+      ],
+      "destin_mixed_id": "489830:graphics-pack",
+      "warning": "W_FOREST_BRANCHING",
+      "candidates": ["/mods/grass/grass_v2", "/mods/grass/grass_v3"]
+    },
+    {
+      "path": "/games/skyrim/mods/gameplay",
+      "changerequest": [],
+      "destin_mixed_id": "489830:gameplay-pack"
+    },
+    {
+      "path": "/games/skyrim/mods/gameplay/combat",
+      "changerequest": [
+        {
+          "path": "!",
+          "action": "delete",
+          "mixed_id": "489830:combat-prune",
+          "hashtype": "invalid",
+          "hashvalue": "0"
+        }
+      ],
+      "destin_mixed_id": "489830:gameplay-pack"
+    }
+  ],
+  "final_mapping": []
+}
