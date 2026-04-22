@@ -9,11 +9,27 @@ TODO LIST
 
 但有一点是确认的，那就是要用的名字必须统一；
 
-# rule_set.json的preview应该用列表
+# convert action to changerequest
+
+对于`replace`操作，当所指向的目标文件不存在时，应该在changerequst中标记这是一个create操作
+
+# rule_set.json
+
+## preview应该用列表
 
 `aggregated_rule_set.json`的`mod[].preview`应该用列表而不是一个字符串段；
 
 到时候WebUI做轮换展示；
+
+## delete方法
+
+应该允许在"action"中直接使用`delete`作为操作方法；
+
+既然`from`计划被做成表，那么应该用`from`列表表示需要删除的文件；
+
+`into`字段填`void`，算作`delete`的规范；
+
+应该特别注意，解析`delete`的行动是将`from`作为目标的`path`，给目标挂一个类型为`delete`的`changerequest`的
 
 # action rule comlex
 
