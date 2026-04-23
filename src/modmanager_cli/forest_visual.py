@@ -104,7 +104,7 @@ def _build_graph_model(forest: list[dict[str, Any]]) -> GraphModel:
     return GraphModel(nodes=nodes, edges=edges, branching_nodes=branching_nodes)
 
 
-def _render_ascii(model: GraphModel) -> str:
+def _render_ascii(model: GraphModel, show_m1_details: bool = False) -> str:
     lines: list[str] = ["FOREST"]
     for path in sorted(model.nodes.keys()):
         node = model.nodes[path]
@@ -137,7 +137,19 @@ def _render_ascii(model: GraphModel) -> str:
                 action = ""
             if not isinstance(mixed_id, str):
                 mixed_id = ""
-            lines.append(f"  {idx}. {action} <- {source} ({mixed_id})")
+            line = f"  {idx}. {action} <- {source} ({mixed_id})"
+            if show_m1_details:
+                action_order = req.get("action_order", 0)
+                if not isinstance(action_order, int):
+                    action_order = 0
+                provenance_ref = req.get("provenance_ref", "404")
+                sidecar_ref = req.get("sidecar_ref", "404")
+                if not isinstance(provenance_ref, str) or not provenance_ref:
+                    provenance_ref = "404"
+                if not isinstance(sidecar_ref, str) or not sidecar_ref:
+                    sidecar_ref = "404"
+                line += f" [order={action_order} | provenance={provenance_ref} | sidecar={sidecar_ref}]"
+            lines.append(line)
     return "\n".join(lines)
 
 
@@ -145,7 +157,7 @@ def _dot_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
-def _render_dot(model: GraphModel) -> str:
+def _render_dot(model: GraphModel, show_m1_details: bool = False) -> str:
     lines: list[str] = ["digraph Forest {", "  rankdir=LR;"]
     target_ids: dict[str, str] = {}
     source_ids: dict[str, str] = {}
@@ -180,6 +192,39 @@ def _render_dot(model: GraphModel) -> str:
         label = edge.action
         if edge.mixed_id:
             label = f"{label} | {edge.mixed_id}" if label else edge.mixed_id
+
+        if show_m1_details:
+            node = model.nodes.get(edge.target_path)
+            matched_req: dict[str, Any] | None = None
+            if node:
+                for req in node.changerequest:
+                    if not isinstance(req, dict):
+                        continue
+                    req_path = req.get("path", "")
+                    req_action = req.get("action", "")
+                    req_mid = req.get("mixed_id", "")
+                    if not isinstance(req_path, str):
+                        req_path = ""
+                    if not isinstance(req_action, str):
+                        req_action = ""
+                    if not isinstance(req_mid, str):
+                        req_mid = ""
+                    if req_path == edge.source_path and req_action == edge.action and req_mid == edge.mixed_id:
+                        matched_req = req
+                        break
+            if matched_req:
+                action_order = matched_req.get("action_order", 0)
+                if not isinstance(action_order, int):
+                    action_order = 0
+                provenance_ref = matched_req.get("provenance_ref", "404")
+                sidecar_ref = matched_req.get("sidecar_ref", "404")
+                if not isinstance(provenance_ref, str) or not provenance_ref:
+                    provenance_ref = "404"
+                if not isinstance(sidecar_ref, str) or not sidecar_ref:
+                    sidecar_ref = "404"
+                suffix = f"order={action_order} | provenance={provenance_ref} | sidecar={sidecar_ref}"
+                label = f"{label}\\n{suffix}" if label else suffix
+
         if label:
             lines.append(f"  {sid} -> {tid} [label=\"{_dot_escape(label)}\"];")
         else:
@@ -210,17 +255,17 @@ def _render_svg_from_dot(dot_text: str) -> str:
     return proc.stdout.decode("utf-8", errors="replace")
 
 
-def visualize_payload(payload: Any, output_format: str) -> str:
+def visualize_payload(payload: Any, output_format: str, show_m1_details: bool = False) -> str:
     fmt = output_format.strip().lower()
     forest = _extract_forest(payload)
     model = _build_graph_model(forest)
 
     if fmt == "ascii":
-        return _render_ascii(model)
+        return _render_ascii(model, show_m1_details=show_m1_details)
     if fmt == "dot":
-        return _render_dot(model)
+        return _render_dot(model, show_m1_details=show_m1_details)
     if fmt == "svg":
-        return _render_svg_from_dot(_render_dot(model))
+        return _render_svg_from_dot(_render_dot(model, show_m1_details=show_m1_details))
 
     raise VisualizationError(f"unsupported visualization format: {output_format}", 3)
 

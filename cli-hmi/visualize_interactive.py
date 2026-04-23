@@ -110,10 +110,10 @@ def _select_output() -> Path | None:
     print("\n💾 输出选项：\n")
     print("  1. 显示在屏幕上")
     print("  2. 保存到文件")
-    
+
     while True:
         choice = input(f"\n请选择 (1-2): ").strip()
-        
+
         if choice == "1":
             return None  # None 表示输出到屏幕
         elif choice == "2":
@@ -125,6 +125,15 @@ def _select_output() -> Path | None:
                 continue
         else:
             print("❌ 请输入 1 或 2")
+
+
+def _select_detail_mode(default_on: bool = True) -> bool:
+    """交互式选择是否展示 M1 详细字段。"""
+    default_text = "y" if default_on else "n"
+    raw = input(f"\n显示 M1 详细字段(action_order/provenance_ref/sidecar_ref)? [y/n, 默认 {default_text}]: ").strip().lower()
+    if not raw:
+        return default_on
+    return raw in {"y", "yes", "1", "true"}
 
 
 def main():
@@ -151,13 +160,14 @@ def main():
             if output_format is None:
                 continue
             
-            # 选择输出位置
+            # 选择输出位置与展示模式
             output_path = _select_output()
-            
+            show_m1_details = _select_detail_mode(default_on=True)
+
             # 生成可视化
             print(f"\n⏳ 生成 {output_format.upper()} 可视化...")
             try:
-                rendered = visualize_payload(payload, output_format)
+                rendered = visualize_payload(payload, output_format, show_m1_details=show_m1_details)
             except VisualizationError as exc:
                 print(f"❌ 可视化失败 (错误代码 {exc.code}): {exc}")
                 continue

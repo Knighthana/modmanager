@@ -114,6 +114,12 @@ def build_visualize_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Render forest JSON to ascii/dot/svg.")
     parser.add_argument("--forest", required=True, help="Path to forest json or compute result json")
     parser.add_argument("--format", default="ascii", help="ascii | dot | svg")
+    parser.add_argument(
+        "--show-m1-details",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Show action_order/provenance_ref/sidecar_ref details in output (default: enabled)",
+    )
     parser.add_argument("--out", help="Write rendered output to file; stdout if omitted")
     return parser
 
@@ -310,7 +316,7 @@ def _handle_visualize(args: argparse.Namespace) -> int:
         return _emit_error_with_code(f"failed to load forest input: {exc}", 2)
 
     try:
-        rendered = visualize_payload(payload, args.format)
+        rendered = visualize_payload(payload, args.format, show_m1_details=args.show_m1_details)
     except VisualizationError as exc:
         return _emit_error_with_code(str(exc), exc.code)
     except Exception as exc:

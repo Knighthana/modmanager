@@ -134,6 +134,58 @@ class ForestVisualTests(unittest.TestCase):
         self.assertIn("FOREST", ascii_out)
         self.assertIn("digraph Forest", dot_out)
 
+    def test_ascii_detail_mode_shows_m1_fields(self) -> None:
+        payload = {
+            "forest": [
+                {
+                    "path": "/dst/a.txt",
+                    "changerequest": [
+                        {
+                            "path": "/src/a.txt",
+                            "action": "replace",
+                            "mixed_id": "270150:100",
+                            "hashtype": "sha256",
+                            "hashvalue": "abc",
+                            "action_order": 7,
+                            "provenance_ref": "rule:demo",
+                            "sidecar_ref": "sidecar:demo",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        out = visualize_payload(payload, "ascii", show_m1_details=True)
+        self.assertIn("order=7", out)
+        self.assertIn("provenance=rule:demo", out)
+        self.assertIn("sidecar=sidecar:demo", out)
+
+    def test_dot_detail_mode_shows_m1_fields(self) -> None:
+        payload = {
+            "forest": [
+                {
+                    "path": "/dst/a.txt",
+                    "changerequest": [
+                        {
+                            "path": "/src/a.txt",
+                            "action": "replace",
+                            "mixed_id": "270150:100",
+                            "hashtype": "sha256",
+                            "hashvalue": "abc",
+                            "action_order": 3,
+                            "provenance_ref": "rule:abc",
+                            "sidecar_ref": "sidecar:def",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        out = visualize_payload(payload, "dot", show_m1_details=True)
+        self.assertIn("order=3", out)
+        self.assertIn("provenance=rule:abc", out)
+        self.assertIn("sidecar=sidecar:def", out)
+
 
 if __name__ == "__main__":
     unittest.main()
