@@ -1,0 +1,742 @@
+{
+  "schema_namespace": "KMM_Rule",
+  "schema_version": "knighthana@0.1.0",
+  "file_example_URL": "https://raw.githubusercontent.com/knighthana/",
+  "rule_meta_tag": {
+    "rulenamespace": "knighthana",
+    "rulename": "RWR-GFL_Castling",
+    "author": [
+      {
+        "nickname": "knighthana",
+        "contact": {
+          "e-mail": "knighthana@outlook.com",
+          "steam_invite_key": "443887427",
+          "URL_steam_profile": "https://steamcommunity.com/profiles/76561198404153155",
+          "URL_BiliBili_live": "https://live.bilibili.com/5296096"
+        }
+      },
+      {
+        "nickname": "castears",
+        "contact": {}
+      },
+      {
+        "nickname": "Z-2414",
+        "contact": {}
+      }
+    ],
+    "description": "功能: 友好地图(+铁三微调)、无烟雾、铁箱探测、枪械立绘替换、爆炸物范围(+使用实心版)、悍马耐久值、炮艇语音替换、滴滴滴定位器、储藏箱落点预判(+及箱子外观修改)、指南针耐久显示、首页加速(蔚蓝档案风格)、“我在哪”定位器(+使用青色); 主要功能均已发布在创意工坊, 请前往订阅, 并点赞收藏！！！额外功能: 下张地图提示、载具警告。额外需要配合一点不战术地图v1.9 TEMP、warn_vehicles使用, 额外功能并未公开发布在Steam, 需要在异向易位QQ群组获取文件, 且规则条目必须放在其他规则之后。"
+  },
+  "game": [
+    {
+      "appid": "270150",
+      "modid": [
+        "2606099273",
+        "3425312546",
+        "3426079135",
+        "3427135267",
+        "3428584891",
+        "3430161019",
+        "3430976333",
+        "3435124100",
+        "3437114999",
+        "3442063538",
+        "3442533598",
+        "3445750210",
+        "3470055515",
+        "一点不战术地图v1.9 TEMP",
+        "warn_vehicles"
+      ]
+    }
+  ],
+  "mod": [
+    {
+      "mixed_id": "270150:2606099273",
+      "nickname": "GFL_Castling",
+      "preview": [
+        "media/packages/GFL_Castling/orange_cat.ico"
+      ],
+      "readme": [
+        "media/packages/GFL_Castling/update_log.md"
+      ],
+      "sub": [
+        "270150:3425312546",
+        "270150:3426079135",
+        "270150:3427135267",
+        "270150:3428584891",
+        "270150:3430161019",
+        "270150:3430976333",
+        "270150:3435124100",
+        "270150:3437114999",
+        "270150:3442063538",
+        "270150:3442533598",
+        "270150:3470055515",
+        "270150:一点不战术地图v1.9 TEMP",
+        "270150:warn_vehicles"
+      ],
+      "def_destin": "270150:0",
+      "def_action": "hold",
+      "actionlist": []
+    },
+    {
+      "mixed_id": "270150:3425312546",
+      "nickname": "shiplander v1.9",
+      "preview": [
+        "shiplander v1.9/1使用方法和图例/图例1.jpg",
+        "shiplander v1.9/1使用方法和图例/图例2.jpg"
+      ],
+      "readme": [
+        "shiplander v1.9/1使用方法和图例/使用说明.txt"
+      ],
+      "sub": [
+        "270150:一点不战术地图v1.9 TEMP",
+        "270150:knighthana_custom_rules"
+      ],
+      "def_action": "replace",
+      "def_destin": "270150:2606099273",
+      "actionlist": [
+        {
+          "from": [
+            "shiplander v1.9/*/"
+          ],
+          "from_type": "path",
+          "into": [
+            "media/packages/GFL_Castling/maps/"
+          ],
+          "into_type": "path",
+          "sidecar":{}
+        },
+        {
+          "action": "delete",
+          "into": [
+            "media/packages/GFL_Castling/maps/1使用方法和图例/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "shiplander v1.9/1使用方法和图例/消除地图红点（可选）/*",
+            "shiplander v1.9/1使用方法和图例/消除地图小子弹标（可选）/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "action": "delete",
+          "into": [
+            "media/packages/GFL_Castling/maps/map105_3/asphalt.png",
+            "media/packages/GFL_Castling/maps/map105_3/dirt.png",
+            "media/packages/GFL_Castling/maps/map105_3/road.png",
+            "media/packages/GFL_Castling/maps/map105_3/sand.png"
+          ],
+          "into_type": "file"
+        },
+        {
+          "from": [
+            "shiplander v1.9/map105_3/地形美化包微调版/asphalt.png",
+            "shiplander v1.9/map105_3/地形美化包微调版/dirt.png",
+            "shiplander v1.9/map105_3/地形美化包微调版/road.png",
+            "shiplander v1.9/map105_3/地形美化包微调版/sand.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/maps/map105_3/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3426079135",
+      "nickname": "no smoke",
+      "preview": [
+        "no smoke/预览图1.png",
+        "no smoke/预览图2.png",
+        "no smoke/预览图3.png",
+        "no smoke/预览图4.png"
+      ],
+      "readme": [
+        "no smoke/使用说明.txt",
+        "no smoke/制作人TIANSUO_LI.txt"
+      ],
+      "sub": [],
+      "def_action": "replace",
+      "def_destin": "270150:2606099273",
+      "actionlist": [
+        {
+          "from": [
+            "no smoke/materials/",
+            "no smoke/particles/",
+            "no smoke/textures/",
+            "no smoke/vehicles/",
+            "no smoke/weapons/"
+          ],
+          "from_type": "path",
+          "into": [
+            "media/packages/GFL_Castling/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3427135267",
+      "nickname": "itemlocater",
+      "preview": [
+        "itemlocater/预览图.png"
+      ],
+      "readme": [
+        "itemlocater/使用说明.txt",
+        "itemlocater/制作人TIANSUO_LI.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "itemlocater/materials/",
+            "itemlocater/particles/",
+            "itemlocater/vehicles/"
+          ],
+          "from_type": "path",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3428584891",
+      "nickname": "weaponpics",
+      "preview": [
+        "weaponpics/使用后.png"
+      ],
+      "readme": [
+        "weaponpics/使用说明.txt",
+        "weaponpics/制作人TIANSUO_LI.txt"
+      ],
+      "sub": [
+        "270150:prepare_and_receive"
+      ],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "weaponpics/1.6/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/1.7/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/1.8/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/1.9/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/1.85/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/1.86/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/mod3/textures（添加三改标志）/*.png"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "weaponpics/重装部队/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3430161019",
+      "nickname": "bomb_range",
+      "preview": [
+        "bomb_range/实心圈预览图.png"
+      ],
+      "readme": [
+        "bomb_range/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "bomb_range/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "bomb_range/particles（c4实心圈）/*.particle"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "bomb_range/weapons/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/weapons/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3430976333",
+      "nickname": "matinahealth",
+      "preview": [
+        "matinahealth/效果演示视频.mp4"
+      ],
+      "readme": [
+        "matinahealth/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "matinahealth/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "matinahealth/particles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "matinahealth/vehicles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/vehicles/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3435124100",
+      "nickname": "gfl_sound_replace",
+      "readme": [
+        "gfl_sound_replace/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "gfl_sound_replace/sounds/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/sounds/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3437114999",
+      "nickname": "ddd_ribbon",
+      "preview": [
+        "ddd_ribbon/懒狗不想做预览图.txt"
+      ],
+      "readme": [
+        "ddd_ribbon/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "ddd_ribbon/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "ddd_ribbon/particles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "ddd_ribbon/weapons/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/weapons/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3442063538",
+      "nickname": "watch_your_head",
+      "preview": [
+        "watch_your_head/materials/1_stash_warn.png"
+      ],
+      "readme": [
+        "watch_your_head/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "watch_your_head/calls/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/calls/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "watch_your_head/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "watch_your_head/particles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "watch_your_head/各箱子特效分类（可选）/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "watch_your_head/各箱子特效分类（可选）/particles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "watch_your_head/各箱子特效分类（可选）/textures/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "watch_your_head/各箱子特效分类（可选）/vehicles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/vehicles/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3442533598",
+      "nickname": "compass_marker",
+      "readme": [
+        "compass_marker/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "compass_marker/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "compass_marker/particles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "compass_marker/textures/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/textures/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "compass_marker/vehicles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/vehicles/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3470055515",
+      "nickname": "map_marker",
+      "preview": [
+        "map_marker/预览图（天蓝色）.jpg"
+      ],
+      "readme": [
+        "map_marker/使用说明.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "map_marker/textures（青色）/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:3445750210",
+      "nickname": "bluearchive_titlescreen",
+      "preview": [
+        "preview.jpg"
+      ],
+      "readme": [
+        "readme.md"
+      ],
+      "sub": [],
+      "def_destin": "270150:0",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "destin": "270150:0",
+          "action": "delete",
+          "from": [
+            "media/packages/vanilla/maps/lobby/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/vanilla/maps/lobby/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "destin": "270150:0",
+          "action": "create",
+          "from": [
+            "media/packages/vanilla/maps/lobby/"
+          ],
+          "from_type": "path",
+          "into": [
+            "media/packages/vanilla/maps/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:一点不战术地图v1.9 TEMP",
+      "nickname": "一点不战术地图v1.9 TEMP",
+      "readme": [
+        "一点不战术地图v1.9 TEMP/readme.txt",
+        "一点不战术地图v1.9 TEMP/Z-2414.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:3425312546",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "一点不战术地图v1.9 TEMP/maps/*/"
+          ],
+          "from_type": "path",
+          "into": [
+            "media/packages/GFL_Castling/maps/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:warn_vehicles",
+      "nickname": "warn_vehicles",
+      "readme": [
+        "warn_vehicles/不看教程就error！.txt"
+      ],
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": [
+        {
+          "from": [
+            "warn_vehicles/ct1.9载具圈/materials/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/materials/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "warn_vehicles/ct1.9载具圈/particles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/particles/"
+          ],
+          "into_type": "path"
+        },
+        {
+          "from": [
+            "warn_vehicles/ct1.9载具圈/vehicles/*"
+          ],
+          "from_type": "file",
+          "into": [
+            "media/packages/GFL_Castling/vehicles/"
+          ],
+          "into_type": "path"
+        }
+      ]
+    },
+    {
+      "mixed_id": "270150:knighthana_custom_rules",
+      "nickname": "knighthana_custom_rules",
+      "sub": [],
+      "def_destin": "270150:2606099273",
+      "def_action": "replace",
+      "actionlist": []
+    }
+  ]
+}

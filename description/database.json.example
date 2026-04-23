@@ -1,4 +1,7 @@
 {
+  "schema_namespace": "KMM_LocalDatabase",
+  "schema_version": "knighthana@0.1.0",
+  "file_example_URL": "https://raw.githubusercontent.com/knighthana/",
   "comment":{
     "string1": "这个文件是一个示例文件, 旨在展示`database.json`的结构",
     "string2": "`database.json`是一个由程序自行探索系统后生成的文件, 所以不应该作为启动的前置条件, 也不应该由用户手动编辑",

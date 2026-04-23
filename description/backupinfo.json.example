@@ -1,4 +1,7 @@
 {
+  "schema_namespace": "KMM_BackupInfo",
+  "schema_version": "knighthana@0.1.0",
+  "file_example_URL": "https://raw.githubusercontent.com/knighthana/",
   "filefoldertree_status": "ready",
   "filefoldertree": {
     "name": "root",
