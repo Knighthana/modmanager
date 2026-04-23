@@ -69,6 +69,87 @@ def _build_change_request(
     }
 
 
+def _sort_request_key(r: dict[str, Any]) -> tuple[int, int, str]:
+    mid = r.get("mixed_id", "")
+    modid = mid.split(":", 1)[1] if ":" in mid else mid
+    is_custom = 0 if modid.isdigit() else 1
+    numeric_key = int(modid) if modid.isdigit() else 0
+    return (is_custom, numeric_key, modid)
+
+
+def _pick_request_by_action_order(
+    target: str,
+    ordered: list[dict[str, Any]],
+    branch_decisions: dict[str, Any],
+    errors: list[str],
+) -> dict[str, Any] | None:
+    chosen_source = branch_decisions.get(target)
+    candidates = [r.get("path", "") for r in ordered]
+    if chosen_source:
+        chosen = next((r for r in ordered if r.get("path") == chosen_source), None)
+        if chosen is None:
+            errors.append(
+                f"E_BRANCH_DECISION_INVALID_SOURCE: {target}: "
+                f"{chosen_source!r} not in candidates {candidates!r}"
+            )
+            return None
+        return chosen
+
+    orders = [_normalize_action_order(r.get("action_order")) for r in ordered]
+    if any(v == 0 for v in orders):
+        errors.append(
+            f"E_ACTION_ORDER_CONFLICT: {target}: branching candidates contain action_order=0"
+        )
+        return None
+
+    max_order = max(orders)
+    top = [r for r in ordered if _normalize_action_order(r.get("action_order")) == max_order]
+    if len(top) != 1:
+        errors.append(
+            f"E_ACTION_ORDER_CONFLICT: {target}: non-unique highest action_order={max_order}"
+        )
+        return None
+    return top[0]
+
+
+def _resolve_effective_leaf_request(
+    target: str,
+    mapping: dict[str, dict[str, Any]],
+    branch_decisions: dict[str, Any],
+    errors: list[str],
+    visiting: set[str] | None = None,
+) -> dict[str, Any] | None:
+    visiting = visiting or set()
+    if target in visiting:
+        errors.append(f"E_ACTION_ORDER_RESOLVE_CYCLE: {target}")
+        return None
+
+    node = mapping.get(target)
+    if not node:
+        return None
+
+    requests = node.get("changerequest", [])
+    if not requests:
+        return None
+
+    ordered = sorted(requests, key=_sort_request_key)
+    if len(ordered) == 1:
+        chosen = ordered[0]
+    else:
+        chosen = _pick_request_by_action_order(target, ordered, branch_decisions, errors)
+        if chosen is None:
+            return None
+
+    src_path = chosen.get("path", "")
+    if isinstance(src_path, str) and src_path and src_path != "!" and src_path in mapping:
+        visiting.add(target)
+        resolved = _resolve_effective_leaf_request(src_path, mapping, branch_decisions, errors, visiting)
+        visiting.discard(target)
+        return resolved
+
+    return chosen
+
+
 def _expand_sources(source_root: str, source_expr: str, source_type: str = "file") -> list[str]:
     source_root_path = Path(source_root)
     pattern_path = normalize_posix(source_expr)
@@ -444,19 +525,9 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
         destin_mid = node.get("destin_mixed_id", "")
         if len(requests) <= 1:
             forest.append({"path": target, "destin_mixed_id": destin_mid, "changerequest": requests})
-            if not errors:
-                final_mapping.append({"path": target, "request": requests[0] if requests else None})
             continue
 
-        # deterministic ordering: numeric contentid ascending, then custom_id lexicographic
-        def _sort_key(r: dict[str, Any]) -> tuple[int, int, str]:
-            mid = r.get("mixed_id", "")
-            modid = mid.split(":", 1)[1] if ":" in mid else mid
-            is_custom = 0 if modid.isdigit() else 1
-            numeric_key = int(modid) if modid.isdigit() else 0
-            return (is_custom, numeric_key, modid)
-
-        ordered = sorted(requests, key=_sort_key)
+        ordered = sorted(requests, key=_sort_request_key)
         candidates = [r.get("path", "") for r in ordered]
         forest.append(
             {
@@ -468,21 +539,26 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             }
         )
 
-        chosen_source = branch_decisions.get(target)
-        if not chosen_source:
+    for target in sorted(mapping.keys()):
+        leaf_request = _resolve_effective_leaf_request(target, mapping, branch_decisions, errors)
+        if leaf_request is None:
             unresolved_branch_paths.append(target)
-            warnings.append(f"W_FOREST_BRANCHING_UNRESOLVED: {target}")
             continue
 
-        chosen = next((r for r in ordered if r.get("path") == chosen_source), None)
-        if not chosen:
-            errors.append(
-                f"E_BRANCH_DECISION_INVALID_SOURCE: {target}: "
-                f"{chosen_source!r} not in candidates {candidates!r}"
-            )
-            unresolved_branch_paths.append(target)
+        if leaf_request.get("action") == "delete" or leaf_request.get("path") == "!":
+            promoted = dict(leaf_request)
+            promoted["action"] = "delete"
+            promoted["path"] = "!"
+            warnings.append(f"W_DELETE_LEAF_PROMOTED: {target}")
+            final_mapping.append({"path": target, "request": promoted})
             continue
-        final_mapping.append({"path": target, "request": chosen})
+
+        final_mapping.append({"path": target, "request": leaf_request})
+
+    if unresolved_branch_paths:
+        for p in sorted(set(unresolved_branch_paths)):
+            if p in branched_targets:
+                warnings.append(f"W_FOREST_BRANCHING_UNRESOLVED: {p}")
 
     if unresolved_branch_paths:
         final_mapping = []

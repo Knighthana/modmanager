@@ -113,7 +113,7 @@
 3. 未来可并入 M1：当外层机制稳定后，将 `provenance_ref`、`action_order`、`sidecar_ref` 传导等能力并入引擎主链。
 4. `_ref` 缺失或空值时统一回退为 `404` 并记录 warning，不允许直接崩溃。
 5. `description/` 仅用于 user-plan 交流；implement 默认以 `repo_memory/` 为标准源。
-6. delete 捋枝必须按树结构语义执行：先提升并重挂子节点，再移除 delete 结点及其删除目标，禁止产生孤儿枝。
+6. delete 在当前 forest 模型中视为无 source-path 的叶请求；若最终有效叶为 delete，则折叠为对根 target 的删除请求并在执行阶段删除该目标文件。
 
 ## 历史映射风险定义（replace）
 1. 风险核心：避免“本该使用 A 的位置误用为 E”。

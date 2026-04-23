@@ -578,6 +578,161 @@ class EngineTests(unittest.TestCase):
             self.assertEqual(result["final_mapping"][0]["path"], target)
             self.assertEqual(result["final_mapping"][0]["request"]["path"], chosen_src)
 
+    def test_branch_without_decision_uses_highest_action_order(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            for modid in ("100", "101", "200"):
+                (tmp_path / "mods" / modid).mkdir(parents=True)
+            src_100 = tmp_path / "mods" / "100" / "a.txt"
+            src_101 = tmp_path / "mods" / "101" / "a.txt"
+            src_100.write_text("x", encoding="utf-8")
+            src_101.write_text("y", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:200",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                                "action_order": 1,
+                            }
+                        ],
+                    },
+                    {
+                        "mixed_id": "270150:101",
+                        "sub": [],
+                        "def_destin": "270150:200",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                                "action_order": 9,
+                            }
+                        ],
+                    },
+                    {
+                        "mixed_id": "270150:200",
+                        "sub": ["270150:100", "270150:101"],
+                        "def_destin": "270150:0",
+                        "def_action": "hold",
+                        "actionlist": [],
+                    },
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(len(result["final_mapping"]), 1)
+            self.assertEqual(result["final_mapping"][0]["request"]["path"], str(src_101).replace("\\", "/"))
+
+    def test_branch_with_zero_action_order_raises_conflict_error(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            for modid in ("100", "101", "200"):
+                (tmp_path / "mods" / modid).mkdir(parents=True)
+            (tmp_path / "mods" / "100" / "a.txt").write_text("x", encoding="utf-8")
+            (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": [],
+                        "def_destin": "270150:200",
+                        "def_action": "replace",
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 0}],
+                    },
+                    {
+                        "mixed_id": "270150:101",
+                        "sub": [],
+                        "def_destin": "270150:200",
+                        "def_action": "replace",
+                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 3}],
+                    },
+                    {
+                        "mixed_id": "270150:200",
+                        "sub": ["270150:100", "270150:101"],
+                        "def_destin": "270150:0",
+                        "def_action": "hold",
+                        "actionlist": [],
+                    },
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            self.assertTrue(any(e.startswith("E_ACTION_ORDER_CONFLICT") for e in result["errors"]))
+            self.assertEqual(result["final_mapping"], [])
+
+    def test_delete_leaf_is_promoted_to_target_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            for modid in ("100", "200", "300"):
+                (tmp_path / "mods" / modid).mkdir(parents=True)
+            (tmp_path / "mods" / "100" / "s").mkdir(parents=True)
+            (tmp_path / "mods" / "100" / "s" / "a.txt").write_text("x", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "sub": ["270150:300"],
+                        "def_destin": "270150:200",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["s/a.txt"],
+                                "from_type": "file",
+                                "into": ["d/"],
+                                "into_type": "path",
+                                "action_order": 10,
+                            }
+                        ],
+                    },
+                    {
+                        "mixed_id": "270150:300",
+                        "sub": [],
+                        "def_destin": "270150:100",
+                        "def_action": "delete",
+                        "actionlist": [
+                            {
+                                "action": "delete",
+                                "into": ["s/a.txt"],
+                                "into_type": "file",
+                                "action_order": 99,
+                            }
+                        ],
+                    },
+                    {
+                        "mixed_id": "270150:200",
+                        "sub": ["270150:100"],
+                        "def_destin": "270150:0",
+                        "def_action": "hold",
+                        "actionlist": [],
+                    },
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            target = str(tmp_path / "mods" / "200" / "d" / "a.txt").replace("\\", "/")
+            picked = next((e for e in result["final_mapping"] if e["path"] == target), None)
+            self.assertIsNotNone(picked)
+            self.assertEqual(picked["request"]["action"], "delete")
+            self.assertEqual(picked["request"]["path"], "!")
+            self.assertTrue(any("W_DELETE_LEAF_PROMOTED" in w for w in result["warnings"]))
+
     # ── file-level cycle detection ─────────────────────────────────────────────
 
     def test_no_cycle_returns_empty(self) -> None:
