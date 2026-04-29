@@ -467,6 +467,24 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
         chain = " -> ".join(cycle)
         errors.append(f"E_FILE_CIRCULAR_DEP: {chain}")
 
+    # ── same-mod dedup: within a single mixed_id's actionlist, later actions win ──
+    for target, node in mapping.items():
+        requests = node["changerequest"]
+        if len(requests) <= 1:
+            continue
+        seen: dict[str, int] = {}
+        deduped: list[dict[str, Any]] = []
+        for req in requests:
+            mid = req.get("mixed_id", "")
+            if mid and mid in seen:
+                # Replace previous entry from same mod — later action wins
+                deduped[seen[mid]] = req
+            else:
+                if mid:
+                    seen[mid] = len(deduped)
+                deduped.append(req)
+        node["changerequest"] = deduped
+
     # ── validate branch_decisions keys against actual branched targets ──────────
     branched_targets: set[str] = {
         t for t, n in mapping.items() if len(n["changerequest"]) > 1
