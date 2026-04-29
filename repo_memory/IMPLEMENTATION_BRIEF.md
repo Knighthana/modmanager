@@ -6,7 +6,9 @@
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
-| 聚合器 + M1 引擎重构 | **done** | 243 测试全部通过；4 Task 完成 | commit `0a145f4` |
+| Phase 1: Bootstrap & Orchestration | **inquiry** | 见 `direct/QUESTIONS_BOOTSTRAP.md` | 8 个待决策问题 |
+| 聚合器 + M1 引擎重构 | done | 243 测试全部通过 | commit `0a145f4` |
+| 同 mod 冲突自动裁决 | done | 120→0 冲突 | commit `428bb79` |
 | 文档入口迁移到 repo_memory | done | `README.md` 明确入口 | 已完成 |
 | discovery pipeline 扩展多库 | done | `discover_steam_libraries` 解析主 VDF 并扩展库 | 已完成 |
 | database 输出 `steamlib[].game` | done | 结构中存在 `steamlib[].game` | 已完成 |
