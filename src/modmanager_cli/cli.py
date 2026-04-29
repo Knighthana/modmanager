@@ -111,9 +111,9 @@ def build_db_parser() -> argparse.ArgumentParser:
 
 
 def build_visualize_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Render forest JSON to ascii/dot/svg.")
+    parser = argparse.ArgumentParser(description="Render forest JSON to ascii/dot/svg/html.")
     parser.add_argument("--forest", required=True, help="Path to forest json or compute result json")
-    parser.add_argument("--format", default="ascii", help="ascii | dot | svg")
+    parser.add_argument("--format", default="ascii", help="ascii | dot | svg | html")
     parser.add_argument(
         "--show-m1-details",
         action=argparse.BooleanOptionalAction,

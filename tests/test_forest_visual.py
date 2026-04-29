@@ -186,6 +186,44 @@ class ForestVisualTests(unittest.TestCase):
         self.assertIn("provenance=rule:abc", out)
         self.assertIn("sidecar=sidecar:def", out)
 
+    def test_html_output_contains_tabs_and_sections(self) -> None:
+        payload = {
+            "warnings": ["W1"],
+            "errors": ["E1"],
+            "final_mapping": [
+                {
+                    "path": "/dst/a.txt",
+                    "mixed_id": "270150:100",
+                    "hashtype": "sha256",
+                    "hashvalue": "abc",
+                }
+            ],
+            "forest": [
+                {
+                    "path": "/dst/a.txt",
+                    "changerequest": [
+                        {
+                            "path": "/src/a.txt",
+                            "action": "replace",
+                            "mixed_id": "270150:100",
+                            "hashtype": "sha256",
+                            "hashvalue": "abc",
+                        }
+                    ],
+                }
+            ],
+        }
+
+        out = visualize_payload(payload, "html")
+        self.assertIn("<!doctype html>", out.lower())
+        self.assertIn('data-tab="forest-tab"', out)
+        self.assertIn('data-tab="issues-tab"', out)
+        self.assertIn('data-tab="mapping-tab"', out)
+        self.assertIn("Wheel to zoom, drag to pan.", out)
+        self.assertIn("/dst/a.txt", out)
+        self.assertIn("W1", out)
+        self.assertIn("E1", out)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -140,6 +140,58 @@ class CliDatabaseOpsTests(unittest.TestCase):
             self.assertEqual(code, 6)
             self.assertIn("failed to write visualization output", err.getvalue())
 
+    def test_visualize_html_command_outputs_html(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            forest_path = Path(td) / "forest.json"
+            write_json_file(
+                forest_path,
+                {
+                    "warnings": ["W1"],
+                    "errors": ["E1"],
+                    "final_mapping": [
+                        {
+                            "path": "/dst/a.txt",
+                            "mixed_id": "270150:100",
+                            "hashtype": "sha256",
+                            "hashvalue": "abc",
+                        }
+                    ],
+                    "forest": [
+                        {
+                            "path": "/dst/a.txt",
+                            "changerequest": [
+                                {
+                                    "path": "/src/a.txt",
+                                    "action": "replace",
+                                    "mixed_id": "270150:100",
+                                    "hashtype": "sha256",
+                                    "hashvalue": "abc",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            )
+
+            with patch(
+                "sys.argv",
+                [
+                    "modmanger-cli",
+                    "visualize",
+                    "--forest",
+                    str(forest_path),
+                    "--format",
+                    "html",
+                ],
+            ):
+                with patch("sys.stdout", new_callable=io.StringIO) as out:
+                    code = main()
+
+            self.assertEqual(code, 0)
+            html = out.getvalue().lower()
+            self.assertIn("<!doctype html>", html)
+            self.assertIn("warnings / errors", html)
+
     def test_steamlib_add_command_updates_database_file(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             db_path = Path(td) / "database.json"
