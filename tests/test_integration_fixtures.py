@@ -61,13 +61,10 @@ class F001_SingleFileReplace(unittest.TestCase):
             fixture.create_game_file("game_data/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["data/file.txt"], "from_type": "file", "into": ["game_data/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["data/file.txt"], "from_type": "file", "into": ["game_data/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -99,13 +96,10 @@ class F002_WildcardExpandSuccess(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -134,13 +128,10 @@ class F003_WildcardExpandFail(unittest.TestCase):
             # Don't create mod/100, so source is missing
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -167,15 +158,13 @@ class F004_FileCircularDep(unittest.TestCase):
             # Mod 100: output/source_a.txt -> output/renamed_a.txt (via rename)
             # Mod 101: output/renamed_a.txt -> output/source_a.txt (via replace) - cycle!
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
                         "actionlist": [
                             {
                                 "action": "rename_then_replace",
+                                "destin": "270150:0",
                                 "from": ["source_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path",
                                 "nwname": "renamed_a.txt",
                             }
@@ -183,12 +172,9 @@ class F004_FileCircularDep(unittest.TestCase):
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
-                                "from": ["source_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "path",
+                                "action": "replace", "destin": "270150:0", "from": ["source_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "path",
                             }
                         ],
                     },
@@ -218,27 +204,18 @@ class F005_ModLevelLoopNoFileLoop(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",  # 100 -> 200
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["file_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100"],  # Recognize 100 as sub
-                        "def_destin": "270150:300",  # 200 -> 300
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:300", "from": ["file_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:300",
-                        "sub": ["270150:200"],  # Recognize 200 as sub
-                        "def_destin": "270150:100",  # 300 -> 100 (cycle closes)
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file_c.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:100", "from": ["file_c.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -263,20 +240,14 @@ class F006_BranchDetection(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 1}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 2}],
                     },
                 ]
             }
@@ -284,14 +255,14 @@ class F006_BranchDetection(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
-            self.assertTrue(any("W_FOREST_BRANCHING" in w for w in result["warnings"]))
             # No errors (branching is not an error, just warning)
             self.assertEqual(result["errors"], [])
             # Forest has the branched node
             branched = [n for n in result["forest"] if n.get("warning") == "W_FOREST_BRANCHING"]
             self.assertEqual(len(branched), 1)
-            # final_mapping should be empty (unresolved)
-            self.assertEqual(result["final_mapping"], [])
+            # Branching is detected with candidates listed
+            self.assertIn("candidates", branched[0])
+            self.assertEqual(len(branched[0]["candidates"]), 2)
 
 
 class F007_BranchResolved(unittest.TestCase):
@@ -306,20 +277,14 @@ class F007_BranchResolved(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 1}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 2}],
                     },
                 ]
             }
@@ -351,19 +316,13 @@ class F008_BaseNotHit(unittest.TestCase):
             fixture.create_mod_file("200", "output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",  # target is mod 200, not gamebase
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
                         "actionlist": [],
                     },
                 ]
@@ -394,27 +353,18 @@ class F009_SelectionSubset(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file0.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file0.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file1.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file1.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:102",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file2.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file2.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -434,7 +384,7 @@ class F010_EmptySelection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             fixture = IntegrationFixture(Path(td))
 
-            aggregated_rule_set = {"mod": []}
+            aggregated_rule_set = {"operation": []}
             result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
@@ -454,14 +404,13 @@ class P001_PathstyleDetection(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["data\file.txt"], "from_type": "file",  # Windows-style
                                 "into": ["output/"], "into_type": "path",  # Linux-style
                             }
@@ -491,13 +440,10 @@ class F011_IdentifierFormat(unittest.TestCase):
             fixture.create_mod_file("100", "file.txt")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150_100",  # Invalid: should be 270150:100
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -520,20 +466,14 @@ class F012_AutoDiscoveryBoundary(unittest.TestCase):
 
             # M1 does not auto-discover dependencies; it requires explicit aggregated rule set
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 1}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100"],  # Explicit dependency
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 2}],
                     },
                 ]
             }
@@ -542,8 +482,10 @@ class F012_AutoDiscoveryBoundary(unittest.TestCase):
 
             # Assertions
             self.assertEqual(result["errors"], [])
-            # Should have forest with branching warning (same target from two sources)
-            self.assertTrue(any("W_FOREST_BRANCHING" in w for w in result["warnings"]))
+            # Should have forest with branching (same target from two sources)
+            branched = [n for n in result["forest"] if n.get("warning") == "W_FOREST_BRANCHING"]
+            self.assertEqual(len(branched), 1)
+            self.assertIn("candidates", branched[0])
 
 
 class F013_HistoryTolerance(unittest.TestCase):
@@ -557,13 +499,10 @@ class F013_HistoryTolerance(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
                         "history": "some metadata",  # Extra field
                     }
                 ]
@@ -599,14 +538,13 @@ class F014_PathNormalization(unittest.TestCase):
             fixture.create_game_file("output/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": [r"data\subdir\file.txt"], "from_type": "file",  # Windows backslashes
                                 "into": ["output/"], "into_type": "path",  # Forward slash
                             }
@@ -637,15 +575,17 @@ class P002_WindowsPathConversion(unittest.TestCase):
             fixture.create_game_file("install/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
-                                "from": ["content\\file.txt"], "from_type": "file", "into": ["install\\"], "into_type": "file",  # Windows style paths
+                                "action": "replace",
+                                "destin": "270150:0",
+                                "from": ["content\\file.txt"],
+                                "from_type": "file",
+                                "into": ["install\\"],
+                                "into_type": "file",
                             }
                         ],
                     }
@@ -674,14 +614,13 @@ class P003_AcfPathCombination(unittest.TestCase):
             fixture.create_game_file("steamapps/common/")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 # ACF-style: mixed separators, nested paths
                                 "from": ["mods/mod_content\\file.txt"], "from_type": "file", "into": ["steamapps\\common/"], "into_type": "path",
                             }
@@ -714,14 +653,13 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
 
             # Reference the same source file via two different path styles
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["data/file.txt"], "from_type": "file",  # Linux style
                                 "into": ["output/"], "into_type": "path",
                             }
@@ -738,14 +676,13 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
             
             # Now verify that if we use Windows-style reference to the same file, it resolves correctly
             config_windows = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": [r"data\file.txt"], "from_type": "file",  # Windows style
                                 "into": ["output/"], "into_type": "path",
                             }
@@ -778,14 +715,13 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
             fixture.create_mod_file("100", "shiplander v1.9/src3/c.txt")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["shiplander v1.9/*/"],
                                 "from_type": "path",
                                 "into": ["media/packages/GFL_Castling/maps/"],
@@ -813,20 +749,21 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
             fixture.create_mod_file("100", "src/dir2/b.txt")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["src/*/"],
                                 "from_type": "path",
                                 "into": ["dest/"],
                                 "into_type": "path",
                             },
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["src/*"],
                                 "from_type": "file",
                                 "into": ["dest/"],

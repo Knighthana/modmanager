@@ -288,59 +288,26 @@ def find_cycles(edges: dict[str, set[str]]) -> list[list[str]]:
     return cycles
 
 
-def validate_forest_roots(
-    forest: list[dict[str, Any]],
-    mod_index: dict[str, Any],
-) -> list[str]:
-    """Return warnings for any forest root node whose destination mod is
-    listed as a ``sub`` of another mod.
-
-    In the mapping forest every top-level node is a *root* — the final
-    destination of its changerequest chain.  Sub-mods are, by design,
-    pure sources; they should never appear as the final destination of a
-    chain.  A violation indicates a likely configuration error.
-
-    Also emits ``W_GAMEBASE_NOT_ROOT`` when gamebase (numeric modid ``0``)
-    does **not** appear among the root ``destin_mixed_id`` values *and* the
-    forest is non-empty (acceptance check).
-    """
-    warnings: list[str] = []
-    if not forest:
-        return warnings
-
-    # Build set of all mixed_ids that appear in someone's ``sub`` list.
-    sub_mods: set[str] = set()
-    for mod_obj in mod_index.values():
-        for s in mod_obj.get("sub", []):
-            if isinstance(s, str):
-                sub_mods.add(s)
-
-    # Collect root destin_mixed_ids from the forest.
-    root_destins: set[str] = set()
-    for node in forest:
-        dmid = node.get("destin_mixed_id", "")
-        if dmid:
-            root_destins.add(dmid)
-
-    # Sub-mod appearing as root → configuration error.
-    for dmid in sorted(root_destins):
-        if dmid in sub_mods:
-            warnings.append(f"W_SUB_AS_ROOT: {dmid}")
-
-    # Acceptance check: gamebase (modid == '0') should be in roots when
-    # the forest is non-empty.
-    has_gamebase = any(
-        dmid.split(":", 1)[1] == "0"
-        for dmid in root_destins
-        if ":" in dmid
-    )
-    if not has_gamebase:
-        warnings.append("W_GAMEBASE_NOT_ROOT: gamebase (modid 0) is absent from forest roots")
-
-    return warnings
-
-
 def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any], branch_decisions: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Compute file mapping from an aggregated rule set.
+
+    The input ``aggregated_rule_set`` uses the ``"operation"`` key (instead of
+    ``"mod"``) and each action carries its own explicit ``action`` and ``destin``
+    fields (inheritance has been resolved by the aggregator).  Permission checks
+    (``sub``, ``game``) are the aggregator's responsibility and are no longer
+    performed here.
+
+    Args:
+        aggregated_rule_set: The aggregated rule set produced by
+            ``rule_aggregator.aggregate()``.
+        database: The game database (for file-tree lookups and game index).
+        branch_decisions: Optional explicit branch decisions for resolving
+            multi-source targets.
+
+    Returns:
+        A dict with keys ``"warnings"``, ``"errors"``, ``"forest"``, and
+        ``"final_mapping"``.
+    """
     branch_decisions = branch_decisions or {}
 
     # ── input structure validation ──────────────────────────────────────────────
@@ -360,11 +327,11 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
     errors: list[str] = []
 
     game_index = build_game_index(database)
-    mods = [m for m in aggregated_rule_set.get("mod", []) if isinstance(m, dict)]
-    mod_index = {m.get("mixed_id", ""): m for m in mods if isinstance(m.get("mixed_id"), str)}
+    operations = [m for m in aggregated_rule_set.get("operation", []) if isinstance(m, dict)]
+    op_index = {m.get("mixed_id", ""): m for m in operations if isinstance(m.get("mixed_id"), str)}
 
-    valid_actor_mods: set[str] = set()
-    for mixed_id, mod_obj in mod_index.items():
+    valid_actor_operations: set[str] = set()
+    for mixed_id, op_obj in op_index.items():
         if not mixed_id or ":" not in mixed_id:
             warnings.append(f"W_INVALID_MIXED_ID: {mixed_id!r}")
             continue
@@ -373,18 +340,16 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             if not root or not Path(root).exists():
                 warnings.append(f"W_LOCAL_MOD_MISSING: {mixed_id}")
                 continue
-        valid_actor_mods.add(mixed_id)
+        valid_actor_operations.add(mixed_id)
 
     clear_copy_dirs: dict[str, str] = {}
     mapping: dict[str, dict[str, Any]] = {}
     edges: dict[str, set[str]] = {}
 
-    for actor_id, mod_obj in mod_index.items():
-        if actor_id not in valid_actor_mods:
+    for actor_id, op_obj in op_index.items():
+        if actor_id not in valid_actor_operations:
             continue
-        def_destin = mod_obj.get("def_destin", "")
-        def_action = mod_obj.get("def_action", "hold")
-        actionlist = mod_obj.get("actionlist", [])
+        actionlist = op_obj.get("actionlist", [])
         source_root = mod_root_from_mixed_id(actor_id, game_index)
         if not source_root:
             warnings.append(f"W_MISSING_SOURCE_ROOT: {actor_id}")
@@ -393,8 +358,8 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
         for idx, item in enumerate(actionlist):
             if not isinstance(item, dict):
                 continue
-            action = str(item.get("action", def_action))
-            destin = str(item.get("destin", def_destin))
+            action = str(item.get("action", ""))
+            destin = str(item.get("destin", ""))
             if action not in VALID_ACTIONS:
                 warnings.append(f"W_INVALID_ACTION: {actor_id}#{idx}:{action}")
                 continue
@@ -404,12 +369,6 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             if _is_none_destin(destin):
                 warnings.append(f"W_DESTIN_NONE_SKIPPED: {actor_id}#{idx}:action={action}:destin=none")
                 continue
-
-            if destin in mod_index and destin != actor_id:
-                target_sub = mod_index[destin].get("sub", [])
-                if actor_id not in target_sub:
-                    warnings.append(f"W_SUB_NOT_RECOGNIZED: {actor_id} -> {destin}")
-                    continue
 
             dest_root = mod_root_from_mixed_id(destin, game_index)
             if not dest_root:
@@ -566,8 +525,6 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
     if errors:
         final_mapping = []
 
-    warnings.extend(validate_forest_roots(forest, mod_index))
-
     return {
         "warnings": warnings,
         "errors": errors,
@@ -576,4 +533,4 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
     }
 
 
-__all__ = ["compute_mapping", "validate_branch_decisions_schema", "find_cycles", "validate_forest_roots", "_check_filefoldertree_transition"]
+__all__ = ["compute_mapping", "validate_branch_decisions_schema", "find_cycles", "_check_filefoldertree_transition"]

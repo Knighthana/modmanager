@@ -2,10 +2,11 @@
 
 ## Status Board
 
-更新时间：2026-04-21
+更新时间：2026-04-30
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
+| 聚合器 + M1 引擎重构 | pending | 见 `direct/TASKS_AGGREGATOR_M1.md` | 4 个 Task，待 smith 执行 |
 | 文档入口迁移到 repo_memory | done | `README.md` 明确入口 | 已完成 |
 | discovery pipeline 扩展多库 | done | `discover_steam_libraries` 解析主 VDF 并扩展库 | 已完成 |
 | database 输出 `steamlib[].game` | done | 结构中存在 `steamlib[].game` | 已完成 |

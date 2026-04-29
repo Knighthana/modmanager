@@ -9,7 +9,6 @@ from modmanager_cli.engine import (
     find_cycles,
     validate_branch_decisions_schema,
 )
-from modmanager_cli.engine import validate_forest_roots
 
 
 class EngineTests(unittest.TestCase):
@@ -41,13 +40,10 @@ class EngineTests(unittest.TestCase):
             (target_dir / "a.txt").write_text("old", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "create",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
+                        "actionlist": [{"action": "create", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -67,20 +63,14 @@ class EngineTests(unittest.TestCase):
                 (mroot / "a.txt").write_text("x", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"action": "clear_then_copy", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "clear_then_copy", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"action": "clear_then_copy", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "clear_then_copy", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -89,51 +79,15 @@ class EngineTests(unittest.TestCase):
             self.assertTrue(any(e.startswith("E_CLEAR_THEN_COPY_CONFLICT") for e in result["errors"]))
             self.assertEqual(result["final_mapping"], [])
 
-    def test_sub_not_recognized_rule_is_skipped(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            tmp_path = Path(td)
-            db = self._mk_db(tmp_path)
-            src_mod = tmp_path / "mods" / "100"
-            dst_mod = tmp_path / "mods" / "200"
-            src_mod.mkdir(parents=True)
-            dst_mod.mkdir(parents=True)
-            (src_mod / "a.txt").write_text("x", encoding="utf-8")
-
-            aggregated_rule_set = {
-                "mod": [
-                    {
-                        "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
-                    },
-                    {
-                        "mixed_id": "270150:200",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
-                    },
-                ]
-            }
-
-            result = compute_mapping(aggregated_rule_set, db)
-            self.assertTrue(any("W_SUB_NOT_RECOGNIZED" in w for w in result["warnings"]))
-            self.assertEqual(result["forest"], [])
-
     def test_local_mod_missing_is_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = self._mk_db(tmp_path)
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:local_dev_mod",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -151,14 +105,13 @@ class EngineTests(unittest.TestCase):
             (src_mod / "a.txt").write_text("x", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "none",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "none",
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
@@ -183,13 +136,10 @@ class EngineTests(unittest.TestCase):
             src_mod.mkdir(parents=True)
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "none",
-                        "def_action": "hold",
-                        "actionlist": [{"into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "none", "into": ["d/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -251,12 +201,9 @@ class EngineTests(unittest.TestCase):
             ]
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": action_items,
                     }
                 ]
@@ -278,12 +225,9 @@ class EngineTests(unittest.TestCase):
             (src_mod / "a.txt").write_text("x", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
                                 "action": "replace",
@@ -312,14 +256,13 @@ class EngineTests(unittest.TestCase):
             (src_mod / "a.txt").write_text("x", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
@@ -349,14 +292,13 @@ class EngineTests(unittest.TestCase):
             (src_mod / "a.txt").write_text("x", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
@@ -386,27 +328,18 @@ class EngineTests(unittest.TestCase):
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 0}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 3}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100", "270150:101"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -454,7 +387,7 @@ class EngineTests(unittest.TestCase):
     # ── branch decision schema validation ─────────────────────────────────
 
     def test_branch_decisions_schema_must_be_dict(self) -> None:
-        result = compute_mapping({"mod": []}, {"game": []}, branch_decisions=["bad"])
+        result = compute_mapping({"operation": []}, {"game": []}, branch_decisions=["bad"])
         self.assertTrue(any("E_BRANCH_DECISION_INVALID_SCHEMA" in e for e in result["errors"]))
 
     def test_branch_decisions_key_must_be_string(self) -> None:
@@ -477,13 +410,10 @@ class EngineTests(unittest.TestCase):
             src.mkdir(parents=True)
             (src / "a.txt").write_text("x", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -500,27 +430,18 @@ class EngineTests(unittest.TestCase):
             (tmp_path / "mods" / "100" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100", "270150:101"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -543,27 +464,18 @@ class EngineTests(unittest.TestCase):
             (tmp_path / "mods" / "100" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100", "270150:101"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -590,14 +502,13 @@ class EngineTests(unittest.TestCase):
             src_101.write_text("y", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:200",
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
@@ -608,11 +519,10 @@ class EngineTests(unittest.TestCase):
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:200",
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
@@ -623,10 +533,7 @@ class EngineTests(unittest.TestCase):
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100", "270150:101"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -646,27 +553,18 @@ class EngineTests(unittest.TestCase):
             (tmp_path / "mods" / "101" / "a.txt").write_text("y", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 0}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "sub": [],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 3}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100", "270150:101"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -685,14 +583,13 @@ class EngineTests(unittest.TestCase):
             (tmp_path / "mods" / "100" / "s" / "a.txt").write_text("x", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": ["270150:300"],
-                        "def_destin": "270150:200",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:200",
                                 "from": ["s/a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
@@ -703,12 +600,10 @@ class EngineTests(unittest.TestCase):
                     },
                     {
                         "mixed_id": "270150:300",
-                        "sub": [],
-                        "def_destin": "270150:100",
-                        "def_action": "delete",
                         "actionlist": [
                             {
                                 "action": "delete",
+                                "destin": "270150:100",
                                 "into": ["s/a.txt"],
                                 "into_type": "file",
                                 "action_order": 99,
@@ -717,10 +612,7 @@ class EngineTests(unittest.TestCase):
                     },
                     {
                         "mixed_id": "270150:200",
-                        "sub": ["270150:100"],
-                        "def_destin": "270150:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -802,14 +694,13 @@ class EngineTests(unittest.TestCase):
             (src_root / "src3").mkdir(parents=True)
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["v1.9/*/"],
                                 "from_type": "path",
                                 "into": ["maps/"],
@@ -839,14 +730,13 @@ class EngineTests(unittest.TestCase):
             (src_root / "nested" / "deep.txt").write_text("y", encoding="utf-8")
 
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "sub": [],
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
                         "actionlist": [
                             {
+                                "action": "replace",
+                                "destin": "270150:0",
                                 "from": ["src/*"],
                                 "from_type": "file",
                                 "into": ["out/"],
@@ -870,60 +760,4 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class ValidateForestRootsTests(unittest.TestCase):
-    """Unit tests for validate_forest_roots()."""
 
-    def _make_mod_index(self, entries: list[dict]) -> dict:
-        return {m["mixed_id"]: m for m in entries}
-
-    def test_empty_forest_returns_no_warnings(self):
-        warnings = validate_forest_roots([], self._make_mod_index([]))
-        self.assertEqual(warnings, [])
-
-    def test_gamebase_as_root_no_warnings(self):
-        forest = [{"path": "/game/data/file.txt", "destin_mixed_id": "270150:0", "changerequest": []}]
-        mod_index = self._make_mod_index([
-            {"mixed_id": "270150:0", "sub": []},
-            {"mixed_id": "270150:999", "sub": []},
-        ])
-        warnings = validate_forest_roots(forest, mod_index)
-        self.assertFalse(any("W_GAMEBASE_NOT_ROOT" in w for w in warnings))
-        self.assertFalse(any("W_SUB_AS_ROOT" in w for w in warnings))
-
-    def test_sub_as_root_emits_warning(self):
-        # 270150:200 is listed as sub of 270150:300 but appears as a root destin
-        forest = [{"path": "/mods/200/file.txt", "destin_mixed_id": "270150:200", "changerequest": []}]
-        mod_index = self._make_mod_index([
-            {"mixed_id": "270150:200", "sub": []},
-            {"mixed_id": "270150:300", "sub": ["270150:200"]},
-        ])
-        warnings = validate_forest_roots(forest, mod_index)
-        self.assertTrue(any("W_SUB_AS_ROOT" in w and "270150:200" in w for w in warnings))
-
-    def test_non_sub_dom_mod_as_root_no_sub_warning(self):
-        forest = [{"path": "/mods/300/file.txt", "destin_mixed_id": "270150:300", "changerequest": []}]
-        mod_index = self._make_mod_index([
-            {"mixed_id": "270150:200", "sub": []},
-            {"mixed_id": "270150:300", "sub": ["270150:200"]},
-        ])
-        warnings = validate_forest_roots(forest, mod_index)
-        self.assertFalse(any("W_SUB_AS_ROOT" in w for w in warnings))
-
-    def test_missing_gamebase_emits_warning(self):
-        # Forest has entries but none belongs to modid 0
-        forest = [{"path": "/mods/300/file.txt", "destin_mixed_id": "270150:300", "changerequest": []}]
-        mod_index = self._make_mod_index([
-            {"mixed_id": "270150:300", "sub": []},
-        ])
-        warnings = validate_forest_roots(forest, mod_index)
-        self.assertTrue(any("W_GAMEBASE_NOT_ROOT" in w for w in warnings))
-
-    def test_node_without_destin_mixed_id_ignored(self):
-        # Legacy node with no destin_mixed_id should not crash
-        forest = [{"path": "/mods/300/file.txt", "changerequest": []}]
-        mod_index = self._make_mod_index([
-            {"mixed_id": "270150:300", "sub": []},
-        ])
-        # Should run without exception; W_GAMEBASE_NOT_ROOT expected since root_destins is empty
-        warnings = validate_forest_roots(forest, mod_index)
-        self.assertIsInstance(warnings, list)

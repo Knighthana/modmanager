@@ -7,18 +7,15 @@ from modmanager_cli.validation import validate_aggregated_rule_set, validate_dat
 
 class ValidateAggregatedRuleSetTests(unittest.TestCase):
     def test_valid_minimal_aggregated_rule_set(self):
-        aggregated_rule_set = {"mod": []}
+        aggregated_rule_set = {"operation": []}
         errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertEqual(errs, [])
 
-    def test_valid_single_mod(self):
+    def test_valid_single_operation(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "hold",
                     "actionlist": [],
                 }
             ]
@@ -30,82 +27,49 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
         errs = validate_aggregated_rule_set([])
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e for e in errs))
 
-    def test_aggregated_rule_set_missing_mod_key(self):
+    def test_aggregated_rule_set_missing_operation_key(self):
         errs = validate_aggregated_rule_set({"other": []})
-        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "mod" in e for e in errs))
+        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "operation" in e for e in errs))
 
-    def test_mod_not_list(self):
-        errs = validate_aggregated_rule_set({"mod": "not_a_list"})
+    def test_operation_not_list(self):
+        errs = validate_aggregated_rule_set({"operation": "not_a_list"})
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "list" in e for e in errs))
 
-    def test_mod_entry_not_dict(self):
-        errs = validate_aggregated_rule_set({"mod": ["string_entry"]})
+    def test_operation_entry_not_dict(self):
+        errs = validate_aggregated_rule_set({"operation": ["string_entry"]})
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e for e in errs))
 
     def test_mixed_id_missing(self):
-        errs = validate_aggregated_rule_set({"mod": [{"other_field": "value"}]})
+        errs = validate_aggregated_rule_set({"operation": [{"other_field": "value"}]})
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "mixed_id" in e for e in errs))
 
     def test_mixed_id_not_string(self):
-        errs = validate_aggregated_rule_set({"mod": [{"mixed_id": 123}]})
+        errs = validate_aggregated_rule_set({"operation": [{"mixed_id": 123}]})
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "mixed_id" in e for e in errs))
 
     def test_mixed_id_empty(self):
-        errs = validate_aggregated_rule_set({"mod": [{"mixed_id": ""}]})
+        errs = validate_aggregated_rule_set({"operation": [{"mixed_id": ""}]})
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "empty" in e for e in errs))
 
     def test_mixed_id_invalid_format(self):
-        errs = validate_aggregated_rule_set({"mod": [{"mixed_id": "270150"}]})  # missing modid part
+        errs = validate_aggregated_rule_set({"operation": [{"mixed_id": "270150"}]})  # missing modid part
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "appid:modid" in e for e in errs))
 
     def test_mixed_id_not_unique(self):
         aggregated_rule_set = {
-            "mod": [
-                {"mixed_id": "270150:100", "sub": [], "def_destin": "270150:0", "def_action": "hold", "actionlist": []},
-                {"mixed_id": "270150:100", "sub": [], "def_destin": "270150:0", "def_action": "hold", "actionlist": []},
+            "operation": [
+                {"mixed_id": "270150:100", "actionlist": []},
+                {"mixed_id": "270150:100", "actionlist": []},
             ]
         }
         errs = validate_aggregated_rule_set(aggregated_rule_set)
         self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "not unique" in e for e in errs))
 
-    def test_def_destin_invalid_format(self):
-        aggregated_rule_set = {
-            "mod": [
-                {
-                    "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "invalid_format",
-                    "def_action": "hold",
-                    "actionlist": [],
-                }
-            ]
-        }
-        errs = validate_aggregated_rule_set(aggregated_rule_set)
-        self.assertTrue(any("E_AGGREGATED_RULE_SET_INVALID" in e and "def_destin" in e for e in errs))
-
-    def test_def_destin_none_allowed(self):
-        aggregated_rule_set = {
-            "mod": [
-                {
-                    "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "none",
-                    "def_action": "hold",
-                    "actionlist": [],
-                }
-            ]
-        }
-        errs = validate_aggregated_rule_set(aggregated_rule_set)
-        self.assertEqual(errs, [])
-
     def test_actionlist_not_list(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "hold",
                     "actionlist": "not_a_list",
                 }
             ]
@@ -115,12 +79,9 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
 
     def test_actionlist_item_not_dict(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "hold",
                     "actionlist": ["not_a_dict"],
                 }
             ]
@@ -130,13 +91,10 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
 
     def test_actionlist_missing_from_for_replace(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "replace",
-                    "actionlist": [{"into": ["data/"], "into_type": "path"}],  # missing 'from'
+                    "actionlist": [{"action": "replace", "destin": "270150:0", "into": ["data/"], "into_type": "path"}],  # missing 'from'
                 }
             ]
         }
@@ -145,13 +103,10 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
 
     def test_actionlist_missing_into_for_replace(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "replace",
-                    "actionlist": [{"from": ["file.txt"], "from_type": "file"}],  # missing 'into'
+                    "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file"}],  # missing 'into'
                 }
             ]
         }
@@ -160,20 +115,17 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
 
     def test_actionlist_destin_invalid_format(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "hold",
                     "actionlist": [
                         {
                             "action": "replace",
+                            "destin": "bad_format",
                             "from": ["file.txt"],
                             "from_type": "file",
                             "into": ["data/"],
                             "into_type": "path",
-                            "destin": "bad_format",
                         }
                     ],
                 }
@@ -184,20 +136,17 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
 
     def test_actionlist_destin_none_allowed(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "replace",
                     "actionlist": [
                         {
                             "action": "replace",
+                            "destin": "none",
                             "from": ["file.txt"],
                             "from_type": "file",
                             "into": ["data/"],
                             "into_type": "path",
-                            "destin": "none",
                         }
                     ],
                 }
@@ -208,14 +157,13 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
 
     def test_actionlist_rejects_file_and_path_type(self):
         aggregated_rule_set = {
-            "mod": [
+            "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "sub": [],
-                    "def_destin": "270150:0",
-                    "def_action": "replace",
                     "actionlist": [
                         {
+                            "action": "replace",
+                            "destin": "270150:0",
                             "from": ["src/*"],
                             "from_type": "file_and_path",
                             "into": ["dest/"],

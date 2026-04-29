@@ -116,7 +116,7 @@ class ContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = _mk_db(tmp_path)
-            result = compute_mapping({"mod": []}, db)
+            result = compute_mapping({"operation": []}, db)
             _assert_valid(self, result)
             self.assertEqual(result["errors"], [])
             self.assertEqual(result["forest"], [])
@@ -132,13 +132,10 @@ class ContractTests(unittest.TestCase):
             src.mkdir(parents=True)
             (src / "a.txt").write_text("x", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "1:10",
-                        "sub": [],
-                        "def_destin": "1:0",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -166,13 +163,10 @@ class ContractTests(unittest.TestCase):
             target_dir.mkdir(parents=True)
             (target_dir / "a.txt").write_text("old", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "1:10",
-                        "sub": [],
-                        "def_destin": "1:0",
-                        "def_action": "create",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
+                        "actionlist": [{"action": "create", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
                     }
                 ]
             }
@@ -182,7 +176,7 @@ class ContractTests(unittest.TestCase):
     # ── schema-error path (invalid branch_decisions type) ────────────────────
 
     def test_schema_error_path_conforms(self) -> None:
-        result = compute_mapping({"mod": []}, {}, branch_decisions=["bad"]) # type: ignore[arg-type]
+        result = compute_mapping({"operation": []}, {}, branch_decisions=["bad"]) # type: ignore[arg-type]
         _assert_valid(self, result)
         self.assertTrue(result["errors"])
         self.assertEqual(result["final_mapping"], [])
@@ -198,20 +192,14 @@ class ContractTests(unittest.TestCase):
                 mroot.mkdir(parents=True)
                 (mroot / "a.txt").write_text("x", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "1:10",
-                        "sub": [],
-                        "def_destin": "1:0",
-                        "def_action": "replace",
-                        "actionlist": [{"action": "clear_then_copy", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "clear_then_copy", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
-                        "sub": [],
-                        "def_destin": "1:0",
-                        "def_action": "replace",
-                        "actionlist": [{"action": "clear_then_copy", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "clear_then_copy", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -231,27 +219,18 @@ class ContractTests(unittest.TestCase):
             (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "1:10",
-                        "sub": [],
-                        "def_destin": "1:20",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
-                        "sub": [],
-                        "def_destin": "1:20",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:20",
-                        "sub": ["1:10", "1:11"],
-                        "def_destin": "1:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -275,27 +254,18 @@ class ContractTests(unittest.TestCase):
             (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "1:10",
-                        "sub": [],
-                        "def_destin": "1:20",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
-                        "sub": [],
-                        "def_destin": "1:20",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:20",
-                        "sub": ["1:10", "1:11"],
-                        "def_destin": "1:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
@@ -321,27 +291,18 @@ class ContractTests(unittest.TestCase):
             (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
             (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
             aggregated_rule_set = {
-                "mod": [
+                "operation": [
                     {
                         "mixed_id": "1:10",
-                        "sub": [],
-                        "def_destin": "1:20",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
-                        "sub": [],
-                        "def_destin": "1:20",
-                        "def_action": "replace",
-                        "actionlist": [{"from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:20",
-                        "sub": ["1:10", "1:11"],
-                        "def_destin": "1:0",
-                        "def_action": "hold",
-                        "actionlist": [],
+                        "actionlist": [{"action": "hold", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }

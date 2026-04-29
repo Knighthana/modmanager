@@ -390,7 +390,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             aggregated_rule_set_path = Path(td) / "aggregated_rule_set.json"
             db_path = Path(td) / "database.json"
-            write_json_file(aggregated_rule_set_path, {"mod": []})
+            write_json_file(aggregated_rule_set_path, {"operation": []})
             write_json_file(db_path, {"game": []})
 
             with patch("modmanager_cli.cli.compute_mapping", return_value={"forest": [], "final_mapping": []}):
