@@ -27,16 +27,31 @@
 
 ---
 
-## Phase 1: Bootstrap & Orchestration（当前阶段）
+## Phase 1: Bootstrap & Orchestrator（当前阶段）
 
-在 Web GUI 之前，需要一个编排层把现有模块串成端到端流水线。
+在 Web GUI 之前，需要初始化和调度层把现有模块串成端到端流水线。
 
 ### 需要新增的模块
 
 | 模块 | 文件 | 职责 |
 |------|------|------|
-| Bootstrap | `src/modmanager_cli/bootstrap.py` | user_config 三级搜索+合并、Steam 数据库一键生成、聚合→映射流水线调度 |
-| Session | `src/modmanager_cli/session.py` | 规则选择列表、偏好设置的持久化 |
+| Bootstrap | `src/modmanager_cli/bootstrap.py` | user_config 三级搜索+合并、Steam 数据库生成 |
+| Orchestrator | `src/modmanager_cli/orchestrator.py` | 流水线调度：接收初始状态，按序驱动聚合→映射→备份→应用；支持进度回调；预留多游戏并行调度扩展点 |
+
+### 模块关系
+
+```
+                     ┌──────────────────┐
+   用户/GUI/CLI →    │   orchestrator   │  run(config, on_progress)
+                     │  (调度入口)        │
+                     └────────┬─────────┘
+                              │ 需要初始数据时调用
+                     ┌────────▼─────────┐
+   可独立测试 →       │    bootstrap     │  discover / generate
+                     └──────────────────┘
+```
+
+各子模块（engine、aggregator、backup_ops）独立存在、可单独测试，orchestrator 只做编排。
 
 ### 待决策事项（Phase 1 提问环节）
 见 `repo_memory/direct/QUESTIONS_BOOTSTRAP.md`
