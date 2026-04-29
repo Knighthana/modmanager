@@ -1,5 +1,9 @@
 # M1 规范实现完成总结
 
+> **2026-04-30 注**：本文档为原始 M1 完成时的历史快照。
+> 后续聚合器设计移除了部分功能（`validate_forest_roots`、`def_destin`/`def_action` 继承解析），
+> 当前权威规范请以 `repo_memory/RULE_AGGREGATION_DESIGN.md` 为准。
+
 ## 📊 项目状态：✅ 完成
 
 ### 执行指标

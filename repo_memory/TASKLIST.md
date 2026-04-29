@@ -41,8 +41,11 @@
 9. 冻结支持场景：`from_type=path` + 目录 glob（如 `shiplander v1.9/*/`）属于 DSL 内支持场景；当前缺口若存在，归因于执行层实现不完整，而非边界外需求。
 
 ## Implement Handoff Notes
-1. `def_action=hold` 只影响未显式声明 `action` 的子条目；显式非 `hold` 子条目仍正常处理。
-2. `hold` 条目不进入解析链，因此不应要求其提供 `from`、`into`、`from_type`、`into_type`。
+> 2026-04-30 更新：`def_action` 继承和 hold 过滤已移交聚合器，M1 不再处理。
+> 每条 action 在进入 M1 时 `action` 和 `destin` 均为显式值。
+
+1. `def_action=hold` 只影响未显式声明 `action` 的子条目；显式非 `hold` 子条目仍正常处理。（聚合器职责）
+2. `hold` 条目不进入解析链，因此不应要求其提供 `from`、`into`、`from_type`、`into_type`。（聚合器过滤阶段）
 3. 两份 `aggregated_rule_set.json.example` 必须保持 repo_memory -> description 的单向镜像同步。
 4. `description/` 只用于 user-plan 交流；implement 默认以 `repo_memory/` 为标准源。
 5. `user_config.json.example` 的权威样例位于 `repo_memory/`，字段固定为 `path_alias`、`path_handle`、`path_target`。

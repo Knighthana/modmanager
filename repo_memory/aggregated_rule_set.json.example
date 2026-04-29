@@ -2,342 +2,240 @@
   "schema_namespace": "KMM_RuleSet",
   "schema_version": "knighthana@0.1.0",
   "file_example_URL": "https://raw.githubusercontent.com/knighthana/",
-  "game": [
-    {
-      "appid": "270150",
-      "modid": ["2606099273", "3428584891", "3430161019", "3445750210", "modder_will_name_this_local_mod_whatever_as_their_will", "prepare_and_receive", "not_every_rule_is_valid"]
-    }
-  ],
-  "mod": [
+  "operation": [
     {
       "mixed_id": "270150:2606099273",
-      "sub": [
-        "270150:3428584891",
-        "270150:3430161019",
-        "270150:modder_will_name_this_local_mod_whatever_as_their_will"
+      "nickname": "GFL_Castling",
+      "preview": [
+        "media/packages/GFL_Castling/orange_cat.ico"
       ],
-      "def_destin": "none",
-      "def_action": "hold",
+      "readme": [
+        "media/packages/GFL_Castling/update_log.md"
+      ],
       "actionlist": [
         {
-          "provenance_ref": "rule_base_path_2:kmm_rule_RWR-khn_CT-castears-z2414_Replace.json",
+          "action": "hold",
+          "destin": "none",
           "action_order": 0,
-          "comment":{
-            "string0":"本条规则并不来自于上面这个文件的解析",
-            "string1":"由于game270150的流程不需要mod2606099273替换其base文件发挥作用, 其的def_action被设置为hold, 这意味着它不需要安装到游戏目录`steamapps/common/RunningWithRifles`中, 不会对游戏base文件进行任何修改",
-            "string2":"因此mod2606099273的actionlist为空,这意味着其不需要任何操作就能正常发挥功能",
-            "string3":"这个对象是为了说明, 即便270150:2606099273的def_action是hold, 其仍然可以有actionlist, 这意味着它仍然可以对其他mod进行操作, 例如删除其他mod的文件等",
-            "string4":"因此mod2606099273的actionlist可以包含一些操作",
-            "string5":"实际处理每个mod的时候以`actionlist`为准",
-            "string6":"每个mod列表中的对象的def_action是`actionlist`的默认值, 如果`actionlist`中的某个操作没有明确指定`action`, 则使用mod对象的`def_action`作为默认值",
-            "string7":"但如果`actionlist`中的对象有自己的`action`, 则处理该对象时以它自己的`action`为准",
-            "string8":"此处对象没有`action`属性, 且亲代`def_action`为`hold`, 因此不处理, 不操作, 就晾在这里不管"
-          },
+          "provenance_ref": "/home/knighthana/workspace/modmanager_cli/description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json",
           "sidecar_ref": "sidecar/provenance/kmm.knighthana.provenancesidecar-20260423.json"
         },
         {
-          "provenance_ref": "404",
-          "action_order": 0,
-          "destin": "270150:3428584891",
           "action": "delete",
+          "destin": "270150:3428584891",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "into": ["media/packages/GFL_Castling/textures/legacy_unused.png"],
-          "into_type": "file",
-          "comment": {
-            "string1": "这个对象显式声明了`action=delete`, 因此不会继承父级的`hold`",
-            "string2": "delete 只读取`into`与`into_type`, `from`和`from_type`即便存在也会被忽略",
-            "string3": "因此它仍然会被正常处理, 不会因为父级`def_action=hold`而被跳过"
-          },
-          "sidecar_ref": "404"
+          "into_type": "file"
         }
       ]
     },
     {
       "mixed_id": "270150:3428584891",
-      "sub": [
-        "270150:prepare_and_receive"
+      "nickname": "weaponpics",
+      "preview": [
+        "weaponpics/使用后.png"
       ],
-      "def_destin": "270150:2606099273",
-      "def_action": "replace",
+      "readme": [
+        "weaponpics/使用说明.txt",
+        "weaponpics/制作人TIANSUO_LI.txt"
+      ],
       "actionlist": [
         {
-          "provenance_ref": "404",
+          "action": "replace",
+          "destin": "270150:2606099273",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["weaponpics/1.6/*.png"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/textures/"],
-          "into_type": "path",
-          "comment": {
-            "string1": "对象中没有`destin`或者`action`属性",
-            "string2": "因此使用mod对象`270150:3428584891`也就是其亲代的`def_destin`和`def_action`作为值",
-            "string3": "`destin`是`270150:2606099273`, `action`是`replace`",
-            "string4": "`270150:2606099273`拆开看, `270150`是`RunningWithRifles`, `2606099273`是它的模组`GFL_Castling`",
-            "string5": "在steam库中, mod以数字content_id的形式管理, 因此`270150:2606099273`就是`steamapps/workshop/content/270150/2606099273/`",
-            "string6": "`replace`的意思是直接复制过去, 不管原本存不存在",
-            "string7": "用shell解释就是`cp -r steamapps/workshop/content/270150/3428584891/weaponpics/1.6/*.png steamapps/workshop/content/270150/2606099273/textures/`, 但是硬盘文件这类I/O操作需要调用系统API提高效率",
-            "string8": "`replace`类`action`必须有有效的`from`与`into`属性, 以便于知道从哪里复制文件到哪里去, 否则为无效操作, 此时报告, 记录, 下一条"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         },
         {
-          "provenance_ref": "404",
-          "action_order": 0,
-          "destin": "270150:2606099273",
           "action": "replace",
+          "destin": "270150:2606099273",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["weaponpics/1.7/*.png"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/textures/"],
-          "into_type": "path",
-          "comment": {
-            "string1": "这个对象明确指定了`destin`和`action`, 因此以它自己的`destin`和`action`为准",
-            "string2": "`destin`是`270150:2606099273`, `action`是`replace`",
-            "string3": "用shell解释就是`cp -r steamapps/workshop/content/270150/3428584891/weaponpics/1.7/*.png steamapps/workshop/content/270150/2606099273/textures/`",
-            "string4": "你可能想问既然destin和replace跟亲代一样为什么要多此一举",
-            "string5": "这是为了说明, 只有未指定`destin`和`action`的对象才会使用亲代的默认值, 一旦指定了自己的`destin`和`action`, 就完全不管亲代的默认值了, 以自己的为准",
-            "string6": "因此这个对象虽然跟亲代的默认值一样, 但它的`destin`和`action`是它自己的, 现在不受亲代的默认值影响, 以后也不会"
-          },
-          "sidecar_ref": "404"
-
+          "into_type": "path"
         },
         {
-          "provenance_ref": "404",
+          "action": "replace",
+          "destin": "270150:2606099273",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["weaponpics/重装部队/*"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/textures/"],
-          "into_type": "path",
-          "sidecar_ref": "404"
+          "into_type": "path"
         },
         {
-          "provenance_ref": "404",
-          "action_order": 0,
-          "destin": "270150:0",
           "action": "create",
+          "destin": "270150:0",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["weaponpics/castears_kawaii.png"],
           "from_type": "file",
           "into": ["media/textures/"],
-          "into_type": "path",
-          "comment": {
-            "string1": "这个对象的`destin`是`270150:0`, 这意味着它的目标是游戏base文件`steamapps/common/RunningWithRifles`",
-            "string2": "这个对象的`action`是`create`, 这意味着它要创建一个新文件",
-            "string3": "`create`与`replace`的区别在于, `aggregated_rule_set.json`的作者使用`create`有意告诉你, 那个位置“之前不该有文件”",
-            "string4": "如果没有文件, 那么皆大欢喜, 用shell解释就是 `cp steamapps/workshop/content/270150/3428584891/weaponpics/castears_kawaii.png steamapps/common/RunningWithRifles/media/textures/castears_kawaii.png`",
-            "string5": "如果已经有文件了呢？该怎么办？向日志中添加一条:",
-            "string6": "yyyymmddHHMMSS 创建`castears_kawaii.png`前已经于`steamapps/common/RunningWithRifles/media/textures/`发现同名文件",
-            "string7": "然后执行的操作用shell解释就是 `cp steamapps/workshop/content/270150/3428584891/weaponpics/castears_kawaii.png steamapps/common/RunningWithRifles/media/textures/castears_kawaii.png`",
-            "string8": "如此处理之后, 虽然不符合预期, 但无论是记录日志, 还是把文件放在指定位置上, 都完成了, 因此继续干后面的事情去"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         }
-      ],
-      "comment":{
-        "string1": "虽然270150:3428584891在270150:2606099273的sub中, 这并不影响它拥有自己的sub"
-      }
+      ]
     },
     {
       "mixed_id": "270150:3430161019",
-      "sub": [],
-      "def_destin": "270150:2606099273",
-      "def_action": "create",
+      "nickname": "bomb_range",
+      "preview": [
+        "bomb_range/实心圈预览图.png"
+      ],
+      "readme": [
+        "bomb_range/使用说明.txt"
+      ],
       "actionlist": [
         {
-          "provenance_ref": "404",
+          "action": "create",
+          "destin": "270150:2606099273",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["bomb_range/particles（c4实心圈）/*.particle"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/particles/"],
-          "into_type": "path",
-          "comment":{
-            "string1": "`def_action`为`create`意味着每一条操作如果没有明确指定`action`, 就默认为`create`",
-            "string2": "参照前面说过的`create`的方法处理就好"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         },
         {
-          "provenance_ref": "404",
-          "action_order": 0,
           "action": "create",
+          "destin": "270150:2606099273",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["bomb_range/ui/radius_marker.png"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/particles/", "media/packages/GFL_Castling/textures/"],
-          "into_type": "path",
-          "comment": {
-            "string1": "这是合法的 into 多值样例: 单一源文件扇出到多个目标目录",
-            "string2": "因为 `from` 只有一个值, 所以不会触发多源多目标禁令",
-            "string3": "如果 `from` 也是多值或含多个展开结果, 那就必须直接报错, 不做笛卡尔扩展"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         }
       ]
     },
     {
       "mixed_id": "270150:3445750210",
+      "nickname": "bluearchive_titlescreen",
       "preview": ["preview.jpg"],
       "readme": ["readme.md"],
-      "sub": [],
-      "def_destin": "270150:0",
-      "def_action": "replace",
       "actionlist": [
         {
-          "provenance_ref": "404",
-          "action_order": 0,
-          "destin" : "270150:0",
           "action": "clear_then_copy",
+          "destin": "270150:0",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["media/packages/vanilla/maps/lobby/"],
           "from_type": "path",
           "into": ["media/packages/vanilla/maps/"],
-          "into_type": "path",
-          "comment":{
-            "string1": "`clear_then_copy`的意思是clear`into`下与`from`同名的文件或者目录, 然后再复制`from`的内容到`into`下",
-            "string2": "`clear_then_copy`是一个过渡期语法, 之后它将被更加正式且语义明确的连续的delete、create两条action所替代",
-            "string3": "在新 DSL 中, `from_type=path` 与 `into_type=path` 的语义是复制目录本身, 因此结果是目标下出现 `.../maps/lobby/`",
-            "string4": "如果想表达复制目录内容, 就必须把来源写成文件语义, 例如 `from_type=file` 配合 `from=[\"media/packages/vanilla/maps/lobby/*\"]`",
-            "string5": "同理, 如果想表达 shell 里的 `cp -r src/* dest/`, 也必须拆成两条 action: `src/*/` 用 `from_type=path`, `src/*` 用 `from_type=file`"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         },
         {
-          "provenance_ref": "404",
+          "action": "replace",
+          "destin": "270150:0",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["media/packages/vanilla/maps/lobby/scene.xml"],
           "from_type": "file",
           "into": ["media/packages/vanilla/maps/lobby/"],
-          "into_type": "path",
-          "comment" : {
-            "string1" : "上一个对象进行了clear_then_copy, 这意味着",
-            "string2" : "此时`steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/`应当是",
-            "string3" : "只有`steamapps/workshop/content/270150/3445750210/media/packages/vanilla/maps/lobby/`中的所有文件",
-            "string4" : "而且这个`scene.xml`也在其中, 按说不需要replace了",
-            "string5" : "我知道这看起来很奇怪，但是你不需要管那么多, 照着action往下匹配文件建你的`file mapping`就行了",
-            "string6" : "顺着绝对路径`/mnt/d/games/steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/scene.xml`搜索",
-            "string7" : "你会发现`/mnt/d/games/steamapps/workshop/content/270150/3445750210/media/packages/vanilla/maps/lobby/scene.xml`这个文件已经挂在前者的changerequest上了",
-            "string8" : "目标、源是同一个文件, 操作方法也一样, 所以不需要在`file mapping`里创建新的映射关系, 直接进行下一项工作"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         }
-      ],
-      "comment":{
-        "string1": "`preview`的意思是说这个mod有预览图, 因此GUI上尽量以模组的预览图展示模组, 展示时进行适当的切割和等比例放缩",
-        "string2": "`preview`的值是一个相对于mod根目录的路径, 因此这个预览图的路径是`steamapps/workshop/content/270150/3445750210/preview.jpg`",
-        "string3": "`readme`的意思是说这个mod有自述文件, 因此GUI上尽量展示模组的自述文件内容, 或者提供打开自述内容的超链接",
-        "string4": "`readme`的值是一个相对于mod根目录的路径, 因此这个自述文件的路径是`steamapps/workshop/content/270150/3445750210/readme.md`"
-      }
+      ]
     },
     {
       "mixed_id": "270150:3425312546",
-      "sub": [],
-      "def_destin": "270150:2606099273",
-      "def_action": "replace",
+      "nickname": "shiplander v1.9",
+      "preview": [
+        "shiplander v1.9/1使用方法和图例/图例1.jpg",
+        "shiplander v1.9/1使用方法和图例/图例2.jpg"
+      ],
+      "readme": [
+        "shiplander v1.9/1使用方法和图例/使用说明.txt"
+      ],
       "actionlist": [
         {
-          "provenance_ref": "404",
+          "action": "replace",
+          "destin": "270150:2606099273",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["shiplander v1.9/*/"],
           "from_type": "path",
           "into": ["media/packages/GFL_Castling/maps/"],
-          "into_type": "path",
-          "comment": {
-            "string1": "这是目录 glob 的合法样例: `from_type=path` 配合 `*` 匹配多个直接子目录",
-            "string2": "每个命中的目录都会按 path->path 语义复制目录本身, 例如 `src1/`、`src2/`、`src3/` 分别落到 `.../maps/src1/`、`.../maps/src2/`、`.../maps/src3/`",
-            "string3": "这里不会把目录先递进展开成文件集合, 因为目录语义和文件语义必须显式区分"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         },
         {
-          "provenance_ref": "404",
+          "action": "replace",
+          "destin": "270150:2606099273",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["shiplander v1.9/*"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/maps/"],
-          "into_type": "path",
-          "comment": {
-            "string1": "这是 DSL 中等价表达 `cp -r shiplander v1.9/* media/packages/GFL_Castling/maps/` 的第二条 action",
-            "string2": "`from_type=file` 的 glob 只匹配直接命中的文件, 不会把子目录一起带上",
-            "string3": "与上一条目录型 action 组合后, 才完整覆盖 shell 里文件项与目录项同时复制的效果"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         }
       ]
     },
     {
       "mixed_id": "270150:modder_will_name_this_local_mod_whatever_as_their_will",
-      "sub": [],
-      "def_destin": "270150:2606099273",
-      "def_action": "replace",
+      "nickname": "modder_will_name_this_local_mod_whatever_as_their_will",
       "actionlist": [
         {
-          "provenance_ref": "404",
-          "action_order": 0,
           "action": "rename_then_replace",
+          "destin": "270150:2606099273",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "nwname": "hotkeys.xml",
           "from": ["reqingyouhao/media/wsmxswrp.yaml"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/hotkeys.xml"],
-          "into_type": "file",
-          "comment": {
-            "string1": "这个mod是一个本地模组, 不是steam上的模组, modder在发布模组之前可能需要先测试自己的mod的兼容性",
-            "string2": "它的`id`中的`modder_will_name_this_local_mod_whatever_as_their_will`部分是模组作者自己定义的,",
-            "string3": "你可以随便改成什么东西, 只要不和其他mod的id重复就行了, 也做不到重复, 因为",
-            "string4": "`270150:modder_will_name_this_local_mod_whatever_as_their_will`的写法的含义是:",
-            "string5": "这个模组的位置是`steamapps/workshop/content/270150/modder_will_name_this_local_mod_whatever_as_their_will`",
-            "string6": "这意味着它无法与任何`270150/`目录下的其他mod撞`id`",
-            "string7": "这个模组的作用是替换掉`270150:2606099273`中的一些文件, 以达到修改游戏的目的",
-            "string8": "它的def_destin是`270150:2606099273`, 这意味着它默认操作的目标是`270150:2606099273`, 也就是前面说过的那个mod",
-            "string9": "`into` 现在已经可以直接指向文件, 所以这个 action 处于兼容期语义",
-            "string10": "因此他仍然保留`nwname`属性来表达旧写法, 但主路径能力已经由 `into_type=file` 承担",
-            "string11": "用shell解释即`cp -r steamapps/workshop/content/270150/modder_will_name_this_local_mod_whatever_as_their_will/reqingyouhao/media/wsmxswrp.yaml steamapps/workshop/content/270150/2606099273/media/packages/GFL_Castling/hotkeys.xml`",
-            "string12": "可能有疑惑，`yaml`改成`xml`能发挥作用吗? 对此我的建议是: “关我屁事, 找写规则的人去”, 这个工具只负责管理文件"
-          },
-          "sidecar_ref": "404"
+          "into_type": "file"
         }
       ]
     },
     {
       "mixed_id": "270150:prepare_and_receive",
-      "sub": [],
-      "def_destin": "270150:3428584891",
-      "def_action": "replace",
+      "nickname": "prepare_and_receive",
       "actionlist": [
         {
-          "provenance_ref": "404",
-          "action_order": 0,
           "action": "rename_then_replace",
+          "destin": "270150:3428584891",
+          "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "nwname": "gkw_ump45.png",
           "from": ["ump45/is/my/waifu/and/beloved.png"],
           "from_type": "file",
           "into": ["weaponpics/1.6/gkw_ump45.png"],
-          "into_type": "file",
-          "comment": {
-            "string1": "这个mod是一个本地模组",
-            "string2": "如之前说过的, 用shell解释就是`cp -r steamapps/workshop/content/270150/prepare_and_receive/ump45/is/my/waifu/and/beloved.png steamapps/workshop/content/270150/3428584891/weaponpics/1.6/gkw_ump45.png`",
-            "string3": "不过比起直接调用shell或者API, 我们还需要先建立文件索引, 因此需要计算文件的绝对路径, 在这个例子中",
-            "string4": "源是`/mnt/d/Games/steamapps/workshop/content/270150/prepare_and_receive/ump45/is/my/waifu/and/beloved.png`",
-            "string5": "目的地是`/mnt/d/Games/steamapps/workshop/content/270150/3428584891/weaponpics/1.6/gkw_ump45.png`",
-            "string6": "好像有冲突? 所指向的文件明明又指向了另一个文件? 这就是以后filemap中`changerequest`的作用了"
-          },
-          "sidecar_ref": "404"
+          "into_type": "file"
         }
       ]
     },
     {
       "mixed_id": "not_ever_rule_is_valid",
-      "sub": [],
-      "def_destin": "270150:2606099273",
-      "def_action": "replace",
       "actionlist": [
         {
-          "provenance_ref": "404",
+          "action": "replace",
+          "destin": "270150:2606099273",
           "action_order": 0,
+          "provenance_ref": "404",
+          "sidecar_ref": "404",
           "from": ["hit/and/run/hikinige.ai"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/factions/"],
-          "into_type": "path",
-          "comment":{
-            "string1": "乍看这个文件似乎应该被移入270150:2606099273中, 但是",
-            "string2": "270150:2606099273的`sub`属性中没有它, 这意味着它不受270150:2606099273的承认",
-            "string3": "也就是说它不应该被放在270150:2606099273中",
-            "string4": "所以应该拒绝处理, 报告, 记录日志, 然后处理下一条"
-          },
-          "sidecar_ref": "404"
+          "into_type": "path"
         }
       ]
     }

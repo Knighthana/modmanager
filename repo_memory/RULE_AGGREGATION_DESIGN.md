@@ -1,79 +1,421 @@
 # Rule Aggregation Design
 
-## 目标
-在不改 M1 的前提下，定义 `kmm_rule_*.json` 的聚合流程，输出可执行规则与可追踪侧车数据。
+更新时间：2026-04-30
+状态：最终版（多规则合并策略已决策，待实现验证）
 
-## 输入
-- 多个 `kmm_rule_*.json`
-- 本地 `user_config.json`（读取 `path_alias`、`path_handle`、`path_target`）
-- 可选聚合配置（过滤、合并策略、冲突策略）
+---
 
-## 单文件格式约定
-1. 主体结构可与 `aggregated_rule_set` 对齐。
-2. 头部新增 `rule_meta_tag` 对象。
-3. `rule_meta_tag` 至少包含：
-   - `rulenamespace`（允许空）
-   - `author`（list，允许空）
-   - `rulename`（允许空）
+## 1. 定位
 
-## 空值归一化
-- `rulenamespace` 为空 -> `anonymousnamespace`
-- `rulename` 为空 -> `unknownrulename`
-- `provenance_ref` 缺失或空值 -> `404` + warning
-- `sidecar_ref` 缺失或空值 -> `404` + warning
-- `action_order` 默认值为 `0`
+聚合器是一个与 M1 引擎**逻辑独立**的模块，负责将多份 `kmm_rule_*.json` 文件合并为单份 `aggregated_rule_set.json`，供 M1 引擎消费。
 
-## 聚合输出
-1. `aggregated_rule_set`
-   - 供 M1 直接消费，不引入额外执行耦合。
-2. `source_trace_map`（sidecar）
-   - 记录 action 来源信息：`rulenamespace`、`rulename`、`provenance_ref`、`action_order`、`sidecar_ref`。
-   - 通过稳定键关联（例如 target/source/mixed_id/action 索引）。
+- **输入**：多份 kmm_rule JSON 文件 + `user_config.json`（bootstrap 传入的确定路径）+ 可选的 `action_order` 映射 + 可选的 `sidecar_ref` 注入映射
+- **输出**：`aggregated_rule_set`（内存对象，可选写文件）
+- **核心职责**：字段归一化 + 权限鉴权 + `def_destin`/`def_action` 具体化 + 多源合并
 
-## 动作级追踪模型
-1. 动作级只使用 `provenance_ref`、`action_order`、`sidecar_ref`。
-2. `provenance_ref` 的格式固定为 `path_handle:relative_path`。
-3. 聚合层解析 `provenance_ref` 时必须基于 `user_config.path_alias` 做 `realpath` 归一化与前缀校验，禁止目录穿越。
-4. `action_order` 由聚合器或 GUI 在运行时注入，类型必须为 int；默认值为 `0`，不做猜测。
+---
 
-## 性能策略
-- 聚合阶段一次遍历同时产出 `aggregated_rule_set` 与 `source_trace_map`。
-- 避免为生成 trace 再做一轮完整映射计算。
+## 2. 输入规范
 
-## 冲突与回退
-- `action_order` 仅作辅助，不作为规则正确性的兜底来源。
-- 命中过程冲突且双方 `action_order` 相等，或任一方 `action_order=0` 时，直接抛错。
-- 用户若坚持使用冲突规则与手动优先级，风险由用户自行承担。
+### 2.1 kmm_rule 文件
 
-## delete 捋枝规则
-1. 先建树，再捋枝。
-2. 同一 rule 内对同一目标文件的连续操作，按 actionlist 顺序串成同一枝。
-3. delete 请求不携带可继续命中的 source path，因此在当前 forest 模型中只能作为叶请求存在。
-4. 命中 delete 叶时，在树生成后的决议阶段将其折叠提升为对根 target 的删除请求。
-5. 执行阶段删除 `final_mapping.path` 对应文件；当前规范不采用“子节点提升并重挂祖父”的树重写语义。
+kmm_rule 文件的顶层结构：
 
-## 与 M1 的边界
-- 当前阶段：M1 不改，M1 仍只接收 `aggregated_rule_set`。
-- 未来阶段：可将 `provenance_ref`、`action_order`、`sidecar_ref` 传导能力并入 M1。
+```json
+{
+  "schema_namespace": "KMM_Rule",
+  "schema_version": "knighthana@0.1.0",
+  "file_example_URL": "https://...",
+  "rule_meta_tag": { ... },
+  "game": [
+    {
+      "appid": "270150",
+      "modid": ["2606099273", "3425312546", "..."]
+    }
+  ],
+  "mod": [
+    {
+      "mixed_id": "270150:2606099273",
+      "nickname": "GFL_Castling",
+      "preview": ["path/to/preview.jpg"],
+      "readme": ["path/to/readme.md"],
+      "sub": ["270150:3425312546"],
+      "def_destin": "270150:0",
+      "def_action": "replace",
+      "actionlist": [ ... ]
+    }
+  ]
+}
+```
 
-## aggregated_rule_set 归一化补充（2026-04-22）
-1. 聚合层输出的 action 中，`from` 与 `into` 统一归一化为 `list[string]`。
-2. 对于非 `hold` 且非 `delete` 的 action，聚合层必须保留显式的 `from_type` 与 `into_type`；缺失不得猜测修复。
-3. 对于 `delete`，聚合层只需保证 `into` 与 `into_type` 可用；`from` 与 `from_type` 可以缺省，也可以原样保留但下游忽略。
-4. 对于最终解析为 `hold` 的 action，聚合层不需要为其补齐类型字段，因为执行层会直接跳过。
-5. `def_destin` 与 action 级 `destin` 允许值为 `appid:modid` 或 `none`。
-6. `destin=none` 仅表示保留/占位目标；若 action 最终不是 `hold`，执行层必须记录 warning 并跳过该 action。
+### 2.2 user_config.json
 
-## action 继承规则补充（2026-04-22）
-1. `def_action` 只作为子 action 缺省 `action` 的默认值。
-2. 若子 action 显式声明了 `action`，则永远以子 action 为准，不再受父级 `def_action` 覆盖。
-3. 因此 `def_action=hold` 只会让“未显式写 action 的子条目”变成 skipped action，不会吞掉显式的 `replace`、`create`、`delete`、`rename_then_replace`、`clear_then_copy`。
+由 bootstrap 按三级搜索链（`~/.config/kmm/` → 软件本体目录 → PWD，后者覆盖前者）拼接后，将**单一确定路径**传入聚合器。聚合器不负责搜索或生成。
 
-## 非法规则处理原则（2026-04-22）
-1. 聚合层不负责把 path/file 混乱写法“修正成能跑”。
-2. `into_type=file` 且 `from_type=path` 直接失败。
-3. 若 `_type=path`，对应列表项必须全部以 `/` 结尾；否则直接失败。
-4. 若单条 action 的 `from` 为多值或含 glob，同时 `into` 也为多值，直接失败。
-5. 非法输入以 fail-fast 为准，不生成带猜测语义的 `aggregated_rule_set`。
-6. 聚合层不引入 `file_and_path` 之类的混合类型，也不把 `from_type=file` 的 glob 自动扩成“文件+目录一起处理”。
-7. 若规则作者想表达 `cp -r src/* dest/` 的效果，必须显式拆成“目录 action”与“文件 action”两条规则，而不是依赖单条混合语义。
+bootstrap 的职责：若三级搜索均未找到 `user_config.json`，按 `user_config.json.example` 的样式在软件本体目录生成默认文件。
+
+`user_config.json` 的 schema 参考 `repo_memory/user_config.json.example`：
+
+```json
+{
+  "path_alias": [
+    {
+      "description": "本机kmmrule存储位置1",
+      "path_handle": "rule_base_path_1",
+      "path_target": "/home/knighthana/workspace/modmanager_cli/"
+    }
+  ]
+}
+```
+
+注意：`path_alias` **当前没有消费者**。`provenance_ref` 已固定为绝对路径，不再使用 `path_handle:` 格式。保留此字段仅供未来扩展。
+
+### 2.3 action_order 映射（可选）
+
+由外部（未来 GUI）传入，格式：
+
+```json
+{
+  "<mixed_id>": <int>
+}
+```
+
+聚合器将此值注入该 `mixed_id` 对应 operation 的所有 action 的 `action_order` 字段。未传入的 operation 的 action 默认 `action_order=0`。
+
+### 2.4 sidecar_ref 注入映射（可选）
+
+聚合器提供一个外部注入接口，允许将 `sidecar_ref` 注入到指定 action。注入发生在**文件内处理阶段**（与 concretization 同步），使用原始 kmm_rule 文件中的 action 序号：
+
+```json
+{
+  "<source_file_abs_path>": {
+    "<mixed_id>": {
+      "<original_action_index>": "<sidecar_ref_value>"
+    }
+  }
+}
+```
+
+- `original_action_index` 是 kmm_rule 源文件中该 action 在 `actionlist` 中的 0-based 序号（未处理前的原始位置）
+- 若某 action 在 concretization 后被移除（hold / destin=none），其对应的注入项无害地被忽略
+- 若无注入则 action 的 `sidecar_ref` 字段为 `"404"`
+
+聚合器本身不实现填充逻辑——它只接受映射并填入。
+
+---
+
+## 3. 输出规范
+
+聚合器输出的 `aggregated_rule_set` 结构。注意：
+- 顶层 key 使用 `operation` 而非 `mod`（`mod` 在移除 `game` 后已无区别性）
+- 每个 action 的 `action` 和 `destin` 均为显式必填（聚合器已具体化完毕）
+- 不存在 `def_destin` 和 `def_action`（聚合器已完全解析）
+
+```json
+{
+  "schema_namespace": "KMM_RuleSet",
+  "schema_version": "knighthana@0.1.0",
+  "operation": [
+    {
+      "mixed_id": "270150:2606099273",
+      "nickname": "GFL_Castling",
+      "preview": ["path/to/preview.jpg"],
+      "readme": ["path/to/readme.md"],
+      "actionlist": [
+        {
+          "from": ["weaponpics/1.6/*.png"],
+          "from_type": "file",
+          "into": ["media/packages/GFL_Castling/textures/"],
+          "into_type": "path",
+          "action": "replace",
+          "destin": "270150:2606099273",
+          "action_order": 0,
+          "provenance_ref": "/abs/path/to/some_kmm_rule.json",
+          "sidecar_ref": "404"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 4. 字段映射：输入 → 输出
+
+### 4.1 顶层字段
+
+| 输入 (kmm_rule) | 输出 (rule_set) | 处理 |
+|-----------------|-----------------|------|
+| `schema_namespace` | `schema_namespace` | 固定为 `"KMM_RuleSet"`（不从输入继承） |
+| `schema_version` | `schema_version` | 固定为 `"knighthana@0.1.0"` |
+| `file_example_URL` | 移除 | — |
+| `rule_meta_tag` | 移除 | 溯源通过 `provenance_ref` 回到源文件读取 |
+| `game` | 移除 | 仅内部鉴权用（见 §5） |
+| `mod` | `operation` | 合并并归一化（见下文），key 名变更 |
+
+### 4.2 operation[] 条目字段
+
+| 输入字段 | 输出字段 | 处理 |
+|---------|---------|------|
+| `mixed_id` | `mixed_id` | 保留，合并键 |
+| `nickname` | `nickname` | 保留；多文件同 mixed_id 时，后入者若非空则覆盖 |
+| `preview` | `preview` | 保留；多文件同 mixed_id 时 extend + 去重 |
+| `readme` | `readme` | 保留；多文件同 mixed_id 时 extend + 去重 |
+| `sub` | **移除** | 仅内部鉴权用（见 §5） |
+| `def_destin` | **移除** | 聚合器已解析到每个 action 中（见 §4.4） |
+| `def_action` | **移除** | 聚合器已解析到每个 action 中（见 §4.4） |
+| `actionlist` | `actionlist` | 归一化后保留（见 §4.3） |
+| `comment` | **移除** | 仅供人类阅读 |
+
+### 4.3 actionlist[] 条目字段
+
+| 输入字段 | 输出字段 | 处理 |
+|---------|---------|------|
+| `from` | `from` | 保留，保持 `list[string]` |
+| `from_type` | `from_type` | 保留 |
+| `into` | `into` | 保留，保持 `list[string]` |
+| `into_type` | `into_type` | 保留 |
+| `action` | `action` | **必填**，聚合器已从 `def_action` 或显式值填入 |
+| `destin` | `destin` | **必填**，聚合器已从 `def_destin` 或显式值填入 |
+| `nwname` | `nwname` | 保留（仅 `rename_then_replace` 使用） |
+| `action_order` | `action_order` | **聚合器注入**，默认 `0` |
+| `provenance_ref` | `provenance_ref` | **聚合器注入**，永远为 kmm_rule 文件的绝对路径 |
+| `sidecar_ref` | `sidecar_ref` | 外部注入，无注入时默认 `"404"` |
+| `sidecar` | **移除** | kmm_rule 中若存在 `sidecar: {}` 对象，丢弃 |
+| `comment` | **移除** | 仅供人类阅读 |
+
+### 4.4 继承具体化（聚合器独家职责）
+
+每个 action 的 `action` 和 `destin` 在聚合器内部完成具体化，优先级：
+
+1. action 条目自身显式声明的值
+2. 若未声明，继承所属 operation 的 `def_action` / `def_destin`
+
+**具体化结果直接写入每个 action 的输出字段**。输出中不存在 `def_destin` 和 `def_action`——M1 引擎永远不会见到这两个字段，也无需实现继承逻辑。
+
+`hold` action 的处理：
+- 具体化后 `action=="hold"` 的 action → 不进入输出
+- `def_action=hold` 只影响**未显式声明 `action`** 的子条目，不覆盖显式非 `hold` action
+
+`destin=none` 的处理：
+- 聚合器将其标记为 `W_DESTIN_NONE_SKIPPED`，不进入输出
+
+### 4.5 多规则合并策略
+
+**Step 1 — 文件内具体化**（每份 kmm_rule 独立执行）：
+对每个 mod 条目的每个 action，将 `def_destin` 和 `def_action` 解析填入各自的 `destin` 和 `action` 字段。
+
+**Step 2 — 跨文件合并**：
+- `game`：已在 Step 3 以 union 构建权限映射，此处不再重复合并
+- `sub`：已在 Step 3 以 union 构建权限映射，此处不再重复合并
+- `operation`：以 `mixed_id` 为合并键
+  - `actionlist`：直接拼接（跨文件按文件传入顺序）
+  - `preview`：extend + 去重（无文件提供时默认 `[]`）
+  - `readme`：extend + 去重（无文件提供时默认 `[]`）
+  - `nickname`：后入者若非空则覆盖（无文件提供时默认 `""`）
+  - （注：`def_destin` / `def_action` 在 Step 1 已全部具体化完毕，此阶段不再存在，无需合并规则）
+
+**Step 3 — 鉴权过滤**：
+对每个具体化后的 action 执行 §5 的鉴权检查，不通过的 action 移除。
+
+---
+
+## 5. 权限鉴权（聚合器独家职责）
+
+聚合器接管所有权限检查，M1 引擎不再进行任何鉴权。
+
+### 5.1 权限数据源
+
+聚合器从所有输入 kmm_rule 文件中提取两份权限映射（仅内部使用，不输出）：
+
+**game 权限映射**（按 appid 聚合）：
+```
+game_permissions[appid] = {modid1, modid2, ...}   // union across all input files
+```
+
+**sub 权限映射**（按 dom 聚合）：
+```
+sub_permissions[dom_mixed_id] = {actor_mixed_id1, actor_mixed_id2, ...}  // union
+```
+
+### 5.2 鉴权规则
+
+```
+对于每个 action（destin 已具体化）：
+    actor = 所属 operation 的 mixed_id
+    target = action 的 destin
+
+    如果 target 是 base（modid=0）：
+        从 actor 提取 appid 和 modid
+        检查：modid ∈ game_permissions[appid]
+        不通过 → E_PERMISSION_DENIED_BASE，移除该 action
+
+    如果 target 是其他 mod（modid ≠ 0 且 target ≠ "none"）：
+        检查：actor ∈ sub_permissions[target]
+        不通过 → E_PERMISSION_DENIED_SUB，移除该 action
+
+    如果 target 是 "none"：
+        W_DESTIN_NONE_SKIPPED，移除该 action
+```
+
+鉴权限定在 action 粒度：一个 action 无效**不影响**同 operation 下的其他 action。
+
+### 5.3 鉴权的"死板性"
+
+鉴权只检查直接权限关系，不做传递推断：
+- "A 能写 B" 且 "B 能写 base" ≠ "A 能写 base"
+- 每条 action 只检查其 actor 是否对该 action 的 target 有直接权限
+
+---
+
+## 6. 聚合器模块接口
+
+### 6.1 模块位置
+
+`src/modmanager_cli/rule_aggregator.py`
+
+与 M1 引擎共处一个包内，可共享基础设施（`iojson`、`validation`），但逻辑上不耦合 M1 的执行流程。
+
+### 6.2 核心函数签名
+
+```python
+def aggregate(
+    kmm_rule_paths: list[str],
+    user_config_path: str,
+    *,
+    action_orders: dict[str, int] | None = None,
+    sidecar_refs: dict[str, dict[int, str]] | None = None,
+    output_path: str | None = None,
+) -> tuple[dict[str, Any] | None, list[str], list[str]]:
+    """聚合多份 kmm_rule 文件为 aggregated_rule_set。
+
+    Args:
+        kmm_rule_paths: kmm_rule JSON 文件的绝对路径列表
+        user_config_path: 由 bootstrap 解析后的 user_config.json 绝对路径
+        action_orders: mixed_id -> action_order 的映射（可选，由 GUI 注入）
+        sidecar_refs: mixed_id -> {action_index: sidecar_ref} 的映射（可选）
+        output_path: 若提供，将结果写入此路径
+
+    Returns:
+        (aggregated_rule_set_or_none, errors, warnings)
+        - 若 errors 非空，第一项为 None
+        - output_path 参数只影响是否写文件，不影响返回值
+    """
+```
+
+### 6.3 聚合流程
+
+```
+1. 加载 user_config.json（验证 schema）
+2. 加载全部 kmm_rule 文件（逐个验证根结构）
+3. 第一遍：构建 game_permissions 和 sub_permissions（跨文件 union）
+4. 第二遍：逐文件、逐 mod 进行文件内处理
+   4a. 对每个 action 执行 def_destin / def_action 继承解析（具体化）
+   4b. 注入 provenance_ref（kmm_rule 文件绝对路径）
+   4c. 注入 action_order
+   4d. 注入 sidecar_ref（按外部映射的原始 action 序号匹配）
+   4e. 过滤 hold action
+   4f. 过滤 destin=none action
+5. 第三遍：跨文件合并
+   5a. 合并同 mixed_id 的 operation（actionlist 拼接, preview/readme extend+去重, nickname 后入覆盖）
+6. 第四遍：鉴权过滤
+   6a. 检查 game / sub 权限
+   6b. 不通过的 action 移除
+7. 调用 validate_aggregated_rule_set 校验输出
+8. 可选写文件
+9. 返回 (result, errors, warnings)
+```
+
+---
+
+## 7. M1 引擎的配套改动
+
+由于聚合器接管了继承和鉴权职责，需要对 M1 引擎做以下最小改动。
+
+### 7.1 `engine.py` 改动
+
+| 位置 | 内容 | 改动 |
+|------|------|------|
+| L363 | `mods = [m for m in aggregated_rule_set.get("mod", [])` | 改为 `aggregated_rule_set.get("operation", [])` |
+| L364 | `mod_index = {m.get("mixed_id", ""): m for m in mods` | `mods` → `operations` 变量更名 |
+| L367 | `continue` 跳过不含 `:` 的 mixed_id | 不变 |
+| L382 | `for actor_id, mod_obj in mod_index.items():` | 变量更名 |
+| L392–397 | 继承逻辑（`action = item.get("action", def_action)` 等） | **移除**。`action` 和 `destin` 改为直接读取，不做 fallback |
+| L408–412 | `sub` 权限检查 | **移除**。鉴权已由聚合器完成 |
+| L569 | `warnings.extend(validate_forest_roots(forest, mod_index))` | **移除** |
+| L291–340 | `validate_forest_roots` 函数定义 | **移除** |
+| `__all__` | 含 `validate_forest_roots` | **移除**该项 |
+
+### 7.2 `validation.py` 改动
+
+| 位置 | 内容 | 改动 |
+|------|------|------|
+| L34 | `if "mod" not in aggregated_rule_set:` | 改为 `"operation"` |
+| L37 | `mods = aggregated_rule_set["mod"]` | 改为 `aggregated_rule_set["operation"]` |
+| 校验逻辑 | action 条目的 `action` / `destin` | 改为**必填**字段检查（不再允许缺省继承） |
+| 校验逻辑 | 移除对 `def_destin` / `def_action` 的引用 | 这些字段不再出现在输入中 |
+
+### 7.3 测试改动
+
+移除或更新涉及以下内容的测试用例：
+- `validate_forest_roots` 和 `W_SUB_AS_ROOT` / `W_GAMEBASE_NOT_ROOT`
+- `W_SUB_NOT_RECOGNIZED`
+- `aggregated_rule_set["mod"]` → `aggregated_rule_set["operation"]`
+- 依赖 `def_destin` / `def_action` 继承的测试夹具
+
+---
+
+## 8. 示例文件同步
+
+`repo_memory/aggregated_rule_set.json.example` 和 `description/aggregated_rule_set.json.example` 需要同步更新：
+- 顶层 key：`"mod"` → `"operation"`
+- 每个 action 显式包含 `action` 和 `destin`
+- 移除所有 `def_destin` 和 `def_action` 字段
+- 移除所有 `game` 和 `sub` 字段
+- 移除所有 `comment` 字段（或保留为人类可读标注但语义上不参与消费）
+- 添加 `sidecar_ref` 字段
+
+---
+
+## 9. 与现有 Demo 聚合器的关系
+
+`cli-hmi/rule_aggregator.py` 是为演示目的临时构建的单文件直通转换器。其设计逻辑（处理 `provenance_ref`、`sidecar_ref`、路径规范化的方式，以及输出中是否保留 `def_destin` / `def_action`）**与本设计文档不一致**。
+
+正式聚合器 `src/modmanager_cli/rule_aggregator.py` 应**完全按本文档设计实现**，不参考 Demo 实现。
+
+---
+
+## 10. 错误码与告警汇总
+
+### 聚合器专属
+
+| 错误码 | 含义 |
+|--------|------|
+| `E_KMM_RULE_LOAD_FAILED` | 无法加载 kmm_rule 文件 |
+| `E_KMM_RULE_INVALID` | kmm_rule 文件结构不合法 |
+| `E_PERMISSION_DENIED_BASE` | action 目标为 base，但 actor 不在 `game[].modid` 中 |
+| `E_PERMISSION_DENIED_SUB` | action 目标为其他 mod，但 actor 不在目标 mod 的 `sub` 中 |
+| `E_USER_CONFIG_LOAD_FAILED` | 无法加载 user_config.json |
+| `E_AGGREGATION_FAILED` | 聚合过程致命错误 |
+
+### 告警
+
+| 警告码 | 含义 |
+|--------|------|
+| `W_DESTIN_NONE_SKIPPED` | action 的 destin 为 "none"，已跳过 |
+| `W_ACTION_ORDER_DEFAULTED` | action_order 未指定，已使用默认值 0 |
+| `W_NICKNAME_CONFLICT` | 同 mixed_id 跨文件 nickname 冲突，以后入者覆盖 |
+| `W_EMPTY_ACTIONLIST_AFTER_FILTER` | operation 的所有 action 因鉴权或 hold 被过滤，条目仍保留（actionlist 为空） |
+| `W_SIDECAR_REF_DEFAULTED` | sidecar_ref 未注入，已使用默认值 "404" |
+
+---
+
+## 11. 聚合器不应做的事
+
+- 不负责发现 kmm_rule 文件（文件列表由上层传入）
+- 不负责搜索、拼接或生成 `user_config.json`
+- 不执行任何文件 I/O 操作（替换、备份等）
+- 不修改 M1 引擎的映射计算逻辑
+- 不尝试"修复"非法规则（fail-fast）
+- 不自行填充 `sidecar_ref`（仅接收外部注入）

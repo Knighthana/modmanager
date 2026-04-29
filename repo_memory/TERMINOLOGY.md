@@ -37,12 +37,11 @@
 
 ## 8. 本地路径别名与动作引用
 - `path_alias`：本地用户配置中的路径别名列表
-- `path_handle`：路径别名项中的引用句柄，供 `provenance_ref` 使用
+- `path_handle`：路径别名项中的引用句柄；当前无消费者（`provenance_ref` 已改用绝对路径），保留供未来扩展
 - `path_target`：路径别名项对应的本地文件系统根目录
-- `rule_meta_tag`：规则级元数据容器（不直接表达替换动作）
-- `provenance_ref`：动作级来源引用，格式为 `path_handle:relative_path`
+- `rule_meta_tag`：规则级元数据容器（不直接表达替换动作），仅存在于 kmm_rule 文件中
+- `provenance_ref`：动作级来源引用，值为 kmm_rule 源文件的**绝对路径**（由聚合器填入）
 - `sidecar_ref`：动作级外置扩展引用；缺失或空值时回退为 `404` 并记录 warning
-- `source_trace_map`：聚合输出的侧车溯源结构，与 `aggregated_rule_set` 并行存在
 
 ## 9. 作者与规则名回退
 - `rulenamespace` 为空：`anonymousnamespace`

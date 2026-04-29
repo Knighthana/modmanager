@@ -155,10 +155,14 @@
 4. `rename_then_replace` 与 `clear_then_copy` 复用写入型校验，再追加各自的兼容字段约束。
 5. 明确禁止把相同前置条件的校验逻辑复制到多个 action 分支中。
 
-## hold 规则（2026-04-22）
-1. 只有最终解析结果为 `hold` 的 action 才会被跳过。
+## hold 规则（2026-04-22；2026-04-30 移交至聚合器）
+> 自 2026-04-30 起，`def_action` 继承解析和 hold 过滤已移交**聚合器**执行。
+> M1 引擎收到的 `aggregated_rule_set` 中每个 action 的 `action` 和 `destin` 均为显式值，
+> 不再存在 `def_action`/`def_destin` 字段和 hold action。
+
+1. 只有最终解析结果为 `hold` 的 action 才会被跳过。（现由聚合器在输出前执行）
 2. 跳过的定义是：不校验、不解析、不展开、不参与冲突分析、不进入 final mapping。
-3. 若父级 `def_action=hold`，且子 action 未显式声明 `action`，则该子 action 继承为 `hold` 并被直接忽略。
+3. 若父级 `def_action=hold`，且子 action 未显式声明 `action`，则该子 action 继承为 `hold` 并被直接忽略。（现由聚合器具体化阶段完成）
 4. 若父级 `def_action=hold`，但子 action 显式声明了非 `hold` action，则以子 action 为准，按对应流程正常校验与解析。
 5. 任意对象中显式写出的 `action=hold` 条目，同样直接忽略。
 
