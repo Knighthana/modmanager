@@ -1,243 +1,204 @@
-# 森林模型补丁：delete 结点裂变 + holdasoriginal
+# 森林模型：独立根 + 引用
 
 创建：2026-04-30
-状态：设计草案（待质疑与完善）
+状态：设计草案（§1-5 已废弃，以 §7 起为准）
+最后更新：2026-04-30 — 加入解析算法、成环/断头检测
 
 ---
 
-## 1. 问题陈述
+## 历史草案（已废弃，仅供追溯）
 
-### 当前行为（有缺陷）
+<details>
+<summary>§1-5: 旧 fork 模型（filenotexist / holdasoriginal）</summary>
 
-```
-Author A: replace /modA/file.png → /game/target.png
+### §1. 问题陈述
+
+Author A: replace /modA/file.png → /game/target.png  
 Author B: delete  /modA/file.png
 
-引擎处理：
-  mapping[/game/target.png]  源 = /modA/file.png
-  mapping[/modA/file.png]    操作 = delete
+缺陷：delete 语义在递归中从"删除源文件"变为"删除目标文件"。
 
-  _resolve_effective_leaf_request(/game/target.png):
-    → 递归到 /modA/file.png
-    → 得到 delete
-    → 级联：/game/target.png 也被删除  ← BUG
-```
+### §2-5. 旧方案（已废弃）
 
-**缺陷**：delete 的语义在递归中从"删除源文件"变成了"删除目标文件"。源文件的 delete 是 Author B 在 `/modA/file.png` 上挂的操作，不应影响 `/game/target.png` 的命运。
+fork 模型：filenotexist / holdasoriginal + 延迟删除队列。
 
-### 期望行为
+**废弃原因**：刨根移栽导致 (a) delete 语义污染 (b) 原根位置空洞 (c) holdasoriginal 不给用户否决权 (d) 延迟删除可能误删 Phase 2 产出物。
 
-当 `/modA/file.png` 作为源被挂到 `/game/target.png` 下方时，它的 delete 子结点应**当场裂变**为两个分岔：
-
-```
-/game/target.png
-    └── /modA/file.png  ← 分岔结点（因为它是另一个操作的 target）
-            ├── filenotexist     ← 分支 A：文件不存在（delete 先执行）
-            └── holdasoriginal   ← 分支 B：保持原样（delete 暂缓）
-```
-
-用户选择：
-- **选 A**：拒绝依赖此文件的所有操作（replace 无源，失败）
-- **选 B**：先执行依赖操作（replace），后执行 delete
+</details>
 
 ---
 
-## 2. 三条推论
+## 7. 正式设计：独立根 + 引用
 
-| # | 推论 | 说明 |
-|---|------|------|
-| 1 | delete 结点跟随迁移时**当场裂变** | 两个分支代表两种用户意图 |
-| 2 | apply 时争议删除在**最后阶段**执行 | "延迟删除队列"：所有被 hold 的 delete 在 apply 末尾统一执行 |
-| 3 | `hold` 语义需要重新审视 | 当前 hold = "跳过不执行"。可能需要新增 "postpone" 语义："暂时不删，但最终必须删" |
+### 7.1 核心思想
 
----
-
-## 3. 分岔结点的判断条件
-
-一个源路径 X 在森林中自动成为分岔结点，当：
-1. X 在 mapping 中有 changerequest（即 X 是某个操作的 target）
-2. 且 X 被另一个 target Y 的 changerequest 引用为源（即 X 是另一个映射的源）
-
-满足这两个条件时，生成分岔：
-- **分支 A**：X 的原始 changerequest（如 delete）
-- **分支 B**：holdasoriginal（X 保持当前状态，允许以 X 为源的映射正常执行）
-
----
-
-## 4. `filenotexist` vs `holdasoriginal` 的语义
-
-| 结点类型 | 含义 | 对依赖者的影响 |
-|----------|------|---------------|
-| `filenotexist` | 文件在执行时不存在 | 以该文件为源的操作失败 |
-| `holdasoriginal` | 文件暂保持当前状态，但最终必须删除 | 以该文件为源的操作可执行，执行完成后文件被删除 |
-
----
-
-## 5. apply 执行顺序
-
-```
-Phase 1: 执行所有非争议操作（replace / create / rename / clear_then_copy）
-Phase 2: 执行依赖 holdasoriginal 的操作（源文件此时还存在）
-Phase 3: 执行"延迟删除队列"（所有被 hold 的 delete）
-```
-
----
-
-## 6. 自我质疑
-
-### Q1: 多层级联时，裂变在哪里发生？
-
-```
-Author A: replace /modA/a.png → /game/x.png
-Author B: replace /modB/b.png → /modA/a.png
-Author C: delete  /modB/b.png
-
-链：x.png ← a.png ← b.png (deleted)
-```
-
-b.png 被 delete 且被 a.png 引用为源 → b.png 裂变。
-a.png 的源裂变后，a.png 自身也应该裂变——因为它的命运取决于 b.png 的分岔选择。
-
-**问题**：裂变是只发生一次（b.png），还是逐层向上传导（b.png → a.png → x.png）？
-
-**直觉**：应该逐层向上传导。层数 = 依赖链深度。每一层都是一个分岔。
-
-→ 这会导致分岔数量指数爆炸吗？n 层依赖 = 2^n 个分支？
-
-### Q2: "最终必须删除" 是否绑架了用户？
-
-Author B 写了 `delete /modA/file.png`。但用户可能根本不同意 Author B——他想保留这个文件。
-
-当前设计中 holdasoriginal **不是"不删"**，而是"先留着，最后删"。
-
-**问题**：用户有没有权利说"我就是不删这个文件"？
-
-**可能的答案**：如果用户选择了 holdasoriginal → 文件最后被删，那用户等于接受了 Author B 的规则，只是推迟了执行。如果用户真的想完全拒绝 Author B 的规则，他需要什么机制？
-
-### Q3: 多条规则同时操作同一个源
-
-```
-Author A: replace /modA/file.png → /game/target.png
-Author B: delete  /modA/file.png       ← 同一个源的两个命运
-Author C: replace /modA/file.png → /game/target2.png  ← 又一个依赖者
-```
-
-这里 /modA/file.png 的分岔是二选一还是三选一？
-
-- 分支 A: filenotexist（delete 先执行，A 和 C 都失败）
-- 分支 B: holdasoriginal（delete 暂缓，A 和 C 都用它）
-
-但如果用户希望 A 成功而 C 失败呢？分岔粒度是按"文件"分的，不是按"依赖者"分的。这意味着用户无法为同一个源的不同依赖者做不同决定。
-
-→ 这是否是一个问题？
-
-### Q4: delete 的是目录而非文件
-
-```
-Author A: replace /modA/maps/lobby/ → /game/maps/lobby/
-Author B: delete  /modA/maps/
-```
-
-`/modA/maps/lobby/` 是 `/modA/maps/` 的子目录。delete 目录时，目录内的文件全部消失。
-
-**问题**：裂变应该出现在 `/modA/maps/` 层（目录被删，子目录全灭）还是 `/modA/maps/lobby/` 层？如何检测这种父子目录关系？
-
-### Q5: apply 的延迟删除队列是否安全？
-
-Phase 1: 执行 replace / create  
-Phase 2: 执行依赖 holdasoriginal 的操作  
-Phase 3: 执行延迟删除
-
-**问题**：Phase 2 的操作可能实际上**创建了新文件**到被 delete 的目录中。Phase 3 的 delete 会把 Phase 2 创建的文件也删掉吗？
-
-例如：`delete /modA/maps/` 被 hold，Phase 2 中 `replace /modA/maps/new.png → /game/new.png`，Phase 3 执行 `delete /modA/maps/` → 这个 delete 要删除整个 `/modA/maps/` 目录，包含 Phase 1/2 创建的新文件吗？
-
-**结论**：延迟删除应该只删除**原本要删的目标**（原始 delete 的目标路径），不能把 Phase 1/2 的产出物也删了。但这在实际操作中很难做到——`delete /modA/maps/` 是删整个目录，进去之后分不清哪些是原有的、哪些是新创建的。
-
-### Q6: holdasoriginal 与 "later wins" 规则的冲突
-
-同一 actionlist 内，如果先写 `replace x → t, delete x`，deleted 是 actionlist 的最后一个操作，按 later-wins 规则它赢。但如果 x 恰好也是另一个 target 的源，按裂变逻辑它会裂变。
-
-**问题**：later-wins 是 actionlist 内部规则，裂变是跨 actionlist 的规则。同一个 actionlist 的 later-wins 结果是否应该进入跨 actionlist 的分岔？还是分岔只考虑跨 actionlist 的冲突？
-
-### Q7: 文件被 delete 后又作为了别人的 rename_then_replace 源
-
-如果源文件在被 delete 之前已经被 rename 走了（`rename_then_replace` 的第一步是 mv），那 delete 操作的是新名字还是旧名字？如果旧名字的文件已经不存在（被 rename 了），delete 应该静默成功（目标不存在）还是报警告？
-
----
-
-## 7. 讨论演进：从"刨根移栽"到"独立根 + 引用"
-
-### 旧模型的问题（§1-§6）
-
-移植刨根导致 delete 语义污染、原根位置空洞、用户无否决权。
-
-### 新模型：独立根 + 引用
+每棵树的根是独立存在的。树之间通过**引用**（不是移植）表达依赖。树的根不被移植到另一棵树下方——只标记"此树引用彼树作为源"。
 
 ```
 Forest（每棵树独立）:
-  Tree 1: /modA/file.png ──[delete]           ← 独立根，不被移植
-                                  ↑ 引用（非占有）
-  Tree 2: /game/target.png ──────┘            ← 声明依赖，不刨根
-
-每棵树的根是自己路径上的操作。树之间通过引用表达依赖关系，不通过移植根来减少树的数量。
+  Tree C: /modC/other.png ──[delete]           ← 独立根
+  Tree A: /modA/file.png ──[keep]               ← 独立根
+              ↑ ref: /modC/other.png            ← 标记，非占有
+  Tree B: /game/target.png                      ← 独立根
+              ↑ ref: /modA/file.png             ← 标记，非占有
 ```
 
-### Glob 与警告
+### 7.2 数据结构
 
-`glob` 展开以磁盘当前状态为准。same actionlist 内：
-- `delete → create`：不应产生 `W_CREATE_TARGET_EXISTS_OVERWRITE`（前序 delete 已清空）
-- `replace → delete`：不应产生冲突（作者意图是先替换后删源）
+```python
+@dataclass
+class ForestTree:
+    root_path: str                  # 自己的根路径
+    operations: list[ChangeRequest] # 自己挂的操作（聚合后的 actionlist）
+    refs: list[str]                 # 引用了哪些其他树的根作为源
+```
 
-这两个是 same actionlist 的内部语义，与跨树分岔无关。
+### 7.3 与旧模型的关键区别
 
-### 关键权衡
-
-| | 刨根移栽（旧） | 独立根 + 引用（新） |
+| | 刨根移栽（旧，§1-5） | 独立根 + 引用（新） |
 |---|---|---|
 | delete 语义 | 随迁移污染 | 留在原地，不变 |
-| 原根位置 | 空洞 | 独立存在，可决策 |
-| 用户否决权 | 需额外机制 | 天然支持 |
-| delay-delete | 需要 | 不需要 |
-| 树的数量 | 少但错误 | 多但正确 |
+| 原根位置 | 空洞 | 独立存在，用户可在此决策 |
+| 用户否决权 | 需额外机制（holdasoriginal） | 天然支持——每棵树自己决策 |
+| delay-delete | 需要，且危险（Q5） | 不需要——每棵树独立执行 |
+| 树的数量 | 少 | 多，但每棵树语义正确 |
+
+### 7.4 全局约定
+
+- `glob` 展开以**磁盘当前状态**为准，不模拟中间操作后的状态
+- 同一 actionlist 内：`delete → create` 不产生 `W_CREATE_TARGET_EXISTS_OVERWRITE`（前序 delete 已清空）
+- 同一 actionlist 内：`replace → delete` 无冲突（作者意图是先替换后删源）
+- `rename_then_replace` 和 `clear_then_copy` 已废弃（commit `26e72c9`），不再讨论
 
 ---
 
-## 8. 特例 trick 枚举
+## 8. 解析算法
 
-无论是在旧模型还是新模型中，都需要处理的"特殊情况"：
+### 8.1 原则：从底向上，逐层消除
 
-| # | 特例 | 旧模型是否需要 | 新模型是否需要 |
-|---|------|:---:|:---:|
-| T1 | same actionlist: `delete X → create/replace X` | ✅ | ✅ |
-| T2 | same actionlist: `replace X→T → delete X` | ✅ | ✅ |
-| T3 | 跨树依赖：Tree A 引用 Tree B 的根作为源 | ✅（裂变） | ✅（引用解析） |
-| T4 | 多棵树引用同一棵树的根 | ✅ | ✅ |
-| T5 | delete 是目录，源是目录内文件 | ✅ | ✅ |
-| T6 | `rename_then_replace` 后 delete 原始路径 | ✅ | ✅ |
-| T7 | `clear_then_copy` 目录 + 依赖该目录内文件的操作 | ❓ | ❓ |
-| T8 | 用户在引用树上做分支决策 → 影响被引用树的状态 | ✅ | ✅ |
-| T9 | `apply` 执行顺序：依赖树的执行早于/晚于被依赖树 | ✅ | ✅ |
-| T10 | Forest 可视化中引用关系的展示方式 | ✅ | ✅ |
-| T11 | glob `*/` 在"文件已被 delete"的上下文中展开 | ✅ | 不展开（以磁盘为准） |
+被引用树的分岔先消除 → 向上传递布尔结论 → 引用树据此决定命运。
 
-**计数**：旧模型 ~10 个，新模型 ~9 个。数量接近。
+```
+解析顺序: 丙（最底层，无人引用）→ 乙（引用丙）→ 甲（引用乙）
 
-但如果按**"这个 trick 是否引入新的语义模糊"**来衡量：
+Step 1: 丙 → 用户决策 → 丙变为单一结点："文件已删除"或"文件保留"
+Step 2: 乙 → 查询丙 → 源可用/不可用 → 乙执行/失败 → 乙变为单一结点
+Step 3: 甲 → 查询乙 → 同上 → 甲变为单一结点
+```
 
-| 模型 | 语义清晰的 trick | 语义模糊的 trick |
-|------|:---:|:---:|
-| 旧（刨根） | T1, T2, T5, T6 | T3, T4, T8, T9 |
-| 新（引用） | T1-T6, T9-T11 | T8 |
+### 8.2 算法
 
-新模型减少了一半模糊点。**T8 成了唯一的语义模糊点**：用户在 Tree A 上做了分支决策后，这个决策怎么传递给 Tree B？是通过"源可用/不可用"的布尔信号，还是需要更复杂的传递？
+```python
+def resolve_forest(forest: list[ForestTree]) -> None:
+    # 1. 拓扑排序（被引用者先于引用者）
+    order = topological_sort_by_refs(forest)
+    
+    # 2. 从底向上逐层解析
+    for tree in order:
+        # 2a. 查询所有被引用树的状态
+        for ref_path in tree.refs:
+            ref_tree = find_tree_by_root(forest, ref_path)
+            if ref_tree.resolved_state == "deleted":
+                # 源不存在 → 依赖此源的操作全部失败
+                tree.mark_failed(f"source deleted: {ref_path}")
+        
+        # 2b. 若树有自己的操作 + 源均可用 → 用户在此决策
+        if tree.has_own_operations() and not tree.is_failed():
+            decision = user_choose(tree)  # 冲突裁决 UI
+            tree.apply_decision(decision)
+        
+        # 2c. 标记为已解析
+        tree.resolved = True
+```
+
+### 8.3 用户决策内容
+
+每棵树的分岔选项取决于它自己的操作类型。用户只能决策"对这棵树执行什么"，不能跨越树边界决策。
 
 ---
 
-## 9. 当前判断
+## 9. 成环与断头检测
 
-T1-T6 是两种模型共有的、逻辑上无法避免的边界情况处理。数量可控。
+### 9.1 成环检测
 
-T8 是新模型的核心未解决问题。需要你的判断：
+树间引用图是否成环。**复用已有 `find_cycles()` 算法**。
 
-> 分支决策的传递粒度：是"文件存在/不存在"的布尔值，还是"用户选择保留此文件 → 所有依赖者都可以用它"的全局许可？
+```python
+# 构建树级边：root_path → 被引用的 root_path 集合
+ref_graph = {t.root_path: set(t.refs) for t in forest}
+cycles = find_cycles(ref_graph)
+if cycles:
+    errors.append(f"E_FOREST_CYCLE: {cycles}")
+```
+
+### 9.2 成环处理
+
+| 方案 | 行为 |
+|------|------|
+| **A: 环内集体裁决** | 环内所有树合并为一个决策单元（默认） |
+| **B: 打破环** | 用户指定环内某棵树的操作为"优先"，其余按拓扑处理 |
+
+### 9.3 断头路检测
+
+引用了一个不是森林根结点的路径。
+
+```python
+all_roots = {t.root_path for t in forest}
+for tree in forest:
+    for ref in tree.refs:
+        if ref not in all_roots:
+            errors.append(f"E_DANGLING_REF: {tree.root_path} references {ref}")
+```
+
+---
+
+## 10. 分支决策跨树传递（T8 已解决）
+
+用户决策的内容是"对这棵树的根文件做什么操作"。决策完成后，树变为单一结点，向外传递的唯一信息是**这条路径上的文件是否还存在**——一个布尔值。
+
+- 文件存在 → 所有引用者可以正常使用它作为源
+- 文件不存在 → 所有引用者的操作因源缺失而失败
+
+传递粒度：**布尔信号**。不传递操作细节，不按引用者区分。
+
+---
+
+## 11. 特例 trick 枚举（更新）
+
+`rename_then_replace` 和 `clear_then_copy` 已废弃，相关 trick 移除。
+
+| # | Trick | 处理方式 |
+|---|-------|---------|
+| T1 | same actionlist: `delete X → create/replace X` | 不产生 overwrite 警告 |
+| T2 | same actionlist: `replace X→T → delete X` | 无冲突，作者意图 |
+| T3 | 跨树依赖解析 | 拓扑排序，从底向上查询被引用树状态 |
+| T4 | 多树引用同一根 | 同 T3，共享布尔结论 |
+| T5 | delete 是目录，源是目录内文件 | 目录 delete 裂变到子路径 |
+| T8 | 分支决策跨树传递 | 布尔信号（文件存在/不存在）→ 已解决 |
+| T9 | 执行顺序 | 被引用树先执行，引用树后执行（拓扑序） |
+| T10 | 引用关系可视化 | Forest 图中用标签 + 点击跳转标注引用 |
+| T11 | glob + 前序操作语义 | glob 以磁盘为准，不模拟中间状态 |
+
+---
+
+## 12. 待后续设计的问题
+
+以下问题在逻辑上已闭环，但实现细节待展开：
+
+- T5（目录 delete 裂变到子路径）的具体实现算法
+- T10（引用可视化）的前端交互方案
+- 拓扑排序的具体实现（是否需单独模块）
+
+---
+
+## 13. 与现有引擎的对接 GAP（设计空白，待填）
+
+以下三个问题不在当前文档范围内，属于"如何把这个模型嵌入现有 `compute_mapping`"的实现细节：
+
+| # | GAP | 说明 |
+|---|-----|------|
+| G1 | ForestTree 如何从 mapping dict 构建 | 现有 `compute_mapping` 产出 `{"forest": [...], "final_mapping": [...]}`。forest 是扁平结点列表，需要从中提取"根路径 + 操作 + 被引用的源"来构建 ForestTree 列表 |
+| G2 | 引用的边如何从 changerequest 提取 | changerequest 中 `path` 是源文件路径。若该路径也是另一个 target，则形成引用边。提取逻辑需要在现有循环中追加一步 |
+| G3 | 用户决策后如何反馈给 final_mapping | 用户在各树的冲突裁决中做了选择后，需要重新计算 final_mapping——让被拒绝的操作失败、被接受的操作正常产出映射条目 |
+
+这三个 GAP 在当前设计文档范围内无法解答——需要阅读 `engine.py` 的完整 `compute_mapping` 函数并设计注入点。
