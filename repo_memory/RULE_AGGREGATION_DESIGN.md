@@ -178,7 +178,7 @@ bootstrap 的职责：若三级搜索均未找到 `user_config.json`，按 `user
 | `into_type` | `into_type` | 保留 |
 | `action` | `action` | **必填**，聚合器已从 `def_action` 或显式值填入 |
 | `destin` | `destin` | **必填**，聚合器已从 `def_destin` 或显式值填入 |
-| `nwname` | `nwname` | 保留（仅 `rename_then_replace` 使用） |
+| `nwname` | — | 已废弃 2026-04-30（原仅 `rename_then_replace` 使用） |
 | `action_order` | `action_order` | **聚合器注入**，默认 `0` |
 | `provenance_ref` | `provenance_ref` | **聚合器注入**，永远为 kmm_rule 文件的绝对路径 |
 | `sidecar_ref` | `sidecar_ref` | 外部注入，无注入时默认 `"404"` |

@@ -366,7 +366,7 @@ class TestApplyFinalMapping(TestCase):
             self.assertFalse(result["ok"])
             self.assertTrue(any("E_SOURCE_NOT_FOUND" in e for e in result["errors"]))
 
-    def test_clear_then_copy_clears_directory(self):
+    def test_delete_plus_replace_clears_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             target_dir = Path(tmp) / "game" / "textures"
             target_dir.mkdir(parents=True)
@@ -379,17 +379,29 @@ class TestApplyFinalMapping(TestCase):
             dest = target_dir / "new_file.png"
             bdir = self._ready_backup(tmp)
 
-            entry = {
+            # delete the old file
+            del_entry = {
+                "path": str(target_dir / "old_file.png"),
+                "request": {
+                    "path": "!",
+                    "action": "delete",
+                    "mixed_id": "x:y",
+                    "hashtype": "sha256",
+                    "hashvalue": "0",
+                },
+            }
+            # replace (copy) the new file
+            rep_entry = {
                 "path": str(dest),
                 "request": {
                     "path": str(src),
-                    "action": "clear_then_copy",
+                    "action": "replace",
                     "mixed_id": "x:y",
                     "hashtype": "sha256",
                     "hashvalue": "",
                 },
             }
-            result = apply_final_mapping([entry], bdir)
+            result = apply_final_mapping([del_entry, rep_entry], bdir)
 
             self.assertTrue(result["ok"])
             self.assertFalse((target_dir / "old_file.png").exists())

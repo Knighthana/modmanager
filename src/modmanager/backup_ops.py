@@ -342,18 +342,6 @@ def run_differential_backup(
 
 # ── Phase 11: Replacement execution ───────────────────────────────────────────
 
-def _collect_clear_then_copy_dirs(final_mapping: list[dict[str, Any]]) -> set[str]:
-    """Return set of destination directory paths for clear_then_copy entries."""
-    dirs: set[str] = set()
-    for entry in final_mapping:
-        req = entry.get("request") or {}
-        if req.get("action") == "clear_then_copy":
-            target = entry.get("path", "")
-            if target:
-                dirs.add(normalize_posix(str(Path(target).parent)))
-    return dirs
-
-
 def apply_final_mapping(
     final_mapping: list[dict[str, Any]],
     backup_dir: str,
@@ -383,17 +371,6 @@ def apply_final_mapping(
     applied: list[str] = []
     skipped: list[str] = []
     errors: list[str] = []
-
-    # Pre-clear directories for clear_then_copy actions
-    clear_dirs = _collect_clear_then_copy_dirs(final_mapping)
-    for d in sorted(clear_dirs):
-        dir_path = Path(d)
-        if dir_path.exists():
-            try:
-                shutil.rmtree(str(dir_path))
-                dir_path.mkdir(parents=True, exist_ok=True)
-            except OSError as exc:
-                errors.append(f"E_CLEAR_DIR_FAILED: {d}: {exc}")
 
     for entry in final_mapping:
         target = entry.get("path", "")

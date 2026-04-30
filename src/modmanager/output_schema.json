@@ -41,7 +41,7 @@
         "action": {
           "description": "File operation semantics.",
           "type": "string",
-          "enum": ["hold", "replace", "create", "delete", "rename_then_replace", "clear_then_copy"]
+          "enum": ["hold", "replace", "create", "delete"]
         },
         "action_order": {
           "description": "Runtime-injected action ordering hint. Defaults to 0 when missing or unreliable.",

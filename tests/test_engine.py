@@ -53,11 +53,11 @@ class EngineTests(unittest.TestCase):
             self.assertFalse(result["errors"])
             self.assertTrue(result["final_mapping"])
 
-    def test_clear_then_copy_same_dir_conflict_rejected(self) -> None:
+    def test_deprecated_action_produces_warning(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = self._mk_db(tmp_path)
-            for modid in ("100", "101"):
+            for modid in ("100",):
                 mroot = tmp_path / "mods" / modid
                 mroot.mkdir(parents=True)
                 (mroot / "a.txt").write_text("x", encoding="utf-8")
@@ -68,15 +68,12 @@ class EngineTests(unittest.TestCase):
                         "mixed_id": "270150:100",
                         "actionlist": [{"action": "clear_then_copy", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
-                    {
-                        "mixed_id": "270150:101",
-                        "actionlist": [{"action": "clear_then_copy", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
-                    },
                 ]
             }
 
             result = compute_mapping(aggregated_rule_set, db)
-            self.assertTrue(any(e.startswith("E_CLEAR_THEN_COPY_CONFLICT") for e in result["errors"]))
+            self.assertTrue(any("W_INVALID_ACTION" in w for w in result["warnings"]))
+            self.assertEqual(result["forest"], [])
             self.assertEqual(result["final_mapping"], [])
 
     def test_local_mod_missing_is_skipped(self) -> None:
@@ -182,19 +179,18 @@ class EngineTests(unittest.TestCase):
                     "destin": "none",
                 },
                 {
-                    "action": "rename_then_replace",
+                    "action": "replace",
                     "from": ["a.txt"],
                     "from_type": "file",
-                    "into": ["d_rename/"],
+                    "into": ["d_alt1/"],
                     "into_type": "path",
-                    "nwname": "renamed.txt",
                     "destin": "none",
                 },
                 {
-                    "action": "clear_then_copy",
+                    "action": "replace",
                     "from": ["a.txt"],
                     "from_type": "file",
-                    "into": ["d_clear/"],
+                    "into": ["d_alt2/"],
                     "into_type": "path",
                     "destin": "none",
                 },

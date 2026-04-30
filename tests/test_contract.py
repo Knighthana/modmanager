@@ -181,31 +181,35 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(result["errors"])
         self.assertEqual(result["final_mapping"], [])
 
-    # ── clear_then_copy conflict (E_ error) ───────────────────────────────────
+    # ── action-order conflict (E_ error) ──────────────────────────────────────
 
     def test_conflict_error_path_conforms(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = _mk_db(tmp_path)
-            for modid in ("10", "11"):
-                mroot = tmp_path / "mods" / modid
-                mroot.mkdir(parents=True)
-                (mroot / "a.txt").write_text("x", encoding="utf-8")
+            for modid in ("10", "11", "20"):
+                (tmp_path / "mods" / modid).mkdir(parents=True)
+            (tmp_path / "mods" / "10" / "a.txt").write_text("x", encoding="utf-8")
+            (tmp_path / "mods" / "11" / "a.txt").write_text("y", encoding="utf-8")
             aggregated_rule_set = {
                 "operation": [
                     {
                         "mixed_id": "1:10",
-                        "actionlist": [{"action": "clear_then_copy", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                     {
                         "mixed_id": "1:11",
-                        "actionlist": [{"action": "clear_then_copy", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "1:20", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                    },
+                    {
+                        "mixed_id": "1:20",
+                        "actionlist": [{"action": "hold", "destin": "1:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
                     },
                 ]
             }
             result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
-            self.assertTrue(any(e.startswith("E_CLEAR_THEN_COPY_CONFLICT") for e in result["errors"]))
+            self.assertTrue(any(e.startswith("E_ACTION_ORDER_CONFLICT") for e in result["errors"]))
             self.assertEqual(result["final_mapping"], [])
 
     # ── unresolved branch path ────────────────────────────────────────────────

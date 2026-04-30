@@ -157,7 +157,7 @@
 1. 校验绑定在 action 处理路径上，不使用一个覆盖全部 action 的大一统校验器。
 2. `replace` 与 `create` 共享同一套写入型校验流程；以后若差异扩大再拆分。
 3. `delete` 使用独立校验流程，仅检查 `into` 与 `into_type`。
-4. `rename_then_replace` 与 `clear_then_copy` 复用写入型校验，再追加各自的兼容字段约束。
+4. ~~`rename_then_replace` 与 `clear_then_copy` 复用写入型校验，再追加各自的兼容字段约束。~~（已废弃 2026-04-30）
 5. 明确禁止把相同前置条件的校验逻辑复制到多个 action 分支中。
 
 ## hold 规则（2026-04-22；2026-04-30 移交至聚合器）

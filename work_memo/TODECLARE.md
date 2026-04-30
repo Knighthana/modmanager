@@ -98,3 +98,23 @@ W_NO_SOURCE_MATCH: 270150:一点不战术地图v1.9 TEMP#0:一点不战术地图
 **问题**：是否要在 Forest 可视化中设置一个"切换全部映射/仅保留含有分岔的映射"的按钮？这是否与"冲突裁决"页面的语义有重复？应该留哪个？
 
 **状态**：待讨论
+
+---
+
+## 8. `rename_then_replace` 与 `clear_then_copy` 废弃 ✅ 已处理
+
+**处理时间**：2026-04-30
+
+**决策**：两个操作已被废弃：
+- `rename_then_replace`：等价于 `replace` + `from_type=file` + `into_type=file`（重命名即替换）
+- `clear_then_copy`：等价于独立 `delete` + 独立 `create`
+
+**改动文件**：
+1. `src/modmanager/engine.py` — `VALID_ACTIONS` 移除两个操作；`RuleItem` 移除 `nwname` 字段；删除 `clear_copy_dirs`、`clear_then_copy` 冲突检测和 `nwname`/`rename_then_replace` 处理逻辑；`_target_for` 简化（`nwname` 参数保留但不再使用）
+2. `src/modmanager/backup_ops.py` — 删除 `_collect_clear_then_copy_dirs` 函数和预清除循环
+3. `src/modmanager/output_schema.json` — ChangeRequest action enum 移除两个操作
+4. `tests/` — 所有相关测试用例已改为等价操作
+5. `repo_memory/IMPLEMENTATION_BRIEF.md` — L160 标记废弃
+6. `repo_memory/RULE_AGGREGATION_DESIGN.md` — L181 标记 `nwname` 废弃
+
+**验收**：python3 -m pytest tests/ -q 全部通过

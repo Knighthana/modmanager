@@ -13,7 +13,7 @@ from .paths import (
 from .validation import validate_aggregated_rule_set, validate_database
 
 
-VALID_ACTIONS = {"hold", "replace", "create", "delete", "rename_then_replace", "clear_then_copy"}
+VALID_ACTIONS = {"hold", "replace", "create", "delete"}
 
 
 @dataclass
@@ -23,7 +23,6 @@ class RuleItem:
     action: str
     source_path: str | None
     into_path: str | None
-    nwname: str | None
 
 
 def _norm(path: str) -> str:
@@ -176,7 +175,7 @@ def _target_for(
     dest_root: str,
     into_expr: str,
     source_file: str,
-    nwname: str | None,
+    nwname: str | None = None,
     *,
     from_type: str = "file",
     into_type: str = "path",
@@ -342,7 +341,6 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 continue
         valid_actor_operations.add(mixed_id)
 
-    clear_copy_dirs: dict[str, str] = {}
     mapping: dict[str, dict[str, Any]] = {}
     edges: dict[str, set[str]] = {}
 
@@ -380,16 +378,6 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 warnings.append(f"W_MISSING_INTO: {actor_id}#{idx}")
                 continue
 
-            if action == "clear_then_copy":
-                # For clear_then_copy, use first into entry for key
-                into_key = into_list[0] if into_list else ""
-                key = _norm(str(Path(dest_root) / _norm(into_key)))
-                prev = clear_copy_dirs.get(key)
-                if prev and prev != actor_id:
-                    errors.append(f"E_CLEAR_THEN_COPY_CONFLICT: {key}: {prev} vs {actor_id}")
-                    continue
-                clear_copy_dirs[key] = actor_id
-
             if action == "delete":
                 # delete rules: iterate over into list, each entry is a deletion target
                 # from/from_type are ignored for delete
@@ -415,11 +403,6 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 warnings.append(f"W_MISSING_FROM: {actor_id}#{idx}")
                 continue
 
-            nwname = item.get("nwname") if action == "rename_then_replace" else None
-            if action == "rename_then_replace" and (not isinstance(nwname, str) or not nwname):
-                warnings.append(f"W_MISSING_NWNAME: {actor_id}#{idx}")
-                continue
-
             # Expand all sources from all from_list entries
             all_sources: list[str] = []
             from_type = item.get("from_type", "file")
@@ -442,7 +425,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                             dest_root,
                             into_target,
                             src_file,
-                            nwname if isinstance(nwname, str) else None,
+                            None,
                             from_type=from_type,
                             into_type=into_type,
                         )

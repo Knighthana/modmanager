@@ -155,18 +155,17 @@ class F004_FileCircularDep(unittest.TestCase):
             fixture.create_game_file("output/")
 
             # Create a real circular dependency:
-            # Mod 100: output/source_a.txt -> output/renamed_a.txt (via rename)
-            # Mod 101: output/renamed_a.txt -> output/source_a.txt (via replace) - cycle!
+            # Mod 100: output/source_a.txt -> output/source_b.txt (via replace = inter-mod)
+            # Mod 101: output/source_b.txt -> output/source_a.txt (via replace) - cycle!
             aggregated_rule_set = {
                 "operation": [
                     {
                         "mixed_id": "270150:100",
                         "actionlist": [
                             {
-                                "action": "rename_then_replace",
+                                "action": "replace",
                                 "destin": "270150:0",
                                 "from": ["source_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path",
-                                "nwname": "renamed_a.txt",
                             }
                         ],
                     },
