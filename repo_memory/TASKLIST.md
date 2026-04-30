@@ -27,40 +27,46 @@
 
 ---
 
-## Phase 1: Bootstrap & Orchestrator（当前阶段）
+## Phase 1: Bootstrap & Orchestrator ✅
 
 在 Web GUI 之前，需要初始化和调度层把现有模块串成端到端流水线。
 
-### 需要新增的模块
+### 已完成的模块
 
 | 模块 | 文件 | 职责 |
 |------|------|------|
-| Bootstrap | `src/modmanager_cli/bootstrap.py` | user_config 三级搜索+合并、Steam 数据库生成 |
-| Orchestrator | `src/modmanager_cli/orchestrator.py` | 流水线调度：接收初始状态，按序驱动聚合→映射→备份→应用；支持进度回调；预留多游戏并行调度扩展点 |
-
-### 模块关系
-
-```
-                     ┌──────────────────┐
-   用户/GUI/CLI →    │   orchestrator   │  run(config, on_progress)
-                     │  (调度入口)        │
-                     └────────┬─────────┘
-                              │ 需要初始数据时调用
-                     ┌────────▼─────────┐
-   可独立测试 →       │    bootstrap     │  discover / generate
-                     └──────────────────┘
-```
+| Bootstrap | `src/modmanager_cli/bootstrap.py` ✅ | user_config 三级搜索+合并、Steam 数据库生成 |
+| Orchestrator | `src/modmanager_cli/orchestrator.py` ✅ | 流水线调度：接收初始状态，按序驱动聚合→映射→备份→应用；支持进度回调；预留多游戏并行调度扩展点 |
+| CLI 适配 | `src/modmanager_cli/cli.py` ✅ | `_handle_backup`/`_handle_apply` 改为调用 orchestrator |
+| 测试 | `tests/test_bootstrap.py` ✅ (11 tests) | `tests/test_orchestrator.py` ✅ (7 tests) |
 
 各子模块（engine、aggregator、backup_ops）独立存在、可单独测试，orchestrator 只做编排。
 
-### 待决策事项（Phase 1 提问环节）
-见 `repo_memory/direct/QUESTIONS_BOOTSTRAP.md`
+### 决策记录
+全部 8 个问题已决策：见 `repo_memory/direct/QUESTIONS_BOOTSTRAP.md`
 
 ---
 
-## Phase 2: Web API 层（后续）
+## Phase 2: Web API 层 ✅
 
 将 bootstrap + engine + backup 暴露为 REST 接口。
+
+设计文档：`repo_memory/direct/DESIGN_PHASE2_WEB_API.md`
+决策记录：7 个问题全部已确认 ✅（含 Q7 方案 A 独立对等）
+
+### 已完成的模块（`modmanager_web` 独立子包）
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| Schemas | `src/modmanager_web/schemas.py` ✅ | Pydantic 请求/响应模型 |
+| Adapters | `src/modmanager_web/adapters.py` ✅ | PipelineResult → ApiResponse 转换 |
+| SSE Bridge | `src/modmanager_web/sse.py` ✅ | 同步 ProgressCallback → 异步 SSE 流桥接 |
+| Routes | `src/modmanager_web/routes/{config,database,pipeline}.py` ✅ | REST 端点 |
+| App | `src/modmanager_web/app.py` ✅ | FastAPI 应用工厂 |
+| Entry | `src/modmanager_web/__main__.py` ✅ | uvicorn 启动 |
+| 测试 | `tests/test_web_api.py` ✅ (15 tests) | |
+
+全量 276 tests 通过（261 existing + 15 new）。`modmanager_cli/*` 零改动。
 
 ## Phase 3: 前端 GUI（后续）
 

@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,12 @@ def _emit_error(message: str) -> int:
 def _emit_error_with_code(message: str, code: int) -> int:
     print(dumps_pretty({"errors": [message]}, ensure_ascii=False, indent=2), file=sys.stderr)
     return code
+
+
+def _get_default_user_config_path() -> str:
+    """Return the recommended user_config.json path: ~/.config/kmm/user_config.json."""
+    home = os.environ.get("HOME") or os.environ.get("USERPROFILE") or str(Path.home())
+    return str(Path(home) / ".config" / "kmm" / "user_config.json")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -213,6 +220,8 @@ def _handle_regen(args: argparse.Namespace) -> int:
 
 
 def _handle_backup(args: argparse.Namespace) -> int:
+    from .orchestrator import backup as orch_backup
+
     try:
         aggregated_rule_set = load_json_file(args.aggregated_rule_set)
         database = load_json_file(args.database)
@@ -236,9 +245,8 @@ def _handle_backup(args: argparse.Namespace) -> int:
     if not final_mapping:
         return _emit_error("no final_mapping produced; resolve branch conflicts first")
 
-    files_to_backup = [entry["path"] for entry in final_mapping if entry.get("path")]
     try:
-        result = run_differential_backup(args.backup_dir, files_to_backup)
+        result = orch_backup(mapping_result, args.backup_dir)
     except Exception as exc:
         return _emit_error(f"backup failed: {exc}")
 
@@ -247,6 +255,8 @@ def _handle_backup(args: argparse.Namespace) -> int:
 
 
 def _handle_apply(args: argparse.Namespace) -> int:
+    from .orchestrator import apply as orch_apply
+
     try:
         aggregated_rule_set = load_json_file(args.aggregated_rule_set)
         database = load_json_file(args.database)
@@ -271,7 +281,7 @@ def _handle_apply(args: argparse.Namespace) -> int:
         return _emit_error("no final_mapping produced; resolve branch conflicts first")
 
     try:
-        result = apply_final_mapping(final_mapping, args.backup_dir, dry_run=args.dry_run)
+        result = orch_apply(final_mapping, args.backup_dir, dry_run=args.dry_run)
     except Exception as exc:
         return _emit_error(f"apply failed: {exc}")
 

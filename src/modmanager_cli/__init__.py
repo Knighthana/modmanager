@@ -8,4 +8,9 @@ __all__ = [
     "database_ops",
     "schema",
     "validation",
+    "rule_aggregator",
+    "backup_ops",
+    "forest_visual",
+    "bootstrap",
+    "orchestrator",
 ]

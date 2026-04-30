@@ -6,7 +6,8 @@
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
-| Phase 1: Bootstrap & Orchestration | **inquiry** | 见 `direct/QUESTIONS_BOOTSTRAP.md` | 8 个待决策问题 |
+| Phase 2: Web API 层 | **done** | 276 测试全部通过 | `modmanager_web` 独立子包，FastAPI + SSE，15 new tests，`modmanager_cli/*` 零改动 |
+| Phase 1: Bootstrap & Orchestration | **done** | 261 测试全部通过 | bootstrap.py + orchestrator.py + CLI 适配 + 18 new tests |
 | 聚合器 + M1 引擎重构 | done | 243 测试全部通过 | commit `0a145f4` |
 | 同 mod 冲突自动裁决 | done | 120→0 冲突 | commit `428bb79` |
 | 文档入口迁移到 repo_memory | done | `README.md` 明确入口 | 已完成 |
