@@ -84,13 +84,24 @@ W_NO_SOURCE_MATCH: 270150:一点不战术地图v1.9 TEMP#0:一点不战术地图
 
 ## 6. Backup 理解偏差
 
-**感觉**：当前项目对 backup 的理解似乎出了偏差。
+**状态**：✅ 设计已确认，实现待补
 
-**需要澄清**：
-- 最初设计中 backup 的定位是什么（见 `DESIGN_BOOTSTRAP_ORCHESTRATOR.md` 和 `BACKUP_DIR_BUILDER_DESIGN.md`）？
-- 当前实现中 backup 的实际行为与设计的差距在哪里？
-- "差异备份"的语义是"备份什么"——是备份被替换的目标文件以便恢复，还是备份整个 mapping 的历史状态？
-- `backup_dir` 的命名和生命周期应该如何管理？
+设计确认内容：
+- A. 默认 prefix = `kmmbackup_`
+- B. workshop item 时间取自 `appworkshop_{appid}.acf` 的 `timeupdated` → hex
+- C. custom mod 时间 = mtime fallback，长期计划 kmm 标准自述文件
+- D. 位置：`common/GameName/` 或 `workshop/content/appid/contentid/`
+- E. user_config 中字段名：`bakprefix` / `bakignore`；`backup_ops` 硬编码忽略 `kmmbackup_`
+- 增补：备份目录下检测 `.kmmbakignore` 文件（仿 `.gitignore`）
+
+当前实现差距：
+- builder 模块未实现
+- workshop time 源未实现
+- custom mod mtime 未实现
+- backup_dir 位置规则未约束
+- `.kmmbakignore` 未实现
+- `bakprefix`/`bakignore` 未在 user_config 中使用
+- `backup_ops` 未硬编码忽略 `kmmbackup_`
 
 ---
 

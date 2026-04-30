@@ -30,3 +30,30 @@
 ## 错误处理
 - id 缺失、时间转换失败、路径非法时返回结构化错误。
 - 不在 builder 内做文件系统写操作。
+
+## 2026-04-30 设计确认
+
+### 时间戳来源
+
+| 来源类型 | 时间源 | 说明 |
+|----------|--------|------|
+| common（游戏本体目录） | `appmanifest_{appid}.acf` → `LastUpdated` → hex | 已实现 `get_game_backup_id()` |
+| workshop（已发布 mod） | `appworkshop_{appid}.acf` → `timeupdated` → hex | 待实现 |
+| custom mod（本地 mod） | 文件 mtime（fallback） | 长期计划：kmm 标准自述文件 |
+
+### 备份目录位置
+
+| 类型 | 位置 |
+|------|------|
+| common 中的文件 | `<steamapps>/common/<GameName>/kmmbackup_{appid}_{updatetimehex}/` |
+| workshop 中的文件 | `<steamapps>/workshop/content/<appid>/<contentid>/kmmbackup_{contentid}_{updatetimehex}/` |
+
+### user_config 配置项
+
+- `bakprefix`：备份目录名前缀（默认 `kmmbackup_`）
+- `bakignore`：备份/恢复扫描时忽略的路径/通配规则集合
+
+### 硬编码防护
+
+- `backup_ops` 内部硬编码始终忽略 `kmmbackup_` 前缀的目录（即使 user_config 缺失）
+- 备份目录下检测 `.kmmbakignore` 文件（仿 `.gitignore` 语法）作为额外的忽略规则
