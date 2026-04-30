@@ -26,3 +26,7 @@ htmlcov/
 .DS_Store
 *.swp
 *.swo
+
+# Node / Frontend
+node_modules/
+frontend/dist/

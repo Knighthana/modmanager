@@ -6,6 +6,7 @@
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
+| Phase 3: 前端 GUI | **design** | 见 `direct/DESIGN_PHASE3_GUI.md` | 13 个决策全部确认（Vue 3 + Element Plus + Pinia），设计完成待实现 |
 | Phase 2: Web API 层 | **done** | 276 测试全部通过 | `modmanager_web` 独立子包，FastAPI + SSE，15 new tests，`modmanager_cli/*` 零改动 |
 | Phase 1: Bootstrap & Orchestration | **done** | 261 测试全部通过 | bootstrap.py + orchestrator.py + CLI 适配 + 18 new tests |
 | 聚合器 + M1 引擎重构 | done | 243 测试全部通过 | commit `0a145f4` |

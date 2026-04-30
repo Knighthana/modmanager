@@ -68,9 +68,29 @@
 
 全量 276 tests 通过（261 existing + 15 new）。`modmanager_cli/*` 零改动。
 
-## Phase 3: 前端 GUI（后续）
+## Phase 3: 前端 GUI（当前阶段 — 设计完成）
 
 规则浏览器、Forest 可视化嵌入、冲突裁决 UI、备份/恢复控制台。
+
+决策记录：`repo_memory/direct/QUESTIONS_PHASE3.md`（13 个问题全部已决策 ✅）
+设计文档：`repo_memory/direct/DESIGN_PHASE3_GUI.md`
+
+### 需要新增的模块
+
+| 模块 | 位置 | 职责 |
+|------|------|------|
+| Vue SPA | `frontend/` | Vue 3 + Vite + TypeScript + Element Plus + Pinia |
+| M3 前置 | `forest_visual.py`（修改） | SVG 节点嵌入交互属性 |
+| 静态挂载 | `app.py`（修改） | FastAPI StaticFiles + SPA fallback |
+
+### 四个页面
+
+| 页面 | 路由 | 职责 |
+|------|------|------|
+| ForestPage | `/forest` | 参数表单 + Forest SVG 展示 + zoom/pan + SSE 进度 |
+| ConflictsPage | `/conflicts` | 冲突列表 + 候选选择 + 重新计算 |
+| RulesPage | `/rules` | kmm_rule 文件浏览 |
+| BackupPage | `/backup` | 备份列表 + 恢复操作 |
 
 ---
 
