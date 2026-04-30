@@ -109,7 +109,7 @@
     <el-row v-if="hasResult" :gutter="16" style="margin-bottom: 16px;">
       <el-col :span="6">
         <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">Forest 节点</span>
+          <span style="font-size: 13px; color: var(--el-text-color-secondary);">Forest 结点</span>
           <div style="font-size: 24px; font-weight: 600;">{{ store.forest.length }}</div>
         </el-card>
       </el-col>
@@ -157,6 +157,22 @@
           />
         </el-collapse-item>
       </el-collapse>
+      <!-- 警告说明 -->
+      <el-alert
+        v-if="store.warnings.length > 0 && !store.errors.length"
+        title="关于警告"
+        type="info"
+        :closable="false"
+        style="margin-top: 8px;"
+      >
+        <template #default>
+          <p>W_LOCAL_MOD_MISSING — 本地未安装该 mod，对应映射将被跳过</p>
+          <p>W_NO_SOURCE_MATCH — mod 源文件不存在（可能未安装），对应条目将被跳过</p>
+          <p>W_MISSING_SOURCE_ROOT / W_MISSING_DEST_ROOT — 缺少源/目标目录</p>
+          <p>W_CREATE_TARGET_EXISTS_OVERWRITE — 目标文件已存在，将被覆盖；这是因为引擎对所有 action 统一检查，不会模拟 delete 执行后的状态，执行阶段 delete 会先执行，文件被删后 create 正常创建</p>
+          <p>W_DELETE_LEAF_PROMOTED — 映射链的最终来源是删除操作，目标文件将被删除（删除的是目标文件，不是源文件）</p>
+        </template>
+      </el-alert>
       <!-- 提示：若全是 W_LOCAL_MOD_MISSING，建议先运行自动探测 -->
       <el-alert
         v-if="store.errors.every(e => e.startsWith('W_')) && store.errors.length > 0"

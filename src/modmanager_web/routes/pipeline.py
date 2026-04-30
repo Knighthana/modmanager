@@ -15,7 +15,7 @@ from modmanager.orchestrator import (
     run as orch_run,
 )
 
-from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result
+from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_dict_result
 from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest
 from ..sse import stream_with_progress
 
