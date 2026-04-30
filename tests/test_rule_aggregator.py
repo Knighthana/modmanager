@@ -1,4 +1,4 @@
-"""Comprehensive tests for the rule aggregator (modmanager_cli.rule_aggregator.aggregate)."""
+"""Comprehensive tests for the rule aggregator (modmanager.rule_aggregator.aggregate)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from modmanager_cli.rule_aggregator import aggregate
+from modmanager.rule_aggregator import aggregate
 
 
 # ---------------------------------------------------------------------------

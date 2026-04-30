@@ -1,4 +1,4 @@
-"""Tests for modmanager_cli.orchestrator module."""
+"""Tests for modmanager.orchestrator module."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from modmanager_cli.orchestrator import (
+from modmanager.orchestrator import (
     PipelineResult,
     apply,
     backup,

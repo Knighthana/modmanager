@@ -15,16 +15,16 @@ _DEFAULT_KMM_RULE = "description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json
 def _load_core_modules():
     """Load core modules with a local src fallback for demo usage."""
     try:
-        from modmanager_cli.engine import compute_mapping
-        from modmanager_cli.iojson import dumps_pretty, load_json_file, write_json_file
+        from modmanager.engine import compute_mapping
+        from modmanager.iojson import dumps_pretty, load_json_file, write_json_file
     except ModuleNotFoundError:
         repo_root = Path(__file__).resolve().parents[1]
         src_dir = repo_root / "src"
         src_str = str(src_dir)
         if src_str not in sys.path:
             sys.path.insert(0, src_str)
-        from modmanager_cli.engine import compute_mapping
-        from modmanager_cli.iojson import dumps_pretty, load_json_file, write_json_file
+        from modmanager.engine import compute_mapping
+        from modmanager.iojson import dumps_pretty, load_json_file, write_json_file
 
     return compute_mapping, load_json_file, write_json_file, dumps_pretty
 

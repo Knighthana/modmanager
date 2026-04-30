@@ -18,7 +18,7 @@ python cli-hmi/run.py --kmm-rule description/kmm_rule_RWR-khn_CT-castears-z2414_
 ```
 2. Run visualization (detail mode enabled by default):
 ```bash
-python -m modmanager_cli.cli visualize --forest cli-hmi/reports/demo_result.json --format ascii
+python -m modmanager.cli visualize --forest cli-hmi/reports/demo_result.json --format ascii
 ```
 3. Run full tests with report export:
 ```bash

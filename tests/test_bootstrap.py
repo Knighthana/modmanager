@@ -1,4 +1,4 @@
-"""Tests for modmanager_cli.bootstrap module."""
+"""Tests for modmanager.bootstrap module."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from modmanager_cli.bootstrap import (
+from modmanager.bootstrap import (
     _detect_software_dir,
     discover_user_config,
     generate_database,
 )
-from modmanager_cli import bootstrap as bootstrap_module
+from modmanager import bootstrap as bootstrap_module
 
 
 class TestDetectSoftwareDir(TestCase):
@@ -26,7 +26,7 @@ class TestDetectSoftwareDir(TestCase):
         self.assertIsInstance(result, str)
         self.assertTrue(len(result) > 0)
         self.assertTrue(result.startswith("/"))
-        # The result should contain "modmanager_cli" (the package dir)
+        # The result should contain "modmanager" (the package dir)
         # or be a parent dir with pyproject.toml
         self.assertTrue(Path(result).exists())
 
@@ -81,7 +81,7 @@ class TestDiscoverUserConfig(TestCase):
             )
 
             # Simulate _detect_software_dir pointing to tier2
-            with patch("modmanager_cli.bootstrap._detect_software_dir", return_value=str(tier2_dir)):
+            with patch("modmanager.bootstrap._detect_software_dir", return_value=str(tier2_dir)):
                 (tier2_dir / "user_config.json").write_text(
                     json.dumps({"tier2_only": "yes", "override_me": "tier2"}),
                     encoding="utf-8",
@@ -119,7 +119,7 @@ class TestDiscoverUserConfig(TestCase):
             tier2_dir = Path(td) / "software_root"
             tier2_dir.mkdir(parents=True)
 
-            with patch("modmanager_cli.bootstrap._detect_software_dir", return_value=str(tier2_dir)):
+            with patch("modmanager.bootstrap._detect_software_dir", return_value=str(tier2_dir)):
                 (tier2_dir / "user_config.json").write_text(
                     "this is not valid json {{{",
                     encoding="utf-8",

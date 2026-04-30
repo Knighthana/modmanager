@@ -51,7 +51,7 @@ def _detect_software_dir() -> str:
     Starting from the package directory (containing this file), walk upward
     until a ``pyproject.toml`` file is found.  If found, that parent directory
     is returned (development mode).  Otherwise the package directory itself
-    (``site-packages/modmanager_cli/``) is returned (installed mode).
+    (``site-packages/modmanager/``) is returned (installed mode).
 
     Returns:
         Absolute path in POSIX style.

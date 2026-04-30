@@ -16,7 +16,7 @@
 
 ## Task 1: 更新 validation.py
 
-**文件**: `src/modmanager_cli/validation.py`
+**文件**: `src/modmanager/validation.py`
 
 **改动清单**：
 
@@ -39,7 +39,7 @@
 
 ## Task 2: 更新 engine.py（M1 引擎）
 
-**文件**: `src/modmanager_cli/engine.py`
+**文件**: `src/modmanager/engine.py`
 
 **改动清单**：
 
@@ -90,7 +90,7 @@ if destin in mod_index and destin != actor_id:
 
 ## Task 3: 创建 rule_aggregator.py（新文件）
 
-**文件**: `src/modmanager_cli/rule_aggregator.py`（新建）
+**文件**: `src/modmanager/rule_aggregator.py`（新建）
 
 **核心函数签名**：
 ```python

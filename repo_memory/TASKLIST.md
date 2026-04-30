@@ -35,9 +35,9 @@
 
 | 模块 | 文件 | 职责 |
 |------|------|------|
-| Bootstrap | `src/modmanager_cli/bootstrap.py` ✅ | user_config 三级搜索+合并、Steam 数据库生成 |
-| Orchestrator | `src/modmanager_cli/orchestrator.py` ✅ | 流水线调度：接收初始状态，按序驱动聚合→映射→备份→应用；支持进度回调；预留多游戏并行调度扩展点 |
-| CLI 适配 | `src/modmanager_cli/cli.py` ✅ | `_handle_backup`/`_handle_apply` 改为调用 orchestrator |
+| Bootstrap | `src/modmanager/bootstrap.py` ✅ | user_config 三级搜索+合并、Steam 数据库生成 |
+| Orchestrator | `src/modmanager/orchestrator.py` ✅ | 流水线调度：接收初始状态，按序驱动聚合→映射→备份→应用；支持进度回调；预留多游戏并行调度扩展点 |
+| CLI 适配 | `src/modmanager/cli.py` ✅ | `_handle_backup`/`_handle_apply` 改为调用 orchestrator |
 | 测试 | `tests/test_bootstrap.py` ✅ (11 tests) | `tests/test_orchestrator.py` ✅ (7 tests) |
 
 各子模块（engine、aggregator、backup_ops）独立存在、可单独测试，orchestrator 只做编排。
@@ -66,7 +66,7 @@
 | Entry | `src/modmanager_web/__main__.py` ✅ | uvicorn 启动 |
 | 测试 | `tests/test_web_api.py` ✅ (15 tests) | |
 
-全量 276 tests 通过（261 existing + 15 new）。`modmanager_cli/*` 零改动。
+全量 276 tests 通过（261 existing + 15 new）。`modmanager/*` 零改动。
 
 ## Phase 3: 前端 GUI ✅
 

@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
 
     # ── Static file mount + SPA fallback (only when build artefact exists) ──
-    static_dir = Path(__file__).parent / "static"
+    static_dir = Path(__file__).parent.parent.parent / "frontend" / "dist"
     if static_dir.exists() and (static_dir / "index.html").exists():
         assets_dir = static_dir / "assets"
         if assets_dir.exists():

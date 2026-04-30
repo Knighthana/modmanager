@@ -1,4 +1,4 @@
-"""Entry point for ``python -m modmanager_web`` and the ``modmanger-web`` script.
+"""Entry point for ``python -m modmanager_web`` and the ``modmanager-web`` script.
 
 Starts a uvicorn server on ``127.0.0.1:8000``.
 """

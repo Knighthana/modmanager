@@ -7,8 +7,8 @@ from typing import Any
 
 def _load_core_modules():
     try:
-        from modmanager_cli.iojson import load_json_file
-        from modmanager_cli.validation import validate_aggregated_rule_set
+        from modmanager.iojson import load_json_file
+        from modmanager.validation import validate_aggregated_rule_set
     except ModuleNotFoundError:
         import sys
 
@@ -17,8 +17,8 @@ def _load_core_modules():
         src_str = str(src_dir)
         if src_str not in sys.path:
             sys.path.insert(0, src_str)
-        from modmanager_cli.iojson import load_json_file
-        from modmanager_cli.validation import validate_aggregated_rule_set
+        from modmanager.iojson import load_json_file
+        from modmanager.validation import validate_aggregated_rule_set
 
     return load_json_file, validate_aggregated_rule_set
 

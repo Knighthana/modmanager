@@ -37,14 +37,14 @@
 - cli-hmi/rule_aggregator.py:
 - One-file KMM rule to aggregated_rule_set conversion.
 - Normalizes M1 fields in actionlist (action_order/provenance_ref/sidecar_ref).
-- Validates output with existing modmanager_cli validation.
+- Validates output with existing modmanager validation.
 - cli-hmi/test_runner.py:
 - Interactive menu for full test run and module run.
 - Terminal summary with pass/fail/time.
 - Report export to cli-hmi/reports as JSON and Markdown.
-- src/modmanager_cli/forest_visual.py:
+- src/modmanager/forest_visual.py:
 - Optional detail rendering mode for M1 fields.
-- src/modmanager_cli/cli.py and cli-hmi/visualize_interactive.py:
+- src/modmanager/cli.py and cli-hmi/visualize_interactive.py:
 - Expose detail mode switch and pass through to visualizer.
 
 ### Decisions

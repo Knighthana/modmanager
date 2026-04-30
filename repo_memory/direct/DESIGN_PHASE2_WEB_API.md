@@ -111,14 +111,14 @@
                             └────────┼──────────────────────────┘
                                      │  import
                             ┌────────▼──────────────────────────┐
-                            │      modmanager_cli                │
+                            │      modmanager                │
                             │  orchestrator / bootstrap          │
                             │  engine / aggregator / backup_ops  │
                             └───────────────────────────────────┘
 ```
 
 - **`modmanager_web`**：纯 HTTP 层。不做业务逻辑，仅做参数接收、格式适配、SSE 流式转发。
-- **`modmanager_cli`**：底层模块无改动。orchestrator 和 bootstrap 的 `ProgressCallback` Protocol 已经为 SSE 桥接预留了接口。
+- **`modmanager`**：底层模块无改动。orchestrator 和 bootstrap 的 `ProgressCallback` Protocol 已经为 SSE 桥接预留了接口。
 
 ---
 
@@ -144,7 +144,7 @@ src/modmanager_web/
 `pyproject.toml` 新增：
 ```toml
 [project.scripts]
-modmanger-web = "modmanager_web.__main__:main"
+modmanager-web = "modmanager_web.__main__:main"
 
 [project.optional-dependencies]
 web = [
@@ -382,7 +382,7 @@ async def stream_with_progress(
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from modmanager_cli.orchestrator import run as orch_run
+from modmanager.orchestrator import run as orch_run
 from ..schemas import RunRequest
 from ..sse import stream_with_progress
 
@@ -473,7 +473,7 @@ class RunRequest(BaseModel):
 ## 7. 适配层设计（adapters.py）
 
 ```python
-from modmanager_cli.orchestrator import PipelineResult
+from modmanager.orchestrator import PipelineResult
 from .schemas import ApiResponse
 
 def adapt_pipeline_result(pr: PipelineResult) -> dict:
@@ -585,7 +585,7 @@ if __name__ == "__main__":
     main()
 ```
 
-启动：`python -m modmanager_web` 或 `modmanger-web`
+启动：`python -m modmanager_web` 或 `modmanager-web`
 
 ---
 
@@ -593,16 +593,16 @@ if __name__ == "__main__":
 
 | 模块 | 改动 |
 |------|------|
-| `modmanager_cli/*` | **无改动** |
-| `pyproject.toml` | 新增 `web` extras + `modmanger-web` 入口 |
+| `modmanager/*` | **无改动** |
+| `pyproject.toml` | 新增 `web` extras + `modmanager-web` 入口 |
 | `__init__.py` | 已在 Phase 1 更新，无需再改 |
 
 ### pyproject.toml 改动
 
 ```toml
 [project.scripts]
-modmanger-cli = "modmanager_cli.cli:main"
-modmanger-web = "modmanager_web.__main__:main"       # 新增
+modmanager-cli = "modmanager.cli:main"
+modmanager-web = "modmanager_web.__main__:main"       # 新增
 
 [project.optional-dependencies]
 web = [
@@ -665,7 +665,7 @@ Task 14: 测试                         ← 见 §11
 
 ## 12. 验收标准
 
-1. `pip install ".[web]"` 后 `modmanger-web` 命令可启动服务
+1. `pip install ".[web]"` 后 `modmanager-web` 命令可启动服务
 2. 浏览器访问 `http://127.0.0.1:8000/api/docs` 可见 Swagger UI
 3. `POST /api/config/discover` 返回 user_config
 4. `POST /api/pipeline/compute` SSE 流正确返回进度 + 结果

@@ -2,7 +2,7 @@
 
 import unittest
 
-from modmanager_cli.validation import validate_aggregated_rule_set, validate_database
+from modmanager.validation import validate_aggregated_rule_set, validate_database
 
 
 class ValidateAggregatedRuleSetTests(unittest.TestCase):

@@ -13,7 +13,7 @@ from datetime import datetime
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from modmanager_cli.steam_scanner import SteamScanner
+from modmanager.steam_scanner import SteamScanner
 
 
 def log_result(message: str, log_file: Path, level: str = "INFO"):

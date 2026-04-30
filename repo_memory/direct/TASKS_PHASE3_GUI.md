@@ -121,7 +121,7 @@ export default defineConfig({
 
 ## Task 16: M3 前置 — forest_visual.py SVG 升级
 
-**文件**：`src/modmanager_cli/forest_visual.py`（修改）
+**文件**：`src/modmanager/forest_visual.py`（修改）
 
 ### 16.1 需要改动的内容
 
@@ -564,7 +564,7 @@ cd ../.. && python3 -m modmanager_web    # 启动后浏览器打开应看到 For
 ## 验收标准（复述设计文档 §10）
 
 1. `cd frontend && npm run build` 构建成功，产物写入 `src/modmanager_web/static/`
-2. `modmanger-web` 启动后 `http://127.0.0.1:8000` 展示 Forest 页面
+2. `modmanager-web` 启动后 `http://127.0.0.1:8000` 展示 Forest 页面
 3. Forest 页面：填写参数 → 运行 → SSE 进度 → SVG 展示 → zoom/pan
 4. 冲突裁决页面：展示冲突 → 选候选 → 重新计算 → Forest 更新
 5. 四个页面路由切换正常（`/forest`, `/conflicts`, `/rules`, `/backup`）

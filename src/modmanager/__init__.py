@@ -1,4 +1,4 @@
-"""modmanager_cli package."""
+"""modmanager package."""
 
 __all__ = [
     "engine",

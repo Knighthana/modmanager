@@ -28,9 +28,9 @@ def _ensure_src_on_path() -> None:
 
 def _load_modules():
     _ensure_src_on_path()
-    from modmanager_cli.engine import compute_mapping
-    from modmanager_cli.forest_visual import visualize_payload
-    from modmanager_cli.iojson import load_json_file, write_json_file
+    from modmanager.engine import compute_mapping
+    from modmanager.forest_visual import visualize_payload
+    from modmanager.iojson import load_json_file, write_json_file
     from rule_aggregator import aggregate_single_kmm_rule_file
     return compute_mapping, visualize_payload, load_json_file, write_json_file, aggregate_single_kmm_rule_file
 

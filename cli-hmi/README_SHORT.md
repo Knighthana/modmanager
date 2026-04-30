@@ -34,13 +34,13 @@ python cli-hmi/visualize_interactive.py
 Core CLI visualize (M1 details on by default):
 
 ```bash
-python -m modmanager_cli.cli visualize --forest <result.json> --format ascii
+python -m modmanager.cli visualize --forest <result.json> --format ascii
 ```
 
 Disable M1 details explicitly:
 
 ```bash
-python -m modmanager_cli.cli visualize --forest <result.json> --format ascii --no-show-m1-details
+python -m modmanager.cli visualize --forest <result.json> --format ascii --no-show-m1-details
 ```
 
 ## Test runner

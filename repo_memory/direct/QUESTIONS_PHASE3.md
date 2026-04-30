@@ -92,7 +92,7 @@ M3（HTML standalone + Plot renderer）属于 Forest 可视化的中间里程碑
 **方案 A：嵌入 FastAPI**
 - 前端静态文件（HTML/CSS/JS）由 FastAPI 直接 serve（`StaticFiles` mount）
 - 同一端口、同一进程，零 CORS 问题（本就是同源）
-- 部署简单：`pip install` + `modmanger-web` 一把启动
+- 部署简单：`pip install` + `modmanager-web` 一把启动
 - 限制：无热更新（HMR），开发体验较差
 
 **方案 B：独立前端开发服务器**

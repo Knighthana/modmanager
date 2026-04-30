@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from modmanager_cli.orchestrator import PipelineResult
+from modmanager.orchestrator import PipelineResult
 from modmanager_web.app import create_app
 
 

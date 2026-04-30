@@ -62,7 +62,7 @@ bootstrap 的职责：若三级搜索均未找到 `user_config.json`，按 `user
     {
       "description": "本机kmmrule存储位置1",
       "path_handle": "rule_base_path_1",
-      "path_target": "/home/knighthana/workspace/modmanager_cli/"
+      "path_target": "/home/knighthana/workspace/modmanager/"
     }
   ]
 }
@@ -273,7 +273,7 @@ sub_permissions[dom_mixed_id] = {actor_mixed_id1, actor_mixed_id2, ...}  // unio
 
 ### 6.1 模块位置
 
-`src/modmanager_cli/rule_aggregator.py`
+`src/modmanager/rule_aggregator.py`
 
 与 M1 引擎共处一个包内，可共享基础设施（`iojson`、`validation`），但逻辑上不耦合 M1 的执行流程。
 
@@ -382,7 +382,7 @@ def aggregate(
 
 `cli-hmi/rule_aggregator.py` 是为演示目的临时构建的单文件直通转换器。其设计逻辑（处理 `provenance_ref`、`sidecar_ref`、路径规范化的方式，以及输出中是否保留 `def_destin` / `def_action`）**与本设计文档不一致**。
 
-正式聚合器 `src/modmanager_cli/rule_aggregator.py` 应**完全按本文档设计实现**，不参考 Demo 实现。
+正式聚合器 `src/modmanager/rule_aggregator.py` 应**完全按本文档设计实现**，不参考 Demo 实现。
 
 ---
 

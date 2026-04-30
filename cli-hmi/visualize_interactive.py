@@ -11,16 +11,16 @@ from pathlib import Path
 def _load_core_modules():
     """加载核心模块，支持本地 src 目录回退"""
     try:
-        from modmanager_cli.iojson import load_json_file
-        from modmanager_cli.forest_visual import visualize_payload, VisualizationError
+        from modmanager.iojson import load_json_file
+        from modmanager.forest_visual import visualize_payload, VisualizationError
     except ModuleNotFoundError:
         repo_root = Path(__file__).resolve().parents[1]
         src_dir = repo_root / "src"
         src_str = str(src_dir)
         if src_str not in sys.path:
             sys.path.insert(0, src_str)
-        from modmanager_cli.iojson import load_json_file
-        from modmanager_cli.forest_visual import visualize_payload, VisualizationError
+        from modmanager.iojson import load_json_file
+        from modmanager.forest_visual import visualize_payload, VisualizationError
 
     return load_json_file, visualize_payload, VisualizationError
 

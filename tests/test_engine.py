@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modmanager_cli.engine import (
+from modmanager.engine import (
     _check_filefoldertree_transition,
     compute_mapping,
     find_cycles,

@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from modmanager_cli.backup_ops import (
+from modmanager.backup_ops import (
     apply_final_mapping,
     build_filefoldertree_with_hashes,
     check_backup_gate,

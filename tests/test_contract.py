@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from modmanager_cli.engine import compute_mapping
-from modmanager_cli.schema import get_output_schema, validate_output, validate_output_collect
+from modmanager.engine import compute_mapping
+from modmanager.schema import get_output_schema, validate_output, validate_output_collect
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ class SchemaLoadTests(unittest.TestCase):
         self.assertSetEqual(required, {"warnings", "errors", "forest", "final_mapping"})
 
     def test_schema_change_request_enum_matches_engine(self) -> None:
-        from modmanager_cli.engine import VALID_ACTIONS
+        from modmanager.engine import VALID_ACTIONS
         schema = get_output_schema()
         schema_enum = set(schema["definitions"]["ChangeRequest"]["properties"]["action"]["enum"])
         self.assertSetEqual(schema_enum, VALID_ACTIONS)

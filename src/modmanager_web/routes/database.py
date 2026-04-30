@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from modmanager_cli.bootstrap import generate_database
+from modmanager.bootstrap import generate_database
 
 from ..adapters import adapt_dict_result
 from ..schemas import GenerateDatabaseRequest

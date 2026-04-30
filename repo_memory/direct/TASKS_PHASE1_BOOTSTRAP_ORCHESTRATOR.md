@@ -14,18 +14,18 @@
 2. `repo_memory/direct/QUESTIONS_BOOTSTRAP.md`（8 个决策记录）
 3. `repo_memory/TASKLIST.md`（Phase 1 概述）
 4. 现有源码（需了解的接口）：
-   - `src/modmanager_cli/engine.py` — `compute_mapping()`
-   - `src/modmanager_cli/backup_ops.py` — `run_differential_backup()`, `apply_final_mapping()`
-   - `src/modmanager_cli/rule_aggregator.py` — `aggregate()`
-   - `src/modmanager_cli/database_ops.py` — `discover_with_fallback()`
-   - `src/modmanager_cli/iojson.py` — `load_json_file()`, `write_json_file()`
-   - `src/modmanager_cli/cli.py` — 现有编排逻辑（将被迁移）
+   - `src/modmanager/engine.py` — `compute_mapping()`
+   - `src/modmanager/backup_ops.py` — `run_differential_backup()`, `apply_final_mapping()`
+   - `src/modmanager/rule_aggregator.py` — `aggregate()`
+   - `src/modmanager/database_ops.py` — `discover_with_fallback()`
+   - `src/modmanager/iojson.py` — `load_json_file()`, `write_json_file()`
+   - `src/modmanager/cli.py` — 现有编排逻辑（将被迁移）
 
 ---
 
 ## Task 5: 创建 bootstrap.py
 
-**文件**: `src/modmanager_cli/bootstrap.py`（新建）
+**文件**: `src/modmanager/bootstrap.py`（新建）
 
 ### 5.1 内部工具函数：`_detect_software_dir()`
 
@@ -33,7 +33,7 @@
 def _detect_software_dir() -> str:
     """从 __file__ 向上查找 pyproject.toml。
 
-    找到则返回该目录（开发模式），否则返回 site-packages/modmanager_cli/。
+    找到则返回该目录（开发模式），否则返回 site-packages/modmanager/。
     """
 ```
 
@@ -41,8 +41,8 @@ def _detect_software_dir() -> str:
 - 从 `Path(__file__).resolve().parent` 开始向上遍历
 - 在每个父目录检测是否包含 `pyproject.toml` 文件
 - 找到则返回该父目录的绝对路径（posix 风格）
-- 未找到（生产环境安装）则返回 `<site-packages>/modmanager_cli/`
-  - 获取方法：`Path(__file__).resolve().parent`（即 modmanager_cli 包目录本身）
+- 未找到（生产环境安装）则返回 `<site-packages>/modmanager/`
+  - 获取方法：`Path(__file__).resolve().parent`（即 modmanager 包目录本身）
 - 函数名以下划线开头，表示内部使用
 
 ### 5.2 `discover_user_config()`
@@ -162,7 +162,7 @@ class ProgressCallback(Protocol):
 
 ## Task 6: 创建 orchestrator.py
 
-**文件**: `src/modmanager_cli/orchestrator.py`（新建）
+**文件**: `src/modmanager/orchestrator.py`（新建）
 
 ### 6.1 数据结构
 
@@ -353,7 +353,7 @@ def run(
 
 ## Task 7: CLI 适配
 
-**文件**: `src/modmanager_cli/cli.py`（修改）
+**文件**: `src/modmanager/cli.py`（修改）
 
 ### 7.1 新增公共函数 `_get_default_user_config_path()`
 
@@ -455,7 +455,7 @@ def _handle_backup(args: argparse.Namespace) -> int:
 1. **`test_detect_software_dir_returns_string`**
    - 调用 `_detect_software_dir()`，验证返回非空字符串
    - 验证返回路径是绝对路径
-   - 验证返回路径以 `/modmanager_cli` 结尾（或包含 `pyproject.toml` 的父目录）
+   - 验证返回路径以 `/modmanager` 结尾（或包含 `pyproject.toml` 的父目录）
 
 2. **`test_discover_user_config_no_files_raises`**
    - 传入不存在的 `home_dir`，验证抛出 `FileNotFoundError`
@@ -535,6 +535,6 @@ Task 8 (测试)           ← 依赖 Task 5/6/7 完成
 1. `python -m pytest tests/test_bootstrap.py -v` 全量通过
 2. `python -m pytest tests/test_orchestrator.py -v` 全量通过
 3. `python -m pytest tests/ -v` 全量通过（不破坏已有 243+ 测试）
-4. `python -m modmanager_cli.cli backup --help` 和 `apply --help` 正常显示
+4. `python -m modmanager.cli backup --help` 和 `apply --help` 正常显示
 5. orchestrator 的三个分批接口 (`compute` / `backup` / `apply`) 与 `run` 全流水线接口行为一致
 6. bootstrap 的 `discover_user_config` 正确完成三级搜索合并

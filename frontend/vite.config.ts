@@ -9,7 +9,7 @@ export default defineConfig({
     alias: { '@': resolve(__dirname, 'src') },
   },
   build: {
-    outDir: resolve(__dirname, '..', 'src', 'modmanager_web', 'static'),
+    outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
   },
   server: {

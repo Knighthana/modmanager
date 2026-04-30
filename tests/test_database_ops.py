@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from modmanager_cli.database_ops import (
+from modmanager.database_ops import (
     add_manual_game,
     add_manual_steamlib,
     discover_with_fallback,
@@ -19,7 +19,7 @@ from modmanager_cli.database_ops import (
     update_manual_steamlib,
     verify_database_integrity,
 )
-from modmanager_cli.steam_scanner import GameInfo, SteamLibraryInfo
+from modmanager.steam_scanner import GameInfo, SteamLibraryInfo
 
 
 class DatabaseOpsTests(unittest.TestCase):
@@ -70,9 +70,9 @@ class DatabaseOpsTests(unittest.TestCase):
     def test_discover_with_fallback_uses_manual_when_auto_fails(self) -> None:
         manual = [{"path": "/mnt/d/Games", "contains_libraryfolders_vdf": False}]
 
-        with patch("modmanager_cli.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
-            with patch("modmanager_cli.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-                with patch("modmanager_cli.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmanager.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
+            with patch("modmanager.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+                with patch("modmanager.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                     mock_games.return_value = {
                         "270150": GameInfo(
                             appid="270150",
@@ -95,7 +95,7 @@ class DatabaseOpsTests(unittest.TestCase):
         self.assertEqual(database["game"][0]["mods_found"], ["2606099273"])
 
     def test_discover_with_fallback_requires_working_directory(self) -> None:
-        with patch("modmanager_cli.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
+        with patch("modmanager.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
             with self.assertRaises(ValueError):
                 discover_with_fallback(working_pathstyle="linux", manual_override_steamlibs=[])
 
@@ -128,8 +128,8 @@ class DatabaseOpsTests(unittest.TestCase):
             ],
         }
 
-        with patch("modmanager_cli.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-            with patch("modmanager_cli.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmanager.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+            with patch("modmanager.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                 mock_games.return_value = {
                     "270150": GameInfo(
                         appid="270150",
@@ -168,8 +168,8 @@ class DatabaseOpsTests(unittest.TestCase):
             "dommod": [{"mixed_id": "old:old", "path": "/x", "localdate": 0}],
         }
 
-        with patch("modmanager_cli.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-            with patch("modmanager_cli.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmanager.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+            with patch("modmanager.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                 mock_games.return_value = {
                     "270150": GameInfo(
                         appid="270150",

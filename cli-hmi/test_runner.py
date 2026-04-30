@@ -242,7 +242,7 @@ def _choose_module(modules: list[str]) -> str | None:
 
 
 def main() -> int:
-    print("modmanager_cli interactive test runner")
+    print("modmanager interactive test runner")
     print(f"Repo root: {_repo_root()}")
 
     last_report: RunReport | None = None

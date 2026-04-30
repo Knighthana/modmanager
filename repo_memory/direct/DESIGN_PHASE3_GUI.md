@@ -59,7 +59,7 @@
                         └────────────────┬─────────────────┘
                                          │ import
                         ┌────────────────▼─────────────────┐
-                        │       modmanager_cli              │
+                        │       modmanager              │
                         │  orchestrator / engine / ...      │
                         └──────────────────────────────────┘
 ```
@@ -460,7 +460,7 @@ App.vue
 
 无改动（前端不通过 pip 管理）。
 
-### 8.4 `modmanager_cli/*`
+### 8.4 `modmanager/*`
 
 **零改动**。
 
@@ -487,7 +487,7 @@ Task 25: 测试                      ← 前端 Vitest 单元测试 + Python 全
 ## 10. 验收标准
 
 1. `cd frontend && npm run build` 构建成功，产物写入 `src/modmanager_web/static/`
-2. `modmanger-web` 启动后 `http://127.0.0.1:8000` 展示 Forest 页面
+2. `modmanager-web` 启动后 `http://127.0.0.1:8000` 展示 Forest 页面
 3. Forest 页面：填写参数 → 点击运行 → SSE 进度条 → SVG 展示 → zoom/pan 可用
 4. 冲突裁决页面：展示冲突列表 → 选择候选 → 重新计算 → Forest 更新
 5. 四个页面可正常路由切换，URL 正确（`/forest`、`/conflicts`、`/rules`、`/backup`）

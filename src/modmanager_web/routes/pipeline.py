@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from modmanager_cli.orchestrator import (
+from modmanager.orchestrator import (
     compute as orch_compute,
     backup as orch_backup,
     apply as orch_apply,

@@ -6,7 +6,7 @@ they can be serialised directly via ``json.dumps`` inside SSE events.
 
 from __future__ import annotations
 
-from modmanager_cli.orchestrator import PipelineResult
+from modmanager.orchestrator import PipelineResult
 
 
 def adapt_pipeline_result(pr: PipelineResult) -> dict:

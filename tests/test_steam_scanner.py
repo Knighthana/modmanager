@@ -12,15 +12,15 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from modmanager_cli.steam_scanner import (
+from modmanager.steam_scanner import (
     SteamScanner,
     SteamLibraryInfo,
     GameInfo,
     DatabaseInfo,
     scan_and_generate_database,
 )
-from modmanager_cli.vdf_parser import parse_libraryfolders_vdf
-from modmanager_cli.acf_parser import parse_appmanifest_acf, parse_appworkshop_acf
+from modmanager.vdf_parser import parse_libraryfolders_vdf
+from modmanager.acf_parser import parse_appmanifest_acf, parse_appworkshop_acf
 
 
 class TestVDFParser(unittest.TestCase):
@@ -177,7 +177,7 @@ class TestSteamScannerDiscovery(unittest.TestCase):
         scanner = SteamScanner()
 
         # Mock the file system to return known paths
-        with patch("modmanager_cli.steam_scanner.Path.exists") as mock_exists:
+        with patch("modmanager.steam_scanner.Path.exists") as mock_exists:
             mock_exists.return_value = True
             libraries = scanner.discover_steam_libraries()
 
@@ -204,7 +204,7 @@ class TestSteamScannerDiscovery(unittest.TestCase):
 }''')
 
             # Mock ACF parser
-            with patch("modmanager_cli.steam_scanner.parse_appmanifest_acf") as mock_parse:
+            with patch("modmanager.steam_scanner.parse_appmanifest_acf") as mock_parse:
                 mock_parse.return_value = {
                     "appid": "270150",
                     "name": "Running with Rifles",
@@ -266,7 +266,7 @@ class TestSteamScannerDiscovery(unittest.TestCase):
 }}'''
             (main_lib / "libraryfolders.vdf").write_text(vdf_content)
 
-            with patch("modmanager_cli.steam_scanner.Path.home") as mock_home:
+            with patch("modmanager.steam_scanner.Path.home") as mock_home:
                 mock_home.return_value = fake_home
                 libraries = scanner.discover_steam_libraries()
 
@@ -310,7 +310,7 @@ class TestSteamScannerDiscovery(unittest.TestCase):
 }}'''
             (main_steamapps / "libraryfolders.vdf").write_text(vdf_content)
 
-            with patch("modmanager_cli.steam_scanner.Path.home") as mock_home:
+            with patch("modmanager.steam_scanner.Path.home") as mock_home:
                 mock_home.return_value = fake_home
                 libraries = scanner.discover_steam_libraries()
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from modmanager_cli.bootstrap import discover_user_config
+from modmanager.bootstrap import discover_user_config
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import DiscoverUserConfigRequest

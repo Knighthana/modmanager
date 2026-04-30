@@ -1,6 +1,6 @@
 import unittest
 
-from modmanager_cli.paths import (
+from modmanager.paths import (
     build_game_index,
     is_numeric_modid,
     mod_root_from_mixed_id,

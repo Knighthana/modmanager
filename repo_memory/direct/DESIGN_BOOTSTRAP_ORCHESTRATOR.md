@@ -36,7 +36,7 @@
 
 ## 2. Bootstrap 模块
 
-**文件**：`src/modmanager_cli/bootstrap.py`
+**文件**：`src/modmanager/bootstrap.py`
 
 ### 2.1 `discover_user_config()`
 
@@ -47,7 +47,7 @@
   3. $PWD/user_config.json                （最高优先级）
 
 软件本体目录 = 包含 pyproject.toml 的最近父目录（开发模式）
-             或 site-packages/modmanager_cli/（pip 安装后）
+             或 site-packages/modmanager/（pip 安装后）
              自动检测：从 __file__ 向上查找 pyproject.toml，未找到则 fallback 到 site-packages 路径
 ```
 
@@ -99,7 +99,7 @@ def generate_database(
 ```python
 def _detect_software_dir() -> str:
     """从 __file__ 向上查找 pyproject.toml。
-    找到则返回该目录（开发模式），否则返回 site-packages/modmanager_cli/。
+    找到则返回该目录（开发模式），否则返回 site-packages/modmanager/。
     """
 ```
 
@@ -107,7 +107,7 @@ def _detect_software_dir() -> str:
 
 ## 3. Orchestrator 模块
 
-**文件**：`src/modmanager_cli/orchestrator.py`
+**文件**：`src/modmanager/orchestrator.py`
 
 ### 3.1 进度回调协议
 

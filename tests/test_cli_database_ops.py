@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from modmanager_cli.cli import main
-from modmanager_cli.iojson import load_json_file, write_json_file
+from modmanager.cli import main
+from modmanager.iojson import load_json_file, write_json_file
 
 
 class CliDatabaseOpsTests(unittest.TestCase):
@@ -37,7 +37,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "visualize",
                     "--forest",
                     str(forest_path),
@@ -59,7 +59,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "visualize",
                     "--forest",
                     str(forest_path),
@@ -78,11 +78,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
             forest_path = Path(td) / "forest.json"
             write_json_file(forest_path, {"forest": [{"path": "/dst/a.txt", "changerequest": []}]})
 
-            with patch("modmanager_cli.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
+            with patch("modmanager.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
                 with patch(
                     "sys.argv",
                     [
-                        "modmanger-cli",
+                        "modmanager-cli",
                         "visualize",
                         "--forest",
                         str(forest_path),
@@ -120,11 +120,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 },
             )
 
-            with patch("modmanager_cli.cli.Path.write_text", side_effect=OSError("disk full")):
+            with patch("modmanager.cli.Path.write_text", side_effect=OSError("disk full")):
                 with patch(
                     "sys.argv",
                     [
-                        "modmanger-cli",
+                        "modmanager-cli",
                         "visualize",
                         "--forest",
                         str(forest_path),
@@ -176,7 +176,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "visualize",
                     "--forest",
                     str(forest_path),
@@ -200,7 +200,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "steamlib",
                     "add",
                     "--database",
@@ -223,7 +223,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "steamlib",
                     "remove",
                     "--database",
@@ -242,7 +242,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
         with patch(
             "sys.argv",
             [
-                "modmanger-cli",
+                "modmanager-cli",
                 "steamlib",
                 "list",
                 "--database",
@@ -278,11 +278,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 "errors": [],
             }
 
-            with patch("modmanager_cli.cli.liveupdate_database", return_value=mocked_result):
+            with patch("modmanager.cli.liveupdate_database", return_value=mocked_result):
                 with patch(
                     "sys.argv",
                     [
-                        "modmanger-cli",
+                        "modmanager-cli",
                         "liveupdate",
                         "--database",
                         str(db_path),
@@ -309,7 +309,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "liveupdate",
                     "--database",
                     str(db_path),
@@ -343,11 +343,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 "errors": [],
             }
 
-            with patch("modmanager_cli.cli.regen_database", return_value=mocked_result):
+            with patch("modmanager.cli.regen_database", return_value=mocked_result):
                 with patch(
                     "sys.argv",
                     [
-                        "modmanger-cli",
+                        "modmanager-cli",
                         "regen",
                         "--database",
                         str(db_path),
@@ -374,7 +374,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "regen",
                     "--database",
                     str(db_path),
@@ -393,11 +393,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
             write_json_file(aggregated_rule_set_path, {"operation": []})
             write_json_file(db_path, {"game": []})
 
-            with patch("modmanager_cli.cli.compute_mapping", return_value={"forest": [], "final_mapping": []}):
+            with patch("modmanager.cli.compute_mapping", return_value={"forest": [], "final_mapping": []}):
                 with patch(
                     "sys.argv",
                     [
-                        "modmanger-cli",
+                        "modmanager-cli",
                         "--aggregated-rule-set",
                         str(aggregated_rule_set_path),
                         "--database",
@@ -418,7 +418,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "modmanger-cli",
+                    "modmanager-cli",
                     "--aggregated-rule-set",
                     str(aggregated_rule_set_path),
                     "--database",

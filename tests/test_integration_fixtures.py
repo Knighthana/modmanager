@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modmanager_cli.engine import compute_mapping
+from modmanager.engine import compute_mapping
 
 
 class IntegrationFixture:
