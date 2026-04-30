@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import subprocess
+import xml.etree.ElementTree as ET
 from typing import Any
 
 
@@ -235,7 +236,7 @@ def _render_dot(model: GraphModel, show_m1_details: bool = False) -> str:
     return "\n".join(lines)
 
 
-def _render_svg_from_dot(dot_text: str) -> str:
+def _render_svg_from_dot(dot_text: str, model: GraphModel | None = None) -> str:
     try:
         proc = subprocess.run(
             ["dot", "-Tsvg"],
@@ -253,7 +254,10 @@ def _render_svg_from_dot(dot_text: str) -> str:
             msg = "graphviz dot failed"
         raise VisualizationError(f"dot to svg failed: {msg}", 5)
 
-    return proc.stdout.decode("utf-8", errors="replace")
+    svg_text = proc.stdout.decode("utf-8", errors="replace")
+    if model is not None:
+        svg_text = _enrich_svg_nodes(svg_text, model)
+    return svg_text
 
 
 def _html_escape(text: str) -> str:
@@ -263,6 +267,100 @@ def _html_escape(text: str) -> str:
                 .replace(">", "&gt;")
                 .replace('"', "&quot;")
         )
+
+
+def _build_dot_id_mapping(model: GraphModel) -> dict[str, str]:
+    """Reconstruct the DOT node‑ID → path mapping that ``_render_dot`` produces.
+
+    Mirrors the identical ID‑assignment logic so we can locate each node in the
+    Graphviz‑generated SVG and inject interactive attributes.
+    """
+    target_ids: dict[str, str] = {}
+    source_ids: dict[str, str] = {}
+
+    for path in sorted(model.nodes.keys()):
+        if path not in target_ids:
+            target_ids[path] = f"t{len(target_ids)}"
+
+    for edge in model.edges:
+        src = edge.source_path if edge.source_path else "(unknown source)"
+        if src not in source_ids:
+            source_ids[src] = f"s{len(source_ids)}"
+
+    mapping: dict[str, str] = {}
+    for path, dot_id in target_ids.items():
+        mapping[dot_id] = path
+    for path, dot_id in source_ids.items():
+        mapping[dot_id] = path
+    return mapping
+
+
+def _enrich_svg_nodes(svg_text: str, model: GraphModel) -> str:
+    """Post‑process Graphviz SVG output with interactive data attributes.
+
+    For every forest node's ``<g>`` element:
+      * ``data-forest-node="<path>"``
+      * ``<title>target: <path></title>``
+    For conflict (branching) nodes additionally:
+      * ``data-conflict="true"``
+      * ``<desc>destin: …\\ncandidates: …</desc>``
+    """
+    # Ensure the SVG namespace is serialised unprefixed (matching Graphviz output).
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
+
+    id_mapping = _build_dot_id_mapping(model)
+    try:
+        root = ET.fromstring(svg_text)
+    except ET.ParseError:
+        return svg_text  # malformed SVG → skip enrichment
+
+    ns = "http://www.w3.org/2000/svg"
+    svg_ns_g = f"{{{ns}}}g"
+    svg_ns_title = f"{{{ns}}}title"
+    svg_ns_desc = f"{{{ns}}}desc"
+
+    for g_el in root.iter(svg_ns_g):
+        if g_el.get("class") != "node":
+            continue
+        node_id = g_el.get("id", "")
+        path = id_mapping.get(node_id)
+        if path is None:
+            continue
+
+        # -- data‑forest‑node --
+        g_el.set("data-forest-node", path)
+
+        # -- <title> (replace existing or insert) --
+        title_el = None
+        for child in g_el:
+            if child.tag == svg_ns_title:
+                title_el = child
+                break
+        if title_el is None:
+            title_el = ET.Element(svg_ns_title)
+            g_el.insert(0, title_el)
+        title_el.text = f"target: {path}"
+
+        # -- conflict‑only extras --
+        node_obj = model.nodes.get(path)
+        if node_obj is not None and node_obj.warning == "W_FOREST_BRANCHING" and node_obj.candidates:
+            g_el.set("data-conflict", "true")
+            desc_el = None
+            for child in g_el:
+                if child.tag == svg_ns_desc:
+                    desc_el = child
+                    break
+            if desc_el is None:
+                desc_el = ET.Element(svg_ns_desc)
+                # insert after <title>
+                insert_pos = 1 if title_el is not None else 0
+                g_el.insert(insert_pos, desc_el)
+            desc_el.text = (
+                f"destin: {node_obj.destin_mixed_id}\n"
+                f"candidates: {', '.join(node_obj.candidates)}"
+            )
+
+    return ET.tostring(root, encoding="unicode")
 
 
 def _render_html(payload: Any, model: GraphModel, show_m1_details: bool = False) -> str:
@@ -735,7 +833,10 @@ def visualize_payload(payload: Any, output_format: str, show_m1_details: bool = 
     if fmt == "dot":
         return _render_dot(model, show_m1_details=show_m1_details)
     if fmt == "svg":
-        return _render_svg_from_dot(_render_dot(model, show_m1_details=show_m1_details))
+        return _render_svg_from_dot(
+            _render_dot(model, show_m1_details=show_m1_details),
+            model=model,
+        )
     if fmt == "html":
         return _render_html(payload, model, show_m1_details=show_m1_details)
 

@@ -68,7 +68,7 @@
 
 全量 276 tests 通过（261 existing + 15 new）。`modmanager_cli/*` 零改动。
 
-## Phase 3: 前端 GUI（当前阶段 — 设计完成）
+## Phase 3: 前端 GUI ✅
 
 规则浏览器、Forest 可视化嵌入、冲突裁决 UI、备份/恢复控制台。
 
@@ -91,6 +91,11 @@
 | ConflictsPage | `/conflicts` | 冲突列表 + 候选选择 + 重新计算 |
 | RulesPage | `/rules` | kmm_rule 文件浏览 |
 | BackupPage | `/backup` | 备份列表 + 恢复操作 |
+
+### 测试
+- 前端 Vitest: 14 tests 全部通过
+- Python: 276 tests 全部通过
+- frontend/ 构建成功，产物嵌入 FastAPI 静态文件
 
 ---
 
