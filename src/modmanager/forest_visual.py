@@ -160,7 +160,7 @@ def _dot_escape(text: str) -> str:
 
 
 def _render_dot(model: GraphModel, show_m1_details: bool = False) -> str:
-    lines: list[str] = ["digraph Forest {", "  rankdir=LR;"]
+    lines: list[str] = ["digraph Forest {", "  bgcolor=transparent;", "  rankdir=LR;"]
     target_ids: dict[str, str] = {}
     source_ids: dict[str, str] = {}
 

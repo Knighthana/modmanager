@@ -678,7 +678,7 @@
       "actionlist": [
         {
           "from": [
-            "一点不战术地图v1.9 TEMP/maps/*/"
+            "一点不战术地图v1.9 TEMP/时效性附加内容/maps/*/"
           ],
           "from_type": "path",
           "into": [
