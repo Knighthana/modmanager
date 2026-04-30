@@ -32,7 +32,7 @@
 
 ---
 
-## 3. `W_DELETE_LEAF_PROMOTED` 的必要性
+## 3. `W_DELETE_LEAF_PROMOTED` 的必要性 ✅ superseded by new forest model
 
 **现象**：当 Forest 中某个映射链的最终来源是 delete 操作时，引擎输出 `W_DELETE_LEAF_PROMOTED` 警告。
 
@@ -41,9 +41,11 @@
 - 这个警告何时对用户有实际意义？
 - 是否应该降级为 info/debug 级别，或在映射计算完成时不显示？
 
+**状态说明**：旧 fork 模型已废弃，新独立根+引用模型消除了 cascade delete。因此 `W_DELETE_LEAF_PROMOTED` 被新模型取代——delete 不再跟随父结点迁移，不会污染目标树的语义。在新模型中 delete 操作留在原根，不级联；`W_DELETE_LEAF_PROMOTED` 在新模型中不再触发。
+
 ---
 
-## 4. `W_CREATE_TARGET_EXISTS_OVERWRITE` 不应与 Tree State 冲突
+## 4. `W_CREATE_TARGET_EXISTS_OVERWRITE` 不应与 Tree State 冲突 ✅ designed (T1), code pending
 
 **现象**：
 ```
@@ -56,6 +58,11 @@ W_CREATE_TARGET_EXISTS_OVERWRITE: /mnt/d/Games/steamapps/common/RunningWithRifle
 **需要澄清**：
 - 引擎的 `compute_mapping` 为什么在 create 检查时用 `Path(target).exists()` 而非参考映射树内部状态？
 - 是否需要引入"映射树内状态追踪"机制，使 delete 的副作用对后续 action 可见？
+
+**子问题状态**：
+- 路径末尾 `/` 丢失 → 问题 2 已修复 ✅
+- create 检查磁盘而非树状态 → 设计已决定（T1），代码待实现
+- 前序 delete 的语义传递 → 新模型解决
 
 ---
 

@@ -410,7 +410,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             for src_expr in from_list:
                 sources = _expand_sources(source_root, src_expr, source_type=from_type)
                 if not sources:
-                    warnings.append(f"W_NO_SOURCE_MATCH: {actor_id}#{idx}:{src_expr}")
+                    warnings.append(f"W_NO_SOURCE_MATCH: {actor_id}#{idx}:{src_expr} (resolved: {source_root}/{src_expr})")
                 else:
                     all_sources.extend(sources)
             
