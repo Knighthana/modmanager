@@ -8,12 +8,12 @@ from .pathstyle import PathStyle, normalize
 
 
 def normalize_posix(path: str) -> str:
-    """Normalize a path to Linux-style separators and trim trailing slash."""
+    """Normalize a path to Linux-style separators."""
     normalized = normalize(path, PathStyle.LINUX)
     # Some upstream inputs may contain doubled separators (e.g. escaped
     # Windows literals). Collapse them to keep internal keys deterministic.
     normalized = re.sub(r"/+", "/", normalized)
-    return normalized.rstrip("/")
+    return normalized
 
 
 def split_mixed_id(mixed_id: str) -> tuple[str, str] | None:

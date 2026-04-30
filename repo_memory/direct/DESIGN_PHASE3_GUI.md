@@ -510,6 +510,7 @@ Task 25: 测试                      ← 前端 Vitest 单元测试 + Python 全
 | `W_FOREST_BRANCHING` | 多个源映射到同一目标，形成分叉 | 需在冲突裁决页面手动选择 |
 | `W_EMPTY_ACTIONLIST_AFTER_FILTER` | 某 mod 的所有 action 在权限过滤后为空 | 该 mod 不产生任何映射 |
 | `W_DESTIN_NONE_SKIPPED` | action 的 destin 为 "none" | 该 action 被跳过 |
+| `W_PATH_TRAILING_SLASH_FIXED` | 目录路径缺少末尾 `/`，已由聚合器自动补全 | 不影响结果，路径已被修正 |
 
 ---
 

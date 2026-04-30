@@ -18,19 +18,17 @@
 
 ---
 
-## 2. 路径缺少末尾 `/`
+## 2. 路径缺少末尾 `/` ✅ 已修复
 
-**现象**：
-```
-W_DELETE_LEAF_PROMOTED: /mnt/d/Games/steamapps/workshop/content/270150/2606099273/media/packages/GFL_Castling/maps/1使用方法和图例
-```
+**修复时间**：2026-04-30
+**改动文件**：
+- `src/modmanager/paths.py` — 删除 `normalize_posix()` 中的 `rstrip("/")`，保留路径末尾的 `/`
+- `src/modmanager/rule_aggregator.py` — 聚合器 Step 4 新增自动补全逻辑：`from_type=path` 且不含 glob 字符的条目、`into_type=path` 的条目若末尾缺少 `/` 则自动补全，并记录 `W_PATH_TRAILING_SLASH_FIXED` 警告
 
-这条路径是对一个目录的引用，但末尾缺少 `/`。违反了项目约定：**"凡是 path 都必须以 `/` 结尾，否则会被视为文件"**。
-
-**需要澄清**：
-- 哪一步导致 `/` 丢失？
-- 路径是通过 normalize_posix 处理后丢掉的，还是规则输入时就没有 `/`？
-- 这会有什么潜在影响（文件/目录类型误判、glob 匹配行为等）？
+**修复效果**：
+- `normalize_posix()` 不再破坏路径末尾 `/`，目录/文件类型标记得以保留
+- 聚合器兜底修复规则书写者遗漏的末尾 `/`，保证后续流程不受影响
+- 新增 4 个测试用例覆盖补全、glob 跳过、file 类型不处理等场景
 
 ---
 

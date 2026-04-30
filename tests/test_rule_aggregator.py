@@ -693,5 +693,152 @@ class TestAggregatorEmptyActions(unittest.TestCase):
             self.assertTrue(any("W_EMPTY_ACTIONLIST_AFTER_FILTER" in w for w in warnings))
 
 
+class TestAggregatorTrailingSlash(unittest.TestCase):
+    """Trailing slash auto-fix in Step 4 for path-type from/into lists."""
+
+    def test_trailing_slash_fixed_into(self) -> None:
+        """into_type=path, into=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
+        with tempfile.TemporaryDirectory() as td:
+            uc = _make_temp_user_config(td)
+            rule = _make_temp_kmm_rule(td, "rule.json", {
+                "game": [
+                    {"appid": "270150", "modid": ["100"]},
+                ],
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["data/file.txt"],
+                                "from_type": "file",
+                                "into": ["maps/lobby"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            })
+
+            result, errors, warnings = aggregate([rule], uc)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(errors, [])
+            op = result["operation"][0]
+            action = op["actionlist"][0]
+            self.assertEqual(action["into"], ["maps/lobby/"])
+            self.assertTrue(
+                any("W_PATH_TRAILING_SLASH_FIXED" in w and "into[maps/lobby]" in w for w in warnings)
+            )
+
+    def test_trailing_slash_fixed_from(self) -> None:
+        """from_type=path, from=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
+        with tempfile.TemporaryDirectory() as td:
+            uc = _make_temp_user_config(td)
+            rule = _make_temp_kmm_rule(td, "rule.json", {
+                "game": [
+                    {"appid": "270150", "modid": ["100"]},
+                ],
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["maps/lobby"],
+                                "from_type": "path",
+                                "into": ["dest/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            })
+
+            result, errors, warnings = aggregate([rule], uc)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(errors, [])
+            op = result["operation"][0]
+            action = op["actionlist"][0]
+            self.assertEqual(action["from"], ["maps/lobby/"])
+            self.assertTrue(
+                any("W_PATH_TRAILING_SLASH_FIXED" in w and "from[maps/lobby]" in w for w in warnings)
+            )
+
+    def test_trailing_slash_glob_untouched(self) -> None:
+        """from_type=path, from=['maps/*/'] → unchanged (glob)."""
+        with tempfile.TemporaryDirectory() as td:
+            uc = _make_temp_user_config(td)
+            rule = _make_temp_kmm_rule(td, "rule.json", {
+                "game": [
+                    {"appid": "270150", "modid": ["100"]},
+                ],
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["maps/*/"],
+                                "from_type": "path",
+                                "into": ["dest/"],
+                                "into_type": "path",
+                            }
+                        ],
+                    }
+                ]
+            })
+
+            result, errors, warnings = aggregate([rule], uc)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(errors, [])
+            op = result["operation"][0]
+            action = op["actionlist"][0]
+            # Glob pattern with trailing slash → unchanged
+            self.assertEqual(action["from"], ["maps/*/"])
+            # No trail-slash warning for glob entries
+            self.assertFalse(any("W_PATH_TRAILING_SLASH_FIXED" in w for w in warnings))
+
+    def test_trailing_slash_file_type_untouched(self) -> None:
+        """into_type=file, into=['maps/file.txt'] → unchanged, no warning."""
+        with tempfile.TemporaryDirectory() as td:
+            uc = _make_temp_user_config(td)
+            rule = _make_temp_kmm_rule(td, "rule.json", {
+                "game": [
+                    {"appid": "270150", "modid": ["100"]},
+                ],
+                "mod": [
+                    {
+                        "mixed_id": "270150:100",
+                        "def_destin": "270150:0",
+                        "def_action": "replace",
+                        "actionlist": [
+                            {
+                                "from": ["data/file.txt"],
+                                "from_type": "file",
+                                "into": ["maps/file.txt"],
+                                "into_type": "file",
+                            }
+                        ],
+                    }
+                ]
+            })
+
+            result, errors, warnings = aggregate([rule], uc)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(errors, [])
+            op = result["operation"][0]
+            action = op["actionlist"][0]
+            # file-type should NOT be modified
+            self.assertEqual(action["into"], ["maps/file.txt"])
+            self.assertFalse(any("W_PATH_TRAILING_SLASH_FIXED" in w for w in warnings))
+
+
 if __name__ == "__main__":
     unittest.main()

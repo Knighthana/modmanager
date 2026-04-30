@@ -186,6 +186,7 @@ Step 9: 返回 (result, errors, warnings)
 - KISS：不要在这个文件里引用 engine.py 的任何函数（保持逻辑独立）
 - 可以引用 `iojson.load_json_file` 和 `validation.validate_aggregated_rule_set`
 - 函数应该是纯逻辑，不依赖全局状态
+- 聚合器在 Step 4 对 `from_type=path` / `into_type=path` 的条目自动补全末尾 `/`（若缺失），并记录 `W_PATH_TRAILING_SLASH_FIXED` 警告。`from_type=file` 和 `into_type=file` 不做补全。`from` 列表含 glob 字符（`*?[]`）的条目跳过。
 
 ---
 

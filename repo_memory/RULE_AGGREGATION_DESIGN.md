@@ -408,6 +408,7 @@ def aggregate(
 | `W_NICKNAME_CONFLICT` | 同 mixed_id 跨文件 nickname 冲突，以后入者覆盖 |
 | `W_EMPTY_ACTIONLIST_AFTER_FILTER` | operation 的所有 action 因鉴权或 hold 被过滤，条目仍保留（actionlist 为空） |
 | `W_SIDECAR_REF_DEFAULTED` | sidecar_ref 未注入，已使用默认值 "404" |
+| `W_PATH_TRAILING_SLASH_FIXED` | 目录路径缺少末尾 `/`，已由聚合器自动补全 |
 
 ---
 

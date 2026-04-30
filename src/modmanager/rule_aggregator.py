@@ -267,6 +267,48 @@ def _process_file(
                 if field in action_item:
                     processed_action[field] = action_item[field]
 
+            # 4h. Fix trailing slashes for path-type from/into lists
+            #     (only when from_type/into_type is "path", not "file")
+            _from_type = processed_action.get("from_type")
+            _into_type = processed_action.get("into_type")
+
+            if _from_type == "path":
+                raw_from = processed_action.get("from", [])
+                fixed_from: list[str] = []
+                for _entry in raw_from:
+                    if isinstance(_entry, str):
+                        _has_glob = any(ch in _entry for ch in "*?[]")
+                        if not _has_glob and not _entry.endswith("/"):
+                            _fixed = _entry + "/"
+                            warnings.append(
+                                f"W_PATH_TRAILING_SLASH_FIXED: "
+                                f"{mixed_id}#{action_idx}:from[{_entry}]→{_fixed}"
+                            )
+                            fixed_from.append(_fixed)
+                        else:
+                            fixed_from.append(_entry)
+                    else:
+                        fixed_from.append(_entry)
+                processed_action["from"] = fixed_from
+
+            if _into_type == "path":
+                raw_into = processed_action.get("into", [])
+                fixed_into: list[str] = []
+                for _entry in raw_into:
+                    if isinstance(_entry, str):
+                        if _entry.endswith("/") or _entry.endswith("."):
+                            fixed_into.append(_entry)
+                        else:
+                            _fixed = _entry + "/"
+                            warnings.append(
+                                f"W_PATH_TRAILING_SLASH_FIXED: "
+                                f"{mixed_id}#{action_idx}:into[{_entry}]→{_fixed}"
+                            )
+                            fixed_into.append(_fixed)
+                    else:
+                        fixed_into.append(_entry)
+                processed_action["into"] = fixed_into
+
             actions_for_mod.append(processed_action)
 
         if actions_for_mod:
