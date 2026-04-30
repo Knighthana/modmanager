@@ -31,6 +31,13 @@ class DiscoverUserConfigRequest(BaseModel):
     home_dir: str | None = None
 
 
+class SaveConfigRequest(BaseModel):
+    """Request body for ``POST /api/config/save``."""
+
+    config: dict[str, Any]
+    output_path: str
+
+
 # ── Database endpoints ────────────────────────────────────────────────────
 
 

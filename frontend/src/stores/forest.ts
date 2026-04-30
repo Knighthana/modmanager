@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { streamSse } from '../api/sse'
+import { apiPost } from '../api/client'
 import type { SseProgress } from '../api/sse'
 
 export interface ForestNode {
@@ -59,6 +60,20 @@ export interface RunApiResponse {
   warnings: string[]
 }
 
+export interface DatabaseSummary {
+  libraries: number
+  games: number
+  mods: number
+}
+
+export interface DiscoverParams {
+  mode: string
+  paths: string[] | null
+  workingPathstyle: string
+  greedyParsing: boolean
+  cachePath: string | null
+}
+
 function extractConflicts(forest: ForestNode[]): ConflictItem[] {
   return forest
     .filter(n => n.warning === 'W_FOREST_BRANCHING')
@@ -80,6 +95,11 @@ export const useForestStore = defineStore('forest', () => {
   const svgContent = ref<string>('')
   const isRunning = ref(false)
   const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '' })
+
+  // ── discovery state ──
+  const databaseSummary = ref<DatabaseSummary | null>(null)
+  const userConfig = ref<Record<string, unknown> | null>(null)
+  const storedDatabase = ref<Record<string, unknown> | null>(null)
 
   // ── getters ──
   const unresolvedCount = computed(() =>
@@ -115,6 +135,58 @@ export const useForestStore = defineStore('forest', () => {
     isRunning.value = false
   }
 
+  async function discoverDatabase(params: DiscoverParams) {
+    isRunning.value = true
+    errors.value = []
+    warnings.value = []
+    databaseSummary.value = null
+    userConfig.value = null
+    storedDatabase.value = null
+
+    let discoverOk = false
+
+    await streamSse('/database/generate', params, {
+      onProgress(p: SseProgress) {
+        progress.value = p
+      },
+      onResult(data: unknown) {
+        const result = data as { ok: boolean; data: Record<string, unknown>; errors?: string[] }
+        if (result.ok && result.data) {
+          storedDatabase.value = result.data
+          databaseSummary.value = {
+            libraries: (result.data.steamlib as unknown[])?.length ?? 0,
+            games: (result.data.game as unknown[])?.length ?? 0,
+            mods: (result.data.dommod as unknown[])?.length ?? 0,
+          }
+          discoverOk = true
+        } else if (result.errors?.length) {
+          errors.value.push(...result.errors)
+        }
+      },
+      onError(msg: string) {
+        errors.value.push(msg)
+      },
+    })
+
+    // After SSE completes, fetch and save user_config
+    if (discoverOk) {
+      try {
+        const configResp = await apiPost('/config/discover', {})
+        if (configResp.ok && configResp.data) {
+          userConfig.value = configResp.data as Record<string, unknown>
+          await apiPost('/config/save', {
+            config: configResp.data,
+            output_path: '/tmp/modmanager_userconfig_generated.json',
+          })
+        }
+      } catch {
+        errors.value.push('Failed to discover or save user_config')
+      }
+    }
+
+    isRunning.value = false
+  }
+
   function setDecision(target: string, source: string) {
     branchDecisions.value[target] = source
   }
@@ -132,6 +204,9 @@ export const useForestStore = defineStore('forest', () => {
     warnings.value = []
     svgContent.value = ''
     progress.value = { step: '', finished: 0, total: -1, message: '' }
+    databaseSummary.value = null
+    userConfig.value = null
+    storedDatabase.value = null
   }
 
   return {
@@ -144,9 +219,13 @@ export const useForestStore = defineStore('forest', () => {
     svgContent,
     isRunning,
     progress,
+    databaseSummary,
+    userConfig,
+    storedDatabase,
     unresolvedCount,
     isClean,
     runPipeline,
+    discoverDatabase,
     setDecision,
     clearDecisions,
     reset,
