@@ -75,7 +75,7 @@
           <el-input v-model="store.pipelineForm.userConfigPath" placeholder="自动探测后自动填入" />
         </el-form-item>
         <el-form-item label="Backup dir">
-          <el-input v-model="store.pipelineForm.backupDir" placeholder="/path/to/backup" />
+          <el-input v-model="store.pipelineForm.backupDir" placeholder="自动生成，可按需修改" />
         </el-form-item>
         <el-form-item label="Dry run">
           <el-switch v-model="store.pipelineForm.dryRun" />
@@ -163,7 +163,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useForestStore } from '../stores/forest'
+import { useForestStore, generateBackupDir } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 
 const store = useForestStore()
@@ -183,6 +183,7 @@ async function onDiscover() {
   if (store.databaseSummary && !store.errors.length) {
     store.pipelineForm.databasePath = store.pipelineForm.cachePath
     store.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
+    store.pipelineForm.backupDir = generateBackupDir()
   }
 }
 

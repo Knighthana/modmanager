@@ -74,6 +74,11 @@ export interface DiscoverParams {
   cachePath: string | null
 }
 
+export function generateBackupDir(): string {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  return `/tmp/modmanager_backup_${ts}`
+}
+
 function extractConflicts(forest: ForestNode[]): ConflictItem[] {
   return forest
     .filter(n => n.warning === 'W_FOREST_BRANCHING')
@@ -101,7 +106,7 @@ export const useForestStore = defineStore('forest', () => {
     databasePath: '',
     databaseJson: '',
     rulesPaths: '',
-    backupDir: '',
+    backupDir: generateBackupDir(),
     dryRun: true,
     userConfigPath: '',
     workingPathstyle: 'linux',
@@ -191,6 +196,17 @@ export const useForestStore = defineStore('forest', () => {
             config: configResp.data,
             output_path: '/tmp/modmanager_userconfig_generated.json',
           })
+        } else {
+          // user_config 不存在 → 创建默认值并保存
+          const defaultConfig = {
+            game_permissions: {},
+            sub_permissions: {},
+          }
+          userConfig.value = defaultConfig
+          await apiPost('/config/save', {
+            config: defaultConfig,
+            output_path: '/tmp/modmanager_userconfig_generated.json',
+          })
         }
       } catch {
         errors.value.push('Failed to discover or save user_config')
@@ -224,7 +240,7 @@ export const useForestStore = defineStore('forest', () => {
       databasePath: '',
       databaseJson: '',
       rulesPaths: '',
-      backupDir: '',
+      backupDir: generateBackupDir(),
       dryRun: true,
       userConfigPath: '',
       workingPathstyle: 'linux',
