@@ -89,3 +89,12 @@ class RunRequest(BaseModel):
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
     dry_run: bool = False
+
+
+class VisualizeRequest(BaseModel):
+    """Request body for ``POST /api/pipeline/visualize``."""
+
+    forest: list[dict[str, Any]] = Field(default_factory=list)
+    mapping_result: dict[str, Any] | None = None
+    format: str = "svg"
+    show_m1_details: bool = True

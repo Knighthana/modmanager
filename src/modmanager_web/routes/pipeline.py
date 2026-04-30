@@ -16,7 +16,7 @@ from modmanager.orchestrator import (
 )
 
 from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result
-from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest
+from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest
 from ..sse import stream_with_progress
 
 router = APIRouter()
@@ -67,10 +67,35 @@ async def pipeline_backup(req: BackupRequest):
         )
 
     return StreamingResponse(
-        stream_with_progress(do_work, result_adapter=adapt_backup_result),
+        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+@router.post("/visualize")
+async def pipeline_visualize(req: VisualizeRequest):
+    """Convert forest JSON to SVG/ASCII/DOT visualization.
+
+    Returns a plain JSON ``ApiResponse`` with the rendered output.
+    """
+    from modmanager.forest_visual import visualize_payload
+
+    if not req.forest and req.mapping_result:
+        # Fall back to extracting forest from mapping_result
+        forest = req.mapping_result.get("forest", [])
+    else:
+        forest = req.forest
+
+    try:
+        rendered = visualize_payload(
+            {"forest": forest},
+            req.format,
+            show_m1_details=req.show_m1_details,
+        )
+        return adapt_dict_result({"rendered": rendered, "format": req.format})
+    except Exception as exc:
+        return adapt_error(str(exc))
 
 
 @router.post("/apply")

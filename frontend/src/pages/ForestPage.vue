@@ -85,10 +85,22 @@
             type="primary"
             :loading="store.isRunning"
             :disabled="store.isRunning"
-            @click="onRun"
+            @click="onCompute"
           >
-            {{ store.isRunning ? '运行中...' : '▶ 运行' }}
+            {{ store.isRunning ? '计算中...' : '📊 计算映射' }}
           </el-button>
+          <el-button
+            type="success"
+            :loading="store.isRunning"
+            :disabled="store.isRunning"
+            @click="onRun"
+            style="margin-left: 8px;"
+          >
+            ⚡ 应用流水线
+          </el-button>
+          <span style="margin-left: 8px; font-size: 12px; color: #999;">
+            "计算映射"仅分析不修改文件 | "应用流水线"将执行备份+替换
+          </span>
         </el-form-item>
       </el-form>
     </el-card>
@@ -187,7 +199,7 @@ async function onDiscover() {
   }
 }
 
-async function onRun() {
+function prepareParams() {
   const rules = store.pipelineForm.rulesPaths
     .split(',')
     .map(s => s.trim())
@@ -206,12 +218,37 @@ async function onRun() {
     database = {}
   }
 
-  await store.runPipeline({
+  return {
     database,
     kmm_rule_paths: rules,
     user_config_path: store.pipelineForm.userConfigPath || '',
     backup_dir: store.pipelineForm.backupDir,
+  }
+}
+
+async function onCompute() {
+  const params = prepareParams()
+  await store.computeOnly({
+    ...params,
+    dry_run: true,
+  })
+
+  // 计算完成后，获取可视化
+  if (store.forest.length > 0) {
+    await store.fetchVisualization()
+  }
+}
+
+async function onRun() {
+  const params = prepareParams()
+  await store.runPipeline({
+    ...params,
     dry_run: store.pipelineForm.dryRun,
   })
+
+  // 运行完成后，获取可视化
+  if (store.forest.length > 0) {
+    await store.fetchVisualization()
+  }
 }
 </script>

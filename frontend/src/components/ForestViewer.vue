@@ -1,6 +1,14 @@
 <template>
   <el-card shadow="never" v-loading="store.isRunning">
+    <!-- 空状态：无 SVG 且不在加载中 -->
     <div
+      v-if="!store.svgContent && !store.isRunning"
+      style="text-align: center; padding: 40px; color: #999;"
+    >
+      暂无森林图。请先点击"计算映射"。
+    </div>
+    <div
+      v-if="store.svgContent"
       ref="containerRef"
       class="forest-container"
       @wheel.prevent="onWheel"

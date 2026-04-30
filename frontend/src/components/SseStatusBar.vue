@@ -8,7 +8,7 @@
         style="flex: 1;"
       />
       <span style="font-size: 13px; color: var(--el-text-color-secondary); white-space: nowrap;">
-        {{ store.progress.step }}: {{ store.progress.message }}
+        {{ displayStep }}: {{ store.progress.message }}
       </span>
     </div>
   </el-footer>
@@ -19,6 +19,19 @@ import { computed } from 'vue'
 import { useForestStore } from '../stores/forest'
 
 const store = useForestStore()
+
+const progressLabel: Record<string, string> = {
+  'aggregate': '聚合规则',
+  'compute': '计算映射',
+  'backup': '差异备份',
+  'apply': '应用替换',
+  'scan': '扫描 Steam 库',
+  'restore': '恢复备份',
+}
+
+const displayStep = computed(() => {
+  return progressLabel[store.progress.step] || store.progress.step
+})
 
 const percentage = computed(() => {
   const { finished, total } = store.progress

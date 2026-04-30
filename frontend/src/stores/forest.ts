@@ -100,6 +100,7 @@ export const useForestStore = defineStore('forest', () => {
   const svgContent = ref<string>('')
   const isRunning = ref(false)
   const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '' })
+  const storedMappingResult = ref<Record<string, unknown> | null>(null)
 
   // ── pipeline form state (persists across page navigation) ──
   const pipelineForm = ref({
@@ -143,6 +144,7 @@ export const useForestStore = defineStore('forest', () => {
           forest.value = result.data.forest || []
           finalMapping.value = result.data.final_mapping || []
           conflictList.value = extractConflicts(result.data.forest || [])
+          storedMappingResult.value = result.data.mapping_result
         }
       },
       onError(msg: string) {
@@ -151,6 +153,58 @@ export const useForestStore = defineStore('forest', () => {
     })
 
     isRunning.value = false
+  }
+
+  async function computeOnly(params: PipelineParams) {
+    isRunning.value = true
+    reset()
+
+    await streamSse('/pipeline/compute', {
+      database: params.database,
+      kmm_rule_paths: params.kmm_rule_paths,
+      user_config_path: params.user_config_path,
+      action_orders: params.action_orders,
+      branch_decisions: params.branch_decisions,
+    }, {
+      onProgress(p: SseProgress) {
+        progress.value = p
+      },
+      onResult(data: unknown) {
+        const result = data as RunApiResponse
+        errors.value = result.errors || []
+        warnings.value = result.warnings || []
+        if (result.data) {
+          forest.value = result.data.forest || []
+          finalMapping.value = result.data.final_mapping || []
+          conflictList.value = extractConflicts(result.data.forest || [])
+          storedMappingResult.value = result.data.mapping_result
+        }
+      },
+      onError(msg: string) {
+        errors.value.push(msg)
+      },
+    })
+
+    isRunning.value = false
+  }
+
+  async function fetchVisualization() {
+    if (forest.value.length === 0) {
+      svgContent.value = ''
+      return
+    }
+
+    const resp = await apiPost('/pipeline/visualize', {
+      forest: forest.value,
+      mapping_result: storedMappingResult.value,
+      format: 'svg',
+      show_m1_details: true,
+    })
+
+    if (resp.ok && resp.data) {
+      const data = resp.data as { rendered: string }
+      svgContent.value = data.rendered
+    }
   }
 
   async function discoverDatabase(params: DiscoverParams) {
@@ -236,6 +290,7 @@ export const useForestStore = defineStore('forest', () => {
     databaseSummary.value = null
     userConfig.value = null
     storedDatabase.value = null
+    storedMappingResult.value = null
     pipelineForm.value = {
       databasePath: '',
       databaseJson: '',
@@ -262,10 +317,13 @@ export const useForestStore = defineStore('forest', () => {
     databaseSummary,
     userConfig,
     storedDatabase,
+    storedMappingResult,
     pipelineForm,
     unresolvedCount,
     isClean,
     runPipeline,
+    computeOnly,
+    fetchVisualization,
     discoverDatabase,
     setDecision,
     clearDecisions,

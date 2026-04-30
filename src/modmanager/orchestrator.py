@@ -257,6 +257,19 @@ def run(
     if not compute_result.ok:
         return compute_result
 
+    # dry_run 模式下跳过 backup 和 apply（仅计算，不碰磁盘）
+    if dry_run:
+        return PipelineResult(
+            ok=compute_result.ok,
+            errors=compute_result.errors,
+            warnings=compute_result.warnings,
+            forest=compute_result.forest,
+            final_mapping=compute_result.final_mapping,
+            mapping_result=compute_result.mapping_result,
+            backup_result=None,
+            apply_result=None,
+        )
+
     # ── Step 2: Backup ────────────────────────────────────────────────────
     backup_result = backup(
         compute_result.mapping_result,
