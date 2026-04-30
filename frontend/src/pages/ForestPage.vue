@@ -7,19 +7,19 @@
       <template #header>
         <span>数据源发现</span>
       </template>
-      <el-form :model="form" label-width="140px">
+      <el-form :model="store.pipelineForm" label-width="140px">
         <el-form-item label="Working pathstyle">
-          <el-select v-model="form.workingPathstyle" style="width: 200px;">
+          <el-select v-model="store.pipelineForm.workingPathstyle" style="width: 200px;">
             <el-option label="auto" value="auto" />
             <el-option label="linux" value="linux" />
             <el-option label="windows" value="windows" />
           </el-select>
         </el-form-item>
         <el-form-item label="Greedy parsing">
-          <el-switch v-model="form.greedyParsing" />
+          <el-switch v-model="store.pipelineForm.greedyParsing" />
         </el-form-item>
         <el-form-item label="Cache path">
-          <el-input v-model="form.cachePath" placeholder="/tmp/modmanager_database_generated.json" />
+          <el-input v-model="store.pipelineForm.cachePath" placeholder="/tmp/modmanager_database_generated.json" />
         </el-form-item>
         <el-form-item>
           <el-button
@@ -51,34 +51,34 @@
       <template #header>
         <span>Pipeline 参数</span>
       </template>
-      <el-form :model="form" label-width="140px">
+      <el-form :model="store.pipelineForm" label-width="140px">
         <el-form-item label="Database 路径">
-          <el-input v-model="form.databasePath" placeholder="自动探测后自动填入">
+          <el-input v-model="store.pipelineForm.databasePath" placeholder="自动探测后自动填入">
             <template #append>
-              <el-button @click="form.databasePath = ''; form.databaseJson = ''">清除</el-button>
+              <el-button @click="store.pipelineForm.databasePath = ''; store.pipelineForm.databaseJson = ''">清除</el-button>
             </template>
           </el-input>
         </el-form-item>
         <el-form-item label="Database JSON (手动)">
           <el-input
-            v-model="form.databaseJson"
+            v-model="store.pipelineForm.databaseJson"
             type="textarea"
             :rows="3"
             placeholder='{"steamlib": [...], ...}'
-            :disabled="!!form.databasePath"
+            :disabled="!!store.pipelineForm.databasePath"
           />
         </el-form-item>
         <el-form-item label="Rules paths">
-          <el-input v-model="form.rulesPaths" placeholder="Comma-separated paths to kmm_rule files" />
+          <el-input v-model="store.pipelineForm.rulesPaths" placeholder="Comma-separated paths to kmm_rule files" />
         </el-form-item>
         <el-form-item label="User config 路径">
-          <el-input v-model="form.userConfigPath" placeholder="自动探测后自动填入" />
+          <el-input v-model="store.pipelineForm.userConfigPath" placeholder="自动探测后自动填入" />
         </el-form-item>
         <el-form-item label="Backup dir">
-          <el-input v-model="form.backupDir" placeholder="/path/to/backup" />
+          <el-input v-model="store.pipelineForm.backupDir" placeholder="/path/to/backup" />
         </el-form-item>
         <el-form-item label="Dry run">
-          <el-switch v-model="form.dryRun" />
+          <el-switch v-model="store.pipelineForm.dryRun" />
         </el-form-item>
         <el-form-item>
           <el-button
@@ -121,29 +121,52 @@
       </el-col>
     </el-row>
 
+    <!-- 错误与警告面板 -->
+    <div v-if="store.errors.length || store.warnings.length" style="margin-bottom: 16px;">
+      <el-collapse>
+        <el-collapse-item v-if="store.errors.length" title="错误 ({{ store.errors.length }})" name="errors">
+          <el-alert
+            v-for="(err, i) in store.errors"
+            :key="'err-' + i"
+            :title="err"
+            type="error"
+            :closable="false"
+            style="margin-bottom: 4px;"
+          />
+        </el-collapse-item>
+        <el-collapse-item v-if="store.warnings.length" title="警告 ({{ store.warnings.length }})" name="warnings">
+          <el-alert
+            v-for="(warn, i) in store.warnings"
+            :key="'warn-' + i"
+            :title="warn"
+            type="warning"
+            :closable="false"
+            style="margin-bottom: 4px;"
+          />
+        </el-collapse-item>
+      </el-collapse>
+      <!-- 提示：若全是 W_LOCAL_MOD_MISSING，建议先运行自动探测 -->
+      <el-alert
+        v-if="store.errors.every(e => e.startsWith('W_')) && store.errors.length > 0"
+        title="提示"
+        description="所有错误均为 warning 级别（如 W_LOCAL_MOD_MISSING），通常是因为数据源为空。请先切换到上方'数据源发现'面板，运行'自动探测 Steam 库'获取数据库后再试。"
+        type="info"
+        :closable="false"
+        style="margin-top: 8px;"
+      />
+    </div>
+
     <!-- ForestViewer -->
     <ForestViewer />
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
+import { computed } from 'vue'
 import { useForestStore } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 
 const store = useForestStore()
-
-const form = reactive({
-  databasePath: '',
-  databaseJson: '',
-  rulesPaths: '',
-  backupDir: '',
-  dryRun: true,
-  userConfigPath: '',
-  workingPathstyle: 'linux',
-  greedyParsing: false,
-  cachePath: '/tmp/modmanager_database_generated.json',
-})
 
 const hasResult = computed(() => store.forest.length > 0 || store.errors.length > 0)
 
@@ -151,30 +174,30 @@ async function onDiscover() {
   await store.discoverDatabase({
     mode: 'auto',
     paths: null,
-    workingPathstyle: form.workingPathstyle,
-    greedyParsing: form.greedyParsing,
-    cachePath: form.cachePath,
+    workingPathstyle: store.pipelineForm.workingPathstyle,
+    greedyParsing: store.pipelineForm.greedyParsing,
+    cachePath: store.pipelineForm.cachePath,
   })
 
   // Auto-populate form on success
   if (store.databaseSummary && !store.errors.length) {
-    form.databasePath = form.cachePath
-    form.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
+    store.pipelineForm.databasePath = store.pipelineForm.cachePath
+    store.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
   }
 }
 
 async function onRun() {
-  const rules = form.rulesPaths
+  const rules = store.pipelineForm.rulesPaths
     .split(',')
     .map(s => s.trim())
     .filter(Boolean)
 
   let database: Record<string, unknown>
-  if (form.databasePath && store.storedDatabase) {
+  if (store.pipelineForm.databasePath && store.storedDatabase) {
     database = store.storedDatabase
-  } else if (form.databaseJson) {
+  } else if (store.pipelineForm.databaseJson) {
     try {
-      database = JSON.parse(form.databaseJson)
+      database = JSON.parse(store.pipelineForm.databaseJson)
     } catch {
       database = {}
     }
@@ -185,9 +208,9 @@ async function onRun() {
   await store.runPipeline({
     database,
     kmm_rule_paths: rules,
-    user_config_path: form.userConfigPath || '',
-    backup_dir: form.backupDir,
-    dry_run: form.dryRun,
+    user_config_path: store.pipelineForm.userConfigPath || '',
+    backup_dir: store.pipelineForm.backupDir,
+    dry_run: store.pipelineForm.dryRun,
   })
 }
 </script>

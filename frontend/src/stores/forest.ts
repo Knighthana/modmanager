@@ -96,6 +96,19 @@ export const useForestStore = defineStore('forest', () => {
   const isRunning = ref(false)
   const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '' })
 
+  // ── pipeline form state (persists across page navigation) ──
+  const pipelineForm = ref({
+    databasePath: '',
+    databaseJson: '',
+    rulesPaths: '',
+    backupDir: '',
+    dryRun: true,
+    userConfigPath: '',
+    workingPathstyle: 'linux',
+    greedyParsing: false,
+    cachePath: '/tmp/modmanager_database_generated.json',
+  })
+
   // ── discovery state ──
   const databaseSummary = ref<DatabaseSummary | null>(null)
   const userConfig = ref<Record<string, unknown> | null>(null)
@@ -207,6 +220,17 @@ export const useForestStore = defineStore('forest', () => {
     databaseSummary.value = null
     userConfig.value = null
     storedDatabase.value = null
+    pipelineForm.value = {
+      databasePath: '',
+      databaseJson: '',
+      rulesPaths: '',
+      backupDir: '',
+      dryRun: true,
+      userConfigPath: '',
+      workingPathstyle: 'linux',
+      greedyParsing: false,
+      cachePath: '/tmp/modmanager_database_generated.json',
+    }
   }
 
   return {
@@ -222,6 +246,7 @@ export const useForestStore = defineStore('forest', () => {
     databaseSummary,
     userConfig,
     storedDatabase,
+    pipelineForm,
     unresolvedCount,
     isClean,
     runPipeline,
