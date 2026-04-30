@@ -185,6 +185,7 @@ web = [
 | `POST` | `/api/pipeline/backup` | 差异备份（SSE） | SSE |
 | `POST` | `/api/pipeline/apply` | 应用替换（SSE） | SSE |
 | `POST` | `/api/pipeline/run` | 全流水线（SSE） | SSE |
+| `POST` | `/api/pipeline/visualize` | Forest JSON → SVG/ASCII/DOT 可视化 | JSON |
 
 ### 4.3 端点详设
 
@@ -274,9 +275,16 @@ data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
   "backup_dir": "/path/to/backup_dir",
   "action_orders": null,
   "branch_decisions": null,
-  "dry_run": false
+  "dry_run": false          // true → 仅聚合+计算，跳过 backup 和 apply（不碰磁盘）
 }
+```
 
+> **dry_run 语义**：
+> - `false`（默认）：完整流水线：聚合 → 计算 → 备份 → 应用
+> - `true`：仅聚合+计算，**不执行备份和应用的任何磁盘 I/O**。适用于"先看看映射结果"的场景
+> - 若需要"仅备份不应用"，应分别调用 `/api/pipeline/compute` + `/api/pipeline/backup`
+
+```json
 // → SSE stream
 event: progress
 data: {"step":"aggregate","finished":0,"total":1,"message":"Aggregating rules..."}

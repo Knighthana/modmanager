@@ -398,9 +398,12 @@ App.vue
 │       └── <router-view />
 │
 ├── ForestPage.vue                ← /forest
-│   ├── PipelineForm.vue          ← 参数表单（database path, rules paths, backup dir, dry run toggle）
+│   ├── PipelineForm.vue          ← 参数表单（database path, rules paths, backup dir 自动生成, dry run toggle）
 │   ├── ForestViewer.vue          ← SVG 渲染 + zoom/pan
-│   └── ResultSummary.vue         ← 统计卡片（backed_up/applied/skipped/errors）
+│   │   ├── 空状态：无数据时提示"请先点击计算映射"
+│   │   ├── 加载中：isRunning 时 v-loading
+│   │   └── 渲染：v-html 嵌入后端返回的 SVG（通过 POST /api/pipeline/visualize 获取）
+│   └── ResultSummary.vue         ← 统计卡片（Forest 结点数/冲突数/映射数/错误数）
 │
 ├── ConflictsPage.vue             ← /conflicts
 │   ├── ConflictPanel.vue         ← 冲突列表表格
@@ -492,4 +495,32 @@ Task 25: 测试                      ← 前端 Vitest 单元测试 + Python 全
 4. 冲突裁决页面：展示冲突列表 → 选择候选 → 重新计算 → Forest 更新
 5. 四个页面可正常路由切换，URL 正确（`/forest`、`/conflicts`、`/rules`、`/backup`）
 6. Python 端 276 tests 保持通过
-7. `__pycache__` 和 `node_modules/` 均被 `.gitignore` 排除
+## 13. 警告说明参考
+
+以下警告可能出现在 Forest 计算结果中。它们不影响计算的正确性，仅提示需要注意的情况。
+
+| 警告码 | 说明 | 对结果的影响 |
+|--------|------|-------------|
+| `W_LOCAL_MOD_MISSING` | 规则引用的 mod 未安装在本机 | 对应条目被跳过，不影响其他映射 |
+| `W_NO_SOURCE_MATCH` | mod 源文件不存在（可能未安装该 mod） | 对应条目被跳过 |
+| `W_MISSING_SOURCE_ROOT` | 缺少源 mod 的根目录 | 对应操作被跳过 |
+| `W_MISSING_DEST_ROOT` | 缺少目标 mod 的根目录 | 对应操作被跳过 |
+| `W_CREATE_TARGET_EXISTS_OVERWRITE` | create 操作的目标路径在磁盘上已存在 | 该目标将在执行时被覆盖。若规则中有前序 delete，执行阶段 delete 先跑、create 后跑，结果正确。此警告仅因引擎在单次计算中不模拟中间状态 |
+| `W_DELETE_LEAF_PROMOTED` | Forest 映射链的末端来源是 delete（源文件本身要被删除），因此目标从"替换为某文件"降级为"直接删除" | 目标文件将在执行时被删除 |
+| `W_FOREST_BRANCHING` | 多个源映射到同一目标，形成分叉 | 需在冲突裁决页面手动选择 |
+| `W_EMPTY_ACTIONLIST_AFTER_FILTER` | 某 mod 的所有 action 在权限过滤后为空 | 该 mod 不产生任何映射 |
+| `W_DESTIN_NONE_SKIPPED` | action 的 destin 为 "none" | 该 action 被跳过 |
+
+---
+
+## 14. 术语规范
+
+| 中文 | 含义 | 示例 |
+|------|------|------|
+| **结点** | 树/图上的元素（tree/graph node） | Forest 有 892 个结点 |
+| **节点** | 具备计算能力的实体 | 服务器节点、Kubernetes 节点 |
+| **分枝** | Forest 中同一目标的多个候选源 | 冲突分枝 |
+| **映射** | 从 rule action 到文件路径的解析结果 | final_mapping |
+| **流水线** | 聚合→计算→备份→应用的完整流程 | pipeline run |
+
+在 UI 和文档中统一使用"结点"指代 Forest 图上的元素。

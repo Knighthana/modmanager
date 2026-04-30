@@ -92,6 +92,10 @@
 | RulesPage | `/rules` | kmm_rule 文件浏览 |
 | BackupPage | `/backup` | 备份列表 + 恢复操作 |
 
+### 术语规范
+- 树/图上的元素统一用 **"结点"**（非"节点"）
+- 见 `repo_memory/direct/DESIGN_PHASE3_GUI.md` §14
+
 ### 测试
 - 前端 Vitest: 14 tests 全部通过
 - Python: 276 tests 全部通过

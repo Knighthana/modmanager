@@ -195,7 +195,7 @@ def run(
 ### 3.3 内部流程
 
 ```
-run()
+run(database, kmm_rule_paths, user_config_path, backup_dir, *, dry_run=False, ...)
   │
   ├─ 1. 聚合规则
   │     aggregated_rule_set = aggregate(kmm_rule_paths, user_config_path, ...)
@@ -205,6 +205,10 @@ run()
   │     mapping_result = compute_mapping(aggregated_rule_set, database, branch_decisions)
   │     on_progress("compute", 1, 1)
   │
+  ├─ [dry_run?] ─────────────────────────────────────────────────────────────
+  │     是 → 直接返回 compute 结果（跳过后续步骤，不碰磁盘）
+  │     否 → 继续
+  │
   ├─ 3. 差异备份
   │     backup_result = run_differential_backup(backup_dir, files)
   │     on_progress("backup", i, total)
@@ -213,6 +217,8 @@ run()
         apply_result = apply_final_mapping(final_mapping, backup_dir, dry_run)
         on_progress("apply", i, total)
 ```
+
+> **dry_run 语义**：当 `dry_run=True` 时，步骤 1-2 正常执行（聚合+计算），步骤 3-4 全部跳过。这意味着 dry_run 完全不触碰磁盘——不备份、不替换。若用户需要"仅备份、不替换"，应分别调用 `compute()` + `backup()`。`run()` 作为一键入口遵循"全或无"原则。
 
 ### 3.4 错误处理
 
