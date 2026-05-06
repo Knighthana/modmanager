@@ -21,5 +21,11 @@
       "path_handle": "rule_base_path_3",
       "path_target": "/home/knighthana/workspace/modmanager_cli/description/rules/"
     }
+  ],
+  "bakprefix": "kmmbackup_",
+  "bakignore": [
+    "kmmbackup_",
+    "*.tmp",
+    "__pycache__/"
   ]
 }
