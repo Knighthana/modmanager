@@ -151,7 +151,7 @@
 | P0-30 | 前端 Vitest 测试更新 | `frontend/src/__tests__/` | done |
 | P0-31 | Python 全量回归测试 | all | done |
 | P0-32 | 前端构建 + Vitest 全量 | all | done |
-| P0-33 | 手动 E2E 验证 | all | pending |
+| P0-33 | 手动 E2E 验证 | all | done |
 
 ---
 
@@ -191,12 +191,12 @@
 | T1 | same actionlist: delete→create 不警告 | `deleted_targets` 集合追踪，跳过误报 ✅ |
 | E1 | 术语统一（结点/节点） | 全局搜索替换完成 ✅ |
 
-### P3: GUI 增强（部分完成）
+### P3: GUI 增强 ✅
 
-| # | 任务 | 说明 |
-|---|------|------|
-| GUI1 | Forest 全部/仅分岔切换 | `el-switch` 切换 + 过滤可视化请求 ✅ |
-| GUI2 | M4 交互（hover高亮/拖拽） | 待用户反馈 |
+| # | 任务 | 说明 | 状态 |
+|---|------|------|------|
+| GUI1 | Forest 全部/仅分岔切换 | `el-switch` 切换 + 过滤可视化请求 | ✅ |
+| GUI2 | M4 交互（hover高亮 + 点击选枝） | 整链高亮 + pending 选枝模式 | ✅ |
 
 ### Forest Visualization Expansion（M3）
 - Plot renderer

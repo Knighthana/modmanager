@@ -38,12 +38,12 @@ W_DELETE_LEAF_PROMOTED 移除，替换为 W_SOURCE_DELETED / W_SOURCE_DIRECTORY_
 
 ---
 
-## P3: GUI（待用户反馈）
+## P3: GUI（已完成）
 
 | # | 任务 | 说明 |
 |---|------|------|
-| GUI1 | Forest 全部/仅分岔切换 | 待用户反馈决定是否实现 |
-| GUI2 | M4 交互 | hover 高亮、分叉超链接、拖拽选枝 |
+| GUI1 | Forest 全部/仅分岔切换 | ✅ |
+| GUI2 | M4 交互（hover高亮 + 点击选枝）| ✅ |
 
 ---
 

@@ -2,11 +2,15 @@
 
 ## Status Board
 
-更新时间：2026-04-30
+更新时间：2026-05-06
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
-| Phase 3: 前端 GUI | **done** | 276+14 tests 通过 | Vue 3 SPA + Forest SVG 交互 + 冲突裁决 + 规则/备份页面，frontend/ 构建嵌入 FastAPI
+| **P3: GUI 增强** | **done** | 322+18 tests 通过 | 全部/仅分岔 + hover 整链高亮 + 点击选枝 |
+| **P2: 引擎细节修复** | **done** | 320 tests 通过 | delete→create warning + 术语统一 |
+| **P1: Backup 实现** | **done** | 319 tests 通过 | backup_dir_builder + 循环防护 + .kmmbakignore |
+| **P0: 森林模型重构** | **done** | 296 tests 通过 | 独立根+引用，`forest`→`trees`，自底向上解析 |
+| Phase 3: 前端 GUI | **done** | 276+14 tests 通过 | Vue 3 SPA + Forest SVG 交互 + 冲突裁决 + 规则/备份页面，frontend/ 构建嵌入 FastAPI |
 | Phase 2: Web API 层 | **done** | 276 测试全部通过 | `modmanager_web` 独立子包，FastAPI + SSE，15 new tests，`modmanager/*` 零改动 |
 | Phase 1: Bootstrap & Orchestration | **done** | 261 测试全部通过 | bootstrap.py + orchestrator.py + CLI 适配 + 18 new tests |
 | 聚合器 + M1 引擎重构 | done | 243 测试全部通过 | commit `0a145f4` |

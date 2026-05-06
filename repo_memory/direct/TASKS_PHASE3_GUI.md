@@ -1,7 +1,9 @@
 # Phase 3: 前端 GUI — 实现任务
 
+> **2026-05-06 注**：本文档为 Phase 3 实现时的历史任务快照。Phase 3 已完成实现。
+
 创建：2026-04-30
-状态：待实现
+状态：已完成 ✅
 前置设计：`repo_memory/direct/DESIGN_PHASE3_GUI.md`（必读）
 前置决策：`repo_memory/direct/QUESTIONS_PHASE3.md`（13 个决策全部确认 ✅）
 

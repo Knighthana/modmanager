@@ -1,7 +1,11 @@
 # Phase 2: Web API 层 — 设计文档
 
+> **2026-05-06 注**：本文档为 Phase 2 实现时的历史设计快照。
+> 其中 `"forest"` key 在 P0 后已改为 `"trees"`，`PipelineResult.forest` 已改为 `PipelineResult.trees`。
+> 当前权威规范以 `repo_memory/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md` 和实际代码为准。
+
 创建：2026-04-30
-状态：设计完成 ✅，待实现
+状态：已完成 ✅
 前置实现：Phase 1（bootstrap + orchestrator）✅
 所有 7 个决策已确认
 

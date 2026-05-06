@@ -1,7 +1,11 @@
 # Phase 3: 前端 GUI — 设计文档
 
+> **2026-05-06 注**：本文档为 Phase 3 实现时的历史设计快照。
+> §4 中的 `ForestNode` 类型在 P0 后已改为 `TreeNode`（新增 `root_path`/`refs`/`resolved_state`）。
+> §13 警告表已同步更新。当前权威规范以实际代码和 `DESIGN_P0_FOREST_IMPLEMENTATION.md` 为准。
+
 创建：2026-04-30
-状态：设计完成 ✅，待实现
+状态：已完成 ✅
 前置完成：Phase 1 ✅ + Phase 2 ✅
 决策记录：`repo_memory/direct/QUESTIONS_PHASE3.md`（13 个决策全部确认 ✅）
 

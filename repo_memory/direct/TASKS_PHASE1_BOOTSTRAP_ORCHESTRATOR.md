@@ -1,7 +1,11 @@
 # Phase 1: Bootstrap & Orchestrator — 实现任务
 
+> **2026-05-06 注**：本文档为 Phase 1 实现时的历史任务快照。
+> 其中 `mapping_result.get("forest", [])` 在 P0 后已改为 `mapping_result.get("trees", [])`。
+> 当前权威代码以 `orchestrator.py` 实际实现为准。
+
 创建：2026-04-30
-状态：待实现
+状态：已完成 ✅
 前置设计：`repo_memory/direct/DESIGN_BOOTSTRAP_ORCHESTRATOR.md`
 前置决策：`repo_memory/direct/QUESTIONS_BOOTSTRAP.md`（全部 8 个问题已决策 ✅）
 

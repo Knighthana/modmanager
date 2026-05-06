@@ -1,7 +1,11 @@
 # Forest Visualization Design
 
+> **2026-05-06 注**：本文档为 P0 前森林可视化的历史设计快照。
+> P0 后输出 key 从 `"forest"` 改为 `"trees"`，结点标识从 `ForestNode.path` 改为 `TreeNode.root_path`。
+> 当前权威规范以 `forest_visual.py` 实际实现和 `DESIGN_P0_FOREST_IMPLEMENTATION.md` 为准。
+
 ## 目标
-在少动主干的前提下，为 `compute_mapping` 输出的 `forest` 提供最小可用的视觉表达能力。
+在少动主干的前提下，为 `compute_mapping` 输出的 `trees` 提供最小可用的视觉表达能力。
 
 ## 近期范围
 1. 核心模块：`forest_visual`

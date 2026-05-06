@@ -1,7 +1,10 @@
 # Bootstrap + Orchestrator 设计文档
 
+> **2026-05-06 注**：本文档为 Phase 1 实现时的历史设计快照。Phase 1 已完成实现。
+> P0 后 `PipelineResult.forest` 已改为 `PipelineResult.trees`。
+
 创建：2026-04-30
-状态：设计完成，待实现
+状态：已完成 ✅
 
 ---
 

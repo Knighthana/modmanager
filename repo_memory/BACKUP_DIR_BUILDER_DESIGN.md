@@ -38,7 +38,7 @@
 | 来源类型 | 时间源 | 说明 |
 |----------|--------|------|
 | common（游戏本体目录） | `appmanifest_{appid}.acf` → `LastUpdated` → hex | 已实现 `get_game_backup_id()` |
-| workshop（已发布 mod） | `appworkshop_{appid}.acf` → `timeupdated` → hex | 待实现 |
+| workshop（已发布 mod） | `appworkshop_{appid}.acf` → `timeupdated` → hex | 已实现 ✅ |
 | custom mod（本地 mod） | 文件 mtime（fallback） | 长期计划：kmm 标准自述文件 |
 
 ### 备份目录位置

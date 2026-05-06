@@ -34,7 +34,16 @@
 - 文档先于实现：先冻结契约，再改代码
 - 测试必须覆盖跨盘库发现，不允许仅验证默认安装位置
 
-## 当前阶段任务
-1. 文档对齐完成
-2. 实现按契约回收
-3. 测试补齐集成断言
+## 映射计算流程（P0 更新）
+1. 聚合器：多份 kmm_rule → `aggregated_rule_set`（含 `def_destin`/`def_action` 具体化 + 鉴权）
+2. 引擎：`compute_mapping()` 展开 actionlist → 构建 ForestTree（独立根+引用）→ 拓扑排序 → 自底向上解析 → 输出 `trees` + `final_mapping`
+3. 可视化：`forest_visual.py` 将 trees 渲染为 ASCII/DOT/SVG/HTML
+4. 备份：`backup_dir_builder` 自动推导 backup_dir 命名 → `backup_ops` 执行差异备份
+5. 替换：`apply_final_mapping()` 将 final_mapping 写入磁盘
+
+## 当前阶段状态
+- Phase P0: 森林模型重构 ✅（独立根+引用，trees 输出）
+- Phase P1: Backup 实现 ✅（builder + 循环防护）
+- Phase P2: 引擎细节修复 ✅（delete→create warning + 术语统一）
+- Phase P3: GUI 增强 ✅（全部/仅分岔 + hover 高亮 + 点击选枝）
+- 全量测试：Python 322 + 前端 18 全部通过

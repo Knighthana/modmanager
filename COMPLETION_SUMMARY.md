@@ -3,6 +3,8 @@
 > **2026-04-30 注**：本文档为原始 M1 完成时的历史快照。
 > 后续聚合器设计移除了部分功能（`validate_forest_roots`、`def_destin`/`def_action` 继承解析），
 > 当前权威规范请以 `repo_memory/RULE_AGGREGATION_DESIGN.md` 为准。
+> **2026-05-06 注**：P0 森林模型重构后，输出 `"forest"` → `"trees"`，delete 语义改为独立根+引用。
+> 全量 322 Python + 18 前端 tests。
 
 ## 📊 项目状态：✅ 完成
 

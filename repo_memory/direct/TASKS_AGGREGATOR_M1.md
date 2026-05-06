@@ -1,7 +1,11 @@
 # Aggregator & M1 Engine Update — Implementation Tasks
 
+> **2026-05-06 注**：本文档为聚合器+M1 实现时的历史任务快照。
+> 任务已于 2026-04-30 完成实现。当前代码以 `rule_aggregator.py` 和 `engine.py` 为准。
+
 基于 `repo_memory/RULE_AGGREGATION_DESIGN.md`（最终版）
 创建时间：2026-04-30
+状态：已完成 ✅
 
 ---
 
