@@ -1,7 +1,18 @@
+/** @deprecated 使用 TreeNode */
 export interface ForestNode {
   path: string
   destin_mixed_id: string
   changerequest: Changerequest[]
+  warning?: string
+  candidates?: string[]
+}
+
+export interface TreeNode {
+  root_path: string           // 树的根路径（旧: ForestNode.path）
+  destin_mixed_id: string
+  changerequest: Changerequest[]
+  refs: string[]              // 引用的其他树根路径
+  resolved_state: 'pending' | 'kept' | 'deleted' | 'failed' | 'skipped'
   warning?: string
   candidates?: string[]
 }
@@ -23,16 +34,16 @@ export interface MappingEntry {
 }
 
 export interface ConflictItem {
-  target: string
+  root_path: string           // 旧: target
   destin_mixed_id: string
-  candidates: string[]
+  candidates: string[]        // 候选源路径列表（含 "!" 表示 delete）
 }
 
 export interface PipelineParams {
   database: Record<string, unknown>
   kmm_rule_paths: string[]
   user_config_path: string
-  backup_dir: string
+  backup_dir: string | null
   dry_run: boolean
   action_orders?: Record<string, number>
   branch_decisions?: Record<string, string>

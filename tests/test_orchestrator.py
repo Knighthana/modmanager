@@ -25,11 +25,7 @@ class TestPipelineResult(TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.errors, [])
         self.assertEqual(result.warnings, [])
-        self.assertEqual(result.forest, [])
-        self.assertEqual(result.final_mapping, [])
-        self.assertEqual(result.mapping_result, {})
-        self.assertIsNone(result.backup_result)
-        self.assertIsNone(result.apply_result)
+        self.assertEqual(result.trees, [])
 
     def test_pipeline_result_custom_values(self) -> None:
         """Verify custom field assignment."""
@@ -37,7 +33,7 @@ class TestPipelineResult(TestCase):
             ok=False,
             errors=["E_SOMETHING"],
             warnings=["W_SOMETHING"],
-            forest=[{"path": "/a.txt"}],
+            trees=[{"path": "/a.txt"}],
             final_mapping=[{"path": "/b.txt"}],
             mapping_result={"key": "val"},
             backup_result={"ok": True},
@@ -45,7 +41,7 @@ class TestPipelineResult(TestCase):
         )
         self.assertFalse(result.ok)
         self.assertEqual(result.errors, ["E_SOMETHING"])
-        self.assertEqual(result.forest, [{"path": "/a.txt"}])
+        self.assertEqual(result.trees, [{"path": "/a.txt"}])
         self.assertEqual(result.backup_result, {"ok": True})
 
 

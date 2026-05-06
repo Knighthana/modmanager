@@ -92,14 +92,16 @@ def build_db_parser() -> argparse.ArgumentParser:
     backup = sub.add_parser("backup", help="Back up target files before applying a mapping")
     backup.add_argument("--aggregated-rule-set", required=True, help="Path to aggregated_rule_set json")
     backup.add_argument("--database", required=True, help="Path to database json")
-    backup.add_argument("--backup-dir", required=True, help="Directory to store backup")
+    backup.add_argument("--backup-dir", default=None, help="Directory to store backup (auto-derived if omitted)")
+    backup.add_argument("--config", default=None, help="Path to user_config.json (for auto-derivation)")
     backup.add_argument("--decisions", help="Optional branch decisions json")
     backup.add_argument("--out", help="Write result json to file; stdout if omitted")
 
     apply_cmd = sub.add_parser("apply", help="Apply final mapping to disk (backup gate required)")
     apply_cmd.add_argument("--aggregated-rule-set", required=True, help="Path to aggregated_rule_set json")
     apply_cmd.add_argument("--database", required=True, help="Path to database json")
-    apply_cmd.add_argument("--backup-dir", required=True, help="Path to existing backup directory")
+    apply_cmd.add_argument("--backup-dir", default=None, help="Path to existing backup directory (auto-derived if omitted)")
+    apply_cmd.add_argument("--config", default=None, help="Path to user_config.json (for auto-derivation)")
     apply_cmd.add_argument("--decisions", help="Optional branch decisions json")
     apply_cmd.add_argument("--dry-run", action="store_true", help="Check gate but do not touch files")
     apply_cmd.add_argument("--out", help="Write result json to file; stdout if omitted")
@@ -220,6 +222,7 @@ def _handle_regen(args: argparse.Namespace) -> int:
 
 
 def _handle_backup(args: argparse.Namespace) -> int:
+    from .backup_dir_builder import build_backup_dir
     from .orchestrator import backup as orch_backup
 
     try:
@@ -245,8 +248,19 @@ def _handle_backup(args: argparse.Namespace) -> int:
     if not final_mapping:
         return _emit_error("no final_mapping produced; resolve branch conflicts first")
 
+    # Auto-derive backup_dir if not provided
+    backup_dir = args.backup_dir
+    if backup_dir is None:
+        try:
+            user_config: dict[str, Any] = {}
+            if args.config:
+                user_config = load_json_file(args.config)
+            backup_dir = build_backup_dir(final_mapping, database, user_config)
+        except Exception as exc:
+            return _emit_error(f"failed to derive backup_dir: {exc}")
+
     try:
-        result = orch_backup(mapping_result, args.backup_dir)
+        result = orch_backup(mapping_result, backup_dir)
     except Exception as exc:
         return _emit_error(f"backup failed: {exc}")
 
@@ -255,6 +269,7 @@ def _handle_backup(args: argparse.Namespace) -> int:
 
 
 def _handle_apply(args: argparse.Namespace) -> int:
+    from .backup_dir_builder import build_backup_dir
     from .orchestrator import apply as orch_apply
 
     try:
@@ -280,8 +295,19 @@ def _handle_apply(args: argparse.Namespace) -> int:
     if not final_mapping:
         return _emit_error("no final_mapping produced; resolve branch conflicts first")
 
+    # Auto-derive backup_dir if not provided
+    backup_dir = args.backup_dir
+    if backup_dir is None:
+        try:
+            user_config: dict[str, Any] = {}
+            if args.config:
+                user_config = load_json_file(args.config)
+            backup_dir = build_backup_dir(final_mapping, database, user_config)
+        except Exception as exc:
+            return _emit_error(f"failed to derive backup_dir: {exc}")
+
     try:
-        result = orch_apply(final_mapping, args.backup_dir, dry_run=args.dry_run)
+        result = orch_apply(final_mapping, backup_dir, dry_run=args.dry_run)
     except Exception as exc:
         return _emit_error(f"apply failed: {exc}")
 

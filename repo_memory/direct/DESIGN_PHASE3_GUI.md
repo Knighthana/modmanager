@@ -506,8 +506,11 @@ Task 25: 测试                      ← 前端 Vitest 单元测试 + Python 全
 | `W_MISSING_SOURCE_ROOT` | 缺少源 mod 的根目录 | 对应操作被跳过 |
 | `W_MISSING_DEST_ROOT` | 缺少目标 mod 的根目录 | 对应操作被跳过 |
 | `W_CREATE_TARGET_EXISTS_OVERWRITE` | create 操作的目标路径在磁盘上已存在 | 该目标将在执行时被覆盖。若规则中有前序 delete，执行阶段 delete 先跑、create 后跑，结果正确。此警告仅因引擎在单次计算中不模拟中间状态 |
-| `W_DELETE_LEAF_PROMOTED` | Forest 映射链的末端来源是 delete（源文件本身要被删除），因此目标从"替换为某文件"降级为"直接删除" | 目标文件将在执行时被删除 |
-| `W_FOREST_BRANCHING` | 多个源映射到同一目标，形成分叉 | 需在冲突裁决页面手动选择 |
+| `W_SOURCE_DELETED` | 树引用的源所在的另一棵树已被决策为删除，因此该源不可用 | 引用该源的树操作被跳过 |
+| `W_SOURCE_DIRECTORY_DELETED` | 树引用的源文件的祖先目录被删除，源不可用 | 引用该源的树操作被跳过 |
+| `W_FOREST_BRANCHING` | 一棵树有多个有效操作竞争同一根路径，形成分枝 | 需在冲突裁决页面手动选择 |
+| `W_NO_VALID_OPERATION` | 树的所有操作都因源失效而不可用 | 该树不会进入 final_mapping |
+| `W_FOREST_BRANCHING_UNRESOLVED` | 存在未决议的分枝树 | final_mapping 可能被清空 |
 | `W_EMPTY_ACTIONLIST_AFTER_FILTER` | 某 mod 的所有 action 在权限过滤后为空 | 该 mod 不产生任何映射 |
 | `W_DESTIN_NONE_SKIPPED` | action 的 destin 为 "none" | 该 action 被跳过 |
 | `W_PATH_TRAILING_SLASH_FIXED` | 目录路径缺少末尾 `/`，已由聚合器自动补全 | 不影响结果，路径已被修正 |
@@ -518,9 +521,12 @@ Task 25: 测试                      ← 前端 Vitest 单元测试 + Python 全
 
 | 中文 | 含义 | 示例 |
 |------|------|------|
+| **树** | 独立根的 ForestTree 实例，P0 新模型 | 树 A 引用了树 B |
+| **根** | 树的根路径（文件路径）| root_path |
 | **结点** | 树/图上的元素（tree/graph node） | Forest 有 892 个结点 |
 | **节点** | 具备计算能力的实体 | 服务器节点、Kubernetes 节点 |
-| **分枝** | Forest 中同一目标的多个候选源 | 冲突分枝 |
+| **分枝** | 同一树根有多个竞争操作待决策（P0 新语义）| 冲突分枝 |
+| **引用** | 树之间的依赖边（P0 新增）| 树 A 引用树 B 作为源 |
 | **映射** | 从 rule action 到文件路径的解析结果 | final_mapping |
 | **流水线** | 聚合→计算→备份→应用的完整流程 | pipeline run |
 

@@ -4,7 +4,13 @@ import unittest
 from pathlib import Path
 
 from modmanager.engine import (
+    ForestTree,
+    _any_ancestor_deleted,
+    _build_forest_trees,
+    _build_output,
     _check_filefoldertree_transition,
+    _resolve_trees_bottom_up,
+    _topological_sort_by_refs,
     compute_mapping,
     find_cycles,
     validate_branch_decisions_schema,
@@ -73,7 +79,7 @@ class EngineTests(unittest.TestCase):
 
             result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_INVALID_ACTION" in w for w in result["warnings"]))
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
             self.assertEqual(result["final_mapping"], [])
 
     def test_local_mod_missing_is_skipped(self) -> None:
@@ -91,7 +97,7 @@ class EngineTests(unittest.TestCase):
 
             result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_LOCAL_MOD_MISSING" in w for w in result["warnings"]))
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
 
     def test_non_hold_action_with_none_destin_is_skipped_with_warning(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -122,7 +128,7 @@ class EngineTests(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_DESTIN_NONE_SKIPPED" in w for w in result["warnings"]))
             self.assertEqual(result["errors"], [])
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
             self.assertEqual(result["final_mapping"], [])
 
     def test_hold_action_with_none_destin_produces_no_none_warning(self) -> None:
@@ -144,7 +150,7 @@ class EngineTests(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, db)
             self.assertFalse(any("W_DESTIN_NONE_SKIPPED" in w for w in result["warnings"]))
             self.assertEqual(result["errors"], [])
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
             self.assertEqual(result["final_mapping"], [])
 
     def test_all_non_hold_actions_with_none_destin_are_skipped(self) -> None:
@@ -207,7 +213,7 @@ class EngineTests(unittest.TestCase):
 
             result = compute_mapping(aggregated_rule_set, db)
             self.assertEqual(result["errors"], [])
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
             self.assertEqual(result["final_mapping"], [])
             none_warnings = [w for w in result["warnings"] if "W_DESTIN_NONE_SKIPPED" in w]
             self.assertEqual(len(none_warnings), len(action_items))
@@ -273,7 +279,7 @@ class EngineTests(unittest.TestCase):
             }
 
             result = compute_mapping(aggregated_rule_set, db)
-            request = result["forest"][0]["changerequest"][0]
+            request = result["trees"][0]["changerequest"][0]
             self.assertEqual(request["provenance_ref"], "rule_base_path_2:demo.json")
             self.assertEqual(request["action_order"], 7)
             self.assertEqual(request["sidecar_ref"], "sidecar/provenance/demo.json")
@@ -308,7 +314,7 @@ class EngineTests(unittest.TestCase):
             }
 
             result = compute_mapping(aggregated_rule_set, db)
-            request = result["forest"][0]["changerequest"][0]
+            request = result["trees"][0]["changerequest"][0]
             self.assertEqual(request["provenance_ref"], "404")
             self.assertEqual(request["sidecar_ref"], "404")
             self.assertEqual(request["action_order"], 0)
@@ -343,7 +349,7 @@ class EngineTests(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, db)
             self.assertTrue(any("W_FOREST_BRANCHING_UNRESOLVED" in w for w in result["warnings"]))
             self.assertEqual(result["final_mapping"], [])
-            self.assertTrue(result["forest"])
+            self.assertTrue(result["trees"])
 
     def test_filefoldertree_transition_only_forward(self) -> None:
         old_tree = {
@@ -443,12 +449,12 @@ class EngineTests(unittest.TestCase):
             }
             # Build forest first to get the actual target path
             forest_result = compute_mapping(aggregated_rule_set, db)
-            self.assertTrue(forest_result["forest"])
-            branched_target = forest_result["forest"][0]["path"]
+            self.assertTrue(forest_result["trees"])
+            branched_target = forest_result["trees"][0]["root_path"]
 
             # Provide a decision with a wrong source
             result = compute_mapping(aggregated_rule_set, db, branch_decisions={branched_target: "/wrong/source.txt"})
-            self.assertTrue(any("E_BRANCH_DECISION_INVALID_SOURCE" in e for e in result["errors"]))
+            self.assertTrue(any("E_BRANCH_DECISION_INVALID" in e for e in result["errors"]))
             self.assertEqual(result["final_mapping"], [])
 
     def test_branch_decision_resolved_produces_final_mapping(self) -> None:
@@ -476,8 +482,8 @@ class EngineTests(unittest.TestCase):
                 ]
             }
             forest_result = compute_mapping(aggregated_rule_set, db)
-            branched = forest_result["forest"][0]
-            target = branched["path"]
+            branched = forest_result["trees"][0]
+            target = branched["root_path"]
             chosen_src = branched["candidates"][0]
 
             result = compute_mapping(aggregated_rule_set, db, branch_decisions={target: chosen_src})
@@ -486,7 +492,8 @@ class EngineTests(unittest.TestCase):
             self.assertEqual(result["final_mapping"][0]["path"], target)
             self.assertEqual(result["final_mapping"][0]["request"]["path"], chosen_src)
 
-    def test_branch_without_decision_uses_highest_action_order(self) -> None:
+    def test_branch_without_decision_becomes_pending(self) -> None:
+        """Multiple replace ops, no branch decision → pending + W_FOREST_BRANCHING."""
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = self._mk_db(tmp_path)
@@ -536,10 +543,13 @@ class EngineTests(unittest.TestCase):
 
             result = compute_mapping(aggregated_rule_set, db)
             self.assertEqual(result["errors"], [])
-            self.assertEqual(len(result["final_mapping"]), 1)
-            self.assertEqual(result["final_mapping"][0]["request"]["path"], str(src_101).replace("\\", "/"))
+            self.assertEqual(len(result["final_mapping"]), 0)
+            self.assertTrue(any("W_FOREST_BRANCHING" in w for w in result["warnings"]))
+            # tree is pending
+            self.assertEqual(result["trees"][0]["resolved_state"], "pending")
 
-    def test_branch_with_zero_action_order_raises_conflict_error(self) -> None:
+    def test_branch_with_zero_action_order_becomes_pending(self) -> None:
+        """Multiple replace ops with no action_order → pending + W_FOREST_BRANCHING (not E_ACTION_ORDER_CONFLICT)."""
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = self._mk_db(tmp_path)
@@ -566,10 +576,13 @@ class EngineTests(unittest.TestCase):
             }
 
             result = compute_mapping(aggregated_rule_set, db)
-            self.assertTrue(any(e.startswith("E_ACTION_ORDER_CONFLICT") for e in result["errors"]))
-            self.assertEqual(result["final_mapping"], [])
+            self.assertFalse(result["errors"])
+            self.assertTrue(any("W_FOREST_BRANCHING" in w for w in result["warnings"]))
+            self.assertEqual(len(result["final_mapping"]), 0)
+            self.assertEqual(result["trees"][0]["resolved_state"], "pending")
 
-    def test_delete_leaf_is_promoted_to_target_delete(self) -> None:
+    def test_source_deleted_skips_dependant_tree(self) -> None:
+        """Tree A is delete, Tree B refs A → B source deleted, B is failed, no delete promotion."""
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = self._mk_db(tmp_path)
@@ -614,12 +627,15 @@ class EngineTests(unittest.TestCase):
             }
 
             result = compute_mapping(aggregated_rule_set, db)
+            # Source tree (/mods/100/s/a.txt) is deleted
+            self.assertTrue(any("W_SOURCE_DELETED" in w for w in result["warnings"]))
+            # No W_DELETE_LEAF_PROMOTED in new behavior
+            self.assertFalse(any("W_DELETE_LEAF_PROMOTED" in w for w in result["warnings"]))
+            # Tree B (target) has no valid source → "failed"
             target = str(tmp_path / "mods" / "200" / "d" / "a.txt").replace("\\", "/")
-            picked = next((e for e in result["final_mapping"] if e["path"] == target), None)
-            self.assertIsNotNone(picked)
-            self.assertEqual(picked["request"]["action"], "delete")
-            self.assertEqual(picked["request"]["path"], "!")
-            self.assertTrue(any("W_DELETE_LEAF_PROMOTED" in w for w in result["warnings"]))
+            tree_b = next((t for t in result["trees"] if t["root_path"] == target), None)
+            self.assertIsNotNone(tree_b)
+            self.assertEqual(tree_b["resolved_state"], "failed")
 
     # ── file-level cycle detection ─────────────────────────────────────────────
 
@@ -750,6 +766,235 @@ class EngineTests(unittest.TestCase):
             self.assertIn(str(tmp_path / "game" / "out" / "top.txt").replace("\\", "/"), targets)
             self.assertNotIn(str(tmp_path / "game" / "out" / "nested").replace("\\", "/"), targets)
             self.assertNotIn(str(tmp_path / "game" / "out" / "deep.txt").replace("\\", "/"), targets)
+
+
+    # ── ForestTree / _build_forest_trees ─────────────────────────────────────────
+
+    def test_build_forest_trees_basic(self) -> None:
+        """2 targets: one is source for the other, one is standalone delete."""
+        mapping = {
+            "/game/out/file.txt": {
+                "path": "/game/out/file.txt",
+                "destin_mixed_id": "270150:0",
+                "changerequest": [
+                    {"path": "/mods/100/a.txt", "action": "replace", "mixed_id": "270150:100"},
+                    {"path": "!", "action": "delete", "mixed_id": "270150:200"},
+                ],
+            },
+            "/mods/100/a.txt": {
+                "path": "/mods/100/a.txt",
+                "destin_mixed_id": "270150:100",
+                "changerequest": [
+                    {"path": "!", "action": "delete", "mixed_id": "270150:200"},
+                ],
+            },
+        }
+        trees = _build_forest_trees(mapping, {})
+        self.assertEqual(len(trees), 2)
+
+        # Sorted by root_path: /game/out/file.txt < /mods/100/a.txt
+        t1 = trees[0]  # /game/out/file.txt
+        t2 = trees[1]  # /mods/100/a.txt
+
+        self.assertEqual(t1.root_path, "/game/out/file.txt")
+        self.assertEqual(t1.destin_mixed_id, "270150:0")
+        # /mods/100/a.txt is in mapping → ref
+        self.assertEqual(t1.refs, ["/mods/100/a.txt"])
+        self.assertFalse(t1.resolved)
+        self.assertIsNone(t1.resolved_state)
+
+        self.assertEqual(t2.root_path, "/mods/100/a.txt")
+        self.assertEqual(t2.destin_mixed_id, "270150:100")
+        # "!" paths are not refs
+        self.assertEqual(t2.refs, [])
+
+    # ── _topological_sort_by_refs ────────────────────────────────────────────────
+
+    def test_topological_sort_simple(self) -> None:
+        """A→B→C chain → C before B before A."""
+        trees = [
+            ForestTree(root_path="/A", destin_mixed_id="m1", changerequest=[], refs=["/B"]),
+            ForestTree(root_path="/B", destin_mixed_id="m2", changerequest=[], refs=["/C"]),
+            ForestTree(root_path="/C", destin_mixed_id="m3", changerequest=[], refs=[]),
+        ]
+        warnings: list[str] = []
+        sorted_trees = _topological_sort_by_refs(trees, warnings)
+        sorted_paths = [t.root_path for t in sorted_trees]
+        self.assertEqual(sorted_paths, ["/C", "/B", "/A"])
+        self.assertEqual(warnings, [])
+
+    def test_topological_sort_cycle(self) -> None:
+        """A→B→A cycle → warning returned, original list preserved."""
+        trees = [
+            ForestTree(root_path="/A", destin_mixed_id="m1", changerequest=[], refs=["/B"]),
+            ForestTree(root_path="/B", destin_mixed_id="m2", changerequest=[], refs=["/A"]),
+        ]
+        warnings: list[str] = []
+        sorted_trees = _topological_sort_by_refs(trees, warnings)
+        self.assertEqual(len(sorted_trees), 2)
+        self.assertTrue(any("W_FOREST_CYCLE_DETECTED" in w for w in warnings))
+
+    # ── _any_ancestor_deleted ────────────────────────────────────────────────────
+
+    def test_ancestor_deleted_true(self) -> None:
+        """Deleted tree at /modA/dir → /modA/dir/file.png returns True."""
+        tree_by_root = {
+            "/modA/dir": ForestTree("/modA/dir", "m1", [], [], resolved=True, resolved_state="deleted"),
+        }
+        self.assertTrue(_any_ancestor_deleted("/modA/dir/file.png", tree_by_root))
+
+    def test_ancestor_deleted_false(self) -> None:
+        """Deleted tree at /modA/dir → /other/file.png returns False."""
+        tree_by_root = {
+            "/modA/dir": ForestTree("/modA/dir", "m1", [], [], resolved=True, resolved_state="deleted"),
+        }
+        self.assertFalse(_any_ancestor_deleted("/other/file.png", tree_by_root))
+
+    # ── _resolve_trees_bottom_up ─────────────────────────────────────────────────
+
+    def test_resolve_trees_simple_kept(self) -> None:
+        """Single replace op → auto resolved_state='kept'."""
+        tree = ForestTree(
+            root_path="/target/a.txt",
+            destin_mixed_id="270150:0",
+            changerequest=[{"path": "/mods/100/a.txt", "action": "replace", "mixed_id": "270150:100"}],
+            refs=[],
+        )
+        warnings: list[str] = []
+        errors: list[str] = []
+        _resolve_trees_bottom_up([tree], {}, warnings, errors)
+        self.assertTrue(tree.resolved)
+        self.assertEqual(tree.resolved_state, "kept")
+        self.assertEqual(warnings, [])
+        self.assertEqual(errors, [])
+
+    def test_resolve_trees_delete_tree(self) -> None:
+        """Single delete op → auto resolved_state='deleted'."""
+        tree = ForestTree(
+            root_path="/target/a.txt",
+            destin_mixed_id="270150:0",
+            changerequest=[{"path": "!", "action": "delete", "mixed_id": "270150:100"}],
+            refs=[],
+        )
+        warnings: list[str] = []
+        errors: list[str] = []
+        _resolve_trees_bottom_up([tree], {}, warnings, errors)
+        self.assertTrue(tree.resolved)
+        self.assertEqual(tree.resolved_state, "deleted")
+
+    def test_resolve_trees_source_deleted(self) -> None:
+        """Tree A deleted, Tree B (refs A) → B fails with W_SOURCE_DELETED."""
+        tree_a = ForestTree(
+            root_path="/mods/100/a.txt",
+            destin_mixed_id="270150:100",
+            changerequest=[{"path": "!", "action": "delete", "mixed_id": "270150:200"}],
+            refs=[],
+        )
+        tree_b = ForestTree(
+            root_path="/game/target.txt",
+            destin_mixed_id="270150:0",
+            changerequest=[{"path": "/mods/100/a.txt", "action": "replace", "mixed_id": "270150:100"}],
+            refs=["/mods/100/a.txt"],
+        )
+        warnings: list[str] = []
+        errors: list[str] = []
+        # topological order: A (dependency) before B
+        _resolve_trees_bottom_up([tree_a, tree_b], {}, warnings, errors)
+        self.assertEqual(tree_a.resolved_state, "deleted")
+        self.assertEqual(tree_b.resolved_state, "failed")  # no valid ops remain
+        self.assertTrue(any("W_SOURCE_DELETED" in w for w in warnings))
+        self.assertEqual(errors, [])
+
+    def test_resolve_trees_branching(self) -> None:
+        """Two replace ops, no branch decision → pending + W_FOREST_BRANCHING."""
+        tree = ForestTree(
+            root_path="/target/a.txt",
+            destin_mixed_id="270150:0",
+            changerequest=[
+                {"path": "/mods/100/a.txt", "action": "replace", "mixed_id": "270150:100"},
+                {"path": "/mods/101/a.txt", "action": "replace", "mixed_id": "270150:101"},
+            ],
+            refs=[],
+        )
+        warnings: list[str] = []
+        errors: list[str] = []
+        _resolve_trees_bottom_up([tree], {}, warnings, errors)
+        self.assertEqual(tree.resolved_state, "pending")
+        self.assertTrue(any("W_FOREST_BRANCHING" in w for w in warnings))
+        self.assertEqual(errors, [])
+
+    def test_resolve_trees_user_decision(self) -> None:
+        """Two replace ops, decision picks one → resolved_state='kept'."""
+        tree = ForestTree(
+            root_path="/target/a.txt",
+            destin_mixed_id="270150:0",
+            changerequest=[
+                {"path": "/mods/100/a.txt", "action": "replace", "mixed_id": "270150:100"},
+                {"path": "/mods/101/a.txt", "action": "replace", "mixed_id": "270150:101"},
+            ],
+            refs=[],
+        )
+        warnings: list[str] = []
+        errors: list[str] = []
+        _resolve_trees_bottom_up([tree], {"/target/a.txt": "/mods/100/a.txt"}, warnings, errors)
+        self.assertEqual(tree.resolved_state, "kept")
+        self.assertFalse(errors)
+
+    # ── _build_output ────────────────────────────────────────────────────────────
+
+    def test_build_output_format(self) -> None:
+        """Verify output dict has 'trees' (not 'forest') and 'final_mapping'."""
+        trees = [
+            ForestTree(
+                root_path="/kept.txt", destin_mixed_id="m1",
+                changerequest=[{"path": "/src.txt", "action": "replace"}],
+                refs=[], resolved=True, resolved_state="kept",
+            ),
+            ForestTree(
+                root_path="/deleted.txt", destin_mixed_id="m2",
+                changerequest=[{"path": "!", "action": "delete"}],
+                refs=[], resolved=True, resolved_state="deleted",
+            ),
+            ForestTree(
+                root_path="/pending.txt", destin_mixed_id="m3",
+                changerequest=[
+                    {"path": "/a.txt", "action": "replace"},
+                    {"path": "/b.txt", "action": "replace"},
+                ],
+                refs=[], resolved=True, resolved_state="pending",
+            ),
+        ]
+        warnings: list[str] = []
+        errors: list[str] = []
+        result = _build_output(trees, warnings, errors)
+
+        # Top-level keys
+        self.assertIn("trees", result)
+        self.assertNotIn("forest", result)
+        self.assertIn("final_mapping", result)
+        self.assertIn("warnings", result)
+        self.assertIn("errors", result)
+
+        # trees list has 3 entries
+        self.assertEqual(len(result["trees"]), 3)
+        for entry in result["trees"]:
+            self.assertIn("root_path", entry)
+            self.assertIn("destin_mixed_id", entry)
+            self.assertIn("changerequest", entry)
+            self.assertIn("refs", entry)
+            self.assertIn("resolved_state", entry)
+
+        # pending tree has warning and candidates
+        pending_entries = [t for t in result["trees"] if t["resolved_state"] == "pending"]
+        self.assertEqual(len(pending_entries), 1)
+        self.assertEqual(pending_entries[0]["warning"], "W_FOREST_BRANCHING")
+        self.assertIn("candidates", pending_entries[0])
+
+        # final_mapping contains kept + deleted (2 entries)
+        self.assertEqual(len(result["final_mapping"]), 2)
+
+        # W_FOREST_BRANCHING_UNRESOLVED warning present
+        self.assertTrue(any("W_FOREST_BRANCHING_UNRESOLVED" in w for w in result["warnings"]))
 
 
 if __name__ == "__main__":

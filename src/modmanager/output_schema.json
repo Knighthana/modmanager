@@ -3,7 +3,7 @@
   "title": "ComputeMappingOutput",
   "description": "Schema for the dict returned by modmanager_cli.engine.compute_mapping().",
   "type": "object",
-  "required": ["warnings", "errors", "forest", "final_mapping"],
+  "required": ["warnings", "errors", "trees", "final_mapping"],
   "additionalProperties": false,
   "properties": {
     "warnings": {
@@ -16,10 +16,10 @@
       "type": "array",
       "items": {"type": "string"}
     },
-    "forest": {
-      "description": "File-mapping forest.  Each node is the destination file with its chain of change-requests.  Always present, even when errors exist.",
+    "trees": {
+      "description": "Forest trees.  Each tree represents a root path with its change-requests, refs, and resolved state.  Always present, even when errors exist.",
       "type": "array",
-      "items": {"$ref": "#/definitions/ForestNode"}
+      "items": {"$ref": "#/definitions/TreeNode"}
     },
     "final_mapping": {
       "description": "Resolved one-to-one file mappings.  Empty when errors is non-empty or any branch is unresolved.",
@@ -70,33 +70,43 @@
         }
       }
     },
-    "ForestNode": {
-      "description": "A destination file node in the mapping forest.",
+    "TreeNode": {
+      "description": "A tree in the forest.  Each tree represents a root path with its change-requests, refs, and resolved state.",
       "type": "object",
-      "required": ["path", "changerequest"],
+      "required": ["root_path", "destin_mixed_id", "changerequest", "refs", "resolved_state"],
       "additionalProperties": false,
       "properties": {
-        "path": {
-          "description": "Absolute path of the destination file (key of this forest node).",
+        "root_path": {
+          "description": "Absolute path of the tree root (the destination file path).",
           "type": "string"
         },
-        "changerequest": {
-          "description": "Ordered list of candidate change-requests targeting this file.",
-          "type": "array",
-          "items": {"$ref": "#/definitions/ChangeRequest"}
-        },
         "destin_mixed_id": {
-          "description": "appid:modid of the mod that owns this destination file.  Absent for legacy nodes.",
+          "description": "appid:modid of the mod that owns this destination file.",
           "type": "string",
           "pattern": "^[^:]+:.+$"
         },
+        "changerequest": {
+          "description": "List of change-requests targeting this tree root.",
+          "type": "array",
+          "items": {"$ref": "#/definitions/ChangeRequest"}
+        },
+        "refs": {
+          "description": "Root paths of other trees that this tree references.",
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "resolved_state": {
+          "description": "Resolution state of this tree: pending | kept | deleted | failed | skipped.",
+          "type": "string",
+          "enum": ["pending", "kept", "deleted", "failed", "skipped"]
+        },
         "warning": {
-          "description": "Present and set to 'W_FOREST_BRANCHING' when more than one candidate exists.",
+          "description": "Present when resolved_state is 'pending', set to 'W_FOREST_BRANCHING'.",
           "type": "string",
           "enum": ["W_FOREST_BRANCHING"]
         },
         "candidates": {
-          "description": "Source paths of all candidates, in deterministic sort order.  Present only when warning is set.",
+          "description": "Source paths of all changerequest candidates.  Present only when warning is set.",
           "type": "array",
           "items": {"type": "string"}
         }

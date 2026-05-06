@@ -103,7 +103,94 @@
 
 ---
 
+## Phase P0: 森林模型重构 ✅
+
+将现有"刨根移栽"式 delete 传播模型替换为"独立根 + 引用"模型。
+
+**核心设计文档**：
+- 风险分析：`repo_memory/direct/DESIGN_P0_FOREST_RISK_ANALYSIS.md`
+- 实现方案：`repo_memory/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md`
+
+**决策**：
+- 激进全栈切换，不接受技术债
+- delete 源失效 → 跳过 + warning（不报错，不传播）
+- 目录 delete 不裂变 → 改用祖先路径前缀检查
+- `branch_decisions` 格式向后兼容扩展
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| P0-01 | ForestTree dataclass 定义 | `engine.py` | done |
+| P0-02 | `_build_forest_trees()` 实现 | `engine.py` | done |
+| P0-03 | `_topological_sort_by_refs()` 实现 | `engine.py` | done |
+| P0-04 | `_ancestor_deleted()` 实现 | `engine.py` | done |
+| P0-05 | `_resolve_trees_bottom_up()` 实现 | `engine.py` | done |
+| P0-06 | `_build_output()` 实现 | `engine.py` | done |
+| P0-07 | ForestTree 构建单元测试 | `test_engine.py` | done |
+| P0-08 | 拓扑排序单元测试 | `test_engine.py` | done |
+| P0-09 | 祖先检查单元测试 | `test_engine.py` | done |
+| P0-10 | 自底向上解析单元测试 | `test_engine.py` | done |
+| P0-11 | 重写 `compute_mapping()` 下半段 | `engine.py` | done |
+| P0-12 | 移除 `_resolve_effective_leaf_request()` | `engine.py` | done |
+| P0-13 | 移除 `W_DELETE_LEAF_PROMOTED` 逻辑 | `engine.py` | done |
+| P0-14 | 更新 engine 集成测试 | `test_engine.py` | done |
+| P0-15 | 更新契约测试 (forest→trees) | `test_contract.py` | done |
+| P0-16 | 更新集成 fixtures 测试 | `test_integration_fixtures.py` | done |
+| P0-17 | orchestrator PipelineResult 适配 | `orchestrator.py` | done |
+| P0-18 | Web API schemas/adapters/routes 适配 | `modmanager_web/*` | done |
+| P0-19 | 下游模块测试更新 | `tests/*` | done |
+| P0-20 | 重写 `_build_tree_graph_model()` | `forest_visual.py` | done |
+| P0-21 | 重写 `_render_ascii()` | `forest_visual.py` | done |
+| P0-22 | 重写 `_render_dot()`（引用边样式） | `forest_visual.py` | done |
+| P0-23 | 更新 `_enrich_svg_nodes()` | `forest_visual.py` | done |
+| P0-24 | 更新 `_render_html()` | `forest_visual.py` | done |
+| P0-25 | 更新 forest_visual 测试 | `test_forest_visual.py` | done |
+| P0-26 | 更新前端 types (TreeNode) | `frontend/src/types/` | done |
+| P0-27 | 更新前端 stores (trees 状态) | `frontend/src/stores/` | done |
+| P0-28 | 重写 ConflictsPage | `frontend/src/pages/` | done |
+| P0-29 | 更新 ForestViewer (tree-node 属性) | `frontend/src/components/` | done |
+| P0-30 | 前端 Vitest 测试更新 | `frontend/src/__tests__/` | done |
+| P0-31 | Python 全量回归测试 | all | done |
+| P0-32 | 前端构建 + Vitest 全量 | all | done |
+| P0-33 | 手动 E2E 验证 | all | pending |
+
+---
+
+## Phase P1: Backup 实现 ✅
+
+补齐备份目录命名规则生成 + 循环防护 + workshop 时间源 + .kmmbakignore。
+
+**设计文档**：`repo_memory/direct/DESIGN_P1_BACKUP.md`
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| P1-01 | `get_workshop_timeupdated()` 辅助函数 | `acf_parser.py` | done |
+| P1-02 | acf_parser 扩展测试 | `tests/` | done |
+| P1-03 | `get_workshop_backup_id()` 实现 | `backup_dir_builder.py` | done |
+| P1-04 | `get_custom_backup_id()` 实现 | `backup_dir_builder.py` | done |
+| P1-05 | `build_backup_dir()` 实现 | `backup_dir_builder.py` | done |
+| P1-06 | `load_bakignore_rules()` 实现 | `backup_dir_builder.py` | done |
+| P1-07 | builder 核心函数单元测试 | `tests/test_backup_dir_builder.py` | done |
+| P1-08 | backup_ops 硬编码 kmmbackup_ 前缀过滤 | `backup_ops.py` | done |
+| P1-09 | 循环防护测试 | `tests/test_backup_ops.py` | done |
+| P1-10 | orchestrator.run() backup_dir 可选化 | `orchestrator.py` | done |
+| P1-11 | CLI --backup-dir 可选化 | `cli.py` | done |
+| P1-12 | Web API 适配 | `modmanager_web/*` | done |
+| P1-13 | 前端适配 | `frontend/src/*` | done |
+| P1-14 | 集成测试 | `tests/` | done |
+| P1-15 | Python 全量回归 | all | done |
+| P1-16 | 前端 Vitest + 构建 | all | done |
+
+---
+
 ## Future（远期）
+
+### P2: 引擎细节修复
+- T1: same actionlist 中 delete→create 不产生 overwrite 警告
+- 结点 vs 节点术语统一（代码变量名）
+
+### P3: GUI 增强（待用户反馈）
+- Forest 全部/仅分岔切换按钮
+- M4: hover 高亮、拖拽选枝
 
 ### Forest Visualization Expansion（M3）
 - Plot renderer

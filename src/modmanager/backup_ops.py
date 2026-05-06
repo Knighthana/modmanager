@@ -18,8 +18,12 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .acf_parser import parse_appmanifest_acf
+from .acf_parser import get_workshop_timeupdated, parse_appmanifest_acf
 from .paths import normalize_posix
+
+
+# ── Hard-coded loop protection ──────────────────────────────────────────────
+_HARDCODED_BACKUP_SKIP_PREFIX = "kmmbackup_"
 
 
 # ── Phase 7: Version check ────────────────────────────────────────────────────
@@ -39,6 +43,26 @@ def get_game_backup_id(steamlib_path: str, appid: str) -> str:
             ts = 0
         return format(ts, "x")
     except (FileNotFoundError, ValueError):
+        return "0"
+
+
+def get_workshop_backup_id(steamapps_path: str, appid: str) -> str:
+    """从 appworkshop_{appid}.acf 读取 timeupdated 并转为 hex。
+
+    调用 acf_parser.get_workshop_timeupdated() 获取时间字符串，
+    转为 int → format(ts, "x")。
+    若返回 "0" → 最终返回 "0"。
+
+    Returns:
+        timeupdated 的小写 hex 字符串，或 "0"
+    """
+    ts_str = get_workshop_timeupdated(steamapps_path, appid)
+    if ts_str == "0":
+        return "0"
+    try:
+        ts = int(ts_str)
+        return format(ts, "x")
+    except (ValueError, TypeError):
         return "0"
 
 
@@ -89,6 +113,9 @@ def build_filefoldertree_with_hashes(
             for child in sorted(path.iterdir()):
                 if child.name in skip_names:
                     continue
+                # Loop protection: skip kmmbackup_* sub-directories
+                if child.name.startswith(_HARDCODED_BACKUP_SKIP_PREFIX):
+                    continue
                 children.append(_scan(child))
         except PermissionError:
             pass
@@ -133,6 +160,9 @@ def _collect_backup_original_paths(backup_dir: str) -> list[str]:
         if not bak_file.is_file() or bak_file.name == "backupinfo.json":
             continue
         rel = bak_file.relative_to(backup_path)
+        # Loop protection: skip files inside kmmbackup_* directories
+        if any(part.startswith(_HARDCODED_BACKUP_SKIP_PREFIX) for part in rel.parts):
+            continue
         original = Path("/") / rel
         originals.append(_normalized(str(original)))
     return originals
@@ -470,6 +500,9 @@ def restore_from_backup(
         if not bak_file.is_file() or bak_file.name == "backupinfo.json":
             continue
         rel = bak_file.relative_to(backup_path)
+        # Loop protection: skip files inside kmmbackup_* directories
+        if any(part.startswith(_HARDCODED_BACKUP_SKIP_PREFIX) for part in rel.parts):
+            continue
         original = Path("/") / rel
         orig_norm = normalize_posix(str(original))
 
@@ -578,6 +611,7 @@ def delete_orphan_files(orphan_paths: list[str]) -> dict[str, Any]:
 
 __all__ = [
     "get_game_backup_id",
+    "get_workshop_backup_id",
     "build_filefoldertree_with_hashes",
     "load_backup_info",
     "init_backup_dir",

@@ -8,6 +8,8 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
+from modmanager.backup_dir_builder import build_backup_dir
+from modmanager.iojson import load_json_file
 from modmanager.orchestrator import (
     compute as orch_compute,
     backup as orch_backup,
@@ -15,7 +17,7 @@ from modmanager.orchestrator import (
     run as orch_run,
 )
 
-from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_dict_result
+from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_dict_result, adapt_error
 from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest
 from ..sse import stream_with_progress
 
@@ -59,10 +61,26 @@ async def pipeline_backup(req: BackupRequest):
       - ``error``    — exception information
     """
 
+    resolved_backup_dir = req.backup_dir
+    if resolved_backup_dir is None:
+        if not req.database or not req.user_config_path:
+            return adapt_error("backup_dir is required when database/user_config_path are not provided")
+        try:
+            user_config = load_json_file(req.user_config_path)
+        except Exception as exc:
+            return adapt_error(f"failed to load user_config: {exc}")
+        final_mapping = req.mapping_result.get("final_mapping", [])
+        if not final_mapping:
+            return adapt_error("final_mapping is empty; cannot derive backup_dir")
+        try:
+            resolved_backup_dir = build_backup_dir(final_mapping, req.database, user_config)
+        except ValueError as exc:
+            return adapt_error(str(exc))
+
     def do_work(*, on_progress):
         return orch_backup(
             mapping_result=req.mapping_result,
-            backup_dir=req.backup_dir,
+            backup_dir=resolved_backup_dir,
             on_progress=on_progress,
         )
 
@@ -75,21 +93,21 @@ async def pipeline_backup(req: BackupRequest):
 
 @router.post("/visualize")
 async def pipeline_visualize(req: VisualizeRequest):
-    """Convert forest JSON to SVG/ASCII/DOT visualization.
+    """Convert trees JSON to SVG/ASCII/DOT visualization.
 
     Returns a plain JSON ``ApiResponse`` with the rendered output.
     """
     from modmanager.forest_visual import visualize_payload
 
-    if not req.forest and req.mapping_result:
-        # Fall back to extracting forest from mapping_result
-        forest = req.mapping_result.get("forest", [])
+    if not req.trees and req.mapping_result:
+        # Fall back to extracting trees from mapping_result
+        trees = req.mapping_result.get("trees", [])
     else:
-        forest = req.forest
+        trees = req.trees
 
     try:
         rendered = visualize_payload(
-            {"forest": forest},
+            {"trees": trees},
             req.format,
             show_m1_details=req.show_m1_details,
         )
@@ -108,10 +126,25 @@ async def pipeline_apply(req: ApplyRequest):
       - ``error``    — exception information
     """
 
+    resolved_backup_dir = req.backup_dir
+    if resolved_backup_dir is None:
+        if not req.database or not req.user_config_path:
+            return adapt_error("backup_dir is required when database/user_config_path are not provided")
+        try:
+            user_config = load_json_file(req.user_config_path)
+        except Exception as exc:
+            return adapt_error(f"failed to load user_config: {exc}")
+        if not req.final_mapping:
+            return adapt_error("final_mapping is empty; cannot derive backup_dir")
+        try:
+            resolved_backup_dir = build_backup_dir(req.final_mapping, req.database, user_config)
+        except ValueError as exc:
+            return adapt_error(str(exc))
+
     def do_work(*, on_progress):
         return orch_apply(
             final_mapping=req.final_mapping,
-            backup_dir=req.backup_dir,
+            backup_dir=resolved_backup_dir,
             dry_run=req.dry_run,
             on_progress=on_progress,
         )

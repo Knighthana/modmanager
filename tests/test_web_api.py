@@ -204,9 +204,9 @@ class TestComputePipeline:
                 kwargs["on_progress"]("compute", 1, 1, "Done")
             return PipelineResult(
                 ok=True,
-                forest=[{"path": "/a.txt", "ops": []}],
+                trees=[{"path": "/a.txt", "ops": []}],
                 final_mapping=[{"path": "/a.txt", "action": "replace"}],
-                mapping_result={"forest": [{"path": "/a.txt", "ops": []}]},
+                mapping_result={"trees": [{"path": "/a.txt", "ops": []}]},
             )
 
         monkeypatch.setattr(
@@ -233,7 +233,7 @@ class TestComputePipeline:
         assert len(progress_events) >= 1
         assert len(result_events) == 1
         assert result_events[0]["data"]["ok"] is True
-        assert "forest" in result_events[0]["data"]["data"]
+        assert "trees" in result_events[0]["data"]["data"]
 
 
 # ── Pipeline /run ─────────────────────────────────────────────────────────
@@ -259,9 +259,9 @@ class TestRunPipeline:
                 kwargs["on_progress"]("apply", 1, 1, "Apply done")
             return PipelineResult(
                 ok=True,
-                forest=[{"path": "/a.txt", "ops": []}],
+                trees=[{"path": "/a.txt", "ops": []}],
                 final_mapping=[{"path": "/a.txt", "action": "replace"}],
-                mapping_result={"forest": [{"path": "/a.txt", "ops": []}]},
+                mapping_result={"trees": [{"path": "/a.txt", "ops": []}]},
                 backup_result={
                     "ok": True,
                     "backed_up": ["/a.txt.bak"],
@@ -317,13 +317,13 @@ class TestAdapters:
 
         pr = PipelineResult(
             ok=True,
-            forest=[{"path": "/a.txt"}],
+            trees=[{"path": "/a.txt"}],
             final_mapping=[{"path": "/a.txt", "action": "replace"}],
-            mapping_result={"forest": [{"path": "/a.txt"}]},
+            mapping_result={"trees": [{"path": "/a.txt"}]},
         )
         result = adapt_pipeline_result(pr)
         assert result["ok"] is True
-        assert result["data"]["forest"] == [{"path": "/a.txt"}]
+        assert result["data"]["trees"] == [{"path": "/a.txt"}]
         assert result["errors"] == []
         assert result["warnings"] == []
 

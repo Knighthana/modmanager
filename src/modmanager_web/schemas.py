@@ -68,14 +68,18 @@ class BackupRequest(BaseModel):
     """Request body for ``POST /api/pipeline/backup``."""
 
     mapping_result: dict[str, Any]
-    backup_dir: str
+    backup_dir: str | None = None
+    database: dict[str, Any] | None = None
+    user_config_path: str | None = None
 
 
 class ApplyRequest(BaseModel):
     """Request body for ``POST /api/pipeline/apply``."""
 
     final_mapping: list[dict[str, Any]]
-    backup_dir: str
+    backup_dir: str | None = None
+    database: dict[str, Any] | None = None
+    user_config_path: str | None = None
     dry_run: bool = False
 
 
@@ -85,7 +89,7 @@ class RunRequest(BaseModel):
     database: dict[str, Any]
     kmm_rule_paths: list[str]
     user_config_path: str
-    backup_dir: str
+    backup_dir: str | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
     dry_run: bool = False
@@ -94,7 +98,7 @@ class RunRequest(BaseModel):
 class VisualizeRequest(BaseModel):
     """Request body for ``POST /api/pipeline/visualize``."""
 
-    forest: list[dict[str, Any]] = Field(default_factory=list)
+    trees: list[dict[str, Any]] = Field(default_factory=list)
     mapping_result: dict[str, Any] | None = None
     format: str = "svg"
     show_m1_details: bool = True

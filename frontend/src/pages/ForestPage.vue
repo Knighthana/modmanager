@@ -75,7 +75,7 @@
           <el-input v-model="store.pipelineForm.userConfigPath" placeholder="自动探测后自动填入" />
         </el-form-item>
         <el-form-item label="Backup dir">
-          <el-input v-model="store.pipelineForm.backupDir" placeholder="自动生成，可按需修改" />
+          <el-input v-model="store.pipelineForm.backupDir" placeholder="自动推导（留空则自动）" />
         </el-form-item>
         <el-form-item label="Dry run">
           <el-switch v-model="store.pipelineForm.dryRun" />
@@ -109,8 +109,8 @@
     <el-row v-if="hasResult" :gutter="16" style="margin-bottom: 16px;">
       <el-col :span="6">
         <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">Forest 结点</span>
-          <div style="font-size: 24px; font-weight: 600;">{{ store.forest.length }}</div>
+          <span style="font-size: 13px; color: var(--el-text-color-secondary);">Trees 结点</span>
+          <div style="font-size: 24px; font-weight: 600;">{{ store.trees.length }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
@@ -170,7 +170,8 @@
           <p>W_NO_SOURCE_MATCH — mod 源文件不存在（可能未安装），对应条目将被跳过</p>
           <p>W_MISSING_SOURCE_ROOT / W_MISSING_DEST_ROOT — 缺少源/目标目录</p>
           <p>W_CREATE_TARGET_EXISTS_OVERWRITE — 目标文件已存在，将被覆盖；这是因为引擎对所有 action 统一检查，不会模拟 delete 执行后的状态，执行阶段 delete 会先执行，文件被删后 create 正常创建</p>
-          <p>W_DELETE_LEAF_PROMOTED — 映射链的最终来源是删除操作，目标文件将被删除（删除的是目标文件，不是源文件）</p>
+          <p>W_FOREST_BRANCHING — 该树有多个候选操作，需要用户裁决</p>
+          <p>W_SOURCE_DELETED — 操作的源文件已被删除，该操作被跳过</p>
         </template>
       </el-alert>
       <!-- 提示：若全是 W_LOCAL_MOD_MISSING，建议先运行自动探测 -->
@@ -196,7 +197,7 @@ import ForestViewer from '../components/ForestViewer.vue'
 
 const store = useForestStore()
 
-const hasResult = computed(() => store.forest.length > 0 || store.errors.length > 0)
+const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
 
 async function onDiscover() {
   await store.discoverDatabase({
@@ -238,7 +239,7 @@ function prepareParams() {
     database,
     kmm_rule_paths: rules,
     user_config_path: store.pipelineForm.userConfigPath || '',
-    backup_dir: store.pipelineForm.backupDir,
+    backup_dir: store.pipelineForm.backupDir || null,
   }
 }
 
@@ -250,7 +251,7 @@ async function onCompute() {
   })
 
   // 计算完成后，获取可视化
-  if (store.forest.length > 0) {
+  if (store.trees.length > 0) {
     await store.fetchVisualization()
   }
 }
@@ -263,7 +264,7 @@ async function onRun() {
   })
 
   // 运行完成后，获取可视化
-  if (store.forest.length > 0) {
+  if (store.trees.length > 0) {
     await store.fetchVisualization()
   }
 }

@@ -73,10 +73,10 @@ class F001_SingleFileReplace(unittest.TestCase):
 
             # Assertions
             self.assertEqual(result["errors"], [])
-            self.assertEqual(len(result["forest"]), 1)
+            self.assertEqual(len(result["trees"]), 1)
             self.assertEqual(len(result["final_mapping"]), 1)
-            forest_node = result["forest"][0]
-            self.assertIn("path", forest_node)
+            forest_node = result["trees"][0]
+            self.assertIn("root_path", forest_node)
             self.assertEqual(len(forest_node["changerequest"]), 1)
             cr = forest_node["changerequest"][0]
             self.assertEqual(cr["hashtype"], "sha256")
@@ -108,12 +108,12 @@ class F002_WildcardExpandSuccess(unittest.TestCase):
 
             # Assertions
             self.assertEqual(result["errors"], [])
-            self.assertEqual(len(result["forest"]), 3)
+            self.assertEqual(len(result["trees"]), 3)
             self.assertEqual(len(result["final_mapping"]), 3)
 
             # Check no wildcards in paths
-            for node in result["forest"]:
-                self.assertNotIn("*", node["path"])
+            for node in result["trees"]:
+                self.assertNotIn("*", node["root_path"])
             for entry in result["final_mapping"]:
                 self.assertNotIn("*", entry["path"])
 
@@ -140,7 +140,7 @@ class F003_WildcardExpandFail(unittest.TestCase):
 
             # Assertions
             self.assertTrue(any("W_NO_SOURCE_MATCH" in w for w in result["warnings"]))
-            self.assertEqual(len(result["forest"]), 0)
+            self.assertEqual(len(result["trees"]), 0)
 
 
 class F004_FileCircularDep(unittest.TestCase):
@@ -187,7 +187,7 @@ class F004_FileCircularDep(unittest.TestCase):
             # depending on how edges are constructed; this test is mainly checking that
             # the system doesn't crash and produces output
             self.assertEqual(result["errors"], [])
-            self.assertGreater(len(result["forest"]), 0)
+            self.assertGreater(len(result["trees"]), 0)
 
 
 class F005_ModLevelLoopNoFileLoop(unittest.TestCase):
@@ -223,7 +223,7 @@ class F005_ModLevelLoopNoFileLoop(unittest.TestCase):
 
             # Assertions
             self.assertFalse(any("E_FILE_CIRCULAR_DEP" in e for e in result["errors"]))
-            self.assertGreater(len(result["forest"]), 0)
+            self.assertGreater(len(result["trees"]), 0)
             self.assertGreater(len(result["final_mapping"]), 0)
 
 
@@ -257,7 +257,7 @@ class F006_BranchDetection(unittest.TestCase):
             # No errors (branching is not an error, just warning)
             self.assertEqual(result["errors"], [])
             # Forest has the branched node
-            branched = [n for n in result["forest"] if n.get("warning") == "W_FOREST_BRANCHING"]
+            branched = [n for n in result["trees"] if n.get("warning") == "W_FOREST_BRANCHING"]
             self.assertEqual(len(branched), 1)
             # Branching is detected with candidates listed
             self.assertIn("candidates", branched[0])
@@ -290,8 +290,8 @@ class F007_BranchResolved(unittest.TestCase):
 
             # Get forest first to find target and candidates
             forest_result = compute_mapping(aggregated_rule_set, fixture.mk_db())
-            target = forest_result["forest"][0]["path"]
-            candidates = forest_result["forest"][0]["candidates"]
+            target = forest_result["trees"][0]["root_path"]
+            candidates = forest_result["trees"][0]["candidates"]
 
             # Now resolve with branch decision
             decisions = {target: candidates[0]}
@@ -332,12 +332,12 @@ class F008_BaseNotHit(unittest.TestCase):
             # Assertions
             self.assertEqual(result["errors"], [])
             # Check that gamebase (modid=0) paths don't appear in forest
-            for node in result["forest"]:
+            for node in result["trees"]:
                 # gamebase paths would be under game_root, not mod_root
                 # This is a weak check; real implementation would verify target mod
                 pass
             # Should have forest nodes pointing to mod 200, not gamebase
-            self.assertGreater(len(result["forest"]), 0)
+            self.assertGreater(len(result["trees"]), 0)
 
 
 class F009_SelectionSubset(unittest.TestCase):
@@ -371,7 +371,7 @@ class F009_SelectionSubset(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, fixture.mk_db())
 
             # Assertions
-            self.assertEqual(len(result["forest"]), 3)
+            self.assertEqual(len(result["trees"]), 3)
             self.assertEqual(len(result["final_mapping"]), 3)
 
 
@@ -388,7 +388,7 @@ class F010_EmptySelection(unittest.TestCase):
 
             # Assertions
             self.assertEqual(result["errors"], [])
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
             self.assertEqual(result["final_mapping"], [])
 
 
@@ -423,7 +423,7 @@ class P001_PathstyleDetection(unittest.TestCase):
             # Assertions
             self.assertEqual(result["errors"], [])
             # Paths in output should be consistently normalized
-            for node in result["forest"]:
+            for node in result["trees"]:
                 path = node["path"]
                 # Should use forward slashes (normalized to Linux)
                 self.assertNotIn("\\", path)
@@ -482,7 +482,7 @@ class F012_AutoDiscoveryBoundary(unittest.TestCase):
             # Assertions
             self.assertEqual(result["errors"], [])
             # Should have forest with branching (same target from two sources)
-            branched = [n for n in result["forest"] if n.get("warning") == "W_FOREST_BRANCHING"]
+            branched = [n for n in result["trees"] if n.get("warning") == "W_FOREST_BRANCHING"]
             self.assertEqual(len(branched), 1)
             self.assertIn("candidates", branched[0])
 
@@ -523,7 +523,7 @@ class F013_HistoryTolerance(unittest.TestCase):
 
             # Assertions
             self.assertEqual(result["errors"], [])
-            self.assertEqual(len(result["forest"]), 1)
+            self.assertEqual(len(result["trees"]), 1)
 
 
 class F014_PathNormalization(unittest.TestCase):

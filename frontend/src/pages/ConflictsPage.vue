@@ -11,27 +11,31 @@
     </div>
 
     <!-- Empty state -->
-    <el-empty v-if="store.conflictList.length === 0" description="暂无冲突，Forest 已为确定映射" />
+    <el-empty v-if="store.conflictList.length === 0" description="暂无冲突，所有树已确定解析" />
 
     <!-- Conflict table -->
     <el-table
       v-else
       :data="store.conflictList"
-      row-key="target"
+      row-key="root_path"
       ref="tableRef"
       highlight-current-row
       @row-click="onRowClick"
     >
-      <el-table-column prop="target" label="目标路径" min-width="200" />
+      <el-table-column prop="root_path" label="目标路径" min-width="200" />
       <el-table-column prop="destin_mixed_id" label="Destin" width="160" />
-      <el-table-column label="候选" min-width="300">
+      <el-table-column label="候选操作" min-width="400">
         <template #default="{ row }">
           <el-radio-group
-            :model-value="store.branchDecisions[row.target]"
-            @change="(val: string) => store.setDecision(row.target, val)"
+            :model-value="store.branchDecisions[row.root_path]"
+            @change="(val: string) => store.setDecision(row.root_path, val)"
           >
-            <el-radio v-for="c in row.candidates" :key="c" :value="c">
-              {{ c }}
+            <el-radio
+              v-for="c in row.candidates"
+              :key="c"
+              :value="c"
+            >
+              {{ formatCandidate(c) }}
             </el-radio>
           </el-radio-group>
         </template>
@@ -44,10 +48,17 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
+import type { ConflictItem } from '../types'
 
 const route = useRoute()
 const store = useForestStore()
 const tableRef = ref()
+
+function formatCandidate(candidate: string): string {
+  if (candidate === '!') return '删除此文件'
+  if (candidate === '') return '保留此文件（跳过）'
+  return `替换为 ${candidate}`
+}
 
 function onClearDecisions() {
   store.clearDecisions()
@@ -67,20 +78,20 @@ async function onRecalculate() {
   })
 }
 
-function onRowClick(row: { target: string }) {
+function onRowClick(row: ConflictItem) {
   // Scroll to target row if clicked
-  // This also supports the ?target=xxx URL param highlighting
+  // This also supports the ?root_path=xxx URL param highlighting
 }
 
 onMounted(async () => {
-  const target = route.query.target as string | undefined
-  if (target && tableRef.value) {
+  const rootPath = route.query.root_path as string | undefined
+  if (rootPath && tableRef.value) {
     await nextTick()
-    const row = store.conflictList.find(c => c.target === target)
+    const row = store.conflictList.find(c => c.root_path === rootPath)
     if (row) {
       tableRef.value.setCurrentRow(row)
       // Scroll into view
-      const el = document.querySelector(`[row-key="${target}"]`)
+      const el = document.querySelector(`[row-key="${rootPath}"]`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }

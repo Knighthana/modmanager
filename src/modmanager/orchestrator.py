@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from .backup_dir_builder import build_backup_dir
 from .backup_ops import apply_final_mapping, run_differential_backup
 from .engine import compute_mapping
 from .rule_aggregator import aggregate
@@ -57,7 +58,7 @@ class PipelineResult:
         ok: Whether the pipeline completed without errors.
         errors: Accumulated error messages.
         warnings: Accumulated warning messages.
-        forest: Mapping forest from ``compute_mapping``.
+        trees: Mapping trees from ``compute_mapping``.
         final_mapping: Final resolved mapping list.
         mapping_result: Raw result dict from ``compute_mapping``.
         backup_result: Result dict from ``run_differential_backup`` (if run).
@@ -67,11 +68,12 @@ class PipelineResult:
     ok: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
-    forest: list[dict[str, Any]] = field(default_factory=list)
+    trees: list[dict[str, Any]] = field(default_factory=list)
     final_mapping: list[dict[str, Any]] = field(default_factory=list)
     mapping_result: dict[str, Any] = field(default_factory=dict)
     backup_result: dict[str, Any] | None = None
     apply_result: dict[str, Any] | None = None
+    backup_dir: str | None = None
 
 
 # ── Phase helpers ─────────────────────────────────────────────────────────────
@@ -141,7 +143,7 @@ def compute(
         ok=not mapping_result.get("errors"),
         errors=mapping_result.get("errors", []),
         warnings=agg_warnings + mapping_result.get("warnings", []),
-        forest=mapping_result.get("forest", []),
+        trees=mapping_result.get("trees", []),
         final_mapping=mapping_result.get("final_mapping", []),
         mapping_result=mapping_result,
     )
@@ -185,7 +187,7 @@ def backup(
 
 def apply(
     final_mapping: list[dict[str, Any]],
-    backup_dir: str,
+    backup_dir: str | None = None,
     *,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
@@ -218,8 +220,9 @@ def run(
     database: dict,
     kmm_rule_paths: list[str],
     user_config_path: str,
-    backup_dir: str,
+    backup_dir: str | None = None,
     *,
+    user_config: dict[str, Any] | None = None,
     action_orders: dict[str, int] | None = None,
     branch_decisions: dict[str, str] | None = None,
     dry_run: bool = False,
@@ -235,7 +238,10 @@ def run(
         database: Game database dict.
         kmm_rule_paths: List of paths to kmm_rule_*.json files.
         user_config_path: Path to user_config.json.
-        backup_dir: Target backup directory.
+        backup_dir: Target backup directory.  When ``None`` (default) the
+            path is automatically derived via ``build_backup_dir()``.
+        user_config: User configuration dict (for auto-derivation fallback).
+            When ``None``, defaults to ``{"bakprefix": "kmmbackup_"}``.
         action_orders: Optional ``{mixed_id: int}`` overrides.
         branch_decisions: Optional explicit branch decisions.
         dry_run: When ``True`` skip actual file modifications.
@@ -263,17 +269,26 @@ def run(
             ok=compute_result.ok,
             errors=compute_result.errors,
             warnings=compute_result.warnings,
-            forest=compute_result.forest,
+            trees=compute_result.trees,
             final_mapping=compute_result.final_mapping,
             mapping_result=compute_result.mapping_result,
             backup_result=None,
             apply_result=None,
         )
 
+    # ── Step 1.5: Auto-derive backup_dir if not provided ────────────────
+    resolved_backup_dir = backup_dir
+    if resolved_backup_dir is None:
+        resolved_backup_dir = build_backup_dir(
+            compute_result.final_mapping,
+            database,
+            user_config or {"bakprefix": "kmmbackup_"},
+        )
+
     # ── Step 2: Backup ────────────────────────────────────────────────────
     backup_result = backup(
         compute_result.mapping_result,
-        backup_dir,
+        resolved_backup_dir,
         on_progress=on_progress,
     )
 
@@ -288,7 +303,7 @@ def run(
             ok=False,
             errors=errors,
             warnings=compute_result.warnings,
-            forest=compute_result.forest,
+            trees=compute_result.trees,
             final_mapping=compute_result.final_mapping,
             mapping_result=compute_result.mapping_result,
             backup_result=backup_result,
@@ -297,7 +312,7 @@ def run(
     # ── Step 3: Apply ─────────────────────────────────────────────────────
     apply_result = apply(
         compute_result.final_mapping,
-        backup_dir,
+        resolved_backup_dir,
         dry_run=dry_run,
         on_progress=on_progress,
     )
@@ -326,9 +341,10 @@ def run(
         ok=not any(all_errors),
         errors=all_errors,
         warnings=all_warnings,
-        forest=compute_result.forest,
+        trees=compute_result.trees,
         final_mapping=compute_result.final_mapping,
         mapping_result=compute_result.mapping_result,
         backup_result=backup_result,
         apply_result=apply_result,
+        backup_dir=resolved_backup_dir,
     )

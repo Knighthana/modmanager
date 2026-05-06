@@ -77,14 +77,14 @@ function onNodeClick(e: MouseEvent) {
   // Ignore clicks during drag
   if (isDragging.value) return
   const target = e.target as HTMLElement
-  const nodeEl = target.closest('[data-forest-node]') as HTMLElement | null
+  const nodeEl = target.closest('[data-tree-node]') as HTMLElement | null
   if (!nodeEl) return
 
-  const nodePath = nodeEl.getAttribute('data-forest-node')!
-  const isConflictNode = nodeEl.hasAttribute('data-conflict')
+  const nodePath = nodeEl.getAttribute('data-tree-node')!
+  const isPendingTree = nodeEl.hasAttribute('data-tree-pending')
 
-  if (isConflictNode) {
-    router.push({ name: 'conflicts', query: { target: nodePath } })
+  if (isPendingTree) {
+    router.push({ name: 'conflicts', query: { root_path: nodePath } })
   }
 }
 </script>

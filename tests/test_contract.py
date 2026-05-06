@@ -47,7 +47,7 @@ class SchemaLoadTests(unittest.TestCase):
     def test_schema_has_required_top_level_keys(self) -> None:
         schema = get_output_schema()
         required = set(schema["required"])
-        self.assertSetEqual(required, {"warnings", "errors", "forest", "final_mapping"})
+        self.assertSetEqual(required, {"warnings", "errors", "trees", "final_mapping"})
 
     def test_schema_change_request_enum_matches_engine(self) -> None:
         from modmanager.engine import VALID_ACTIONS
@@ -57,23 +57,23 @@ class SchemaLoadTests(unittest.TestCase):
 
     def test_validate_output_rejects_missing_keys(self) -> None:
         errs = validate_output_collect({"warnings": [], "errors": []})
-        self.assertTrue(any("forest" in e or "final_mapping" in e for e in errs))
+        self.assertTrue(any("trees" in e or "final_mapping" in e for e in errs))
 
     def test_validate_output_rejects_wrong_type_for_warnings(self) -> None:
         errs = validate_output_collect(
-            {"warnings": "not-a-list", "errors": [], "forest": [], "final_mapping": []}
+            {"warnings": "not-a-list", "errors": [], "trees": [], "final_mapping": []}
         )
         self.assertTrue(errs)
 
     def test_validate_output_rejects_extra_top_level_key(self) -> None:
         errs = validate_output_collect(
-            {"warnings": [], "errors": [], "forest": [], "final_mapping": [], "extra": 1}
+            {"warnings": [], "errors": [], "trees": [], "final_mapping": [], "extra": 1}
         )
         self.assertTrue(errs)
 
     def test_validate_output_accepts_minimal_valid_structure(self) -> None:
         errs = validate_output_collect(
-            {"warnings": [], "errors": [], "forest": [], "final_mapping": []}
+            {"warnings": [], "errors": [], "trees": [], "final_mapping": []}
         )
         self.assertEqual(errs, [])
 
@@ -82,9 +82,10 @@ class SchemaLoadTests(unittest.TestCase):
             {
                 "warnings": [],
                 "errors": [],
-                "forest": [
+                "trees": [
                     {
-                        "path": "/dst/a.txt",
+                        "root_path": "/dst/a.txt",
+                        "destin_mixed_id": "1:0",
                         "changerequest": [
                             {
                                 "path": "/src/a.txt",
@@ -97,6 +98,8 @@ class SchemaLoadTests(unittest.TestCase):
                                 "hashvalue": "",
                             }
                         ],
+                        "refs": [],
+                        "resolved_state": "kept",
                     }
                 ],
                 "final_mapping": [],
@@ -119,7 +122,7 @@ class ContractTests(unittest.TestCase):
             result = compute_mapping({"operation": []}, db)
             _assert_valid(self, result)
             self.assertEqual(result["errors"], [])
-            self.assertEqual(result["forest"], [])
+            self.assertEqual(result["trees"], [])
             self.assertEqual(result["final_mapping"], [])
 
     # ── normal single-node forest ─────────────────────────────────────────────
@@ -142,12 +145,14 @@ class ContractTests(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
             self.assertEqual(result["errors"], [])
-            self.assertEqual(len(result["forest"]), 1)
+            self.assertEqual(len(result["trees"]), 1)
             self.assertEqual(len(result["final_mapping"]), 1)
-            # forest node structure
-            node = result["forest"][0]
-            self.assertIn("path", node)
+            # tree node structure
+            node = result["trees"][0]
+            self.assertIn("root_path", node)
             self.assertIn("changerequest", node)
+            self.assertIn("refs", node)
+            self.assertIn("resolved_state", node)
             self.assertIsInstance(node["changerequest"], list)
 
     # ── create-overwrites-existing path ──────────────────────────────────────
@@ -181,9 +186,10 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(result["errors"])
         self.assertEqual(result["final_mapping"], [])
 
-    # ── action-order conflict (E_ error) ──────────────────────────────────────
+    # ── branching (W_FOREST_BRANCHING) ────────────────────────────────────────
 
-    def test_conflict_error_path_conforms(self) -> None:
+    def test_branching_path_conforms(self) -> None:
+        """Two replace ops on same target, no branch decision → pending tree with W_FOREST_BRANCHING."""
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)
             db = _mk_db(tmp_path)
@@ -209,8 +215,12 @@ class ContractTests(unittest.TestCase):
             }
             result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
-            self.assertTrue(any(e.startswith("E_ACTION_ORDER_CONFLICT") for e in result["errors"]))
-            self.assertEqual(result["final_mapping"], [])
+            self.assertFalse(result["errors"])
+            self.assertTrue(any("W_FOREST_BRANCHING" in w for w in result["warnings"]))
+            self.assertEqual(len(result["final_mapping"]), 0)
+            # Verify the tree is pending
+            pending = [t for t in result["trees"] if t["resolved_state"] == "pending"]
+            self.assertTrue(pending)
 
     # ── unresolved branch path ────────────────────────────────────────────────
 
@@ -241,7 +251,7 @@ class ContractTests(unittest.TestCase):
             result = compute_mapping(aggregated_rule_set, db)
             _assert_valid(self, result)
             # branched node must carry 'warning' and 'candidates'
-            branched = [n for n in result["forest"] if n.get("warning") == "W_FOREST_BRANCHING"]
+            branched = [n for n in result["trees"] if n.get("warning") == "W_FOREST_BRANCHING"]
             self.assertTrue(branched)
             for node in branched:
                 self.assertIn("candidates", node)
@@ -274,8 +284,8 @@ class ContractTests(unittest.TestCase):
                 ]
             }
             forest_result = compute_mapping(aggregated_rule_set, db)
-            branched = forest_result["forest"][0]
-            decisions = {branched["path"]: branched["candidates"][0]}
+            branched = forest_result["trees"][0]
+            decisions = {branched["root_path"]: branched["candidates"][0]}
             result = compute_mapping(aggregated_rule_set, db, branch_decisions=decisions)
             _assert_valid(self, result)
             self.assertFalse(result["errors"])
@@ -311,10 +321,10 @@ class ContractTests(unittest.TestCase):
                 ]
             }
             forest_result = compute_mapping(aggregated_rule_set, db)
-            target = forest_result["forest"][0]["path"]
+            target = forest_result["trees"][0]["root_path"]
             result = compute_mapping(aggregated_rule_set, db, branch_decisions={target: "/no/such/file.txt"})
             _assert_valid(self, result)
-            self.assertTrue(any("E_BRANCH_DECISION_INVALID_SOURCE" in e for e in result["errors"]))
+            self.assertTrue(any("E_BRANCH_DECISION_INVALID" in e for e in result["errors"]))
 
 
 if __name__ == "__main__":

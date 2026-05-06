@@ -6,6 +6,8 @@ they can be serialised directly via ``json.dumps`` inside SSE events.
 
 from __future__ import annotations
 
+from typing import Any
+
 from modmanager.orchestrator import PipelineResult
 
 
@@ -31,14 +33,18 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
             ),
         }
 
+    data: dict[str, Any] = {
+        "trees": pr.trees,
+        "final_mapping": pr.final_mapping,
+        "mapping_result": pr.mapping_result,
+        "stats": stats,
+    }
+    if pr.backup_dir:
+        data["backup_dir"] = pr.backup_dir
+
     return {
         "ok": pr.ok,
-        "data": {
-            "forest": pr.forest,
-            "final_mapping": pr.final_mapping,
-            "mapping_result": pr.mapping_result,
-            "stats": stats,
-        },
+        "data": data,
         "errors": pr.errors,
         "warnings": pr.warnings,
     }

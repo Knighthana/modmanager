@@ -14,6 +14,15 @@ const router = createRouter({
   ],
 })
 
+// Stub for el-card
+const elCardStub = {
+  name: 'ElCard',
+  template: '<div class="el-card-stub"><slot /></div>',
+  props: {
+    shadow: String,
+  },
+}
+
 describe('ForestViewer', () => {
   it('renders SVG content via v-html', () => {
     setActivePinia(createPinia())
@@ -23,6 +32,9 @@ describe('ForestViewer', () => {
     const wrapper = mount(ForestViewer, {
       global: {
         plugins: [router],
+        stubs: {
+          'el-card': elCardStub,
+        },
       },
     })
 
@@ -36,11 +48,14 @@ describe('ForestViewer', () => {
     const wrapper = mount(ForestViewer, {
       global: {
         plugins: [router],
+        stubs: {
+          'el-card': elCardStub,
+        },
       },
     })
 
-    // The forest-svg div still exists but has no content
-    expect(wrapper.find('.forest-container').exists()).toBe(true)
+    // When no SVG and not running, the empty state text is shown
+    expect(wrapper.text()).toContain('暂无森林图')
   })
 
   it('renders loading state when isRunning is true', () => {
@@ -52,14 +67,15 @@ describe('ForestViewer', () => {
       global: {
         plugins: [router],
         stubs: {
-          'el-card': {
-            template: '<div><slot /></div>',
-          },
+          'el-card': elCardStub,
+          'v-loading': false,
         },
       },
     })
 
-    // The v-loading directive adds element-plus loading classes
-    expect(wrapper.find('.forest-container').exists()).toBe(true)
+    // When isRunning is true, the empty state is hidden (v-if checks !store.isRunning)
+    // and SVG content is empty, so neither empty state nor SVG div is shown
+    // The component renders the el-card wrapper with loading directive
+    expect(wrapper.find('.el-card-stub').exists()).toBe(true)
   })
 })

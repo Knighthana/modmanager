@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest import TestCase
 
 from modmanager.backup_ops import (
+    _HARDCODED_BACKUP_SKIP_PREFIX,
+    _collect_backup_original_paths,
     apply_final_mapping,
     build_filefoldertree_with_hashes,
     check_backup_gate,
@@ -547,3 +549,94 @@ class TestPhase13Governance(TestCase):
             self.assertTrue(result["ok"])
             self.assertFalse(orphan.exists())
             self.assertIn(str(orphan), result["deleted"])
+
+
+# ── P1-08 / P1-09: Loop backup protection ─────────────────────────────────────
+
+class TestLoopProtectionCollectPaths(TestCase):
+    def test_loop_protection_collect_paths(self):
+        """_collect_backup_original_paths skips kmmbackup_* directories."""
+        with tempfile.TemporaryDirectory() as tmp:
+            bdir = Path(tmp) / "backup"
+            init_backup_dir(str(bdir))
+
+            # Normal file that should be collected
+            normal_file = bdir / "normal.txt"
+            normal_file.write_bytes(b"normal")
+
+            # File inside kmmbackup_* dir that should be skipped
+            skip_dir = bdir / f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc"
+            skip_dir.mkdir()
+            (skip_dir / "skipped.txt").write_bytes(b"skipped")
+
+            # Nested kmmbackup_ dir deeper in path
+            nested = bdir / "some" / f"{_HARDCODED_BACKUP_SKIP_PREFIX}other"
+            nested.mkdir(parents=True)
+            (nested / "nested_skip.txt").write_bytes(b"nested")
+
+            result = _collect_backup_original_paths(str(bdir))
+            paths = [p for p in result]
+
+            self.assertIn("/normal.txt", paths)
+            self.assertNotIn(f"/{skip_dir.name}/skipped.txt", paths)
+            self.assertNotIn(f"/some/{nested.name}/nested_skip.txt", paths)
+
+    def test_loop_protection_tree_build(self):
+        """build_filefoldertree_with_hashes skips kmmbackup_* sub-directories."""
+        with tempfile.TemporaryDirectory() as tmp:
+            # Normal content
+            normal = Path(tmp) / "normal.txt"
+            normal.write_bytes(b"normal")
+
+            # kmmbackup_ directory that should be skipped entirely
+            skip_dir = Path(tmp) / f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc"
+            skip_dir.mkdir()
+            (skip_dir / "skip.txt").write_bytes(b"skip")
+
+            # Nested kmmbackup_ directory
+            nested = Path(tmp) / "subdir" / "keep.txt"
+            nested.parent.mkdir(parents=True)
+            nested.write_bytes(b"keep")
+
+            tree = build_filefoldertree_with_hashes(tmp)
+            child_names = [c["name"] for c in tree["children"]]
+
+            self.assertIn("normal.txt", child_names)
+            self.assertIn("subdir", child_names)
+            self.assertNotIn(f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc", child_names)
+
+    def test_loop_protection_restore_skips_kmmbackup(self):
+        """restore_from_backup skips files inside kmmbackup_* directories."""
+        with tempfile.TemporaryDirectory() as tmp:
+            # Create original file to back up
+            orig = Path(tmp) / "target" / "file.txt"
+            orig.parent.mkdir(parents=True)
+            orig.write_bytes(b"original")
+
+            bdir = str(Path(tmp) / "backup")
+            run_differential_backup(bdir, [str(orig)])
+
+            # Now add a kmmbackup_ dir inside the backup (simulating nested backup)
+            bak_path = Path(bdir)
+            rogue = bak_path / f"{_HARDCODED_BACKUP_SKIP_PREFIX}extra" / "rogue.txt"
+            rogue.parent.mkdir(parents=True)
+            rogue.write_bytes(b"rogue")
+
+            # Also add a kmmbackup_ dir in the original target area
+            rogue_orig = Path(tmp) / "target" / f"{_HARDCODED_BACKUP_SKIP_PREFIX}stuff"
+            rogue_orig.mkdir()
+            (rogue_orig / "inner.txt").write_bytes(b"inner")
+
+            # Restore should only restore the original file, skipping kmmbackup_ paths
+            result = restore_from_backup(bdir)
+            self.assertTrue(result["ok"])
+
+            # The rogue file inside kmmbackup_ dir should NOT be in restored list
+            restored = [r for r in result.get("restored", [])]
+            for r in restored:
+                self.assertNotIn(_HARDCODED_BACKUP_SKIP_PREFIX, r)
+
+            # The original file should be restorable
+            orig.write_bytes(b"modified")
+            result2 = restore_from_backup(bdir, [str(orig)])
+            self.assertEqual(len(result2["restored"]), 1)

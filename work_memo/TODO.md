@@ -4,31 +4,28 @@
 
 ---
 
-## P0: 森林模型引擎重构
+## P0: 森林模型引擎重构 ✅
 
 来源：`work_memo/FOREST_DELETE_FORK_DESIGN.md`
+设计文档：`repo_memory/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md`
+风险分析：`repo_memory/direct/DESIGN_P0_FOREST_RISK_ANALYSIS.md`
 
-| # | 任务 | 说明 |
-|---|------|------|
-| G1 | ForestTree 从 mapping dict 构建 | 现有 compute_mapping 产出扁平 forest 列表 → 提取根路径 + 操作 + 引用边，构建 ForestTree 列表 |
-| G2 | 引用边从 changerequest 提取 | changerequest.path 是源路径。若该路径也是另一个 target → 形成引用边 |
-| G3 | 用户决策反馈给 final_mapping | 各树冲突裁决后重新计算 final_mapping |
+**决策**：激进全栈切换 / delete 失效→跳过+warning / T5 不裂变→祖先检查
+
+**结果**：33 个任务全部完成。Python 296 tests 通过，前端 15 Vitest 通过，构建成功。
+W_DELETE_LEAF_PROMOTED 移除，替换为 W_SOURCE_DELETED / W_SOURCE_DIRECTORY_DELETED。
+输出 key `"forest"` → `"trees"`。
 
 ---
 
-## P1: Backup 实现
+## P1: Backup 实现 ✅
 
-来源：`work_memo/TODECLARE.md` 问题 6
+来源：`work_memo/TODO.md` 原始 P1 + `repo_memory/BACKUP_DIR_BUILDER_DESIGN.md`
+设计文档：`repo_memory/direct/DESIGN_P1_BACKUP.md`
 
-| # | 任务 | 说明 |
-|---|------|------|
-| B1 | backup_dir builder 模块 | 实现 `{bakprefix}{id}_{updatetimehex}` 命名规则 |
-| B2 | workshop time 源 | `appworkshop_{appid}.acf` → `timeupdated` → hex |
-| B3 | custom mod time | mtime fallback；长期：kmm 标准自述文件 |
-| B4 | backup_dir 位置规则 | common → `common/GameName/`；workshop → `workshop/content/appid/contentid/` |
-| B5 | .kmmbakignore | 备份目录下检测，仿 .gitignore 语法 |
-| B6 | bakprefix/bakignore 加载 | 从 user_config 读取，backup_ops 硬编码忽略 `kmmbackup_` |
-| B7 | 循环备份防护 | backup_ops 扫描/备份时始终跳过 `kmmbackup_` 前缀的目录 |
+**目标**：备份目录命名规则自动生成 / workshop 时间源 / .kmmbakignore / 循环防护
+
+详见 TASKLIST.md Phase P1 中的 16 个任务。
 
 ---
 

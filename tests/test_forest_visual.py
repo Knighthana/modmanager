@@ -10,10 +10,12 @@ from modmanager.forest_visual import VisualizationError, visualize_payload
 class ForestVisualTests(unittest.TestCase):
     def test_ascii_marks_branching_and_delete(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
                     "warning": "W_FOREST_BRANCHING",
+                    "resolved_state": "pending",
+                    "refs": [],
                     "changerequest": [
                         {"path": "!", "action": "delete", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "0"},
                         {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:101", "hashtype": "sha256", "hashvalue": "abc"},
@@ -23,18 +25,21 @@ class ForestVisualTests(unittest.TestCase):
         }
 
         out = visualize_payload(payload, "ascii")
+        self.assertIn("TREES", out)
         self.assertIn("BRANCHING", out)
+        self.assertIn("PENDING", out)
         self.assertIn("DELETE(!)", out)
 
     def test_dot_output_contains_graph_header(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"}
                     ],
-                    "trace_meta": {"rule": "demo"},
                 }
             ]
         }
@@ -45,9 +50,11 @@ class ForestVisualTests(unittest.TestCase):
 
     def test_dot_escapes_special_characters(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": '/dst/"a\\b\n中.txt',
+                    "root_path": '/dst/"a\\b\n中.txt',
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {
                             "path": '/src/"x\\y\n文.txt',
@@ -68,9 +75,11 @@ class ForestVisualTests(unittest.TestCase):
 
     def test_svg_success_returns_svg_text(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {
                             "path": "/src/a.txt",
@@ -100,11 +109,11 @@ class ForestVisualTests(unittest.TestCase):
 
     def test_unsupported_format_raises_code_3(self) -> None:
         with self.assertRaises(VisualizationError) as ctx:
-            visualize_payload({"forest": []}, "mermaid")
+            visualize_payload({"trees": []}, "mermaid")
         self.assertEqual(ctx.exception.code, 3)
 
     def test_svg_missing_dot_raises_code_4(self) -> None:
-        payload = {"forest": [{"path": "/dst/a.txt", "changerequest": []}]}
+        payload = {"trees": [{"root_path": "/dst/a.txt", "changerequest": [], "refs": [], "resolved_state": ""}]}
         with patch("modmanager.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
             with self.assertRaises(VisualizationError) as ctx:
                 visualize_payload(payload, "svg")
@@ -112,9 +121,11 @@ class ForestVisualTests(unittest.TestCase):
 
     def test_unknown_extension_fields_are_non_fatal(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {
                             "path": "/src/a.txt",
@@ -131,14 +142,16 @@ class ForestVisualTests(unittest.TestCase):
         }
         ascii_out = visualize_payload(payload, "ascii")
         dot_out = visualize_payload(payload, "dot")
-        self.assertIn("FOREST", ascii_out)
+        self.assertIn("TREES", ascii_out)
         self.assertIn("digraph Forest", dot_out)
 
     def test_ascii_detail_mode_shows_m1_fields(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {
                             "path": "/src/a.txt",
@@ -162,9 +175,11 @@ class ForestVisualTests(unittest.TestCase):
 
     def test_dot_detail_mode_shows_m1_fields(self) -> None:
         payload = {
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {
                             "path": "/src/a.txt",
@@ -198,9 +213,11 @@ class ForestVisualTests(unittest.TestCase):
                     "hashvalue": "abc",
                 }
             ],
-            "forest": [
+            "trees": [
                 {
-                    "path": "/dst/a.txt",
+                    "root_path": "/dst/a.txt",
+                    "refs": [],
+                    "resolved_state": "",
                     "changerequest": [
                         {
                             "path": "/src/a.txt",
@@ -223,6 +240,142 @@ class ForestVisualTests(unittest.TestCase):
         self.assertIn("/dst/a.txt", out)
         self.assertIn("W1", out)
         self.assertIn("E1", out)
+
+    # --- new tests for trees format ---
+
+    def test_backward_compat_forest_key(self) -> None:
+        """_extract_forest falls back to 'forest' key when 'trees' is absent."""
+        payload = {
+            "forest": [
+                {
+                    "root_path": "/dst/a.txt",
+                    "changerequest": [
+                        {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"}
+                    ],
+                    "refs": [],
+                    "resolved_state": "",
+                }
+            ]
+        }
+
+        out = visualize_payload(payload, "ascii")
+        self.assertIn("TREES", out)
+        self.assertIn("/dst/a.txt", out)
+
+    def test_ref_edges_in_dot(self) -> None:
+        """Reference edges render as dashed lines in DOT output."""
+        payload = {
+            "trees": [
+                {
+                    "root_path": "/dst/a.txt",
+                    "changerequest": [
+                        {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"}
+                    ],
+                    "refs": ["/dst/b.txt"],
+                    "resolved_state": "kept",
+                },
+                {
+                    "root_path": "/dst/b.txt",
+                    "changerequest": [
+                        {"path": "/src/b.txt", "action": "replace", "mixed_id": "270150:101", "hashtype": "sha256", "hashvalue": "def"}
+                    ],
+                    "refs": [],
+                    "resolved_state": "kept",
+                },
+            ]
+        }
+
+        out = visualize_payload(payload, "dot")
+        self.assertIn('style="dashed"', out)
+        self.assertIn('color="#94a3b8"', out)
+        self.assertIn("label=\"ref\"", out)
+
+    def test_resolved_state_ascii_display(self) -> None:
+        """resolved_state appears in ASCII output."""
+        payload = {
+            "trees": [
+                {
+                    "root_path": "/dst/deleted.txt",
+                    "changerequest": [
+                        {"path": "!", "action": "delete", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "0"}
+                    ],
+                    "refs": [],
+                    "resolved_state": "deleted",
+                },
+                {
+                    "root_path": "/dst/pending.txt",
+                    "changerequest": [
+                        {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:101", "hashtype": "sha256", "hashvalue": "abc"},
+                        {"path": "/src/b.txt", "action": "replace", "mixed_id": "270150:102", "hashtype": "sha256", "hashvalue": "def"},
+                    ],
+                    "refs": [],
+                    "resolved_state": "pending",
+                },
+            ]
+        }
+
+        out = visualize_payload(payload, "ascii")
+        self.assertIn("DELETED", out)
+        self.assertIn("PENDING", out)
+
+    def test_refs_display_in_ascii(self) -> None:
+        """Refs list appears in ASCII output for trees with refs."""
+        payload = {
+            "trees": [
+                {
+                    "root_path": "/dst/a.txt",
+                    "changerequest": [
+                        {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"}
+                    ],
+                    "refs": ["/dst/b.txt", "/dst/c.txt"],
+                    "resolved_state": "kept",
+                },
+            ]
+        }
+
+        out = visualize_payload(payload, "ascii")
+        self.assertIn("refs:", out)
+        self.assertIn("/dst/b.txt", out)
+        self.assertIn("/dst/c.txt", out)
+
+    def test_svg_enrichment_tree_node_attributes(self) -> None:
+        """SVG enrichment sets data-tree-node and data-tree-pending attributes."""
+        payload = {
+            "trees": [
+                {
+                    "root_path": "/dst/branch.txt",
+                    "warning": "W_FOREST_BRANCHING",
+                    "candidates": ["/src/a.txt", "/src/b.txt"],
+                    "changerequest": [
+                        {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"},
+                        {"path": "/src/b.txt", "action": "replace", "mixed_id": "270150:101", "hashtype": "sha256", "hashvalue": "def"},
+                    ],
+                    "refs": [],
+                    "resolved_state": "pending",
+                }
+            ]
+        }
+        # The DOT render assigns t0 to the tree node and s0/s1 to source nodes.
+        # Provide a minimal SVG with matching element IDs for enrichment.
+        svg_input = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<g id="t0" class="node"><title>t0</title></g>'
+            '<g id="s0" class="node"><title>s0</title></g>'
+            '<g id="s1" class="node"><title>s1</title></g>'
+            '</svg>'
+        )
+        completed = subprocess.CompletedProcess(
+            args=["dot", "-Tsvg"],
+            returncode=0,
+            stdout=svg_input.encode("utf-8"),
+            stderr=b"",
+        )
+        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+            out = visualize_payload(payload, "svg")
+        self.assertIn("data-tree-node", out)
+        self.assertIn("data-tree-pending", out)
+        self.assertNotIn("data-forest-node", out)
+        self.assertNotIn("data-conflict", out)
 
 
 if __name__ == "__main__":

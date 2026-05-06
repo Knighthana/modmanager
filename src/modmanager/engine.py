@@ -68,86 +68,6 @@ def _build_change_request(
     }
 
 
-def _sort_request_key(r: dict[str, Any]) -> tuple[int, int, str]:
-    mid = r.get("mixed_id", "")
-    modid = mid.split(":", 1)[1] if ":" in mid else mid
-    is_custom = 0 if modid.isdigit() else 1
-    numeric_key = int(modid) if modid.isdigit() else 0
-    return (is_custom, numeric_key, modid)
-
-
-def _pick_request_by_action_order(
-    target: str,
-    ordered: list[dict[str, Any]],
-    branch_decisions: dict[str, Any],
-    errors: list[str],
-) -> dict[str, Any] | None:
-    chosen_source = branch_decisions.get(target)
-    candidates = [r.get("path", "") for r in ordered]
-    if chosen_source:
-        chosen = next((r for r in ordered if r.get("path") == chosen_source), None)
-        if chosen is None:
-            errors.append(
-                f"E_BRANCH_DECISION_INVALID_SOURCE: {target}: "
-                f"{chosen_source!r} not in candidates {candidates!r}"
-            )
-            return None
-        return chosen
-
-    orders = [_normalize_action_order(r.get("action_order")) for r in ordered]
-    if any(v == 0 for v in orders):
-        errors.append(
-            f"E_ACTION_ORDER_CONFLICT: {target}: branching candidates contain action_order=0"
-        )
-        return None
-
-    max_order = max(orders)
-    top = [r for r in ordered if _normalize_action_order(r.get("action_order")) == max_order]
-    if len(top) != 1:
-        errors.append(
-            f"E_ACTION_ORDER_CONFLICT: {target}: non-unique highest action_order={max_order}"
-        )
-        return None
-    return top[0]
-
-
-def _resolve_effective_leaf_request(
-    target: str,
-    mapping: dict[str, dict[str, Any]],
-    branch_decisions: dict[str, Any],
-    errors: list[str],
-    visiting: set[str] | None = None,
-) -> dict[str, Any] | None:
-    visiting = visiting or set()
-    if target in visiting:
-        errors.append(f"E_ACTION_ORDER_RESOLVE_CYCLE: {target}")
-        return None
-
-    node = mapping.get(target)
-    if not node:
-        return None
-
-    requests = node.get("changerequest", [])
-    if not requests:
-        return None
-
-    ordered = sorted(requests, key=_sort_request_key)
-    if len(ordered) == 1:
-        chosen = ordered[0]
-    else:
-        chosen = _pick_request_by_action_order(target, ordered, branch_decisions, errors)
-        if chosen is None:
-            return None
-
-    src_path = chosen.get("path", "")
-    if isinstance(src_path, str) and src_path and src_path != "!" and src_path in mapping:
-        visiting.add(target)
-        resolved = _resolve_effective_leaf_request(src_path, mapping, branch_decisions, errors, visiting)
-        visiting.discard(target)
-        return resolved
-
-    return chosen
-
 
 def _expand_sources(source_root: str, source_expr: str, source_type: str = "file") -> list[str]:
     source_root_path = Path(source_root)
@@ -304,7 +224,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             multi-source targets.
 
     Returns:
-        A dict with keys ``"warnings"``, ``"errors"``, ``"forest"``, and
+        A dict with keys ``"warnings"``, ``"errors"``, ``"trees"``, and
         ``"final_mapping"``.
     """
     branch_decisions = branch_decisions or {}
@@ -312,16 +232,16 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
     # ── input structure validation ──────────────────────────────────────────────
     aggregated_rule_set_errors = validate_aggregated_rule_set(aggregated_rule_set)
     if aggregated_rule_set_errors:
-        return {"warnings": [], "errors": aggregated_rule_set_errors, "forest": [], "final_mapping": []}
+        return {"warnings": [], "errors": aggregated_rule_set_errors, "trees": [], "final_mapping": []}
 
     database_errors = validate_database(database)
     if database_errors:
-        return {"warnings": [], "errors": database_errors, "forest": [], "final_mapping": []}
+        return {"warnings": [], "errors": database_errors, "trees": [], "final_mapping": []}
 
     # ── branch_decisions schema check ──────────────────────────────────────────
     schema_errors = validate_branch_decisions_schema(branch_decisions)
     if schema_errors:
-        return {"warnings": [], "errors": schema_errors, "forest": [], "final_mapping": []}
+        return {"warnings": [], "errors": schema_errors, "trees": [], "final_mapping": []}
     warnings: list[str] = []
     errors: list[str] = []
 
@@ -468,60 +388,246 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 deduped.append(req)
         node["changerequest"] = deduped
 
-    # ── validate branch_decisions keys against actual branched targets ──────────
-    branched_targets: set[str] = {
-        t for t, n in mapping.items() if len(n["changerequest"]) > 1
-    }
+    # ── 构建 ForestTree 列表 ──
+    trees = _build_forest_trees(mapping, edges)
+
+    # ── 拓扑排序 ──
+    sorted_trees = _topological_sort_by_refs(trees, warnings)
+
+    # ── 验证 branch_decisions 的 key ──
+    # branch_decisions 的 key 是 tree_root_path
+    # 若 key 不在任何 tree 的 root_path 中 → W_BRANCH_DECISION_SUPERFLUOUS
     for key in branch_decisions:
-        if isinstance(key, str) and key not in branched_targets:
+        if isinstance(key, str) and key not in {t.root_path for t in sorted_trees}:
             warnings.append(f"W_BRANCH_DECISION_SUPERFLUOUS: {key}")
 
-    unresolved_branch_paths: list[str] = []
-    final_mapping: list[dict[str, Any]] = []
-    forest: list[dict[str, Any]] = []
+    # ── 从底向上解析 ──
+    _resolve_trees_bottom_up(sorted_trees, branch_decisions, warnings, errors)
 
-    for target, node in sorted(mapping.items(), key=lambda kv: kv[0]):
-        requests = node["changerequest"]
-        destin_mid = node.get("destin_mixed_id", "")
-        if len(requests) <= 1:
-            forest.append({"path": target, "destin_mixed_id": destin_mid, "changerequest": requests})
+    # ── 构建输出（返回 trees + final_mapping）──
+    return _build_output(sorted_trees, warnings, errors)
+
+
+@dataclass
+class ForestTree:
+    """一棵独立根树。每棵树代表一个文件路径的操作集合。"""
+    root_path: str
+    destin_mixed_id: str
+    changerequest: list[dict]
+    refs: list[str]
+    resolved: bool = False
+    resolved_state: str | None = None
+
+
+def _build_forest_trees(
+    mapping: dict[str, dict],
+    edges: dict[str, set[str]],
+) -> list[ForestTree]:
+    """从 mapping dict 构建 ForestTree 列表。
+
+    每个 mapping 的 key 对应一棵树的 root_path。
+    从 changerequest 中提取 refs：cr['path'] 若不在 mapping 中则不是引用。
+    """
+    trees: list[ForestTree] = []
+    for target_path, node in sorted(mapping.items()):
+        requests = node.get("changerequest", [])
+        destin = node.get("destin_mixed_id", "")
+        refs: list[str] = []
+        for cr in requests:
+            src = cr.get("path", "")
+            if src and src != "!" and src in mapping:
+                refs.append(src)
+        refs = sorted(set(refs))
+        trees.append(ForestTree(
+            root_path=target_path,
+            destin_mixed_id=destin,
+            changerequest=requests,
+            refs=refs,
+        ))
+    return trees
+
+
+def _topological_sort_by_refs(
+    trees: list[ForestTree],
+    warnings: list[str],
+) -> list[ForestTree]:
+    """按引用关系拓扑排序：被引用者先于引用者。检测成环。
+
+    若检测到环，发出 W_FOREST_CYCLE_DETECTED 警告并返回原列表。
+    """
+    tree_map = {t.root_path: t for t in trees}
+
+    # 构建引用图（仅内部引用）
+    ref_graph: dict[str, set[str]] = {}
+    for t in trees:
+        ref_graph[t.root_path] = {r for r in t.refs if r in tree_map}
+
+    cycles = find_cycles(ref_graph)
+    if cycles:
+        for cycle in cycles:
+            warnings.append(f"W_FOREST_CYCLE_DETECTED: {' -> '.join(cycle)}")
+        return trees
+
+    # Kahn 算法
+    in_degree: dict[str, int] = {t.root_path: 0 for t in trees}
+    dep_map: dict[str, list[str]] = {}  # ref → [dependers]
+
+    for t in trees:
+        for ref in t.refs:
+            if ref not in tree_map:
+                continue  # 外部引用，不影响拓扑序
+            dep_map.setdefault(ref, []).append(t.root_path)
+            in_degree[t.root_path] += 1
+
+    queue = sorted(root for root, deg in in_degree.items() if deg == 0)
+    sorted_paths: list[str] = []
+
+    while queue:
+        node = queue.pop(0)
+        sorted_paths.append(node)
+        for depender in dep_map.get(node, []):
+            in_degree[depender] -= 1
+            if in_degree[depender] == 0:
+                queue.append(depender)
+                queue.sort()
+
+    if len(sorted_paths) != len(trees):
+        return trees
+
+    return [tree_map[p] for p in sorted_paths]
+
+
+def _any_ancestor_deleted(path: str, tree_by_root: dict[str, ForestTree]) -> bool:
+    """检查 *path* 的任一祖先目录是否对应一棵已删除的树。"""
+    from pathlib import PurePosixPath
+    p = PurePosixPath(path)
+    for ancestor in p.parents:
+        ancestor_str = str(ancestor)
+        if ancestor_str in tree_by_root:
+            if tree_by_root[ancestor_str].resolved_state == "deleted":
+                return True
+    return False
+
+
+def _resolve_trees_bottom_up(
+    trees: list[ForestTree],
+    branch_decisions: dict[str, str],
+    warnings: list[str],
+    errors: list[str],
+) -> None:
+    """原地修改 trees，填充 resolved_state。
+
+    按拓扑序处理每棵树：收集有效操作 → 应用用户决策 → 裁决。
+    """
+    tree_by_root: dict[str, ForestTree] = {t.root_path: t for t in trees}
+
+    for tree in trees:
+        if tree.resolved:
             continue
 
-        ordered = sorted(requests, key=_sort_request_key)
-        candidates = [r.get("path", "") for r in ordered]
-        forest.append(
-            {
-                "path": target,
-                "destin_mixed_id": destin_mid,
-                "changerequest": ordered,
-                "warning": "W_FOREST_BRANCHING",
-                "candidates": candidates,
-            }
-        )
+        # ── 收集有效操作 ──
+        valid_requests: list[dict] = []
+        for cr in tree.changerequest:
+            src_path = cr.get("path", "")
+            action = cr.get("action", "")
 
-    for target in sorted(mapping.keys()):
-        leaf_request = _resolve_effective_leaf_request(target, mapping, branch_decisions, errors)
-        if leaf_request is None:
-            unresolved_branch_paths.append(target)
-            continue
+            # delete 操作永远有效（源是 "!"，不受其他树影响）
+            if action == "delete":
+                valid_requests.append(cr)
+                continue
 
-        if leaf_request.get("action") == "delete" or leaf_request.get("path") == "!":
-            promoted = dict(leaf_request)
-            promoted["action"] = "delete"
-            promoted["path"] = "!"
-            warnings.append(f"W_DELETE_LEAF_PROMOTED: {target}")
-            final_mapping.append({"path": target, "request": promoted})
-            continue
+            # 非 delete 操作：检查源是否存在
+            if src_path in tree_by_root:
+                ref_tree = tree_by_root[src_path]
+                if ref_tree.resolved_state == "deleted":
+                    warnings.append(f"W_SOURCE_DELETED: {tree.root_path}: source {src_path} was deleted")
+                    continue
+                if ref_tree.resolved_state == "failed":
+                    continue
+            elif _any_ancestor_deleted(src_path, tree_by_root):
+                warnings.append(f"W_SOURCE_DIRECTORY_DELETED: {src_path} (ancestor deleted)")
+                continue
 
-        final_mapping.append({"path": target, "request": leaf_request})
+            valid_requests.append(cr)
 
-    if unresolved_branch_paths:
-        for p in sorted(set(unresolved_branch_paths)):
-            if p in branched_targets:
-                warnings.append(f"W_FOREST_BRANCHING_UNRESOLVED: {p}")
+        # ── 应用用户决策 ──
+        user_decision = branch_decisions.get(tree.root_path)
+        if user_decision is not None:
+            if user_decision == "":
+                tree.resolved_state = "skipped"
+                tree.resolved = True
+                continue
+            if user_decision == "!":
+                tree.resolved_state = "deleted"
+                tree.resolved = True
+                continue
+            # 用户选了特定源路径
+            chosen = next((cr for cr in valid_requests if cr.get("path") == user_decision), None)
+            if chosen:
+                valid_requests = [chosen]
+            else:
+                errors.append(f"E_BRANCH_DECISION_INVALID: {tree.root_path}: source {user_decision} not available")
+                tree.resolved_state = "failed"
+                tree.resolved = True
+                continue
 
-    if unresolved_branch_paths:
-        final_mapping = []
+        # ── 裁决 ──
+        if not valid_requests:
+            tree.resolved_state = "failed"
+            warnings.append(f"W_NO_VALID_OPERATION: {tree.root_path}: all sources unavailable")
+        elif len(valid_requests) == 1:
+            req = valid_requests[0]
+            if req.get("action") == "delete":
+                tree.resolved_state = "deleted"
+            else:
+                tree.resolved_state = "kept"
+        else:
+            tree.resolved_state = "pending"
+            warnings.append(f"W_FOREST_BRANCHING: {tree.root_path}")
+
+        tree.resolved = True
+
+
+def _build_output(
+    trees: list[ForestTree],
+    warnings: list[str],
+    errors: list[str],
+) -> dict:
+    """从解析后的 trees 构建最终输出 dict（含 trees 和 final_mapping）。"""
+
+    # ── 检查是否有未决议的分岔 ──
+    pending_trees = [t for t in trees if t.resolved_state == "pending"]
+    if pending_trees:
+        for t in pending_trees:
+            warnings.append(f"W_FOREST_BRANCHING_UNRESOLVED: {t.root_path}")
+
+    # ── 构建 trees 输出 ──
+    trees_output: list[dict] = []
+    for tree in trees:
+        entry: dict = {
+            "root_path": tree.root_path,
+            "destin_mixed_id": tree.destin_mixed_id,
+            "changerequest": tree.changerequest,
+            "refs": tree.refs,
+            "resolved_state": tree.resolved_state,
+        }
+        if tree.resolved_state == "pending":
+            entry["warning"] = "W_FOREST_BRANCHING"
+            entry["candidates"] = [cr.get("path", "") for cr in tree.changerequest]
+        trees_output.append(entry)
+
+    # ── 构建 final_mapping ──
+    final_mapping: list[dict] = []
+    for tree in trees:
+        if tree.resolved_state in ("kept", "deleted"):
+            if tree.resolved_state == "deleted":
+                effective_request = {"path": "!", "action": "delete", "hashtype": "sha256", "hashvalue": "0"}
+            else:
+                effective_request = tree.changerequest[0]
+            final_mapping.append({
+                "path": tree.root_path,
+                "request": effective_request,
+            })
 
     if errors:
         final_mapping = []
@@ -529,9 +635,15 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
     return {
         "warnings": warnings,
         "errors": errors,
-        "forest": forest,
+        "trees": trees_output,
         "final_mapping": final_mapping,
     }
 
 
-__all__ = ["compute_mapping", "validate_branch_decisions_schema", "find_cycles", "_check_filefoldertree_transition"]
+__all__ = [
+    "ForestTree",
+    "compute_mapping",
+    "validate_branch_decisions_schema",
+    "find_cycles",
+    "_check_filefoldertree_transition",
+]

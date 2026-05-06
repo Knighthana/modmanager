@@ -3,25 +3,7 @@ import { ref, computed } from 'vue'
 import { streamSse } from '../api/sse'
 import { apiPost } from '../api/client'
 import type { SseProgress } from '../api/sse'
-
-export interface ForestNode {
-  path: string
-  destin_mixed_id: string
-  changerequest: Changerequest[]
-  warning?: string
-  candidates?: string[]
-}
-
-export interface Changerequest {
-  path: string
-  action: string
-  action_order: number
-  provenance_ref: string
-  sidecar_ref: string
-  mixed_id: string
-  hashtype: string
-  hashvalue: string
-}
+import type { TreeNode, Changerequest, ConflictItem, PipelineParams } from '../types'
 
 export interface MappingEntry {
   path: string
@@ -30,24 +12,8 @@ export interface MappingEntry {
   hashvalue: string
 }
 
-export interface ConflictItem {
-  target: string
-  destin_mixed_id: string
-  candidates: string[]
-}
-
-export interface PipelineParams {
-  database: Record<string, unknown>
-  kmm_rule_paths: string[]
-  user_config_path: string
-  backup_dir: string
-  dry_run: boolean
-  action_orders?: Record<string, number>
-  branch_decisions?: Record<string, string>
-}
-
 export interface PipelineResultData {
-  forest: ForestNode[]
+  trees: TreeNode[]
   final_mapping: MappingEntry[]
   mapping_result: Record<string, unknown> | null
   stats: Record<string, number> | null
@@ -79,21 +45,10 @@ export function generateBackupDir(): string {
   return `/tmp/modmanager_backup_${ts}`
 }
 
-function extractConflicts(forest: ForestNode[]): ConflictItem[] {
-  return forest
-    .filter(n => n.warning === 'W_FOREST_BRANCHING')
-    .map(n => ({
-      target: n.path,
-      destin_mixed_id: n.destin_mixed_id || '',
-      candidates: n.candidates || [],
-    }))
-}
-
 export const useForestStore = defineStore('forest', () => {
   // ── state ──
-  const forest = ref<ForestNode[]>([])
+  const trees = ref<TreeNode[]>([])
   const finalMapping = ref<MappingEntry[]>([])
-  const conflictList = ref<ConflictItem[]>([])
   const branchDecisions = ref<Record<string, string>>({})
   const errors = ref<string[]>([])
   const warnings = ref<string[]>([])
@@ -107,7 +62,7 @@ export const useForestStore = defineStore('forest', () => {
     databasePath: '',
     databaseJson: '',
     rulesPaths: '',
-    backupDir: generateBackupDir(),
+    backupDir: '',
     dryRun: true,
     userConfigPath: '',
     workingPathstyle: 'linux',
@@ -120,9 +75,20 @@ export const useForestStore = defineStore('forest', () => {
   const userConfig = ref<Record<string, unknown> | null>(null)
   const storedDatabase = ref<Record<string, unknown> | null>(null)
 
+  // ── computed: 从 trees 中过滤 pending 状态的树作为冲突列表 ──
+  const conflictList = computed<ConflictItem[]>(() => {
+    return trees.value
+      .filter(t => t.resolved_state === 'pending')
+      .map(t => ({
+        root_path: t.root_path,
+        destin_mixed_id: t.destin_mixed_id || '',
+        candidates: t.candidates || [],
+      }))
+  })
+
   // ── getters ──
   const unresolvedCount = computed(() =>
-    conflictList.value.filter(c => !branchDecisions.value[c.target]).length,
+    conflictList.value.filter(c => !branchDecisions.value[c.root_path]).length,
   )
 
   const isClean = computed(() => errors.value.length === 0 && unresolvedCount.value === 0)
@@ -141,9 +107,8 @@ export const useForestStore = defineStore('forest', () => {
         errors.value = result.errors || []
         warnings.value = result.warnings || []
         if (result.data) {
-          forest.value = result.data.forest || []
+          trees.value = result.data.trees || []
           finalMapping.value = result.data.final_mapping || []
-          conflictList.value = extractConflicts(result.data.forest || [])
           storedMappingResult.value = result.data.mapping_result
         }
       },
@@ -174,9 +139,8 @@ export const useForestStore = defineStore('forest', () => {
         errors.value = result.errors || []
         warnings.value = result.warnings || []
         if (result.data) {
-          forest.value = result.data.forest || []
+          trees.value = result.data.trees || []
           finalMapping.value = result.data.final_mapping || []
-          conflictList.value = extractConflicts(result.data.forest || [])
           storedMappingResult.value = result.data.mapping_result
         }
       },
@@ -189,13 +153,13 @@ export const useForestStore = defineStore('forest', () => {
   }
 
   async function fetchVisualization() {
-    if (forest.value.length === 0) {
+    if (trees.value.length === 0) {
       svgContent.value = ''
       return
     }
 
     const resp = await apiPost('/pipeline/visualize', {
-      forest: forest.value,
+      trees: trees.value,
       mapping_result: storedMappingResult.value,
       format: 'svg',
       show_m1_details: true,
@@ -270,8 +234,8 @@ export const useForestStore = defineStore('forest', () => {
     isRunning.value = false
   }
 
-  function setDecision(target: string, source: string) {
-    branchDecisions.value[target] = source
+  function setDecision(rootPath: string, source: string) {
+    branchDecisions.value[rootPath] = source
   }
 
   function clearDecisions() {
@@ -279,9 +243,8 @@ export const useForestStore = defineStore('forest', () => {
   }
 
   function reset() {
-    forest.value = []
+    trees.value = []
     finalMapping.value = []
-    conflictList.value = []
     branchDecisions.value = {}
     errors.value = []
     warnings.value = []
@@ -295,7 +258,7 @@ export const useForestStore = defineStore('forest', () => {
       databasePath: '',
       databaseJson: '',
       rulesPaths: '',
-      backupDir: generateBackupDir(),
+      backupDir: '',
       dryRun: true,
       userConfigPath: '',
       workingPathstyle: 'linux',
@@ -305,7 +268,7 @@ export const useForestStore = defineStore('forest', () => {
   }
 
   return {
-    forest,
+    trees,
     finalMapping,
     conflictList,
     branchDecisions,

@@ -17,9 +17,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
             write_json_file(
                 forest_path,
                 {
-                    "forest": [
+                    "trees": [
                         {
-                            "path": "/dst/a.txt",
+                            "root_path": "/dst/a.txt",
+                            "refs": [],
+                            "resolved_state": "",
                             "changerequest": [
                                 {
                                     "path": "/src/a.txt",
@@ -49,7 +51,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                     code = main()
 
             self.assertEqual(code, 0)
-            self.assertIn("FOREST", out.getvalue())
+            self.assertIn("TREES", out.getvalue())
 
     def test_visualize_unsupported_format_returns_code_3(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -76,7 +78,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
     def test_visualize_svg_missing_dot_returns_code_4(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             forest_path = Path(td) / "forest.json"
-            write_json_file(forest_path, {"forest": [{"path": "/dst/a.txt", "changerequest": []}]})
+            write_json_file(forest_path, {"trees": [{"root_path": "/dst/a.txt", "changerequest": [], "refs": [], "resolved_state": ""}]})
 
             with patch("modmanager.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
                 with patch(
@@ -103,9 +105,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
             write_json_file(
                 forest_path,
                 {
-                    "forest": [
+                    "trees": [
                         {
-                            "path": "/dst/a.txt",
+                            "root_path": "/dst/a.txt",
+                            "refs": [],
+                            "resolved_state": "",
                             "changerequest": [
                                 {
                                     "path": "/src/a.txt",
@@ -156,9 +160,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                             "hashvalue": "abc",
                         }
                     ],
-                    "forest": [
+                    "trees": [
                         {
-                            "path": "/dst/a.txt",
+                            "root_path": "/dst/a.txt",
+                            "refs": [],
+                            "resolved_state": "",
                             "changerequest": [
                                 {
                                     "path": "/src/a.txt",
