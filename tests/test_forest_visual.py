@@ -378,5 +378,95 @@ class ForestVisualTests(unittest.TestCase):
         self.assertNotIn("data-conflict", out)
 
 
+    # --- P3-GUI2: SVG data-tree-refs / data-tree-referenced-by ---
+
+    def test_svg_has_refs_attribute(self) -> None:
+        """SVG enrichment sets data-tree-refs for nodes with refs."""
+        trees = [
+            {
+                "root_path": "/game/target.png",
+                "destin_mixed_id": "270150:0",
+                "changerequest": [
+                    {"path": "/modA/file.png", "action": "replace", "mixed_id": "270150:modA", "hashtype": "sha256", "hashvalue": ""}
+                ],
+                "refs": ["/modA/file.png"],
+                "resolved_state": "kept",
+            },
+            {
+                "root_path": "/modA/file.png",
+                "destin_mixed_id": "270150:modA",
+                "changerequest": [
+                    {"path": "!", "action": "delete", "mixed_id": "270150:modA", "hashtype": "sha256", "hashvalue": "0"}
+                ],
+                "refs": [],
+                "resolved_state": "deleted",
+            },
+        ]
+        # The DOT render assigns t0 → /game/target.png, t1 → /modA/file.png
+        # Source nodes: s0 → /modA/file.png (replace source), s1 → ! (delete source)
+        svg_input = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<g id="t0" class="node"><title>t0</title></g>'
+            '<g id="t1" class="node"><title>t1</title></g>'
+            '<g id="s0" class="node"><title>s0</title></g>'
+            '<g id="s1" class="node"><title>s1</title></g>'
+            '</svg>'
+        )
+        completed = subprocess.CompletedProcess(
+            args=["dot", "-Tsvg"],
+            returncode=0,
+            stdout=svg_input.encode("utf-8"),
+            stderr=b"",
+        )
+        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+            svg = visualize_payload({"trees": trees}, "svg", show_m1_details=False)
+        self.assertIn('data-tree-refs', svg)
+        self.assertIn('/modA/file.png', svg)
+        # t0 has refs → data-tree-refs should be /modA/file.png
+        self.assertIn('data-tree-refs="/modA/file.png"', svg)
+
+    def test_svg_has_referenced_by_attribute(self) -> None:
+        """SVG enrichment sets data-tree-referenced-by for nodes that are referenced."""
+        trees = [
+            {
+                "root_path": "/game/target.png",
+                "destin_mixed_id": "270150:0",
+                "changerequest": [
+                    {"path": "/modA/file.png", "action": "replace", "mixed_id": "270150:modA", "hashtype": "sha256", "hashvalue": ""}
+                ],
+                "refs": ["/modA/file.png"],
+                "resolved_state": "kept",
+            },
+            {
+                "root_path": "/modA/file.png",
+                "destin_mixed_id": "270150:modA",
+                "changerequest": [
+                    {"path": "!", "action": "delete", "mixed_id": "270150:modA", "hashtype": "sha256", "hashvalue": "0"}
+                ],
+                "refs": [],
+                "resolved_state": "deleted",
+            },
+        ]
+        svg_input = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<g id="t0" class="node"><title>t0</title></g>'
+            '<g id="t1" class="node"><title>t1</title></g>'
+            '<g id="s0" class="node"><title>s0</title></g>'
+            '<g id="s1" class="node"><title>s1</title></g>'
+            '</svg>'
+        )
+        completed = subprocess.CompletedProcess(
+            args=["dot", "-Tsvg"],
+            returncode=0,
+            stdout=svg_input.encode("utf-8"),
+            stderr=b"",
+        )
+        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+            svg = visualize_payload({"trees": trees}, "svg", show_m1_details=False)
+        self.assertIn('data-tree-referenced-by', svg)
+        # t1 (/modA/file.png) is referenced by t0 (/game/target.png)
+        self.assertIn('data-tree-referenced-by="/game/target.png"', svg)
+
+
 if __name__ == "__main__":
     unittest.main()

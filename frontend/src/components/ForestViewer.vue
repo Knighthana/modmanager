@@ -16,6 +16,8 @@
       @mousemove="onMouseMove"
       @mouseup="onMouseUp"
       @mouseleave="onMouseUp"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
       @click="onNodeClick"
     >
       <div
@@ -40,6 +42,42 @@ const scale = ref(1)
 const offset = ref({ x: 0, y: 0 })
 const isDragging = ref(false)
 const lastPos = ref({ x: 0, y: 0 })
+const selectedTreeRoot = ref<string | null>(null)
+
+function onMouseOver(e: MouseEvent) {
+    const target = e.target as HTMLElement
+    const nodeEl = target.closest('[data-tree-node]') as HTMLElement | null
+    if (!nodeEl) return
+
+    const rootPath = nodeEl.getAttribute('data-tree-node')!
+    const refs = (nodeEl.getAttribute('data-tree-refs') || '').split(',').filter(Boolean)
+    const refby = (nodeEl.getAttribute('data-tree-referenced-by') || '').split(',').filter(Boolean)
+    const highlightPaths = new Set([rootPath, ...refs, ...refby])
+
+    // 所有节点变暗
+    containerRef.value?.querySelectorAll('[data-tree-node]').forEach(el => {
+        (el as HTMLElement).style.opacity = '0.15'
+    })
+    // 高亮相关节点
+    highlightPaths.forEach(p => {
+        const el = containerRef.value?.querySelector(`[data-tree-node="${CSS.escape(p)}"]`)
+        if (el) (el as HTMLElement).style.opacity = '1'
+    })
+}
+
+function onMouseOut() {
+    containerRef.value?.querySelectorAll('[data-tree-node]').forEach(el => {
+        (el as HTMLElement).style.opacity = '1'
+    })
+}
+
+function clearSelection() {
+    if (selectedTreeRoot.value) {
+        const el = containerRef.value?.querySelector(`[data-tree-node="${CSS.escape(selectedTreeRoot.value)}"]`)
+        if (el) el.classList.remove('selected')
+    }
+    selectedTreeRoot.value = null
+}
 
 const svgStyle = computed(() => ({
   transform: `scale(${scale.value}) translate(${offset.value.x}px, ${offset.value.y}px)`,
@@ -74,18 +112,36 @@ function onMouseUp() {
 }
 
 function onNodeClick(e: MouseEvent) {
-  // Ignore clicks during drag
-  if (isDragging.value) return
-  const target = e.target as HTMLElement
-  const nodeEl = target.closest('[data-tree-node]') as HTMLElement | null
-  if (!nodeEl) return
+    if (isDragging.value) return
+    const target = e.target as HTMLElement
+    const nodeEl = target.closest('[data-tree-node]') as HTMLElement | null
+    if (!nodeEl) return
 
-  const nodePath = nodeEl.getAttribute('data-tree-node')!
-  const isPendingTree = nodeEl.hasAttribute('data-tree-pending')
+    const nodePath = nodeEl.getAttribute('data-tree-node')!
+    const isPending = nodeEl.hasAttribute('data-tree-pending')
 
-  if (isPendingTree) {
-    router.push({ name: 'conflicts', query: { root_path: nodePath } })
-  }
+    if (isPending) {
+        if (selectedTreeRoot.value === nodePath) {
+            // 取消选中
+            clearSelection()
+        } else {
+            // 进入选枝模式
+            clearSelection()
+            selectedTreeRoot.value = nodePath
+            nodeEl.classList.add('selected')
+        }
+        return
+    }
+
+    // 非 pending 树：若处于选枝模式，尝试作为候选源
+    if (selectedTreeRoot.value) {
+        const pendingTree = store.trees.find(t => t.root_path === selectedTreeRoot.value)
+        if (pendingTree && pendingTree.candidates?.includes(nodePath)) {
+            store.setDecision(selectedTreeRoot.value, nodePath)
+            clearSelection()
+        }
+        return
+    }
 }
 </script>
 
@@ -107,5 +163,15 @@ function onNodeClick(e: MouseEvent) {
 
 .forest-svg {
   transition: transform 0.05s ease;
+}
+
+:deep([data-tree-node]) {
+    transition: opacity 0.15s ease;
+}
+
+:deep([data-tree-node].selected) {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.7));
+    stroke: #3b82f6;
+    stroke-width: 2;
 }
 </style>

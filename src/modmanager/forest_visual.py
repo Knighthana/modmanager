@@ -30,6 +30,7 @@ class GraphNode:
     warning: str
     candidates: list[str]
     resolved_state: str
+    refs: list[str]
     extra: dict[str, Any]
     raw_node_ref: dict[str, Any]
 
@@ -80,6 +81,12 @@ def _build_graph_model(forest: list[dict[str, Any]]) -> GraphModel:
         if not isinstance(resolved_state, str):
             resolved_state = ""
 
+        # Extract refs list (used both in GraphNode and edge creation)
+        raw_refs = node.get("refs", [])
+        if not isinstance(raw_refs, list):
+            raw_refs = []
+        refs_list = [str(r) for r in raw_refs if isinstance(r, str) and r]
+
         extra = {
             k: v
             for k, v in node.items()
@@ -93,6 +100,7 @@ def _build_graph_model(forest: list[dict[str, Any]]) -> GraphModel:
             warning=warning,
             candidates=[str(c) for c in candidates],
             resolved_state=resolved_state,
+            refs=refs_list,
             extra=extra,
             raw_node_ref=node,
         )
@@ -124,19 +132,16 @@ def _build_graph_model(forest: list[dict[str, Any]]) -> GraphModel:
             )
 
         # Reference edges from refs
-        refs = node.get("refs", [])
-        if isinstance(refs, list):
-            for ref_path in refs:
-                if isinstance(ref_path, str) and ref_path:
-                    edges.append(
-                        GraphEdge(
-                            source_path=root_path,
-                            target_path=ref_path,
-                            action="ref",
-                            mixed_id="",
-                            edge_type="reference",
-                        )
-                    )
+        for ref_path in refs_list:
+            edges.append(
+                GraphEdge(
+                    source_path=root_path,
+                    target_path=ref_path,
+                    action="ref",
+                    mixed_id="",
+                    edge_type="reference",
+                )
+            )
 
     return GraphModel(nodes=nodes, edges=edges, branching_nodes=branching_nodes)
 
@@ -377,6 +382,14 @@ def _enrich_svg_nodes(svg_text: str, model: GraphModel) -> str:
     ET.register_namespace("", "http://www.w3.org/2000/svg")
 
     id_mapping = _build_dot_id_mapping(model)
+
+    # Build reverse reference index (ref → list of referencing root_paths)
+    referenced_by: dict[str, list[str]] = {}
+    for tree_node in model.nodes.values():
+        for ref in tree_node.refs:
+            if ref:
+                referenced_by.setdefault(ref, []).append(tree_node.root_path)
+
     try:
         root = ET.fromstring(svg_text)
     except ET.ParseError:
@@ -398,6 +411,14 @@ def _enrich_svg_nodes(svg_text: str, model: GraphModel) -> str:
         # -- data-tree-node --
         g_el.set("data-tree-node", path)
 
+        # -- data-tree-refs & data-tree-referenced-by --
+        node_obj = model.nodes.get(path)
+        if node_obj is not None and node_obj.refs:
+            g_el.set("data-tree-refs", ",".join(node_obj.refs))
+        rb = referenced_by.get(path, [])
+        if rb:
+            g_el.set("data-tree-referenced-by", ",".join(rb))
+
         # -- <title> (replace existing or insert) --
         title_el = None
         for child in g_el:
@@ -410,7 +431,6 @@ def _enrich_svg_nodes(svg_text: str, model: GraphModel) -> str:
         title_el.text = f"tree: {path}"
 
         # -- pending-only extras (previously conflict) --
-        node_obj = model.nodes.get(path)
         if node_obj is not None and node_obj.warning == "W_FOREST_BRANCHING" and node_obj.candidates:
             g_el.set("data-tree-pending", "true")
             desc_el = None
