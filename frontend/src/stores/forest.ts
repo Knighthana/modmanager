@@ -152,14 +152,15 @@ export const useForestStore = defineStore('forest', () => {
     isRunning.value = false
   }
 
-  async function fetchVisualization() {
-    if (trees.value.length === 0) {
+  async function fetchVisualization(treesOverride?: TreeNode[]) {
+    const targetTrees = treesOverride ?? trees.value
+    if (targetTrees.length === 0) {
       svgContent.value = ''
       return
     }
 
     const resp = await apiPost('/pipeline/visualize', {
-      trees: trees.value,
+      trees: targetTrees,
       mapping_result: storedMappingResult.value,
       format: 'svg',
       show_m1_details: true,

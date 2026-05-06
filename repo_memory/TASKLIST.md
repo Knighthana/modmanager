@@ -184,13 +184,19 @@
 
 ## Future（远期）
 
-### P2: 引擎细节修复
-- T1: same actionlist 中 delete→create 不产生 overwrite 警告
-- 结点 vs 节点术语统一（代码变量名）
+### P2: 引擎细节修复 ✅
 
-### P3: GUI 增强（待用户反馈）
-- Forest 全部/仅分岔切换按钮
-- M4: hover 高亮、拖拽选枝
+| # | 任务 | 说明 |
+|---|------|------|
+| T1 | same actionlist: delete→create 不警告 | `deleted_targets` 集合追踪，跳过误报 ✅ |
+| E1 | 术语统一（结点/节点） | 全局搜索替换完成 ✅ |
+
+### P3: GUI 增强（部分完成）
+
+| # | 任务 | 说明 |
+|---|------|------|
+| GUI1 | Forest 全部/仅分岔切换 | `el-switch` 切换 + 过滤可视化请求 ✅ |
+| GUI2 | M4 交互（hover高亮/拖拽） | 待用户反馈 |
 
 ### Forest Visualization Expansion（M3）
 - Plot renderer

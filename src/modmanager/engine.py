@@ -268,6 +268,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
         if actor_id not in valid_actor_operations:
             continue
         actionlist = op_obj.get("actionlist", [])
+        deleted_targets: set[str] = set()
         source_root = mod_root_from_mixed_id(actor_id, game_index)
         if not source_root:
             warnings.append(f"W_MISSING_SOURCE_ROOT: {actor_id}")
@@ -315,6 +316,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                             item=item,
                         )
                     )
+                    deleted_targets.add(target)
                 continue
 
             # For non-delete actions, process from list
@@ -350,7 +352,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                             into_type=into_type,
                         )
                     )
-                    if action == "create" and Path(target).exists():
+                    if action == "create" and Path(target).exists() and target not in deleted_targets:
                         warnings.append(f"W_CREATE_TARGET_EXISTS_OVERWRITE: {target}")
 
                     mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})

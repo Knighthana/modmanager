@@ -59,6 +59,39 @@ class EngineTests(unittest.TestCase):
             self.assertFalse(result["errors"])
             self.assertTrue(result["final_mapping"])
 
+    def test_delete_then_create_same_actionlist_no_overwrite_warning(self) -> None:
+        """Same actionlist: delete先行清除target后，create不产生W_CREATE_TARGET_EXISTS_OVERWRITE"""
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            src_mod = tmp_path / "mods" / "100"
+            src_mod.mkdir(parents=True)
+            (src_mod / "a.txt").write_text("x", encoding="utf-8")
+
+            target_dir = tmp_path / "game" / "dest"
+            target_dir.mkdir(parents=True)
+            (target_dir / "a.txt").write_text("old", encoding="utf-8")
+
+            # delete先执行清除a.txt，然后create重新创建 — 不应产生overwrite警告
+            aggregated_rule_set = {
+                "operation": [
+                    {
+                        "mixed_id": "270150:100",
+                        "actionlist": [
+                            {"action": "delete", "destin": "270150:0", "into": ["dest/a.txt"], "into_type": "file"},
+                            {"action": "create", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"},
+                        ],
+                    }
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+            # 不应有W_CREATE_TARGET_EXISTS_OVERWRITE警告
+            overwrite_warnings = [w for w in result["warnings"] if "W_CREATE_TARGET_EXISTS_OVERWRITE" in w]
+            self.assertEqual(len(overwrite_warnings), 0, f"Expected no overwrite warnings but got: {overwrite_warnings}")
+            self.assertFalse(result["errors"])
+            self.assertTrue(result["final_mapping"])
+
     def test_deprecated_action_produces_warning(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp_path = Path(td)

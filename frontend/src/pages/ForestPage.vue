@@ -185,19 +185,53 @@
       />
     </div>
 
+    <!-- 展示模式切换 -->
+    <el-card v-if="hasResult" shadow="never" style="margin-bottom: 16px;">
+      <el-form label-width="140px">
+        <el-form-item label="展示模式">
+          <el-switch
+            v-model="showBranchingOnly"
+            active-text="仅分枝"
+            inactive-text="全部树"
+          />
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <!-- 无分枝冲突提示 -->
+    <el-alert
+      v-if="showBranchingOnly && store.trees.length > 0 && !hasBranchingTrees"
+      title="无分枝冲突"
+      type="info"
+      :closable="false"
+      description="当前所有树均已裁决，没有待处理的分枝冲突。"
+      style="margin-bottom: 16px;"
+    />
+
     <!-- ForestViewer -->
     <ForestViewer />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForestStore, generateBackupDir } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
+import type { TreeNode } from '../types'
 
 const store = useForestStore()
 
 const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
+
+// 展示模式切换：仅显示分枝（pending）树
+const showBranchingOnly = ref(false)
+
+function getFilteredTrees(): TreeNode[] {
+  if (!showBranchingOnly.value) return store.trees
+  return store.trees.filter(t => t.resolved_state === 'pending')
+}
+
+const hasBranchingTrees = computed(() => store.trees.some(t => t.resolved_state === 'pending'))
 
 async function onDiscover() {
   await store.discoverDatabase({
@@ -243,6 +277,15 @@ function prepareParams() {
   }
 }
 
+async function fetchVisualizationWithFilter() {
+  const filtered = getFilteredTrees()
+  if (filtered.length === 0) {
+    store.svgContent = ''
+    return
+  }
+  await store.fetchVisualization(filtered)
+}
+
 async function onCompute() {
   const params = prepareParams()
   await store.computeOnly({
@@ -252,7 +295,7 @@ async function onCompute() {
 
   // 计算完成后，获取可视化
   if (store.trees.length > 0) {
-    await store.fetchVisualization()
+    await fetchVisualizationWithFilter()
   }
 }
 
@@ -265,7 +308,14 @@ async function onRun() {
 
   // 运行完成后，获取可视化
   if (store.trees.length > 0) {
-    await store.fetchVisualization()
+    await fetchVisualizationWithFilter()
   }
 }
+
+// 切换展示模式时自动重新请求可视化
+watch(showBranchingOnly, () => {
+  if (store.trees.length > 0) {
+    fetchVisualizationWithFilter()
+  }
+})
 </script>
