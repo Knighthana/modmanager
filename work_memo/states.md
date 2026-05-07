@@ -23,6 +23,7 @@
 - [ ] TODO-8: ConflictsPage branch decisions 刷新丢失
 - [ ] TODO-9: onDbPathBlur 静默失败
 - [ ] TODO-10: 空输入校验
-- [ ] TODO-11: Rules / user_config 路径无 ~ 展开（已修 compute/run 路由层，aggregator 层未修）
+- [ ] TODO-11: Rules / user_config 路径无 ~ 展开
 - [ ] TODO-12: Rules paths 前端无路径预检
 - [ ] TODO-13: i18n 预备：字符串集中映射
+- [ ] TODO-14: 数据 Schema 明确定义（数据库、规则、映射输出各层级 schema 需正式规范）

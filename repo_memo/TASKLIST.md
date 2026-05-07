@@ -250,6 +250,7 @@
 | TODO-11 | Rules / user_config 路径无 ~ 展开 | aggregate() 和 compute 端点的 `kmm_rule_paths` / `user_config_path` 不经 path_resolver |
 | TODO-12 | Rules paths 前端无路径预检 | 填了无效路径后端才报错，前端无输入校验 |
 | TODO-13 | i18n 预备：字符串集中映射 | errorCodes.ts 已走对方向；模板中的标签/按钮/placeholder 应收拢到统一映射文件，为 vue-i18n 铺路 |
+| TODO-14 | 数据 Schema 明确定义 | 数据库、规则集、映射输出各层级 schema 未正式规范化；需产出 JSON Schema 或 Pydantic 模型作为权威契约 |
 
 ---
 
