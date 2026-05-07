@@ -41,6 +41,12 @@ class SaveConfigRequest(BaseModel):
 # ── Database endpoints ────────────────────────────────────────────────────
 
 
+class LoadDatabaseRequest(BaseModel):
+    """Request body for ``POST /api/database/load``."""
+
+    path: str
+
+
 class GenerateDatabaseRequest(BaseModel):
     """Request body for ``POST /api/database/generate``."""
 

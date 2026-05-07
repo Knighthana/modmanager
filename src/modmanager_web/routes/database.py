@@ -6,8 +6,8 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from modmanager.bootstrap import generate_database
 
-from ..adapters import adapt_dict_result
-from ..schemas import GenerateDatabaseRequest
+from ..adapters import adapt_dict_result, adapt_error
+from ..schemas import GenerateDatabaseRequest, LoadDatabaseRequest
 from ..sse import stream_with_progress
 
 router = APIRouter()
@@ -38,3 +38,23 @@ async def generate(req: GenerateDatabaseRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+@router.post("/load")
+async def load_database(req: LoadDatabaseRequest):
+    """Load a database.json file from a user-specified path.
+
+    Returns the database dict wrapped in ApiResponse.
+    Uses path_resolver to handle fuzzy user input.
+    """
+    from modmanager.path_resolver import resolve_file_path
+    from modmanager.iojson import load_json_file
+
+    try:
+        resolved = resolve_file_path(req.path, "database.json")
+        data = load_json_file(resolved)
+        return adapt_dict_result(data)
+    except FileNotFoundError as e:
+        return adapt_error(str(e))
+    except Exception as e:
+        return adapt_error(f"Failed to load database: {e}")

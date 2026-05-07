@@ -16,6 +16,7 @@
               :disabled="!store.dbManualOverride"
               style="flex: 1;"
               :ref="(el: any) => dbInputRef = el"
+              @blur="onDbPathBlur"
             >
               <template v-if="!store.dbManualOverride" #suffix>
                 <span>🔒</span>
@@ -207,6 +208,7 @@
 import { computed, ref, watch, nextTick } from 'vue'
 import { useForestStore, generateBackupDir } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
+import { apiPost } from '../api/client'
 import type { TreeNode } from '../types'
 
 const store = useForestStore()
@@ -257,6 +259,21 @@ function onDbManualOverride() {
     // 重新锁定：input 内容自动恢复为 dbPathDisplay computed
     store.dbManualOverride = false;
   }
+}
+
+async function onDbPathBlur() {
+    if (!store.dbManualOverride) return;
+    const path = store.pipelineForm.databasePath;
+    if (!path) return;
+
+    try {
+        const resp = await apiPost('/database/load', { path });
+        if (resp.ok && resp.data) {
+            store.storedDatabase = resp.data as Record<string, unknown>;
+        }
+    } catch {
+        // 静默失败，用户可继续手动调整
+    }
 }
 
 function getFilteredTrees(): TreeNode[] {

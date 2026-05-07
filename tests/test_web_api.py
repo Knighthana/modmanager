@@ -805,6 +805,40 @@ class TestAdaptersExtended:
         assert "E_BACKUP_DIR_MISSING" in result["errors"]
 
 
+# ── Database /load ────────────────────────────────────────────────────────
+
+
+class TestLoadDatabase:
+    """POST /api/database/load"""
+
+    def test_load_database_from_path_success(self, client, tmp_path):
+        # 创建临时 database.json
+        db_file = tmp_path / "database.json"
+        db_file.write_text(json.dumps({"game": [], "dommod": []}))
+
+        resp = client.post("/api/database/load", json={"path": str(db_file)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["game"] == []
+
+    def test_load_database_from_directory(self, client, tmp_path):
+        # 传入目录路径，自动找 database.json
+        db_file = tmp_path / "database.json"
+        db_file.write_text(json.dumps({"game": [{"appid": "270150"}]}))
+
+        resp = client.post("/api/database/load", json={"path": str(tmp_path) + "/"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["game"][0]["appid"] == "270150"
+
+    def test_load_database_not_found(self, client):
+        resp = client.post("/api/database/load", json={"path": "/nonexistent/path"})
+        body = resp.json()
+        assert body["ok"] is False
+
+
 # ── Helper ────────────────────────────────────────────────────────────────
 
 
