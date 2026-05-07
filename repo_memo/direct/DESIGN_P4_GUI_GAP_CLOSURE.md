@@ -328,4 +328,4 @@ python tools/generate_fixture.py hot -o /tmp/fixture --with-db
 
 ### 9.4 任务分解
 
-见 `repo_memory/TASKLIST.md` Phase P5（M1: 5 前端任务 + M2: 1 工具任务）
+见 `repo_memo/TASKLIST.md` Phase P5（M1: 5 前端任务 + M2: 1 工具任务）

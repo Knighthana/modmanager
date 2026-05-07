@@ -3,7 +3,7 @@
 创建：2026-05-06
 状态：已完成 ✅
 来源：`work_memo/FOREST_DELETE_FORK_DESIGN.md` §7-13
-前置分析：`repo_memory/direct/DESIGN_P0_FOREST_RISK_ANALYSIS.md`
+前置分析：`repo_memo/direct/DESIGN_P0_FOREST_RISK_ANALYSIS.md`
 
 ---
 

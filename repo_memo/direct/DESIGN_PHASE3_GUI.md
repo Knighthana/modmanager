@@ -7,7 +7,7 @@
 创建：2026-04-30
 状态：已完成 ✅
 前置完成：Phase 1 ✅ + Phase 2 ✅
-决策记录：`repo_memory/direct/QUESTIONS_PHASE3.md`（13 个决策全部确认 ✅）
+决策记录：`repo_memo/direct/QUESTIONS_PHASE3.md`（13 个决策全部确认 ✅）
 
 ---
 

@@ -43,7 +43,7 @@
 各子模块（engine、aggregator、backup_ops）独立存在、可单独测试，orchestrator 只做编排。
 
 ### 决策记录
-全部 8 个问题已决策：见 `repo_memory/direct/QUESTIONS_BOOTSTRAP.md`
+全部 8 个问题已决策：见 `repo_memo/direct/QUESTIONS_BOOTSTRAP.md`
 
 ---
 
@@ -51,7 +51,7 @@
 
 将 bootstrap + engine + backup 暴露为 REST 接口。
 
-设计文档：`repo_memory/direct/DESIGN_PHASE2_WEB_API.md`
+设计文档：`repo_memo/direct/DESIGN_PHASE2_WEB_API.md`
 决策记录：7 个问题全部已确认 ✅（含 Q7 方案 A 独立对等）
 
 ### 已完成的模块（`modmanager_web` 独立子包）
@@ -72,8 +72,8 @@
 
 规则浏览器、Forest 可视化嵌入、冲突裁决 UI、备份/恢复控制台。
 
-决策记录：`repo_memory/direct/QUESTIONS_PHASE3.md`（13 个问题全部已决策 ✅）
-设计文档：`repo_memory/direct/DESIGN_PHASE3_GUI.md`
+决策记录：`repo_memo/direct/QUESTIONS_PHASE3.md`（13 个问题全部已决策 ✅）
+设计文档：`repo_memo/direct/DESIGN_PHASE3_GUI.md`
 
 ### 需要新增的模块
 
@@ -94,7 +94,7 @@
 
 ### 术语规范
 - 树/图上的元素统一用 **"结点"**（非"节点"）
-- 见 `repo_memory/direct/DESIGN_PHASE3_GUI.md` §14
+- 见 `repo_memo/direct/DESIGN_PHASE3_GUI.md` §14
 
 ### 测试
 - 前端 Vitest: 14 tests 全部通过
@@ -108,8 +108,8 @@
 将现有"刨根移栽"式 delete 传播模型替换为"独立根 + 引用"模型。
 
 **核心设计文档**：
-- 风险分析：`repo_memory/direct/DESIGN_P0_FOREST_RISK_ANALYSIS.md`
-- 实现方案：`repo_memory/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md`
+- 风险分析：`repo_memo/direct/DESIGN_P0_FOREST_RISK_ANALYSIS.md`
+- 实现方案：`repo_memo/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md`
 
 **决策**：
 - 激进全栈切换，不接受技术债
@@ -159,7 +159,7 @@
 
 补齐备份目录命名规则生成 + 循环防护 + workshop 时间源 + .kmmbakignore。
 
-**设计文档**：`repo_memory/direct/DESIGN_P1_BACKUP.md`
+**设计文档**：`repo_memo/direct/DESIGN_P1_BACKUP.md`
 
 | # | 任务 | 模块 | 状态 |
 |---|------|------|------|
@@ -186,7 +186,7 @@
 
 补齐 Phase 3 前端 GUI 中剩余的 3 个功能缺口。
 
-**设计文档**：`repo_memory/direct/DESIGN_P4_GUI_GAP_CLOSURE.md`
+**设计文档**：`repo_memo/direct/DESIGN_P4_GUI_GAP_CLOSURE.md`
 
 ### G1: ConflictsPage 参数持久化
 
@@ -257,7 +257,7 @@
 
 ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamapps/` 起始路径；`generate_fixture.py` 新增 `--with-db` 一步到位。
 
-**设计文档**：`repo_memory/direct/DESIGN_P4_GUI_GAP_CLOSURE.md` §9
+**设计文档**：`repo_memo/direct/DESIGN_P4_GUI_GAP_CLOSURE.md` §9
 
 ### M1: ForestPage 手动模式
 
@@ -281,7 +281,7 @@ ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamap
 
 将数据源发现从 ForestPage 拆分为独立页面，加明细展示表、重复 ID 交互式决策、跨 tab 状态暂存。
 
-**设计文档**：`repo_memory/direct/DESIGN_P6_DATASOURCE_TAB.md`
+**设计文档**：`repo_memo/direct/DESIGN_P6_DATASOURCE_TAB.md`
 
 ### 后端修复
 
@@ -318,7 +318,7 @@ ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamap
 
 统一处理用户输入路径的"猜测"逻辑，产出规范路径后下游禁止猜测、只做合规断言。
 
-**设计文档**：`repo_memory/direct/DESIGN_PATH_RESOLVER.md`
+**设计文档**：`repo_memo/direct/DESIGN_PATH_RESOLVER.md`
 
 | # | 任务 | 模块 | 状态 |
 |---|------|------|------|

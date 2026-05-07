@@ -19,4 +19,4 @@
 7. delete 语义：限于自身树根，不向上传播。引用者通过祖先检查判断源可用性。
 8. 输出契约：`compute_mapping` 返回 `trees`（非 `forest`），`final_mapping` 格式不变。
 9. 分岔裁决：单操作树自动裁决，多操作树标记 pending 等待决策。
-10. 文档先行：架构级改动必须先在 repo_memory/direct/ 产出设计文档，再改代码。
+10. 文档先行：架构级改动必须先在 repo_memo/direct/ 产出设计文档，再改代码。

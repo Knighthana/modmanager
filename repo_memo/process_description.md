@@ -1,4 +1,4 @@
-# Process Description (repo_memory authoritative)
+# Process Description (repo_memo authoritative)
 
 这是当前阶段的执行总览文档，用于替代 `description/process_description.md` 的指挥作用。
 

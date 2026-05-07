@@ -1,7 +1,7 @@
 """Aggregator: merge multiple kmm_rule JSON files into a single aggregated_rule_set.
 
 This module implements the aggregation pipeline defined in
-``repo_memory/RULE_AGGREGATION_DESIGN.md`` (sections 2-7). It is logically
+``repo_memo/RULE_AGGREGATION_DESIGN.md`` (sections 2-7). It is logically
 independent of ``engine.py`` and relies only on shared infrastructure
 (``iojson``, ``validation``, ``paths``).
 
@@ -499,7 +499,7 @@ def aggregate(
     """Aggregate multiple kmm_rule JSON files into a single aggregated_rule_set.
 
     This is the main entry point for the aggregation pipeline defined in
-    ``repo_memory/RULE_AGGREGATION_DESIGN.md``.
+    ``repo_memo/RULE_AGGREGATION_DESIGN.md``.
 
     Args:
         kmm_rule_paths:

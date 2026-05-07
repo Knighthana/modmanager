@@ -6,17 +6,17 @@
 
 创建：2026-04-30
 状态：已完成 ✅
-前置设计：`repo_memory/direct/DESIGN_BOOTSTRAP_ORCHESTRATOR.md`
-前置决策：`repo_memory/direct/QUESTIONS_BOOTSTRAP.md`（全部 8 个问题已决策 ✅）
+前置设计：`repo_memo/direct/DESIGN_BOOTSTRAP_ORCHESTRATOR.md`
+前置决策：`repo_memo/direct/QUESTIONS_BOOTSTRAP.md`（全部 8 个问题已决策 ✅）
 
 ---
 
 ## 前置阅读（必读）
 
 实现前必须阅读以下文档：
-1. `repo_memory/direct/DESIGN_BOOTSTRAP_ORCHESTRATOR.md`（完整设计）
-2. `repo_memory/direct/QUESTIONS_BOOTSTRAP.md`（8 个决策记录）
-3. `repo_memory/TASKLIST.md`（Phase 1 概述）
+1. `repo_memo/direct/DESIGN_BOOTSTRAP_ORCHESTRATOR.md`（完整设计）
+2. `repo_memo/direct/QUESTIONS_BOOTSTRAP.md`（8 个决策记录）
+3. `repo_memo/TASKLIST.md`（Phase 1 概述）
 4. 现有源码（需了解的接口）：
    - `src/modmanager/engine.py` — `compute_mapping()`
    - `src/modmanager/backup_ops.py` — `run_differential_backup()`, `apply_final_mapping()`

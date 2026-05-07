@@ -1,9 +1,9 @@
-# repo_memory
+# repo_memo
 
 本目录是当前阶段的工作指挥与契约冻结区。
 
 ## 目标
-- 将实现指挥从 `description/` 迁移到 `repo_memory/`
+- 将实现指挥从 `description/` 迁移到 `repo_memo/`
 - 固化术语、字段命名与扫描流程
 - 为后续实现和测试修复提供唯一参考
 
@@ -15,13 +15,13 @@
 
 ## 同步规则
 - `description/` 仅作为用户与 Plan 的沟通目录，不作为 implement 默认输入
-- 当前实现与契约以 `repo_memory/` 为准
-- `json.example` 采用单向同步：`repo_memory/` -> `description/`
-- implement 禁止将 `description/` 反向写回 `repo_memory/`
+- 当前实现与契约以 `repo_memo/` 为准
+- `json.example` 采用单向同步：`repo_memo/` -> `description/`
+- implement 禁止将 `description/` 反向写回 `repo_memo/`
 
 ## 角色职责矩阵
 
-| 角色 | description | repo_memory | work_memo |
+| 角色 | description | repo_memo | work_memo |
 |---|---|---|---|
 | user | 读/写 | 可读 | 不使用 |
 | plan | 读/写 | 读/写（主维护） | 可读（必要时） |
@@ -31,9 +31,9 @@
 
 ## 执行门禁
 1. 实现任务必须引用本目录中的文档路径；缺失路径视为无效任务单。
-2. 实现阶段不得以 `description/` 推导新规则，只可根据 `repo_memory/` 与 Plan 指令执行。
+2. 实现阶段不得以 `description/` 推导新规则，只可根据 `repo_memo/` 与 Plan 指令执行。
 3. 涉及字段命名变更时，必须先更新 `TERMINOLOGY.md` 与 `DATABASE_FIELDS.md`，再改 `src/` 与 `tests/`。
-4. 若 `repo_memory/` 与 `description/` 冲突，以 `repo_memory/` 为准，并将差异记录到 `MEMORY_SYNC_INDEX.md`。
+4. 若 `repo_memo/` 与 `description/` 冲突，以 `repo_memo/` 为准，并将差异记录到 `MEMORY_SYNC_INDEX.md`。
 
 ## 违规后果
 1. 发现以 `description/` 作为实现依据的提交，直接判定为无效实现，必须回滚并重做。
@@ -57,7 +57,7 @@
 
 ## Plan 检查契约
 1. Plan 接到检查需求、文档核验或疑似执行异常时，必须额外检查 `work_memo/` 是否存在相关线索。
-2. `work_memo/` 仅提供排障上下文，不作为契约裁决依据；契约冲突仍以 `repo_memory/` 为准。
+2. `work_memo/` 仅提供排障上下文，不作为契约裁决依据；契约冲突仍以 `repo_memo/` 为准。
 
 ## 字段主名（冻结）
 - `contains_libraryfolders_vdf`

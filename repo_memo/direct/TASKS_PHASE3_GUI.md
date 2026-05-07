@@ -4,15 +4,15 @@
 
 创建：2026-04-30
 状态：已完成 ✅
-前置设计：`repo_memory/direct/DESIGN_PHASE3_GUI.md`（必读）
-前置决策：`repo_memory/direct/QUESTIONS_PHASE3.md`（13 个决策全部确认 ✅）
+前置设计：`repo_memo/direct/DESIGN_PHASE3_GUI.md`（必读）
+前置决策：`repo_memo/direct/QUESTIONS_PHASE3.md`（13 个决策全部确认 ✅）
 
 ---
 
 ## 前置阅读（必读）
 
-1. `repo_memory/direct/DESIGN_PHASE3_GUI.md` — 完整设计（架构、组件树、路由、Store、交互模型）
-2. `repo_memory/direct/QUESTIONS_PHASE3.md` — 13 个决策记录
+1. `repo_memo/direct/DESIGN_PHASE3_GUI.md` — 完整设计（架构、组件树、路由、Store、交互模型）
+2. `repo_memo/direct/QUESTIONS_PHASE3.md` — 13 个决策记录
 3. Phase 2 产物：
    - `src/modmanager_web/app.py` — 需要修改（加 StaticFiles + SPA fallback）
    - `src/modmanager_web/routes/pipeline.py` — 参考 SSE 响应格式

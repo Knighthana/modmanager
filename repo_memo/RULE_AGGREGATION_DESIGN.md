@@ -54,7 +54,7 @@ kmm_rule 文件的顶层结构：
 
 bootstrap 的职责：若三级搜索均未找到 `user_config.json`，按 `user_config.json.example` 的样式在软件本体目录生成默认文件。
 
-`user_config.json` 的 schema 参考 `repo_memory/user_config.json.example`：
+`user_config.json` 的 schema 参考 `repo_memo/user_config.json.example`：
 
 ```json
 {
@@ -368,7 +368,7 @@ def aggregate(
 
 ## 8. 示例文件同步
 
-`repo_memory/aggregated_rule_set.json.example` 和 `description/aggregated_rule_set.json.example` 需要同步更新：
+`repo_memo/aggregated_rule_set.json.example` 和 `description/aggregated_rule_set.json.example` 需要同步更新：
 - 顶层 key：`"mod"` → `"operation"`
 - 每个 action 显式包含 `action` 和 `destin`
 - 移除所有 `def_destin` 和 `def_action` 字段

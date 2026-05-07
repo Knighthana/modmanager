@@ -3,7 +3,7 @@
 > **2026-05-06 注**：本文档为聚合器+M1 实现时的历史任务快照。
 > 任务已于 2026-04-30 完成实现。当前代码以 `rule_aggregator.py` 和 `engine.py` 为准。
 
-基于 `repo_memory/RULE_AGGREGATION_DESIGN.md`（最终版）
+基于 `repo_memo/RULE_AGGREGATION_DESIGN.md`（最终版）
 创建时间：2026-04-30
 状态：已完成 ✅
 
@@ -12,9 +12,9 @@
 ## 前置阅读（必读）
 
 实现前必须阅读以下文档：
-- `repo_memory/RULE_AGGREGATION_DESIGN.md`（聚合器设计全文）
-- `repo_memory/TERMINOLOGY.md`（术语定义）
-- `repo_memory/aggregated_rule_set.json.example`（输出 schema 示例）
+- `repo_memo/RULE_AGGREGATION_DESIGN.md`（聚合器设计全文）
+- `repo_memo/TERMINOLOGY.md`（术语定义）
+- `repo_memo/aggregated_rule_set.json.example`（输出 schema 示例）
 
 ---
 

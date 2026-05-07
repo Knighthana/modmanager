@@ -76,4 +76,4 @@ HMI_AGGREGATED_RULE_SET=<real_aggregated_rule_set.json> HMI_DATABASE=<real_datab
 ## Documents
 
 - Demo guide: cli-hmi/DEMO_GUIDE.md
-- Implementation summary: repo_memory/DEMO_M1_IMPLEMENTATION_SUMMARY.md
+- Implementation summary: repo_memo/DEMO_M1_IMPLEMENTATION_SUMMARY.md

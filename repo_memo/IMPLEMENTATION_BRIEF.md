@@ -19,7 +19,7 @@
 | Phase 1: Bootstrap & Orchestration | **done** | 261 测试全部通过 | bootstrap.py + orchestrator.py + CLI 适配 + 18 new tests |
 | 聚合器 + M1 引擎重构 | done | 243 测试全部通过 | commit `0a145f4` |
 | 同 mod 冲突自动裁决 | done | 120→0 冲突 | commit `428bb79` |
-| 文档入口迁移到 repo_memory | done | `README.md` 明确入口 | 已完成 |
+| 文档入口迁移到 repo_memo | done | `README.md` 明确入口 | 已完成 |
 | discovery pipeline 扩展多库 | done | `discover_steam_libraries` 解析主 VDF 并扩展库 | 已完成 |
 | database 输出 `steamlib[].game` | done | 结构中存在 `steamlib[].game` | 已完成 |
 | 默认非贪婪过滤闭环 | done | 非 VDF 范围 appid 默认不解析 mod | 已完成 |
@@ -39,13 +39,13 @@
 在不改业务逻辑前提下，先完成文档契约对齐；随后按契约修复实现与测试。
 
 ## 执行边界
-- 第一阶段：仅改 `repo_memory/` 与示例契约
+- 第一阶段：仅改 `repo_memo/` 与示例契约
 - 第二阶段：再改 `src/` 与 `tests/`
 
 ## 需求来源硬约束（P0）
-1. 实现与测试的需求来源优先级固定为：Plan 指令 > `repo_memory/` > 代码注释。
+1. 实现与测试的需求来源优先级固定为：Plan 指令 > `repo_memo/` > 代码注释。
 2. `description/` 仅可作为历史样例，不得直接作为实现依据。
-3. 若 `repo_memory/` 与 `description/` 冲突，必须按 `repo_memory/` 执行，并把差异写入 `MEMORY_SYNC_INDEX.md`。
+3. 若 `repo_memo/` 与 `description/` 冲突，必须按 `repo_memo/` 执行，并把差异写入 `MEMORY_SYNC_INDEX.md`。
 4. 未满足以上三条时，任务状态必须标记为 blocked，不得继续开发。
 
 ## 第一阶段交付物
@@ -67,7 +67,7 @@
 3. 默认忽略不在 VDF 游戏列表范围内 appworkshop 的测试
 
 ## 执行顺序
-1. 先更新 `repo_memory` 契约与同步索引。
+1. 先更新 `repo_memo` 契约与同步索引。
 2. 再改 `src/` 的非贪婪/贪婪逻辑。
 3. 最后补测试并跑全量回归。
 
@@ -165,7 +165,7 @@
 2. 先在 M1 外实现：replace_service、backup_dir_builder、rule aggregation sidecar。
 3. 未来可并入 M1：当外层机制稳定后，将 `provenance_ref`、`action_order`、`sidecar_ref` 传导等能力并入引擎主链。
 4. `_ref` 缺失或空值时统一回退为 `404` 并记录 warning，不允许直接崩溃。
-5. `description/` 仅用于 user-plan 交流；implement 默认以 `repo_memory/` 为标准源。
+5. `description/` 仅用于 user-plan 交流；implement 默认以 `repo_memo/` 为标准源。
 6. delete 在当前 forest 模型中视为无 source-path 的叶请求；若最终有效叶为 delete，则折叠为对根 target 的删除请求并在执行阶段删除该目标文件。
 
 ## 历史映射风险定义（replace）

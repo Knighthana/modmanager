@@ -23,7 +23,7 @@ TODO LIST
 
 状态：Frozen
 1. `preview` / `readme` 已冻结为 `list[string]`。
-2. repo_memory 示例为权威版本，description 示例只做镜像同步。
+2. repo_memo 示例为权威版本，description 示例只做镜像同步。
 
 ## delete方法
 

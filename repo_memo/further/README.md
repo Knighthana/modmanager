@@ -1,4 +1,4 @@
-# repo_memory/further
+# repo_memo/further
 
 本目录存放**远期规划**中已确认但当前轮次不执行的方案文档。
 

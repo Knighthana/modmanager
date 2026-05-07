@@ -69,6 +69,6 @@
 - 待跟踪：如需对外发布，补充 CLI 用户文档示例与 game CRUD CLI 对齐
 
 ## 来源
-- `repo_memory/TERMINOLOGY.md`
-- `repo_memory/STEAM_DISCOVERY.md`
-- `repo_memory/DATABASE_FIELDS.md`
+- `repo_memo/TERMINOLOGY.md`
+- `repo_memo/STEAM_DISCOVERY.md`
+- `repo_memo/DATABASE_FIELDS.md`

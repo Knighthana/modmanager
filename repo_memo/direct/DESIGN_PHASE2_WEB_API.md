@@ -2,7 +2,7 @@
 
 > **2026-05-06 注**：本文档为 Phase 2 实现时的历史设计快照。
 > 其中 `"forest"` key 在 P0 后已改为 `"trees"`，`PipelineResult.forest` 已改为 `PipelineResult.trees`。
-> 当前权威规范以 `repo_memory/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md` 和实际代码为准。
+> 当前权威规范以 `repo_memo/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md` 和实际代码为准。
 
 创建：2026-04-30
 状态：已完成 ✅
