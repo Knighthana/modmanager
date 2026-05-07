@@ -94,7 +94,7 @@
           <el-table-column label="MOD" width="80" prop="modCount" />
           <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: LibraryRow }">
-              <span class="horizontal-cell-scroll">{{ row.path }}</span>
+              <div class="horizontal-cell-scroll">{{ row.path }}</div>
             </template>
           </el-table-column>
         </el-table>
@@ -143,7 +143,7 @@
           <el-table-column label="名称" min-width="140" prop="name" show-overflow-tooltip />
           <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: GameRow }">
-              <span class="horizontal-cell-scroll">{{ row.basepath }}</span>
+              <div class="horizontal-cell-scroll">{{ row.basepath }}</div>
             </template>
           </el-table-column>
           <el-table-column label="MOD 数" width="80">
@@ -216,7 +216,7 @@
           </el-table-column>
           <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: ModRow }">
-              <span class="horizontal-cell-scroll">{{ row.path }}</span>
+              <div class="horizontal-cell-scroll">{{ row.path }}</div>
             </template>
           </el-table-column>
         </el-table>

@@ -179,21 +179,20 @@ def generate_database(
     if mode == "manual" and not paths:
         raise ValueError("manual mode requires at least one path")
 
-    # ── Cache hit ─────────────────────────────────────────────────────────
-    if cache_path is not None:
-        cache_file = Path(cache_path)
-        if cache_file.exists() and cache_file.stat().st_size > 0:
-            try:
-                cached = load_json_file(cache_path)
-                if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
-                    return cached
-            except Exception:
-                # Invalid cache — fall through to regenerate
-                pass
-
     # ── Generate database ─────────────────────────────────────────────────
     if mode == "auto" and not paths:
         # Pure auto mode: no manual paths, no manual_only
+        # ── Cache hit (pure auto mode only) ──
+        if cache_path is not None:
+            cache_file = Path(cache_path)
+            if cache_file.exists() and cache_file.stat().st_size > 0:
+                try:
+                    cached = load_json_file(cache_path)
+                    if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
+                        return cached
+                except Exception:
+                    # Invalid cache — fall through to regenerate
+                    pass
         if on_progress is not None:
             on_progress("scan", 0, -1, "Discovering Steam libraries...")
         database = discover_with_fallback(

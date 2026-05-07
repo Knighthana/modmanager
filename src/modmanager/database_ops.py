@@ -124,7 +124,7 @@ def _scan_from_libraries(
                     "mods_found": mods,
                 }
 
-    games_out = [game_map[k] for k in sorted(game_map.keys())]
+    games_out = sorted(game_map.values(), key=lambda g: int(g['appid']))
     dommods_out = _build_dommod_from_games(games_out)
 
     return {
@@ -479,7 +479,7 @@ def liveupdate_database(
     mods_removed: dict[str, list[str]] = {}
     games_updated: list[str] = []
 
-    for appid in sorted(both_ids):
+    for appid in sorted(both_ids, key=int):
         old_mods = set(str(x) for x in old_games[appid].get("mods_found", []))
         new_mods = set(str(x) for x in new_games[appid].get("mods_found", []))
         add = sorted(new_mods - old_mods)
@@ -494,9 +494,9 @@ def liveupdate_database(
     return {
         "updated_database": updated,
         "changes": {
-            "games_added": sorted(new_ids - old_ids),
-            "games_removed": sorted(old_ids - new_ids),
-            "games_updated": sorted(games_updated),
+            "games_added": sorted(new_ids - old_ids, key=int),
+            "games_removed": sorted(old_ids - new_ids, key=int),
+            "games_updated": sorted(games_updated, key=int),
             "mods_added": mods_added,
             "mods_removed": mods_removed,
         },

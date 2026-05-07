@@ -254,7 +254,7 @@ class SteamScanner:
             if item.is_dir():
                 mods.append(item.name)
         
-        return sorted(mods)
+        return sorted(mods, key=int)
 
     def generate_database(
         self,
