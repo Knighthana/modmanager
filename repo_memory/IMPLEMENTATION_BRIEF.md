@@ -6,6 +6,7 @@
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
+| **P6: 数据源独立选项卡** | **in_progress** | — | 数据源独立页面 + 重复 ID 决策 + persistence 模块 + 后端 manual_only/bugfix |
 | **P5: 手动模式 + Fixture --with-db** | **done** | 338+42 tests | ForestPage 手动模式 radio 切换 + generate_fixture --with-db 一步到位 |
 | **P4: GUI 缺口补齐** | **done** | 338+40 tests | G1 参数持久化 + G2 Rules API + G3 Backup API + pipeline restore 端点 + ForestStore 解耦 |
 | **P3: GUI 增强** | **done** | 322+18 tests 通过 | 全部/仅分岔 + hover 整链高亮 + 点击选枝 |
@@ -133,6 +134,23 @@
 4. 全量测试 + 构建验证
 
 ### 需求来源硬约束（P4）
+1. 新增 `/api/rules/` 和 `/api/backups/` 端点均为**只读**操作，不写入磁盘。
+
+## P6: 数据源独立选项卡（2026-05-07）
+
+### 执行边界
+- 第一阶段（后端）：修复 `discover_with_fallback`（manual_only） + `_scan_from_libraries`（重复检测+warnings）
+- 第二阶段（前端基建）：`persistence.ts` + `scroll.ts` + `useDataSourceStore`
+- 第三阶段（前端页面）：`DataSourcePage.vue` + `ForestPage.vue` 裁切 + 路由
+- 第四阶段（测试）：后端 test_web_api + test_database_ops + 前端
+
+### 关键约束
+1. `generate_database(mode='manual')` 必须仅用指定路径，不再隐式运行 auto discover
+2. 同 appid 跨库时写入 warnings（不静默），前端交互式 radio 决策
+3. persistence 模块接口抽象化（`PersistenceAdapter`），当前 localStorage 实现，预留 Tauri
+4. `scrollintotabitem()` 封装跳转语义
+
+### 需求来源硬约束（P5）
 1. 新增 `/api/rules/` 和 `/api/backups/` 端点均为**只读**操作，不写入磁盘。
 2. 不做路径安全校验（`..` 黑名单等）。安全由操作语义保证（只读 vs 写入）。
 3. `POST /api/rules/scan` 仅列出 `.json` 文件，不递归子目录。

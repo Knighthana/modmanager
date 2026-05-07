@@ -272,6 +272,43 @@ ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamap
 
 ---
 
+## Phase P6: 数据源独立选项卡 🚧
+
+将数据源发现从 ForestPage 拆分为独立页面，加明细展示表、重复 ID 交互式决策、跨 tab 状态暂存。
+
+**设计文档**：`repo_memory/direct/DESIGN_P6_DATASOURCE_TAB.md`
+
+### 后端修复
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| B1 | `discover_with_fallback()` 新增 `manual_only` 参数 | `database_ops.py` | pending |
+| B2 | `_scan_from_libraries()` 检测重复 appid + 返回 warnings | `database_ops.py` | pending |
+| B3 | `generate_database()` 按矩阵传递 `manual_only` | `bootstrap.py` | pending |
+
+### 前端重构
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| F1 | 新建 `utils/persistence.ts` — 抽象存储层 | 前端新文件 | pending |
+| F2 | 新建 `utils/scroll.ts` — `scrollintotabitem()` | 前端新文件 | pending |
+| F3 | 新建 `stores/datasource.ts` — `useDataSourceStore` | 前端新文件 | pending |
+| F4 | 新建 `pages/DataSourcePage.vue` — 扫描+三表+警告+跳转 | 前端新文件 | pending |
+| F5 | ForestPage 移除数据源面板，database 可解锁编辑 | `pages/ForestPage.vue` | pending |
+| F6 | 路由 + 导航加"数据源" | `router/` + `App.vue` | pending |
+| F7 | DataSourceStore → ForestStore 跨 store 传 database | 前端 stores | pending |
+| F8 | `types/` 扩展数据源类型 | `types/index.ts` | pending |
+
+### 测试
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| T1 | `test_web_api.py` 扩展（manual_only + 重复警告） | `tests/` | pending |
+| T2 | `test_database_ops.py` 扩展（重复检测） | `tests/` | pending |
+| T3 | DataSourcePage + store + persistence 单元测试 | `frontend/src/__tests__/` | pending |
+
+---
+
 ## Future（远期）
 
 ### P2: 引擎细节修复 ✅
