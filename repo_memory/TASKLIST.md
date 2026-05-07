@@ -244,7 +244,6 @@
 | TODO-4 | BackupPage GUI 审查 | 界面与当初约定的功能对不上，需整体重审 |
 | TODO-5 | 全局路径显示规范 | 所有 GUI 页面中目录路径显示应以 / 结尾；后端也应统一处理 |
 | TODO-6 | 下游路径门禁未强制执行 | P7 约定「目录路径以 / 结尾」，engine/backup_ops 等核心模块未做合规断言 |
-| TODO-7 | ForestStore 状态刷新丢失 | `storedDatabase`、`pipelineForm` 仅在 Pinia 内存中，刷新丢失；应接入 persistence | ✅ 2026-05-08 |
 | TODO-8 | ConflictsPage branch decisions 刷新丢失 | 用户裁决的分支选择仅在 Pinia 内存中，刷新丢失 |
 | TODO-9 | `onDbPathBlur` 静默失败 | ForestPage 加载 database 文件失败时无用户反馈 |
 | TODO-10 | 空输入校验 | 不能为空的字段需后端先对空传入做正确解析与警告，前端再加空校验 |
