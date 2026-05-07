@@ -63,7 +63,7 @@ class GenerateDatabaseRequest(BaseModel):
 class ComputeRequest(BaseModel):
     """Request body for ``POST /api/pipeline/compute``."""
 
-    database: dict[str, Any]
+    database: Any  # dict[str, Any] | str（database.json 路径，后端自行解析）
     kmm_rule_paths: list[str]
     user_config_path: str
     action_orders: dict[str, int] | None = None
@@ -92,7 +92,7 @@ class ApplyRequest(BaseModel):
 class RunRequest(BaseModel):
     """Request body for ``POST /api/pipeline/run``."""
 
-    database: dict[str, Any]
+    database: Any  # dict[str, Any] | str（database.json 路径，后端自行解析）
     kmm_rule_paths: list[str]
     user_config_path: str
     backup_dir: str | None = None

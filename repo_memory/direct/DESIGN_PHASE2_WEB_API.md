@@ -455,7 +455,7 @@ class GenerateDatabaseRequest(BaseModel):
 
 # ── pipeline ──
 class ComputeRequest(BaseModel):
-    database: dict[str, Any]
+    database: Any              # dict（数据库内容）| str（database.json 路径，后端自行解析）
     kmm_rule_paths: list[str]
     user_config_path: str
     action_orders: dict[str, int] | None = None
@@ -471,7 +471,7 @@ class ApplyRequest(BaseModel):
     dry_run: bool = False
 
 class RunRequest(BaseModel):
-    database: dict[str, Any]
+    database: Any              # dict（数据库内容）| str（database.json 路径，后端自行解析）
     kmm_rule_paths: list[str]
     user_config_path: str
     backup_dir: str

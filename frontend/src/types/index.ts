@@ -40,7 +40,7 @@ export interface ConflictItem {
 }
 
 export interface PipelineParams {
-  database: Record<string, unknown>
+  database: any  // dict（数据库内容）| str（路径，后端自行解析）
   kmm_rule_paths: string[]
   user_config_path: string
   backup_dir: string | null

@@ -36,8 +36,14 @@ async def pipeline_compute(req: ComputeRequest):
     """
 
     def do_work(*, on_progress):
+        db = req.database
+        if isinstance(db, str):
+            from modmanager.path_resolver import resolve_file_path
+            from modmanager.iojson import load_json_file
+            resolved = resolve_file_path(db, 'database.json')
+            db = load_json_file(resolved)
         return orch_compute(
-            database=req.database,
+            database=db,
             kmm_rule_paths=req.kmm_rule_paths,
             user_config_path=req.user_config_path,
             action_orders=req.action_orders,
@@ -195,8 +201,14 @@ async def pipeline_run(req: RunRequest):
     """
 
     def do_work(*, on_progress):
+        db = req.database
+        if isinstance(db, str):
+            from modmanager.path_resolver import resolve_file_path
+            from modmanager.iojson import load_json_file
+            resolved = resolve_file_path(db, 'database.json')
+            db = load_json_file(resolved)
         return orch_run(
-            database=req.database,
+            database=db,
             kmm_rule_paths=req.kmm_rule_paths,
             user_config_path=req.user_config_path,
             backup_dir=req.backup_dir,

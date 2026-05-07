@@ -299,7 +299,7 @@ function prepareParams() {
     .map(s => s.trim())
     .filter(Boolean)
 
-  let database: Record<string, unknown>
+  let database: any
 
   // 优先级 1: Database JSON 非空 → 以此为输入
   if (store.pipelineForm.databaseJson.trim()) {
@@ -309,11 +309,15 @@ function prepareParams() {
       database = {}
     }
   }
-  // 优先级 2: storedDatabase 存在（来自自动传入或手动加载）
-  else if (store.storedDatabase) {
+  // 优先级 2: 自动模式 — storedDatabase 存在（来自自动传入或手动加载）
+  else if (!store.dbManualOverride && store.storedDatabase) {
     database = store.storedDatabase
   }
-  // 优先级 3: 无可用数据
+  // 优先级 3: 手动模式 — 发路径字符串，后端自行 resolve + load
+  else if (store.dbManualOverride && store.pipelineForm.databasePath) {
+    database = store.pipelineForm.databasePath
+  }
+  // 优先级 4: 无可用数据
   else {
     database = {}
   }
