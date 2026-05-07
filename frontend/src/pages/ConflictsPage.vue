@@ -4,7 +4,21 @@
       <h2>冲突裁决</h2>
       <div style="display: flex; gap: 8px;">
         <el-button @click="onClearDecisions">重置决策</el-button>
-        <el-button type="primary" @click="onRecalculate" :disabled="store.isRunning">
+        <el-tooltip
+          v-if="!store.lastSuccessfulParams"
+          content="请先在 Forest 页面执行计算"
+          placement="top"
+        >
+          <el-button type="primary" @click="onRecalculate" :disabled="true">
+            重新计算
+          </el-button>
+        </el-tooltip>
+        <el-button
+          v-else
+          type="primary"
+          @click="onRecalculate"
+          :disabled="store.isRunning"
+        >
           重新计算
         </el-button>
       </div>
@@ -65,15 +79,16 @@ function onClearDecisions() {
 }
 
 async function onRecalculate() {
-  // Re-run pipeline with current decisions
-  // Use the same params that were used before; for now we send a minimal payload
-  // In a full implementation, params would be stored in the store or passed from ForestPage
+  const lastParams = store.lastSuccessfulParams
+  if (!lastParams) return
+
   await store.runPipeline({
-    database: {},
-    kmm_rule_paths: [],
-    user_config_path: '',
-    backup_dir: '',
-    dry_run: true,
+    database: lastParams.database,
+    kmm_rule_paths: lastParams.kmm_rule_paths,
+    user_config_path: lastParams.user_config_path,
+    backup_dir: lastParams.backup_dir,
+    dry_run: lastParams.dry_run,
+    action_orders: lastParams.action_orders,
     branch_decisions: { ...store.branchDecisions },
   })
 }

@@ -70,6 +70,9 @@ export const useForestStore = defineStore('forest', () => {
     cachePath: '/tmp/modmanager_database_generated.json',
   })
 
+  // ── last successful pipeline params (for recalculate) ──
+  const lastSuccessfulParams = ref<PipelineParams | null>(null)
+
   // ── discovery state ──
   const databaseSummary = ref<DatabaseSummary | null>(null)
   const userConfig = ref<Record<string, unknown> | null>(null)
@@ -111,6 +114,10 @@ export const useForestStore = defineStore('forest', () => {
           finalMapping.value = result.data.final_mapping || []
           storedMappingResult.value = result.data.mapping_result
         }
+        // Store params for later recalculate
+        if (result.ok) {
+          lastSuccessfulParams.value = { ...params }
+        }
       },
       onError(msg: string) {
         errors.value.push(msg)
@@ -142,6 +149,10 @@ export const useForestStore = defineStore('forest', () => {
           trees.value = result.data.trees || []
           finalMapping.value = result.data.final_mapping || []
           storedMappingResult.value = result.data.mapping_result
+        }
+        // Store params for later recalculate
+        if (result.ok) {
+          lastSuccessfulParams.value = { ...params }
         }
       },
       onError(msg: string) {
@@ -177,10 +188,7 @@ export const useForestStore = defineStore('forest', () => {
     errors.value = []
     warnings.value = []
     databaseSummary.value = null
-    userConfig.value = null
     storedDatabase.value = null
-
-    let discoverOk = false
 
     await streamSse('/database/generate', params, {
       onProgress(p: SseProgress) {
@@ -195,7 +203,6 @@ export const useForestStore = defineStore('forest', () => {
             games: (result.data.game as unknown[])?.length ?? 0,
             mods: (result.data.dommod as unknown[])?.length ?? 0,
           }
-          discoverOk = true
         } else if (result.errors?.length) {
           errors.value.push(...result.errors)
         }
@@ -205,34 +212,34 @@ export const useForestStore = defineStore('forest', () => {
       },
     })
 
-    // After SSE completes, fetch and save user_config
-    if (discoverOk) {
-      try {
-        const configResp = await apiPost('/config/discover', {})
-        if (configResp.ok && configResp.data) {
-          userConfig.value = configResp.data as Record<string, unknown>
-          await apiPost('/config/save', {
-            config: configResp.data,
-            output_path: '/tmp/modmanager_userconfig_generated.json',
-          })
-        } else {
-          // user_config 不存在 → 创建默认值并保存
-          const defaultConfig = {
-            game_permissions: {},
-            sub_permissions: {},
-          }
-          userConfig.value = defaultConfig
-          await apiPost('/config/save', {
-            config: defaultConfig,
-            output_path: '/tmp/modmanager_userconfig_generated.json',
-          })
-        }
-      } catch {
-        errors.value.push('Failed to discover or save user_config')
-      }
-    }
-
     isRunning.value = false
+  }
+
+  async function loadConfig() {
+    // Independent action: discover + save user_config
+    try {
+      const configResp = await apiPost('/config/discover', {})
+      if (configResp.ok && configResp.data) {
+        userConfig.value = configResp.data as Record<string, unknown>
+        await apiPost('/config/save', {
+          config: configResp.data,
+          output_path: '/tmp/modmanager_userconfig_generated.json',
+        })
+      } else {
+        // user_config 不存在 → 创建默认值并保存
+        const defaultConfig = {
+          game_permissions: {},
+          sub_permissions: {},
+        }
+        userConfig.value = defaultConfig
+        await apiPost('/config/save', {
+          config: defaultConfig,
+          output_path: '/tmp/modmanager_userconfig_generated.json',
+        })
+      }
+    } catch {
+      errors.value.push('Failed to discover or save user_config')
+    }
   }
 
   function setDecision(rootPath: string, source: string) {
@@ -255,6 +262,7 @@ export const useForestStore = defineStore('forest', () => {
     userConfig.value = null
     storedDatabase.value = null
     storedMappingResult.value = null
+    lastSuccessfulParams.value = null
     pipelineForm.value = {
       databasePath: '',
       databaseJson: '',
@@ -282,6 +290,7 @@ export const useForestStore = defineStore('forest', () => {
     userConfig,
     storedDatabase,
     storedMappingResult,
+    lastSuccessfulParams,
     pipelineForm,
     unresolvedCount,
     isClean,
@@ -289,6 +298,7 @@ export const useForestStore = defineStore('forest', () => {
     computeOnly,
     fetchVisualization,
     discoverDatabase,
+    loadConfig,
     setDecision,
     clearDecisions,
     reset,

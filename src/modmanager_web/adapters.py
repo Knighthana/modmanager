@@ -89,6 +89,21 @@ def adapt_dict_result(data: dict) -> dict:
     }
 
 
+def adapt_restore_result(result: dict) -> dict:
+    """Convert the dict returned by ``restore_from_backup()`` into an
+    ``ApiResponse``-shaped dict."""
+    return {
+        "ok": result.get("ok", False),
+        "data": {
+            "restored": result.get("restored", []),
+            "skipped": result.get("skipped", []),
+            "orphans": result.get("orphans", []),
+        },
+        "errors": result.get("errors", []),
+        "warnings": result.get("warnings", []),
+    }
+
+
 def adapt_error(message: str) -> dict:
     """Build an ``ApiResponse``-shaped dict for an error condition."""
     return {

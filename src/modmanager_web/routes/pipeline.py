@@ -1,4 +1,4 @@
-"""Pipeline routes — compute / backup / apply / run.
+"""Pipeline routes — compute / backup / apply / run / restore.
 
 All endpoints return SSE streams with progress updates.
 """
@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from modmanager.backup_dir_builder import build_backup_dir
+from modmanager.backup_ops import restore_from_backup
 from modmanager.iojson import load_json_file
 from modmanager.orchestrator import (
     compute as orch_compute,
@@ -17,8 +18,8 @@ from modmanager.orchestrator import (
     run as orch_run,
 )
 
-from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_dict_result, adapt_error
-from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest
+from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_restore_result, adapt_dict_result, adapt_error
+from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest, RestoreRequest
 from ..sse import stream_with_progress
 
 router = APIRouter()
@@ -150,7 +151,34 @@ async def pipeline_apply(req: ApplyRequest):
         )
 
     return StreamingResponse(
-        stream_with_progress(do_work, result_adapter=adapt_apply_result),
+        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.post("/restore")
+async def pipeline_restore(req: RestoreRequest):
+    """Restore files from a backup directory to their original locations.
+
+    This is the **inverse** of ``apply`` — it copies files from the backup
+    back to their original paths.  It is implemented as a standalone endpoint
+    (not coupled with ``apply``) per DESIGN_P4_GUI_GAP_CLOSURE.md §3.4.
+
+    SSE events:
+      - ``progress`` — per-file restore progress
+      - ``result``   — restore result in ``ApiResponse`` format
+      - ``error``    — exception information
+    """
+
+    def do_work(*, on_progress):
+        return restore_from_backup(
+            backup_dir=req.backup_dir,
+            target_files=req.target_files,
+        )
+
+    return StreamingResponse(
+        stream_with_progress(do_work, result_adapter=adapt_restore_result),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

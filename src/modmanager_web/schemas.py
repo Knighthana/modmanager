@@ -102,3 +102,40 @@ class VisualizeRequest(BaseModel):
     mapping_result: dict[str, Any] | None = None
     format: str = "svg"
     show_m1_details: bool = True
+
+
+# ── Rules endpoints ────────────────────────────────────────────────────────
+
+
+class RulesScanRequest(BaseModel):
+    """Request body for ``POST /api/rules/scan``."""
+
+    dir: str
+
+
+class RulesReadRequest(BaseModel):
+    """Request body for ``POST /api/rules/read``."""
+
+    path: str
+
+
+# ── Backups endpoints ─────────────────────────────────────────────────────
+
+
+class BackupListRequest(BaseModel):
+    """Request body for ``POST /api/backups/list``."""
+
+    dir: str
+
+
+class BackupInspectRequest(BaseModel):
+    """Request body for ``POST /api/backups/inspect``."""
+
+    path: str
+
+
+class RestoreRequest(BaseModel):
+    """Request body for ``POST /api/pipeline/restore``."""
+
+    backup_dir: str
+    target_files: list[str] | None = None

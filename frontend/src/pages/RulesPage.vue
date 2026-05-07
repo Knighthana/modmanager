@@ -27,10 +27,12 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { apiPost } from '../api/client'
 
 interface RuleFile {
   name: string
   path: string
+  size?: number
 }
 
 const form = reactive({
@@ -43,14 +45,29 @@ const selectedFile = ref<RuleFile | null>(null)
 const fileContent = ref('')
 
 async function onScan() {
-  // MVP: placeholder — in future this will call an API endpoint
-  // For now, we show a message indicating this is a placeholder
-  ruleFiles.value = []
+  if (!form.rulesDir.trim()) return
+  const resp = await apiPost('/rules/scan', { dir: form.rulesDir.trim() })
+  if (resp.ok && resp.data) {
+    ruleFiles.value = (resp.data as { files: RuleFile[] }).files || []
+  } else {
+    ruleFiles.value = []
+    // Show error via a simple alert-like approach
+    fileContent.value = resp.errors?.join('\n') || '扫描失败'
+    // Use dialog to show errors too
+    selectedFile.value = null
+  }
 }
 
 async function showContent(row: RuleFile) {
   selectedFile.value = row
-  fileContent.value = '// 内容加载中...\n// MVP: API 端点尚未实现'
+  fileContent.value = '加载中...'
   dialogVisible.value = true
+
+  const resp = await apiPost('/rules/read', { path: row.path })
+  if (resp.ok && resp.data) {
+    fileContent.value = (resp.data as { content: string }).content
+  } else {
+    fileContent.value = resp.errors?.join('\n') || '读取失败'
+  }
 }
 </script>

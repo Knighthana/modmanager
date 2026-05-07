@@ -245,8 +245,13 @@ async function onDiscover() {
   // Auto-populate form on success
   if (store.databaseSummary && !store.errors.length) {
     store.pipelineForm.databasePath = store.pipelineForm.cachePath
-    store.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
     store.pipelineForm.backupDir = generateBackupDir()
+
+    // Also discover + save user_config as a separate step
+    await store.loadConfig()
+    if (store.userConfig) {
+      store.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
+    }
   }
 }
 

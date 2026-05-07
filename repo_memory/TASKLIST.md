@@ -182,6 +182,59 @@
 
 ---
 
+## Phase P4: GUI 缺口补齐 ✅
+
+补齐 Phase 3 前端 GUI 中剩余的 3 个功能缺口。
+
+**设计文档**：`repo_memory/direct/DESIGN_P4_GUI_GAP_CLOSURE.md`
+
+### G1: ConflictsPage 参数持久化
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| G1-01 | ForestStore 新增 `lastSuccessfulParams` 状态 | `stores/forest.ts` | done |
+| G1-02 | `runPipeline()` / `computeOnly()` 成功后写入 | `stores/forest.ts` | done |
+| G1-03 | ConflictsPage `onRecalculate()` 读取存储的参数 | `pages/ConflictsPage.vue` | done |
+| G1-04 | 无参数时"重新计算"按钮 disabled + tooltip | `pages/ConflictsPage.vue` | done |
+| G1-05 | 前端 Vitest 更新（ConflictsPage + store） | `frontend/src/__tests__/` | done |
+
+### G2: RulesPage 后端 API + 前端接入
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| G2-01 | 新增 RulesScanRequest / RulesReadRequest Schema | `schemas.py` | done |
+| G2-02 | 实现 `POST /api/rules/scan` 路由 | `routes/rules.py` | done |
+| G2-03 | 实现 `POST /api/rules/read` 路由 | `routes/rules.py` | done |
+| G2-04 | app.py 注册 rules 路由 | `app.py` | done |
+| G2-05 | routes/rules.py 单元测试 | `tests/test_web_api.py` | done |
+| G2-06 | RulesPage.vue 对接 scan/read API | `pages/RulesPage.vue` | done |
+| G2-07 | 前端 Vitest 更新（RulesPage） | `frontend/src/__tests__/` | done |
+
+### G3: BackupPage 后端 API + 前端接入
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| G3-01 | 新增 BackupListRequest / BackupInspectRequest / RestoreRequest Schema | `schemas.py` | done |
+| G3-02 | 实现 `POST /api/backups/list` 路由 | `routes/backups.py` | done |
+| G3-03 | 实现 `POST /api/backups/inspect` 路由 | `routes/backups.py` | done |
+| G3-04 | 实现 `POST /api/pipeline/restore` 端点（封装 `restore_from_backup` + SSE） | `routes/pipeline.py` | done |
+| G3-05 | app.py 注册 backups 路由 + pipeline restore 端点 | `app.py` | done |
+| G3-06 | routes/backups.py + pipeline restore 端点单元测试 | `tests/test_web_api.py` | done |
+| G3-07 | BackupPage.vue 对接 list/inspect API | `pages/BackupPage.vue` | done |
+| G3-08 | 恢复按钮对接 `POST /api/pipeline/restore`（确认对话框 + SSE 进度） | `pages/BackupPage.vue` | done |
+| G3-09 | 前端 Vitest 更新（BackupPage） | `frontend/src/__tests__/` | done |
+
+### 附：ForestStore 解耦修复
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| B1-01 | 拆分 discoverDatabase() 移除 config 副作用 | `stores/forest.ts` | done |
+| B1-02 | 新增独立 loadConfig() action | `stores/forest.ts` | done |
+| B1-03 | ForestPage 按序调用 discover + loadConfig | `pages/ForestPage.vue` | done |
+| B1-04 | 前端 Vitest 更新（ForestStore + ForestPage） | `frontend/src/__tests__/` | done |
+
+---
+
 ## Future（远期）
 
 ### P2: 引擎细节修复 ✅

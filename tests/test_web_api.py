@@ -436,6 +436,297 @@ class TestSseDisconnect:
         assert "event:" in resp.text
 
 
+# ── Rules API ───────────────────────────────────────────────────────────────
+
+
+class TestRulesApi:
+    """POST /api/rules/scan and POST /api/rules/read."""
+
+    def test_rules_scan_returns_json_files(self, client: TestClient, tmp_path: Path) -> None:
+        """scan lists .json files in a directory."""
+        (tmp_path / "rule_a.json").write_text('{"a": 1}')
+        (tmp_path / "rule_b.json").write_text('{"b": 2}')
+        (tmp_path / "readme.txt").write_text("hello")
+        (tmp_path / "sub").mkdir()
+        (tmp_path / "sub" / "nested.json").write_text("{}")
+
+        resp = client.post("/api/rules/scan", json={"dir": str(tmp_path)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        names = [f["name"] for f in body["data"]["files"]]
+        assert "rule_a.json" in names
+        assert "rule_b.json" in names
+        assert "readme.txt" not in names  # not .json
+        assert "nested.json" not in names  # in subdirectory (non-recursive)
+
+    def test_rules_scan_dir_not_found(self, client: TestClient) -> None:
+        """scan returns error for non-existent directory."""
+        resp = client.post("/api/rules/scan", json={"dir": "/nonexistent_dir_xyz"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("not found" in e for e in body["errors"])
+
+    def test_rules_scan_not_a_directory(self, client: TestClient, tmp_path: Path) -> None:
+        """scan returns error when path is a file, not directory."""
+        f = tmp_path / "afile.txt"
+        f.write_text("data")
+        resp = client.post("/api/rules/scan", json={"dir": str(f)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("not a directory" in e for e in body["errors"])
+
+    def test_rules_scan_empty_dir(self, client: TestClient, tmp_path: Path) -> None:
+        """scan returns empty list for directory with no .json files."""
+        (tmp_path / "readme.txt").write_text("data")
+        resp = client.post("/api/rules/scan", json={"dir": str(tmp_path)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["files"] == []
+
+    def test_rules_read_returns_content(self, client: TestClient, tmp_path: Path) -> None:
+        """read returns raw text content of a file."""
+        f = tmp_path / "test_rule.json"
+        f.write_text('{"key": "value"}', encoding="utf-8")
+        resp = client.post("/api/rules/read", json={"path": str(f)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["content"] == '{"key": "value"}'
+        assert body["data"]["name"] == "test_rule.json"
+
+    def test_rules_read_file_not_found(self, client: TestClient) -> None:
+        """read returns error for non-existent file."""
+        resp = client.post("/api/rules/read", json={"path": "/nonexistent_file_xyz.json"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("not found" in e for e in body["errors"])
+
+    def test_rules_read_not_a_file(self, client: TestClient, tmp_path: Path) -> None:
+        """read returns error when path is a directory."""
+        resp = client.post("/api/rules/read", json={"path": str(tmp_path)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("not a file" in e for e in body["errors"])
+
+
+# ── Backups API ─────────────────────────────────────────────────────────────
+
+
+class TestBackupsListApi:
+    """POST /api/backups/list"""
+
+    def test_backups_list_returns_kmmbackup_dirs(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        """list returns directories with kmmbackup_ prefix."""
+        d1 = tmp_path / "kmmbackup_001"
+        d1.mkdir()
+        (d1 / "backupinfo.json").write_text("{}")
+        (d1 / "somefile.txt").write_text("data")
+
+        d2 = tmp_path / "kmmbackup_002"
+        d2.mkdir()
+        (d2 / "file.bin").write_text("binary")
+
+        # This one should NOT appear
+        (tmp_path / "other_dir").mkdir()
+
+        resp = client.post("/api/backups/list", json={"dir": str(tmp_path)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        names = [b["name"] for b in body["data"]["backups"]]
+        assert "kmmbackup_001" in names
+        assert "kmmbackup_002" in names
+        assert "other_dir" not in names
+
+    def test_backups_list_dir_not_found(self, client: TestClient) -> None:
+        """list returns error for non-existent directory."""
+        resp = client.post("/api/backups/list", json={"dir": "/nonexistent_bak_xyz"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("not found" in e for e in body["errors"])
+
+    def test_backups_list_empty(self, client: TestClient, tmp_path: Path) -> None:
+        """list returns empty array when no kmmbackup_* directories exist."""
+        (tmp_path / "some_dir").mkdir()
+        resp = client.post("/api/backups/list", json={"dir": str(tmp_path)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["backups"] == []
+
+
+class TestBackupsInspectApi:
+    """POST /api/backups/inspect"""
+
+    def test_backups_inspect_returns_info(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        """inspect returns backup details for a valid backup directory."""
+        backup_dir = tmp_path / "kmmbackup_test"
+        backup_dir.mkdir()
+
+        # Create a minimal backupinfo.json
+        info = {
+            "filefoldertree_status": "ready",
+            "filefoldertree": {
+                "name": "kmmbackup_test",
+                "type": "folder",
+                "children": [
+                    {
+                        "name": "mnt",
+                        "type": "folder",
+                        "children": [
+                            {
+                                "name": "d",
+                                "type": "folder",
+                                "children": [
+                                    {
+                                        "name": "test.txt",
+                                        "type": "file",
+                                        "hashvalue": "abc123",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+        (backup_dir / "backupinfo.json").write_text(json.dumps(info))
+        # Also create the actual file so it's counted
+        actual = backup_dir / "mnt" / "d" / "test.txt"
+        actual.parent.mkdir(parents=True)
+        actual.write_text("hello")
+
+        resp = client.post("/api/backups/inspect", json={"path": str(backup_dir)})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["file_count"] >= 1
+        assert body["data"]["dirty"]["dirty"] is False
+        assert "path" in body["data"]
+
+    def test_backups_inspect_dir_not_found(self, client: TestClient) -> None:
+        """inspect returns error for non-existent directory."""
+        resp = client.post("/api/backups/inspect", json={"path": "/nonexistent_bak_xyz"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("not found" in e for e in body["errors"])
+
+
+# ── Pipeline /restore ───────────────────────────────────────────────────────
+
+
+class TestPipelineRestore:
+    """POST /api/pipeline/restore — SSE stream"""
+
+    def test_restore_sse_stream(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SSE stream returns progress + result for restore."""
+
+        def fake_restore(**kwargs):
+            return {
+                "ok": True,
+                "restored": ["/mnt/d/test.txt"],
+                "skipped": [],
+                "errors": [],
+                "orphans": [],
+                "warnings": [],
+            }
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.restore_from_backup", fake_restore
+        )
+
+        resp = client.post(
+            "/api/pipeline/restore",
+            json={"backup_dir": "/fake/backups", "target_files": None},
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/event-stream")
+
+        lines = resp.text.split("\n")
+        events = _parse_sse_lines(lines)
+
+        result_events = [e for e in events if e["event"] == "result"]
+        assert len(result_events) == 1
+        assert result_events[0]["data"]["ok"] is True
+        assert result_events[0]["data"]["data"]["restored"] == ["/mnt/d/test.txt"]
+
+    def test_restore_sse_error(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SSE stream returns error event when restore raises."""
+
+        def fake_restore(**kwargs):
+            raise ValueError("backup gate failed")
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.restore_from_backup", fake_restore
+        )
+
+        resp = client.post(
+            "/api/pipeline/restore",
+            json={"backup_dir": "/fake/bad_backup"},
+        )
+        assert resp.status_code == 200
+        lines = resp.text.split("\n")
+        events = _parse_sse_lines(lines)
+
+        error_events = [e for e in events if e["event"] == "error"]
+        assert len(error_events) == 1
+        assert error_events[0]["data"]["ok"] is False
+
+
+# ── Adapter unit tests (extended) ────────────────────────────────────────────
+
+
+class TestAdaptersExtended:
+    """Additional adapter tests for new endpoints."""
+
+    def test_adapt_restore_result_ok(self) -> None:
+        from modmanager_web.adapters import adapt_restore_result
+
+        raw = {
+            "ok": True,
+            "restored": ["/a.txt"],
+            "skipped": [],
+            "orphans": [],
+            "errors": [],
+            "warnings": [],
+        }
+        result = adapt_restore_result(raw)
+        assert result["ok"] is True
+        assert result["data"]["restored"] == ["/a.txt"]
+        assert result["errors"] == []
+
+    def test_adapt_restore_result_fail(self) -> None:
+        from modmanager_web.adapters import adapt_restore_result
+
+        raw = {
+            "ok": False,
+            "restored": [],
+            "skipped": [],
+            "orphans": [],
+            "errors": ["E_BACKUP_DIR_MISSING"],
+            "warnings": [],
+        }
+        result = adapt_restore_result(raw)
+        assert result["ok"] is False
+        assert "E_BACKUP_DIR_MISSING" in result["errors"]
+
+
 # ── Helper ────────────────────────────────────────────────────────────────
 
 

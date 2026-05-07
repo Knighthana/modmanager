@@ -2,10 +2,11 @@
 
 ## Status Board
 
-更新时间：2026-05-06
+更新时间：2026-05-07
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
+| **P4: GUI 缺口补齐** | **done** | 338+40 tests | G1 参数持久化 + G2 Rules API + G3 Backup API + pipeline restore 端点 + ForestStore 解耦 |
 | **P3: GUI 增强** | **done** | 322+18 tests 通过 | 全部/仅分岔 + hover 整链高亮 + 点击选枝 |
 | **P2: 引擎细节修复** | **done** | 320 tests 通过 | delete→create warning + 术语统一 |
 | **P1: Backup 实现** | **done** | 319 tests 通过 | backup_dir_builder + 循环防护 + .kmmbakignore |
@@ -115,6 +116,29 @@
 1. 视发布需求决定是否补齐 game CRUD CLI 对外命令。
 2. 增加一条 CLI `--out` 文件真实 I/O 集成用例（liveupdate/regen）。
 3. 若对外发布，补 CLI 用户文档（最小示例 + 错误码说明）。
+
+## P4: GUI 缺口补齐（2026-05-07）
+
+### 执行边界
+- 第一阶段（后端）：新增 `routes/rules.py` + `routes/backups.py`，扩展 `schemas.py`，扩展 `pipeline.py` 新增 `POST /api/pipeline/restore` 端点，注册路由
+- 第二阶段（前端）：修改 RulesPage / BackupPage / ConflictsPage，修复 ForestStore 耦合
+- 第三阶段（测试）：更新 Python test_web_api + 前端 Vitest
+- 禁止修改 pipeline 核心逻辑（compute / backup / apply / run）
+
+### 执行顺序
+1. G2 + G3 后端 API 先做（后端新增不影响现有功能）
+2. B1 ForestStore 解耦（前端 store 重构，影响较小）
+3. G1 + G2 + G3 前端对接（最后补前端逻辑）
+4. 全量测试 + 构建验证
+
+### 需求来源硬约束（P4）
+1. 新增 `/api/rules/` 和 `/api/backups/` 端点均为**只读**操作，不写入磁盘。
+2. 不做路径安全校验（`..` 黑名单等）。安全由操作语义保证（只读 vs 写入）。
+3. `POST /api/rules/scan` 仅列出 `.json` 文件，不递归子目录。
+4. `POST /api/backups/list` 仅扫描以 `kmmbackup_` 为前缀的目录。
+5. `POST /api/rules/read` 返回原始文本，不做 JSON 解析。
+6. `POST /api/pipeline/restore` 是独立端点，封装 `restore_from_backup()`，**不与** `apply` 耦合。
+7. ForestStore 的 `discoverDatabase()` 移除 config discover+save 副作用，拆分为独立 action。
 
 ## 新增阶段策略（2026-04-22）
 1. 今天不改 M1：近期演示阶段优先保持 M1 稳定。
