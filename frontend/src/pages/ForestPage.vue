@@ -11,15 +11,15 @@
         <el-form-item label="Database 路径">
           <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
             <el-input
-              v-model="store.pipelineForm.databasePath"
+              v-model="dbPathDisplay"
               :placeholder="store.dbManualOverride ? '输入 database.json 路径' : ''"
               :disabled="!store.dbManualOverride"
               style="flex: 1;"
               :ref="(el: any) => dbInputRef = el"
             >
               <template v-if="!store.dbManualOverride" #suffix>
-                <span style="color: var(--el-text-color-secondary); font-size: 12px; white-space: nowrap;">
-                  (从数据源页面自动传入)&nbsp;🔒
+                <span style="color: var(--el-text-color-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  🔒 {{ dbPathDisplay }} (从数据源页面自动传入)
                 </span>
               </template>
             </el-input>
@@ -35,14 +35,14 @@
               </div>
             </el-popover>
 
-            <!-- 手动填写按钮 -->
+            <!-- 手动填写/使用自动按钮 -->
             <el-button
               type="primary"
               size="default"
               style="flex-shrink: 0;"
               @click="onDbManualOverride"
             >
-              手动填写
+              {{ store.dbManualOverride ? '使用自动' : '手动填写' }}
             </el-button>
           </div>
         </el-form-item>
@@ -50,8 +50,7 @@
           <el-input
             v-model="store.pipelineForm.databaseJson"
             type="textarea"
-            :rows="3"
-            :disabled="!store.dbManualOverride"
+            :rows="7"
             placeholder='{
   &quot;comment&quot;: {
     &quot;string1&quot;: &quot;留空使用上方路径中的文件，否则将会使用本栏中的任何输入作为database的输入来源&quot;
@@ -216,6 +215,15 @@ const store = useForestStore()
 
 const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
 
+// Database path display: when storedDatabase exists (from data source page), show 'frontend storage';
+// otherwise show the manual path or empty.
+const dbPathDisplay = computed(() => {
+  if (store.storedDatabase) {
+    return 'frontend storage'
+  }
+  return store.pipelineForm.databasePath || ''
+})
+
 // 展示模式切换：仅显示分枝（pending）树
 const showBranchingOnly = ref(false)
 
@@ -237,14 +245,8 @@ function onDbManualOverride() {
       }
     });
   } else {
-    // 已解锁：全选文字
-    const input = dbInputRef.value;
-    if (input) {
-      const nativeInput = input.$el?.querySelector('input') || input.$el;
-      if (nativeInput) {
-        nativeInput.select();
-      }
-    }
+    // 重新锁定：input 内容自动恢复为 dbPathDisplay computed
+    store.dbManualOverride = false;
   }
 }
 
