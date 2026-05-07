@@ -213,14 +213,24 @@ const store = useForestStore()
 
 const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
 
-// Database path display: when storedDatabase exists (from data source page), show 'frontend storage';
-// otherwise show the manual path or empty.
-const dbPathDisplay = computed(() => {
-    const base = store.storedDatabase 
-        ? 'Frontend Storage' 
-        : (store.pipelineForm.databasePath || '');
-    if (!base) return '';
-    return `${base} (从数据源页面自动传入)`;
+// Database path display: when locked (dbManualOverride=false), show augmented text;
+// when unlocked (dbManualOverride=true), show pure path and allow write.
+const dbPathDisplay = computed({
+    get(): string {
+        // 锁定状态：显示带后缀的完整文字
+        if (!store.dbManualOverride) {
+            const base = store.storedDatabase 
+                ? 'Frontend Storage' 
+                : (store.pipelineForm.databasePath || '');
+            if (!base) return '';
+            return `${base} (从数据源页面自动传入)`;
+        }
+        // 解锁状态：仅显示路径
+        return store.pipelineForm.databasePath || '';
+    },
+    set(value: string) {
+        store.pipelineForm.databasePath = value;
+    }
 })
 
 // 展示模式切换：仅显示分枝（pending）树
