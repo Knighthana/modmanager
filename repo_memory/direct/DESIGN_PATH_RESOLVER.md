@@ -74,6 +74,8 @@ config_path = resolve_file_path(user_input, 'user_config.json')
 
 `input_str` 先规范化（`normalize_posix` + `rstrip('/')`）。
 
+所有路径在解析前先调用 `_expand_path()` 展开 `~`、`$HOME`（Linux）和 `%appdata%` 等环境变量（Windows）。
+
 | input_str 规范化后 | 试探顺序 |
 |-------------------|---------|
 | `/path/to/<dirname>` | ① `/path/to/<dirname>/` 是否存在 → 存在则返回<br>② `/path/to/<dirname>/<dirname>/` 是否存在 → 存在则返回<br>③ 报错 |
