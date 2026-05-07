@@ -8,7 +8,7 @@ from typing import Any
 
 import jsonschema
 
-_SCHEMA_PATH = Path(__file__).with_name("output_schema.json")
+_SCHEMA_PATH = Path(__file__).parent.parent.parent / "repo_spec" / "mapping_output.schema.json"
 
 # Module-level cache – loaded once.
 _SCHEMA: dict[str, Any] | None = None

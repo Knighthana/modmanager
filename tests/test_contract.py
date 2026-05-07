@@ -52,7 +52,7 @@ class SchemaLoadTests(unittest.TestCase):
     def test_schema_change_request_enum_matches_engine(self) -> None:
         from modmanager.engine import VALID_ACTIONS
         schema = get_output_schema()
-        schema_enum = set(schema["definitions"]["ChangeRequest"]["properties"]["action"]["enum"])
+        schema_enum = set(schema["$defs"]["ChangeRequest"]["properties"]["action"]["enum"])
         self.assertSetEqual(schema_enum, VALID_ACTIONS)
 
     def test_validate_output_rejects_missing_keys(self) -> None:

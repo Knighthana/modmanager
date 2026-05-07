@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BackupInfo",
+  "description": "Schema for backupinfo.json — the file/folder tree with backup status and hash metadata.",
+  "type": "object",
+  "required": [
+    "filefoldertree_status",
+    "filefoldertree"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "filefoldertree_status": {
+      "type": "string",
+      "enum": ["ready", "error"],
+      "description": "'ready' once the tree has been built; 'error' while construction is in progress or failed."
+    },
+    "filefoldertree": {
+      "$ref": "#/$defs/FileFolderNode",
+      "description": "Root of the recursive file/folder tree. Tree structure is frozen after creation; only file node attributes isbackuped, hashtype, hashvalue are mutable one-way."
+    }
+  },
+  "$defs": {
+    "FileFolderNode": {
+      "description": "A node in the file/folder tree. Must be either a folder or a file.",
+      "oneOf": [
+        { "$ref": "#/$defs/FolderNode" },
+        { "$ref": "#/$defs/FileNode" }
+      ]
+    },
+    "FolderNode": {
+      "type": "object",
+      "required": ["name", "type", "children"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "const": "folder"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FileFolderNode"
+          }
+        }
+      }
+    },
+    "FileNode": {
+      "type": "object",
+      "required": ["name", "type", "isbackuped", "hashtype", "hashvalue"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "const": "file"
+        },
+        "isbackuped": {
+          "type": "boolean",
+          "description": "Whether this file has been backed up. May transition false→true once."
+        },
+        "hashtype": {
+          "type": "string",
+          "description": "Hash algorithm identifier (e.g. 'sha256'). May transition 'invalid'→<algorithm> once."
+        },
+        "hashvalue": {
+          "type": "string",
+          "description": "Hex digest of the file. May transition '0'→<hex> once."
+        }
+      }
+    }
+  }
+}

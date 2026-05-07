@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ComputeMappingOutput",
   "description": "Schema for the dict returned by modmanager_cli.engine.compute_mapping().",
   "type": "object",
@@ -7,27 +7,27 @@
   "additionalProperties": false,
   "properties": {
     "warnings": {
-      "description": "Non-fatal diagnostic messages.  Each string begins with a W_ code.",
+      "description": "Non-fatal diagnostic messages. Each string begins with a W_ code.",
       "type": "array",
-      "items": {"type": "string"}
+      "items": { "type": "string" }
     },
     "errors": {
-      "description": "Fatal diagnostic messages.  Each string begins with an E_ code.  When non-empty, final_mapping MUST be empty.",
+      "description": "Fatal diagnostic messages. Each string begins with an E_ code. When non-empty, final_mapping MUST be empty.",
       "type": "array",
-      "items": {"type": "string"}
+      "items": { "type": "string" }
     },
     "trees": {
-      "description": "Forest trees.  Each tree represents a root path with its change-requests, refs, and resolved state.  Always present, even when errors exist.",
+      "description": "Forest trees. Each tree represents a root path with its change-requests, refs, and resolved state. Always present, even when errors exist.",
       "type": "array",
-      "items": {"$ref": "#/definitions/TreeNode"}
+      "items": { "$ref": "#/$defs/TreeNode" }
     },
     "final_mapping": {
-      "description": "Resolved one-to-one file mappings.  Empty when errors is non-empty or any branch is unresolved.",
+      "description": "Resolved one-to-one file mappings. Empty when errors is non-empty or any branch is unresolved.",
       "type": "array",
-      "items": {"$ref": "#/definitions/FinalMappingEntry"}
+      "items": { "$ref": "#/$defs/FinalMappingEntry" }
     }
   },
-  "definitions": {
+  "$defs": {
     "ChangeRequest": {
       "description": "A single source-to-destination file operation.",
       "type": "object",
@@ -61,7 +61,7 @@
           "pattern": "^[^:]+:.+$"
         },
         "hashtype": {
-          "description": "Hash algorithm identifier (e.g. 'sha256').  'invalid' means not yet computed.",
+          "description": "Hash algorithm identifier (e.g. 'sha256'). 'invalid' means not yet computed.",
           "type": "string"
         },
         "hashvalue": {
@@ -71,7 +71,7 @@
       }
     },
     "TreeNode": {
-      "description": "A tree in the forest.  Each tree represents a root path with its change-requests, refs, and resolved state.",
+      "description": "A tree in the forest. Each tree represents a root path with its change-requests, refs, and resolved state.",
       "type": "object",
       "required": ["root_path", "destin_mixed_id", "changerequest", "refs", "resolved_state"],
       "additionalProperties": false,
@@ -88,12 +88,12 @@
         "changerequest": {
           "description": "List of change-requests targeting this tree root.",
           "type": "array",
-          "items": {"$ref": "#/definitions/ChangeRequest"}
+          "items": { "$ref": "#/$defs/ChangeRequest" }
         },
         "refs": {
           "description": "Root paths of other trees that this tree references.",
           "type": "array",
-          "items": {"type": "string"}
+          "items": { "type": "string" }
         },
         "resolved_state": {
           "description": "Resolution state of this tree: pending | kept | deleted | failed | skipped.",
@@ -106,9 +106,9 @@
           "enum": ["W_FOREST_BRANCHING"]
         },
         "candidates": {
-          "description": "Source paths of all changerequest candidates.  Present only when warning is set.",
+          "description": "Source paths of all changerequest candidates. Present only when warning is set.",
           "type": "array",
-          "items": {"type": "string"}
+          "items": { "type": "string" }
         }
       }
     },
@@ -125,8 +125,8 @@
         "request": {
           "description": "The winning change-request, or null when the target has no source (vacuous node).",
           "oneOf": [
-            {"$ref": "#/definitions/ChangeRequest"},
-            {"type": "null"}
+            { "$ref": "#/$defs/ChangeRequest" },
+            { "type": "null" }
           ]
         }
       }

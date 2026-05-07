@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Database",
+  "description": "Schema for database.json — system-discovered mod, game, and Steam library data.",
+  "type": "object",
+  "required": [
+    "OS",
+    "steamlib",
+    "game",
+    "dommod"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "OS": {
+      "$ref": "#/$defs/OS"
+    },
+    "steamlib": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SteamLib"
+      }
+    },
+    "game": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Game"
+      }
+    },
+    "dommod": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DomMod"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "history": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "UI state container; structure is intentionally loose and evolves with the GUI."
+    }
+  },
+  "$defs": {
+    "OS": {
+      "type": "object",
+      "required": [
+        "workingpathstyle",
+        "steamlibpathstyle"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "workingpathstyle": {
+          "type": "string",
+          "enum": ["linux", "windows"]
+        },
+        "steamlibpathstyle": {
+          "type": "string",
+          "enum": ["linux", "windows"]
+        }
+      }
+    },
+    "SteamLib": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute path to the steamapps directory."
+        },
+        "contains_libraryfolders_vdf": {
+          "type": "boolean",
+          "description": "True when this steamapps path contains the master libraryfolders.vdf for discovery."
+        },
+        "game": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of appid strings installed in this library."
+        }
+      }
+    },
+    "Game": {
+      "type": "object",
+      "required": [
+        "appid",
+        "name",
+        "basepath",
+        "modpath",
+        "mods_found"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "appid": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "basepath": {
+          "type": "string",
+          "pattern": "/$",
+          "description": "Game install base path; MUST end with a forward slash."
+        },
+        "modpath": {
+          "type": "string",
+          "pattern": "/$",
+          "description": "Workshop mod content path; MUST end with a forward slash."
+        },
+        "mods_found": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of modid/contentid strings discovered for this game."
+        }
+      }
+    },
+    "DomMod": {
+      "type": "object",
+      "required": [
+        "mixed_id",
+        "path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mixed_id": {
+          "type": "string",
+          "pattern": "^[^:]+:.+$",
+          "description": "Colon-separated appid:modid composite identifier."
+        },
+        "path": {
+          "type": "string",
+          "pattern": "/$",
+          "description": "Absolute path to the mod directory; MUST end with a forward slash."
+        },
+        "localdate": {
+          "type": "integer",
+          "description": "Unix timestamp of the mod's last local update."
+        }
+      }
+    }
+  }
+}

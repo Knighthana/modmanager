@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AggregatedRuleSet",
+  "description": "Schema for aggregated_rule_set.json — the post-aggregation rule set consumed by the M1 engine.",
+  "type": "object",
+  "required": [
+    "schema_namespace",
+    "schema_version",
+    "operation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_namespace": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "file_example_URL": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Operation"
+      }
+    }
+  },
+  "$defs": {
+    "Operation": {
+      "type": "object",
+      "required": [
+        "mixed_id",
+        "actionlist"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mixed_id": {
+          "type": "string",
+          "pattern": "^[^:]+:.+$",
+          "description": "Colon-separated appid:modid composite identifier."
+        },
+        "nickname": {
+          "type": "string",
+          "description": "Human-readable short name for this mod."
+        },
+        "preview": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Preview image paths relative to the mod root."
+        },
+        "readme": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Readme/documentation file paths relative to the mod root."
+        },
+        "actionlist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        }
+      }
+    },
+    "Action": {
+      "type": "object",
+      "required": [
+        "action",
+        "destin"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["replace", "create", "delete"],
+          "description": "File operation semantics. 'hold' is filtered out by the aggregator and MUST NOT appear here."
+        },
+        "destin": {
+          "type": "string",
+          "description": "Target mod's mixed_id for this action."
+        },
+        "from": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Source paths (relative to the mod's root). Each entry ends with '/' when from_type is 'path'."
+        },
+        "from_type": {
+          "type": "string",
+          "enum": ["file", "path"],
+          "description": "'file' when from entries are file paths; 'path' when they are directory paths."
+        },
+        "into": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Destination paths (relative to the destin mod's root). Each entry ends with '/' when into_type is 'path'."
+        },
+        "into_type": {
+          "type": "string",
+          "enum": ["file", "path"],
+          "description": "'file' when into entries are file paths; 'path' when they are directory paths."
+        },
+        "action_order": {
+          "type": "integer",
+          "description": "Runtime-injected execution ordering hint. Defaults to 0 when missing or unreliable."
+        },
+        "provenance_ref": {
+          "type": "string",
+          "description": "Absolute path of the kmm_rule source file that contributed this action."
+        },
+        "sidecar_ref": {
+          "type": "string",
+          "description": "Sidecar reference for external extension data. Defaults to '404' when missing."
+        }
+      },
+      "allOf": [
+        {
+          "description": "replace/create MUST have from, from_type, into, into_type.",
+          "if": {
+            "properties": { "action": { "enum": ["replace", "create"] } },
+            "required": ["action"]
+          },
+          "then": {
+            "required": ["from", "from_type", "into", "into_type"]
+          }
+        },
+        {
+          "description": "delete MUST have into, into_type.",
+          "if": {
+            "properties": { "action": { "const": "delete" } },
+            "required": ["action"]
+          },
+          "then": {
+            "required": ["into", "into_type"]
+          }
+        },
+        {
+          "description": "When from_type is 'path', each from entry MUST end with '/'.",
+          "if": {
+            "properties": { "from_type": { "const": "path" } },
+            "required": ["from_type"]
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "type": "array",
+                "items": { "type": "string", "pattern": "/$" }
+              }
+            }
+          }
+        },
+        {
+          "description": "When into_type is 'path', each into entry MUST end with '/'.",
+          "if": {
+            "properties": { "into_type": { "const": "path" } },
+            "required": ["into_type"]
+          },
+          "then": {
+            "properties": {
+              "into": {
+                "type": "array",
+                "items": { "type": "string", "pattern": "/$" }
+              }
+            }
+          }
+        },
+        {
+          "description": "When into_type is 'file', from_type MUST be 'file'.",
+          "if": {
+            "properties": { "into_type": { "const": "file" } },
+            "required": ["into_type"]
+          },
+          "then": {
+            "properties": { "from_type": { "const": "file" } },
+            "required": ["from_type"]
+          }
+        }
+      ]
+    }
+  }
+}

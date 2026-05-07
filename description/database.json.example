@@ -100,9 +100,6 @@
     },
     "ui": {
       "locale": "zh_CN"
-    },
-    "layout": {
-      "games_panel_ratio": 0.33
     }
   }
 }
