@@ -2,20 +2,6 @@
   <div>
     <h2>Forest 可视化</h2>
 
-    <!-- Pipeline 参数提示 -->
-    <el-alert
-      title="数据源"
-      type="info"
-      :closable="false"
-      show-icon
-      style="margin-bottom: 16px;"
-    >
-      <template #default>
-        数据源已在 <router-link to="/data-source">📡 数据源</router-link> 页面中配置。
-        若已从数据源页应用，数据库将自动传入；否则可在此手动填写。
-      </template>
-    </el-alert>
-
     <!-- PipelineForm -->
     <el-card shadow="never" style="margin-bottom: 16px;">
       <template #header>
@@ -23,29 +9,56 @@
       </template>
       <el-form :model="store.pipelineForm" label-width="140px">
         <el-form-item label="Database 路径">
-          <el-input
-            v-model="store.pipelineForm.databasePath"
-            placeholder="从数据源页面自动传入"
-            :disabled="!dbManualOverride"
-          >
-            <template #append>
-              <el-button @click="store.pipelineForm.databasePath = ''; store.pipelineForm.databaseJson = ''">清除</el-button>
-              <el-button :type="dbManualOverride ? 'warning' : 'info'" @click="toggleDbManual">
-                {{ dbManualOverride ? '🔒 锁定' : '🔓 手动填写' }}
-              </el-button>
-            </template>
-          </el-input>
-          <div v-if="dbManualOverride" style="font-size:12px;color:var(--el-color-danger);margin-top:4px;">
-            ⚠️ 此项不应由初级用户进行手动操作
+          <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+            <el-input
+              v-model="store.pipelineForm.databasePath"
+              :placeholder="store.dbManualOverride ? '输入 database.json 路径' : ''"
+              :disabled="!store.dbManualOverride"
+              style="flex: 1;"
+              :ref="(el: any) => dbInputRef = el"
+            >
+              <template v-if="!store.dbManualOverride" #suffix>
+                <span style="color: var(--el-text-color-secondary); font-size: 12px; white-space: nowrap;">
+                  (从数据源页面自动传入)&nbsp;🔒
+                </span>
+              </template>
+            </el-input>
+
+            <!-- ℹ️ 信息气泡 -->
+            <el-popover placement="top" :width="320" trigger="click">
+              <template #reference>
+                <span style="cursor: pointer; font-size: 16px; color: var(--el-color-info); flex-shrink: 0;">ℹ️</span>
+              </template>
+              <div style="font-size: 13px; line-height: 1.6;">
+                数据源已在 <router-link to="/data-source">📡 数据源</router-link> 页面中配置。<br/>
+                若已从数据源页应用，数据库将自动传入；否则可在此手动填写。
+              </div>
+            </el-popover>
+
+            <!-- 手动填写按钮 -->
+            <el-button
+              type="primary"
+              size="default"
+              style="flex-shrink: 0;"
+              @click="onDbManualOverride"
+            >
+              手动填写
+            </el-button>
           </div>
         </el-form-item>
-        <el-form-item label="Database JSON (手动)">
+        <el-form-item label="Database JSON">
           <el-input
             v-model="store.pipelineForm.databaseJson"
             type="textarea"
             :rows="3"
-            placeholder='{"steamlib": [...], ...}'
-            :disabled="!!store.pipelineForm.databasePath"
+            :disabled="!store.dbManualOverride"
+            placeholder='{
+  &quot;comment&quot;: {
+    &quot;string1&quot;: &quot;留空使用上方路径中的文件，否则将会使用本栏中的任何输入作为database的输入来源&quot;
+  },
+  &quot;steamlib&quot;: [...],
+  ...
+}'
           />
         </el-form-item>
         <el-form-item label="Rules paths">
@@ -194,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useForestStore, generateBackupDir } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 import type { TreeNode } from '../types'
@@ -207,10 +220,32 @@ const hasResult = computed(() => store.trees.length > 0 || store.errors.length >
 const showBranchingOnly = ref(false)
 
 // Database path manual override
-const dbManualOverride = ref(false)
+const dbInputRef = ref<any>(null)
 
-function toggleDbManual() {
-  dbManualOverride.value = !dbManualOverride.value
+function onDbManualOverride() {
+  if (!store.dbManualOverride) {
+    // 解锁：启用输入 + 自动全选文字
+    store.dbManualOverride = true;
+    nextTick(() => {
+      const input = dbInputRef.value;
+      if (input) {
+        // el-input 的 ref 获取内部 input 元素
+        const nativeInput = input.$el?.querySelector('input') || input.$el;
+        if (nativeInput) {
+          nativeInput.select();
+        }
+      }
+    });
+  } else {
+    // 已解锁：全选文字
+    const input = dbInputRef.value;
+    if (input) {
+      const nativeInput = input.$el?.querySelector('input') || input.$el;
+      if (nativeInput) {
+        nativeInput.select();
+      }
+    }
+  }
 }
 
 function getFilteredTrees(): TreeNode[] {

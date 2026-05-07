@@ -332,6 +332,7 @@ function applyAndGoToForest() {
     forestStore.storedDatabase = store.lastResult
     forestStore.pipelineForm.manualSteamPath = store.manualPath
     forestStore.pipelineForm.databasePath = ''
+    forestStore.dbManualOverride = false // 重新锁定
   }
   router.push('/forest')
 }

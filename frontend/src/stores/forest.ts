@@ -67,6 +67,9 @@ export const useForestStore = defineStore('forest', () => {
   // ── last successful pipeline params (for recalculate) ──
   const lastSuccessfulParams = ref<PipelineParams | null>(null)
 
+  // ── manual override state ──
+  const dbManualOverride = ref(false)
+
   // ── discovery state ──
   const databaseSummary = ref<DatabaseSummary | null>(null)
   const userConfig = ref<Record<string, unknown> | null>(null)
@@ -267,6 +270,7 @@ export const useForestStore = defineStore('forest', () => {
     storedDatabase.value = null
     storedMappingResult.value = null
     lastSuccessfulParams.value = null
+    dbManualOverride.value = false
     pipelineForm.value = {
       databasePath: '',
       databaseJson: '',
@@ -296,6 +300,7 @@ export const useForestStore = defineStore('forest', () => {
     userConfig,
     storedDatabase,
     storedMappingResult,
+    dbManualOverride,
     lastSuccessfulParams,
     pipelineForm,
     unresolvedCount,
