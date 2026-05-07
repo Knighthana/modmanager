@@ -24,15 +24,10 @@
             </el-input>
 
             <!-- ℹ️ 信息气泡 -->
-            <el-popover placement="top" :width="320" trigger="click">
-              <template #reference>
-                <span style="cursor: pointer; font-size: 16px; color: var(--el-color-info); flex-shrink: 0;">ℹ️</span>
-              </template>
-              <div style="font-size: 13px; line-height: 1.6;">
-                数据源已在 <router-link to="/data-source">📡 数据源</router-link> 页面中配置。<br/>
-                若已从数据源页应用，数据库将自动传入；否则可在此手动填写。
-              </div>
-            </el-popover>
+            <span
+              style="cursor: pointer; font-size: 16px; color: var(--el-color-info); flex-shrink: 0;"
+              @click="showDbInfo"
+            >ℹ️</span>
 
             <!-- 手动填写/使用自动按钮 -->
             <el-button
@@ -134,7 +129,8 @@
             :title="err"
             type="error"
             :closable="false"
-            style="margin-bottom: 4px;"
+            style="margin-bottom: 4px; cursor: pointer;"
+            @click="(e: MouseEvent) => onMessageClick(err, e.currentTarget as HTMLElement)"
           />
         </el-collapse-item>
         <el-collapse-item v-if="store.warnings.length" title="警告 ({{ store.warnings.length }})" name="warnings">
@@ -144,27 +140,12 @@
             :title="warn"
             type="warning"
             :closable="false"
-            style="margin-bottom: 4px;"
+            style="margin-bottom: 4px; cursor: pointer;"
+            @click="(e: MouseEvent) => onMessageClick(warn, e.currentTarget as HTMLElement)"
           />
         </el-collapse-item>
       </el-collapse>
-      <!-- 警告说明 -->
-      <el-alert
-        v-if="store.warnings.length > 0 && !store.errors.length"
-        title="关于警告"
-        type="info"
-        :closable="false"
-        style="margin-top: 8px;"
-      >
-        <template #default>
-          <p>W_LOCAL_MOD_MISSING — 本地未安装该 mod，对应映射将被跳过</p>
-          <p>W_NO_SOURCE_MATCH — mod 源文件不存在（可能未安装），对应条目将被跳过</p>
-          <p>W_MISSING_SOURCE_ROOT / W_MISSING_DEST_ROOT — 缺少源/目标目录</p>
-          <p>W_CREATE_TARGET_EXISTS_OVERWRITE — 目标文件已存在，将被覆盖；这是因为引擎对所有 action 统一检查，不会模拟 delete 执行后的状态，执行阶段 delete 会先执行，文件被删后 create 正常创建</p>
-          <p>W_FOREST_BRANCHING — 该树有多个候选操作，需要用户裁决</p>
-          <p>W_SOURCE_DELETED — 操作的源文件已被删除，该操作被跳过</p>
-        </template>
-      </el-alert>
+
       <!-- 提示：若全是 W_LOCAL_MOD_MISSING，建议先运行自动探测 -->
       <el-alert
         v-if="store.errors.every(e => e.startsWith('W_')) && store.errors.length > 0"
@@ -210,6 +191,8 @@ import { useForestStore, generateBackupDir } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 import { apiPost } from '../api/client'
 import type { TreeNode } from '../types'
+import { showPopup } from '../utils/notify'
+import { getDescription } from '../utils/errorCodes'
 
 const store = useForestStore()
 
@@ -317,15 +300,21 @@ function prepareParams() {
     .filter(Boolean)
 
   let database: Record<string, unknown>
-  if (store.pipelineForm.databasePath && store.storedDatabase) {
-    database = store.storedDatabase
-  } else if (store.pipelineForm.databaseJson) {
+
+  // 优先级 1: Database JSON 非空 → 以此为输入
+  if (store.pipelineForm.databaseJson.trim()) {
     try {
       database = JSON.parse(store.pipelineForm.databaseJson)
     } catch {
       database = {}
     }
-  } else {
+  }
+  // 优先级 2: storedDatabase 存在（来自自动传入或手动加载）
+  else if (store.storedDatabase) {
+    database = store.storedDatabase
+  }
+  // 优先级 3: 无可用数据
+  else {
     database = {}
   }
 
@@ -335,6 +324,20 @@ function prepareParams() {
     user_config_path: store.pipelineForm.userConfigPath || '',
     backup_dir: store.pipelineForm.backupDir || null,
   }
+}
+
+function onMessageClick(msg: string, el: HTMLElement) {
+    const desc = getDescription(msg)
+    if (desc) {
+        showPopup(desc, el)
+    }
+}
+
+function showDbInfo(e: MouseEvent) {
+    showPopup(
+        '数据源已在 📡 数据源 页面中配置。<br/>若已从数据源页应用，数据库将自动传入；否则可在此手动填写。',
+        e.currentTarget as HTMLElement
+    )
 }
 
 async function fetchVisualizationWithFilter() {
