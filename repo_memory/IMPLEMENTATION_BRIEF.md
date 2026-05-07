@@ -6,7 +6,7 @@
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
-| **P7: 路径解析模块** | **in_progress** | — | `resolve_directory_path` / `resolve_file_path` 通用猜测 + 下游门禁 |
+| **P7: 路径解析模块** | **done** | 360 tests | `resolve_directory_path` / `resolve_file_path` (18 new tests)；R4/R5 集成暂 pend |
 | **P6: 数据源独立选项卡** | **done** | 342+65 tests | 数据源独立页面 + 重复 ID 决策 + persistence 模块 + 后端 manual_only/bugfix |
 | **P5: 手动模式 + Fixture --with-db** | **done** | 338+42 tests | ForestPage 手动模式 radio 切换 + generate_fixture --with-db 一步到位 |
 | **P4: GUI 缺口补齐** | **done** | 338+40 tests | G1 参数持久化 + G2 Rules API + G3 Backup API + pipeline restore 端点 + ForestStore 解耦 |
