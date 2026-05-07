@@ -339,7 +339,7 @@ function onMessageClick(msg: string, e: MouseEvent) {
 
 function showDbInfo(e: MouseEvent) {
     showPopup(
-        '数据源已在 📡 数据源 页面中配置。<br/>若已从数据源页应用，数据库将自动传入；否则可在此手动填写。',
+        '数据库已在 <a class="popup-link" data-route="/data-source">📡 数据源</a> 页面中配置。<br/>若已从数据源页应用，数据库将自动传入；否则可在此手动填写。',
         e.currentTarget as HTMLElement,
         e
     )
