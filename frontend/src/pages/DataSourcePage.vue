@@ -37,7 +37,7 @@
             placeholder="/tmp/fixture/steamapps"
           />
           <div style="font-size:12px;color:#999;margin-top:4px;">
-            💡 指向 steamapps/ 目录（含 appmanifest 和 workshop/content 的父目录）
+            💡 指向 Steam 库目录（含 steamapps/ 子目录的父目录），路径应以 / 结尾
           </div>
         </el-form-item>
         <el-form-item>
@@ -94,7 +94,7 @@
           <el-table-column label="MOD" width="80" prop="modCount" />
           <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: LibraryRow }">
-              <div class="horizontal-cell-scroll">{{ row.path }}</div>
+              <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.path) }}</div>
             </template>
           </el-table-column>
         </el-table>
@@ -143,7 +143,7 @@
           <el-table-column label="名称" min-width="140" prop="name" show-overflow-tooltip />
           <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: GameRow }">
-              <div class="horizontal-cell-scroll">{{ row.basepath }}</div>
+              <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.basepath) }}</div>
             </template>
           </el-table-column>
           <el-table-column label="MOD 数" width="80">
@@ -216,7 +216,7 @@
           </el-table-column>
           <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: ModRow }">
-              <div class="horizontal-cell-scroll">{{ row.path }}</div>
+              <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.path) }}</div>
             </template>
           </el-table-column>
         </el-table>
@@ -263,6 +263,7 @@ import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { scrollintotabitem } from '../utils/scroll'
+import { ensureTrailingSlash } from '../utils/paths'
 import type { LibraryRow, GameRow, ModRow } from '../types'
 
 const store = useDataSourceStore()

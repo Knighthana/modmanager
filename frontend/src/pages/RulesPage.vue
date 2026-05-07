@@ -4,7 +4,7 @@
     <el-card shadow="never" style="margin-bottom: 16px;">
       <el-form :model="form" label-width="120px">
         <el-form-item label="规则目录">
-          <el-input v-model="form.rulesDir" placeholder="输入 kmm_rule 文件所在目录路径" />
+          <el-input v-model="form.rulesDir" placeholder="输入 kmm_rule 文件所在目录路径（应以 / 结尾）" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="onScan">扫描</el-button>

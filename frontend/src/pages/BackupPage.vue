@@ -4,7 +4,7 @@
     <el-card shadow="never" style="margin-bottom: 16px;">
       <el-form :model="form" label-width="120px">
         <el-form-item label="备份目录">
-          <el-input v-model="form.backupDir" placeholder="输入备份目录路径" />
+          <el-input v-model="form.backupDir" placeholder="输入备份目录路径（应以 / 结尾）" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="isScanning" @click="onScan">扫描备份</el-button>

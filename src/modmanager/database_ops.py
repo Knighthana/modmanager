@@ -16,7 +16,7 @@ def _numeric_sort_key(s: str) -> tuple[int, int, str]:
 
 
 def _ensure_steamapps(path: str) -> str:
-    normalized = normalize_posix(path)
+    normalized = normalize_posix(path).rstrip('/')
     if normalized.endswith("/steamapps"):
         return normalized
     return normalized + "/steamapps"
