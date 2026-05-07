@@ -237,22 +237,20 @@
 
 ## 🗒️ 待讨论事项（TODO）
 
-以下为 2026-05-07 记录，需后续讨论决策：
-
 | # | 事项 | 说明 |
 |---|------|------|
-| TODO-1 | "数据源"应有独立选项卡 | 数据源发现（Steam 库扫描、手动指定等）属于基础环境配置，应独立于 Forest 页面，且跨选项卡切换应暂存状态 |
 | TODO-2 | 支持清理 `/tmp/` 中本应用运行时文件 | 自动探测会在 `/tmp/` 下生成 database cache 和 user_config，需要提供一键清理选项 |
-| TODO-3 | "仅分枝"空结果提示语修正 | 当前无分枝时显示"暂无森林图。请先点击'计算映射'。"——应改为"无分枝冲突"或类似（若已执行过计算但有森林无分枝） |
+| TODO-3 | "仅分枝"空结果提示语修正 | 当前无分枝时显示"暂无森林图。请先点击'计算映射'。"——应改为"无分枝冲突"或类似 |
 | TODO-4 | BackupPage GUI 审查 | 界面与当初约定的功能对不上，需整体重审 |
-| TODO-5 | 全局路径显示规范 | 所有 GUI 页面中目录路径显示应以 / 结尾；后端也应统一处理，需全量排查 |
-| TODO-6 | 下游路径门禁未强制执行 | P7 约定「目录路径以 / 结尾，文件路径不得以 / 结尾」，engine/backup_ops 等核心模块未做合规断言 |
-| TODO-7 | ForestStore 状态刷新丢失 | `storedDatabase`（DataSource 传入的数据库）、`pipelineForm`（rules paths 等）仅在 Pinia 内存中，刷新丢失；应接入 persistence 模块 |
+| TODO-5 | 全局路径显示规范 | 所有 GUI 页面中目录路径显示应以 / 结尾；后端也应统一处理 |
+| TODO-6 | 下游路径门禁未强制执行 | P7 约定「目录路径以 / 结尾」，engine/backup_ops 等核心模块未做合规断言 |
+| TODO-7 | ForestStore 状态刷新丢失 | `storedDatabase`、`pipelineForm` 仅在 Pinia 内存中，刷新丢失；应接入 persistence |
 | TODO-8 | ConflictsPage branch decisions 刷新丢失 | 用户裁决的分支选择仅在 Pinia 内存中，刷新丢失 |
 | TODO-9 | `onDbPathBlur` 静默失败 | ForestPage 加载 database 文件失败时无用户反馈 |
-| TODO-10 | 空输入校验 | 不能为空的字段（如手动路径、database 路径、rules paths）需后端先对空传入做正确解析与警告，前端再加空校验拦截 |
-| TODO-11 | Rules / user_config 路径无 ~ 展开 | `path_resolver._expand_path` 仅用于 database 路径；aggregate() 和 compute 端点的 `kmm_rule_paths` / `user_config_path` 不经 path_resolver |
+| TODO-10 | 空输入校验 | 不能为空的字段需后端先对空传入做正确解析与警告，前端再加空校验 |
+| TODO-11 | Rules / user_config 路径无 ~ 展开 | aggregate() 和 compute 端点的 `kmm_rule_paths` / `user_config_path` 不经 path_resolver |
 | TODO-12 | Rules paths 前端无路径预检 | 填了无效路径后端才报错，前端无输入校验 |
+| TODO-13 | i18n 预备：字符串集中映射 | errorCodes.ts 已走对方向；模板中的标签/按钮/placeholder 应收拢到统一映射文件，为 vue-i18n 铺路 |
 
 ---
 
