@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { streamSse } from '../api/sse'
 import { apiPost } from '../api/client'
+import { createPersistence } from '../utils/persistence'
 import type { SseProgress } from '../api/sse'
 import type { TreeNode, Changerequest, ConflictItem, PipelineParams, DiscoverParams } from '../types'
 
@@ -31,6 +32,9 @@ export interface DatabaseSummary {
   games: number
   mods: number
 }
+
+const pers = createPersistence()
+const PERSIST_KEY = 'forest-store'
 
 export function generateBackupDir(): string {
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -276,6 +280,44 @@ export const useForestStore = defineStore('forest', () => {
     // userConfig — 保留
     // databaseSummary — 保留
   }
+
+  // ── persistence ──
+  function savePersistentState() {
+    pers.save(PERSIST_KEY, {
+      storedDatabase: storedDatabase.value,
+      pipelineForm: pipelineForm.value,
+      dbManualOverride: dbManualOverride.value,
+      databaseSummary: databaseSummary.value,
+      userConfig: userConfig.value,
+    })
+  }
+
+  function loadPersistentState() {
+    const saved = pers.load<{
+      storedDatabase: Record<string, unknown> | null;
+      pipelineForm: typeof pipelineForm.value;
+      dbManualOverride: boolean;
+      databaseSummary: any;
+      userConfig: Record<string, unknown> | null;
+    }>(PERSIST_KEY)
+    if (saved) {
+      if (saved.storedDatabase) storedDatabase.value = saved.storedDatabase
+      if (saved.pipelineForm) pipelineForm.value = saved.pipelineForm
+      if (saved.dbManualOverride !== undefined) dbManualOverride.value = saved.dbManualOverride
+      if (saved.databaseSummary) databaseSummary.value = saved.databaseSummary
+      if (saved.userConfig) userConfig.value = saved.userConfig
+    }
+  }
+
+  // Restore persisted state on store creation
+  loadPersistentState()
+
+  // Auto-persist when key state fields change
+  watch(
+    [storedDatabase, pipelineForm, dbManualOverride, databaseSummary, userConfig],
+    () => savePersistentState(),
+    { deep: true },
+  )
 
   return {
     trees,
