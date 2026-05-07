@@ -1,6 +1,11 @@
 <template>
   <el-container style="height: 100vh">
     <el-aside width="200px">
+      <div style="padding: 16px 12px; border-bottom: 1px solid var(--el-border-color-light); margin-bottom: 4px;">
+        <div style="font-weight: 800; font-size: 14px; line-height: 1.4; word-break: break-word; color: var(--el-text-color-primary);">
+          🔧 Knighthana's<br/>Mod Manager
+        </div>
+      </div>
       <el-menu :default-active="currentRoute" router>
         <el-menu-item index="/data-source">
           <span>📡 数据源</span>
