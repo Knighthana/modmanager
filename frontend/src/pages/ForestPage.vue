@@ -126,7 +126,7 @@
 
     <!-- 错误与警告面板 -->
     <div v-if="store.errors.length || store.warnings.length" style="margin-bottom: 16px;">
-      <el-collapse>
+      <el-collapse v-model="activeCollapseNames">
         <el-collapse-item v-if="store.errors.length" title="错误 ({{ store.errors.length }})" name="errors">
           <el-alert
             v-for="(err, i) in store.errors"
@@ -214,6 +214,13 @@ import type { TreeNode } from '../types'
 const store = useForestStore()
 
 const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
+
+const activeCollapseNames = computed(() => {
+  const names: string[] = []
+  if (store.errors.length) names.push('errors')
+  if (store.warnings.length) names.push('warnings')
+  return names
+})
 
 // Database path display: when locked (dbManualOverride=false), show augmented text;
 // when unlocked (dbManualOverride=true), show pure path and allow write.

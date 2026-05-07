@@ -258,6 +258,7 @@ export const useForestStore = defineStore('forest', () => {
   }
 
   function reset() {
+    // ── 输出字段：每次新计算时清空 ──
     trees.value = []
     finalMapping.value = []
     branchDecisions.value = {}
@@ -265,25 +266,15 @@ export const useForestStore = defineStore('forest', () => {
     warnings.value = []
     svgContent.value = ''
     progress.value = { step: '', finished: 0, total: -1, message: '' }
-    databaseSummary.value = null
-    userConfig.value = null
-    storedDatabase.value = null
     storedMappingResult.value = null
     lastSuccessfulParams.value = null
-    dbManualOverride.value = false
-    pipelineForm.value = {
-      databasePath: '',
-      databaseJson: '',
-      rulesPaths: '',
-      backupDir: '',
-      dryRun: true,
-      userConfigPath: '',
-      workingPathstyle: 'linux',
-      greedyParsing: false,
-      cachePath: '/tmp/modmanager_database_generated.json',
-      discoveryMode: 'auto',
-      manualSteamPath: '',
-    }
+
+    // ── 输入字段：保留用户/数据源配置 ──
+    // storedDatabase — 保留（从 DataSource 传入）
+    // pipelineForm — 保留（用户填的参数）
+    // dbManualOverride — 保留（锁定状态）
+    // userConfig — 保留
+    // databaseSummary — 保留
   }
 
   return {

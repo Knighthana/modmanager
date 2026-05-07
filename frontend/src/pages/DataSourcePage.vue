@@ -327,12 +327,20 @@ function scrollToFirstMod(game: GameRow) {
   }
 }
 
-function applyAndGoToForest() {
+async function applyAndGoToForest() {
   if (store.lastResult) {
     forestStore.storedDatabase = store.lastResult
     forestStore.pipelineForm.manualSteamPath = store.manualPath
     forestStore.pipelineForm.databasePath = ''
     forestStore.dbManualOverride = false // 重新锁定
+
+    // 同步加载 user_config
+    if (!forestStore.userConfig) {
+      await forestStore.loadConfig()
+    }
+    if (forestStore.userConfig) {
+      forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
+    }
   }
   router.push('/forest')
 }
