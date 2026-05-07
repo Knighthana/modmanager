@@ -1,0 +1,81 @@
+{
+  "schema_version": "kmm_test_fixture@1.0",
+  "description": "Mock 测试环境配置，从真实 Windows Steam 游戏目录生成轻量 fixture",
+  "source_root": "/mnt/d/Games/steamapps/",
+  "source_root_note": "WSL 中只读访问的真实 Steam 库路径",
+  "path_mapping": {
+    "steamapps/": "/mnt/d/Games/steamapps/",
+    "steamapps/common/RunningWithRifles/": "/mnt/d/Games/steamapps/common/RunningWithRifles/",
+    "steamapps/workshop/content/270150/": "/mnt/d/Games/steamapps/workshop/content/270150/"
+  },
+  "coverage": {
+    "full": {
+      "description": "完整镜像 steamapps/workshop/content/270150/ 下所有文件 + 顶层 ACF",
+      "estimated_files": 14500,
+      "include_dirs": [
+        "workshop/content/270150/"
+      ],
+      "include_files": [
+        "appmanifest_270150.acf",
+        "workshop/appworkshop_270150.acf"
+      ],
+      "exclude_dirs": []
+    },
+    "hot": {
+      "description": "仅 kmm_rule 引用的路径 + 全部子 mod 文件 + ACF + lobby",
+      "estimated_files": 400,
+      "include_submods_full": [
+        "3425312546",
+        "3426079135",
+        "3427135267",
+        "3428584891",
+        "3430161019",
+        "3430976333",
+        "3435124100",
+        "3437114999",
+        "3442063538",
+        "3442533598",
+        "3445750210",
+        "3470055515",
+        "一点不战术地图v1.9 TEMP"
+      ],
+      "include_mainmod_skeleton": "2606099273",
+      "mainmod_into_targets": [
+        "media/packages/GFL_Castling/",
+        "media/packages/GFL_Castling/maps/",
+        "media/packages/GFL_Castling/maps/1使用方法和图例/",
+        "media/packages/GFL_Castling/maps/map105_3/",
+        "media/packages/GFL_Castling/textures/",
+        "media/packages/GFL_Castling/materials/",
+        "media/packages/GFL_Castling/particles/",
+        "media/packages/GFL_Castling/vehicles/",
+        "media/packages/GFL_Castling/weapons/",
+        "media/packages/GFL_Castling/sounds/",
+        "media/packages/GFL_Castling/calls/"
+      ],
+      "mainmod_extra_mocks": [
+        "media/packages/GFL_Castling/maps/map.png",
+        "media/packages/GFL_Castling/maps/splash.png",
+        "media/packages/GFL_Castling/textures/placeholder.png"
+      ],
+      "include_acf": [
+        "appmanifest_270150.acf",
+        "workshop/appworkshop_270150.acf"
+      ],
+      "include_lobby": {
+        "source": "common/RunningWithRifles/media/packages/vanilla/maps/lobby/",
+        "dest": "steamapps/common/RunningWithRifles/media/packages/vanilla/maps/lobby/",
+        "action": "copy_original"
+      },
+      "exclude_dirs_intentionally": [
+        "warn_vehicles",
+        "knighthana_custom_rules"
+      ]
+    }
+  },
+  "file_type_rules": {
+    "copy_original_extensions": [".acf"],
+    "copy_original_patterns": ["kmm_rule*.json"],
+    "mock_content_template": "[PRE-REPLACE] {relative_path}\n"
+  }
+}
