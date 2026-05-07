@@ -310,6 +310,22 @@ ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamap
 
 ---
 
+## Phase P7: 通用路径解析模块 🚧
+
+统一处理用户输入路径的"猜测"逻辑，产出规范路径后下游禁止猜测、只做合规断言。
+
+**设计文档**：`repo_memory/direct/DESIGN_PATH_RESOLVER.md`
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| R1 | 实现 `resolve_directory_path(input_str, dirname)` | `path_resolver.py`（新文件） | pending |
+| R2 | 实现 `resolve_file_path(input_str, filename)` | `path_resolver.py` | pending |
+| R3 | 单元测试：`tests/test_path_resolver.py` | `tests/` | pending |
+| R4 | DataSource 手动路径接入 `resolve_directory_path('steamapps')` | `database_ops.py` 或 Web routes | pending |
+| R5 | Database JSON 路径接入 `resolve_file_path('database.json')` | Web routes 或 ForestPage 后端 | pending |
+
+---
+
 ## Future（远期）
 
 ### P2: 引擎细节修复 ✅
