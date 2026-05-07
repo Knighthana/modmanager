@@ -14,13 +14,6 @@
       ],
       "actionlist": [
         {
-          "action": "hold",
-          "destin": "none",
-          "action_order": 0,
-          "provenance_ref": "/home/knighthana/workspace/modmanager_cli/description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json",
-          "sidecar_ref": "sidecar/provenance/kmm.knighthana.provenancesidecar-20260423.json"
-        },
-        {
           "action": "delete",
           "destin": "270150:3428584891",
           "action_order": 0,

@@ -3,7 +3,7 @@
 创建：2026-05-06
 状态：设计完成，待确认
 来源：`work_memo/TODO.md` P1（B1-B7）
-前置参考：`repo_memo/BACKUP_DIR_BUILDER_DESIGN.md`、`repo_memo/user_config.json.example`
+前置参考：`repo_memo/BACKUP_DIR_BUILDER_DESIGN.md`、`description/user_config.json.example`
 
 ---
 

@@ -14,7 +14,7 @@
 实现前必须阅读以下文档：
 - `repo_memo/RULE_AGGREGATION_DESIGN.md`（聚合器设计全文）
 - `repo_memo/TERMINOLOGY.md`（术语定义）
-- `repo_memo/aggregated_rule_set.json.example`（输出 schema 示例）
+- `description/aggregated_rule_set.json.example`（输出 schema 示例）
 
 ---
 

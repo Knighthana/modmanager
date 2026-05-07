@@ -16,7 +16,6 @@
 ## 同步规则
 - `description/` 仅作为用户与 Plan 的沟通目录，不作为 implement 默认输入
 - 当前实现与契约以 `repo_memo/` 为准
-- `json.example` 采用单向同步：`repo_memo/` -> `description/`
 - implement 禁止将 `description/` 反向写回 `repo_memo/`
 
 ## 角色职责矩阵
