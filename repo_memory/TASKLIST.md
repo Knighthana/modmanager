@@ -321,7 +321,7 @@ ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamap
 | R1 | 实现 `resolve_directory_path(input_str, dirname)` | `path_resolver.py`（新文件） | done |
 | R2 | 实现 `resolve_file_path(input_str, filename)` | `path_resolver.py` | done |
 | R3 | 单元测试：`tests/test_path_resolver.py` (18 tests) | `tests/` | done |
-| R4 | DataSource 手动路径接入 `resolve_directory_path('steamapps')` | 后端 routes | pending（后续） |
+| R4 | DataSource 手动路径接入 `resolve_directory_path('steamapps')` | `bootstrap.py` | done |
 | R5 | Database JSON 路径接入 `resolve_file_path('database.json')` | 后端 routes | pending（后续） |
 
 ---

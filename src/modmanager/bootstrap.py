@@ -203,13 +203,15 @@ def generate_database(
             on_progress("scan", 1, 1, "Steam discovery complete")
     elif mode == "manual":
         # Manual only: skip auto-discovery entirely
+        from .path_resolver import resolve_directory_path
+        resolved_paths = [resolve_directory_path(p, 'steamapps') for p in paths]
         manual_override_steamlibs = [
             {
                 "path": p,
-                "contains_libraryfolders_vdf": p.endswith(".vdf"),
+                "contains_libraryfolders_vdf": False,
                 "game": [],
             }
-            for p in paths
+            for p in resolved_paths
         ]
         if on_progress is not None:
             on_progress("scan", 0, -1, "Scanning provided library paths...")
@@ -223,13 +225,15 @@ def generate_database(
             on_progress("scan", 1, 1, "Manual scan complete")
     else:
         # mode == "auto" with paths: combine auto + manual (manual_only=False)
+        from .path_resolver import resolve_directory_path
+        resolved_paths = [resolve_directory_path(p, 'steamapps') for p in paths]
         manual_override_steamlibs = [
             {
                 "path": p,
-                "contains_libraryfolders_vdf": p.endswith(".vdf"),
+                "contains_libraryfolders_vdf": False,
                 "game": [],
             }
-            for p in paths
+            for p in resolved_paths
         ]
         if on_progress is not None:
             on_progress("scan", 0, -1, "Discovering Steam libraries (auto + manual)...")
