@@ -18,9 +18,7 @@
               :ref="(el: any) => dbInputRef = el"
             >
               <template v-if="!store.dbManualOverride" #suffix>
-                <span style="color: var(--el-text-color-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                  🔒 {{ dbPathDisplay }} (从数据源页面自动传入)
-                </span>
+                <span>🔒</span>
               </template>
             </el-input>
 
@@ -218,10 +216,11 @@ const hasResult = computed(() => store.trees.length > 0 || store.errors.length >
 // Database path display: when storedDatabase exists (from data source page), show 'frontend storage';
 // otherwise show the manual path or empty.
 const dbPathDisplay = computed(() => {
-  if (store.storedDatabase) {
-    return 'frontend storage'
-  }
-  return store.pipelineForm.databasePath || ''
+    const base = store.storedDatabase 
+        ? 'Frontend Storage' 
+        : (store.pipelineForm.databasePath || '');
+    if (!base) return '';
+    return `${base} (从数据源页面自动传入)`;
 })
 
 // 展示模式切换：仅显示分枝（pending）树
