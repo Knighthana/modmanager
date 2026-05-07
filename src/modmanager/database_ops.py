@@ -7,6 +7,14 @@ from .paths import normalize_posix, split_mixed_id
 from .steam_scanner import GameInfo, SteamLibraryInfo, SteamScanner
 
 
+def _numeric_sort_key(s: str) -> tuple[int, int, str]:
+    """Sort numeric strings by int value; non-numeric strings after."""
+    try:
+        return (0, int(s), s)
+    except ValueError:
+        return (1, 0, s)
+
+
 def _ensure_steamapps(path: str) -> str:
     normalized = normalize_posix(path)
     if normalized.endswith("/steamapps"):
@@ -124,7 +132,7 @@ def _scan_from_libraries(
                     "mods_found": mods,
                 }
 
-    games_out = sorted(game_map.values(), key=lambda g: int(g['appid']))
+    games_out = sorted(game_map.values(), key=lambda g: _numeric_sort_key(g['appid']))
     dommods_out = _build_dommod_from_games(games_out)
 
     return {
@@ -479,7 +487,7 @@ def liveupdate_database(
     mods_removed: dict[str, list[str]] = {}
     games_updated: list[str] = []
 
-    for appid in sorted(both_ids, key=int):
+    for appid in sorted(both_ids, key=_numeric_sort_key):
         old_mods = set(str(x) for x in old_games[appid].get("mods_found", []))
         new_mods = set(str(x) for x in new_games[appid].get("mods_found", []))
         add = sorted(new_mods - old_mods)
@@ -494,9 +502,9 @@ def liveupdate_database(
     return {
         "updated_database": updated,
         "changes": {
-            "games_added": sorted(new_ids - old_ids, key=int),
-            "games_removed": sorted(old_ids - new_ids, key=int),
-            "games_updated": sorted(games_updated, key=int),
+            "games_added": sorted(new_ids - old_ids, key=_numeric_sort_key),
+            "games_removed": sorted(old_ids - new_ids, key=_numeric_sort_key),
+            "games_updated": sorted(games_updated, key=_numeric_sort_key),
             "mods_added": mods_added,
             "mods_removed": mods_removed,
         },

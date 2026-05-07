@@ -29,6 +29,14 @@ from .acf_parser import parse_appmanifest_acf
 from .pathstyle import PathStyle, detect_pathstyle, normalize
 
 
+def _numeric_sort_key(s: str) -> tuple[int, int, str]:
+    """Sort numeric strings by int value; non-numeric strings after."""
+    try:
+        return (0, int(s), s)
+    except ValueError:
+        return (1, 0, s)
+
+
 @dataclass
 class SteamLibraryInfo:
     """Information about a Steam library location."""
@@ -254,7 +262,7 @@ class SteamScanner:
             if item.is_dir():
                 mods.append(item.name)
         
-        return sorted(mods, key=int)
+        return sorted(mods, key=_numeric_sort_key)
 
     def generate_database(
         self,
