@@ -88,6 +88,7 @@ def _scan_from_libraries(
 ) -> dict[str, Any]:
     game_map: dict[str, dict[str, Any]] = {}
     steamlibs_out: list[dict[str, Any]] = []
+    warnings: list[str] = []
 
     for lib in libraries:
         path = _ensure_steamapps(lib.path)
@@ -107,14 +108,21 @@ def _scan_from_libraries(
         for appid, game_info in discovered_games.items():
             should_parse = greedy_parsing or not scoped_ids or appid in scoped_ids
             mods = scanner.discover_mods_for_game(appid, game_info.modpath) if should_parse else []
-            game_map[appid] = {
-                "appid": game_info.appid,
-                "name": game_info.name,
-                "localdate": 0,
-                "basepath": normalize_posix(game_info.basepath),
-                "modpath": normalize_posix(game_info.modpath),
-                "mods_found": mods,
-            }
+            if appid in game_map:
+                warnings.append(
+                    f"W_DUPLICATE_APPID: appid {appid} found in multiple libraries: "
+                    f"{game_map[appid].get('basepath', '')} and {game_info.basepath}"
+                )
+                # Keep first occurrence — do not overwrite
+            else:
+                game_map[appid] = {
+                    "appid": game_info.appid,
+                    "name": game_info.name,
+                    "localdate": 0,
+                    "basepath": normalize_posix(game_info.basepath),
+                    "modpath": normalize_posix(game_info.modpath),
+                    "mods_found": mods,
+                }
 
     games_out = [game_map[k] for k in sorted(game_map.keys())]
     dommods_out = _build_dommod_from_games(games_out)
@@ -127,6 +135,7 @@ def _scan_from_libraries(
         "steamlib": steamlibs_out,
         "game": games_out,
         "dommod": dommods_out,
+        "warnings": warnings,
     }
 
 
@@ -135,13 +144,17 @@ def discover_with_fallback(
     working_pathstyle: str = "linux",
     manual_override_steamlibs: list[dict[str, Any]] | None = None,
     greedy_parsing: bool = False,
+    manual_only: bool = False,
 ) -> dict[str, Any]:
     scanner = SteamScanner(working_pathstyle=working_pathstyle)
 
-    try:
-        auto_libraries = scanner.discover_steam_libraries()
-    except Exception:
+    if manual_only:
         auto_libraries = []
+    else:
+        try:
+            auto_libraries = scanner.discover_steam_libraries()
+        except Exception:
+            auto_libraries = []
 
     manual_libraries: list[SteamLibraryInfo] = []
     for item in manual_override_steamlibs or []:
@@ -487,7 +500,7 @@ def liveupdate_database(
             "mods_added": mods_added,
             "mods_removed": mods_removed,
         },
-        "warnings": [],
+        "warnings": updated.get("warnings", []),
         "errors": [],
     }
 
@@ -521,6 +534,7 @@ def regen_database(
             "mods_count": sum(len(g.get("mods_found", [])) for g in rebuilt.get("game", [])),
         },
         "errors": [],
+        "warnings": rebuilt.get("warnings", []),
     }
 
 

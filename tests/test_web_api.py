@@ -157,6 +157,84 @@ class TestGenerateDatabase:
         assert result_events[0]["data"]["ok"] is True
         assert "steamlib" in result_events[0]["data"]["data"]
 
+    def test_generate_database_manual_mode_passes_manual_only(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """mode='manual' + paths → verify manual_only=True (no auto discover)."""
+        captured_kwargs: dict = {}
+
+        def fake_generate(**kwargs):
+            captured_kwargs.update(kwargs)
+            # Return minimal valid database
+            return {
+                "steamlib": [{"path": "/manual/steamapps", "contains_libraryfolders_vdf": False, "game": []}],
+                "game": [],
+                "dommod": [],
+                "warnings": [],
+            }
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.database.generate_database", fake_generate
+        )
+
+        resp = client.post(
+            "/api/database/generate",
+            json={"mode": "manual", "paths": ["/some/path"]},
+        )
+        assert resp.status_code == 200
+
+        # Verify the call was made with correct parameters
+        assert captured_kwargs.get("mode") == "manual"
+        assert captured_kwargs.get("paths") == ["/some/path"]
+
+    def test_generate_database_duplicate_appid_warning(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Duplicate appid across libraries should be reported in warnings."""
+
+        def fake_generate(**kwargs):
+            return {
+                "steamlib": [
+                    {"path": "/lib1/steamapps", "contains_libraryfolders_vdf": False, "game": ["270150"]},
+                    {"path": "/lib2/steamapps", "contains_libraryfolders_vdf": False, "game": ["270150"]},
+                ],
+                "game": [
+                    {
+                        "appid": "270150",
+                        "name": "RWR",
+                        "basepath": "/lib1/steamapps/common/RWR",
+                        "modpath": "/lib1/steamapps/workshop/content/270150",
+                        "mods_found": [],
+                    },
+                ],
+                "dommod": [],
+                "warnings": ["W_DUPLICATE_APPID: appid 270150 found in multiple libraries: /lib1/steamapps/common/RWR and /lib2/steamapps/common/RWR"],
+            }
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.database.generate_database", fake_generate
+        )
+
+        resp = client.post(
+            "/api/database/generate",
+            json={"mode": "auto"},
+        )
+        assert resp.status_code == 200
+        lines = resp.text.split("\n")
+        events = _parse_sse_lines(lines)
+        result_events = [e for e in events if e["event"] == "result"]
+        assert len(result_events) == 1
+        data = result_events[0]["data"]
+        assert data["ok"] is True
+        # Warnings in the response should include the duplicate appid warning
+        result_warnings = data.get("warnings", []) or []
+        # Also check if the database data has warnings embedded
+        db_warnings = data.get("data", {}).get("warnings", []) or []
+        all_warnings = result_warnings + db_warnings
+        assert any("W_DUPLICATE_APPID" in w for w in all_warnings), (
+            f"Expected W_DUPLICATE_APPID in warnings, got {all_warnings}"
+        )
+
     def test_generate_database_invalid_mode(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:

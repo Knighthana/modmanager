@@ -2,65 +2,19 @@
   <div>
     <h2>Forest 可视化</h2>
 
-    <!-- 数据源发现面板 -->
-    <el-card shadow="never" style="margin-bottom: 16px;">
-      <template #header>
-        <span>数据源发现</span>
+    <!-- Pipeline 参数提示 -->
+    <el-alert
+      title="数据源"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 16px;"
+    >
+      <template #default>
+        数据源已在 <router-link to="/data-source">📡 数据源</router-link> 页面中配置。
+        若已从数据源页应用，数据库将自动传入；否则可在此手动填写。
       </template>
-      <el-form :model="store.pipelineForm" label-width="140px">
-        <el-form-item label="Working pathstyle">
-          <el-select v-model="store.pipelineForm.workingPathstyle" style="width: 200px;">
-            <el-option label="auto" value="auto" />
-            <el-option label="linux" value="linux" />
-            <el-option label="windows" value="windows" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Greedy parsing">
-          <el-switch v-model="store.pipelineForm.greedyParsing" />
-        </el-form-item>
-        <el-form-item label="Cache path">
-          <el-input v-model="store.pipelineForm.cachePath" placeholder="/tmp/modmanager_database_generated.json" />
-        </el-form-item>
-        <el-form-item label="发现模式">
-          <el-radio-group v-model="store.pipelineForm.discoveryMode">
-            <el-radio value="auto">🔍 自动发现 Steam 库</el-radio>
-            <el-radio value="manual">📁 手动指定路径</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="store.pipelineForm.discoveryMode === 'manual'" label="Steam 库路径">
-          <el-input v-model="store.pipelineForm.manualSteamPath"
-                    placeholder="/tmp/fixture/steamapps" />
-          <div style="font-size:12px;color:#999;margin-top:4px;">
-            💡 指向 steamapps/ 目录（含 appmanifest 和 workshop/content 的父目录）
-          </div>
-        </el-form-item>
-        <el-form-item>
-          <el-button
-            type="warning"
-            :loading="store.isRunning"
-            :disabled="store.isRunning || isDiscoverDisabled"
-            @click="onDiscover"
-          >
-            {{ store.isRunning ? '探测中...' : '🔍 自动探测 Steam 库' }}
-          </el-button>
-          <span v-if="isDiscoverDisabled" style="margin-left: 8px; font-size: 12px; color: #999;">
-            请输入 Steam 库路径
-          </span>
-        </el-form-item>
-        <!-- 探测结果摘要 -->
-        <el-form-item v-if="store.databaseSummary && !store.errors.length" label="探测结果">
-          <el-tag type="success" style="margin-right: 8px;">
-            发现 {{ store.databaseSummary.libraries }} 个库
-          </el-tag>
-          <el-tag type="success" style="margin-right: 8px;">
-            {{ store.databaseSummary.games }} 个游戏
-          </el-tag>
-          <el-tag type="success">
-            {{ store.databaseSummary.mods }} 个 mod
-          </el-tag>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    </el-alert>
 
     <!-- PipelineForm -->
     <el-card shadow="never" style="margin-bottom: 16px;">
@@ -69,11 +23,21 @@
       </template>
       <el-form :model="store.pipelineForm" label-width="140px">
         <el-form-item label="Database 路径">
-          <el-input v-model="store.pipelineForm.databasePath" placeholder="自动探测后自动填入">
+          <el-input
+            v-model="store.pipelineForm.databasePath"
+            placeholder="从数据源页面自动传入"
+            :disabled="!dbManualOverride"
+          >
             <template #append>
               <el-button @click="store.pipelineForm.databasePath = ''; store.pipelineForm.databaseJson = ''">清除</el-button>
+              <el-button :type="dbManualOverride ? 'warning' : 'info'" @click="toggleDbManual">
+                {{ dbManualOverride ? '🔒 锁定' : '🔓 手动填写' }}
+              </el-button>
             </template>
           </el-input>
+          <div v-if="dbManualOverride" style="font-size:12px;color:var(--el-color-danger);margin-top:4px;">
+            ⚠️ 此项不应由初级用户进行手动操作
+          </div>
         </el-form-item>
         <el-form-item label="Database JSON (手动)">
           <el-input
@@ -241,6 +205,13 @@ const hasResult = computed(() => store.trees.length > 0 || store.errors.length >
 
 // 展示模式切换：仅显示分枝（pending）树
 const showBranchingOnly = ref(false)
+
+// Database path manual override
+const dbManualOverride = ref(false)
+
+function toggleDbManual() {
+  dbManualOverride.value = !dbManualOverride.value
+}
 
 function getFilteredTrees(): TreeNode[] {
   if (!showBranchingOnly.value) return store.trees

@@ -192,7 +192,8 @@ def generate_database(
                 pass
 
     # ── Generate database ─────────────────────────────────────────────────
-    if mode == "auto":
+    if mode == "auto" and not paths:
+        # Pure auto mode: no manual paths, no manual_only
         if on_progress is not None:
             on_progress("scan", 0, -1, "Discovering Steam libraries...")
         database = discover_with_fallback(
@@ -201,8 +202,8 @@ def generate_database(
         )
         if on_progress is not None:
             on_progress("scan", 1, 1, "Steam discovery complete")
-    else:
-        # mode == "manual"
+    elif mode == "manual":
+        # Manual only: skip auto-discovery entirely
         manual_override_steamlibs = [
             {
                 "path": p,
@@ -217,9 +218,30 @@ def generate_database(
             working_pathstyle=working_pathstyle,
             manual_override_steamlibs=manual_override_steamlibs,
             greedy_parsing=greedy_parsing,
+            manual_only=True,
         )
         if on_progress is not None:
             on_progress("scan", 1, 1, "Manual scan complete")
+    else:
+        # mode == "auto" with paths: combine auto + manual (manual_only=False)
+        manual_override_steamlibs = [
+            {
+                "path": p,
+                "contains_libraryfolders_vdf": p.endswith(".vdf"),
+                "game": [],
+            }
+            for p in paths
+        ]
+        if on_progress is not None:
+            on_progress("scan", 0, -1, "Discovering Steam libraries (auto + manual)...")
+        database = discover_with_fallback(
+            working_pathstyle=working_pathstyle,
+            manual_override_steamlibs=manual_override_steamlibs,
+            greedy_parsing=greedy_parsing,
+            manual_only=False,
+        )
+        if on_progress is not None:
+            on_progress("scan", 1, 1, "Combined scan complete")
 
     # ── Write cache ───────────────────────────────────────────────────────
     if cache_path is not None:

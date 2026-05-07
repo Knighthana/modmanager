@@ -6,7 +6,7 @@
 
 | 任务 | 状态 | 验收 | 备注 |
 |---|---|---|---|
-| **P6: 数据源独立选项卡** | **in_progress** | — | 数据源独立页面 + 重复 ID 决策 + persistence 模块 + 后端 manual_only/bugfix |
+| **P6: 数据源独立选项卡** | **done** | 342+65 tests | 数据源独立页面 + 重复 ID 决策 + persistence 模块 + 后端 manual_only/bugfix |
 | **P5: 手动模式 + Fixture --with-db** | **done** | 338+42 tests | ForestPage 手动模式 radio 切换 + generate_fixture --with-db 一步到位 |
 | **P4: GUI 缺口补齐** | **done** | 338+40 tests | G1 参数持久化 + G2 Rules API + G3 Backup API + pipeline restore 端点 + ForestStore 解耦 |
 | **P3: GUI 增强** | **done** | 322+18 tests 通过 | 全部/仅分岔 + hover 整链高亮 + 点击选枝 |

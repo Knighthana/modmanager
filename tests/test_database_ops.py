@@ -202,6 +202,89 @@ class DatabaseOpsTests(unittest.TestCase):
         issues = verify_database_integrity(bad)
         self.assertTrue(any("missing dommod" in issue for issue in issues))
 
+    def test_discover_with_fallback_manual_only_skips_auto(self) -> None:
+        """manual_only=True → auto_libraries is empty (no auto discover)."""
+        manual = [{"path": "/mnt/d/Games", "contains_libraryfolders_vdf": False}]
+
+        with patch("modmanager.database_ops.SteamScanner.discover_steam_libraries") as mock_auto:
+            with patch("modmanager.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+                with patch("modmanager.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+                    mock_auto.return_value = [SteamLibraryInfo(
+                        path="/auto/steamapps",
+                        contains_libraryfolders_vdf=True,
+                        games_found=["99999"],
+                    )]
+                    mock_games.return_value = {
+                        "270150": GameInfo(
+                            appid="270150",
+                            name="Running with Rifles",
+                            basepath="/mnt/d/Games/steamapps/common/RunningWithRifles",
+                            modpath="/mnt/d/Games/steamapps/workshop/content/270150",
+                        )
+                    }
+                    mock_mods.return_value = ["2606099273"]
+
+                    database = discover_with_fallback(
+                        working_pathstyle="linux",
+                        manual_override_steamlibs=manual,
+                        greedy_parsing=True,
+                        manual_only=True,
+                    )
+
+        # auto should NOT have been called (manual_only bypasses it)
+        mock_auto.assert_not_called()
+        # Only manual library should appear
+        self.assertEqual(len(database["steamlib"]), 1)
+        self.assertEqual(database["steamlib"][0]["path"], "/mnt/d/Games/steamapps")
+
+    def test_scan_from_libraries_detects_duplicate_appid(self) -> None:
+        """Same appid in two different libraries → warning, first wins."""
+        from modmanager.database_ops import _scan_from_libraries
+        from modmanager.steam_scanner import SteamScanner
+
+        scanner = SteamScanner(working_pathstyle="linux")
+        lib1 = SteamLibraryInfo(
+            path="/lib1/steamapps",
+            contains_libraryfolders_vdf=False,
+            games_found=["270150"],
+        )
+        lib2 = SteamLibraryInfo(
+            path="/lib2/steamapps",
+            contains_libraryfolders_vdf=False,
+            games_found=["270150"],
+        )
+
+        with patch.object(scanner, "discover_games_in_library") as mock_games:
+            mock_games.side_effect = [
+                {
+                    "270150": GameInfo(
+                        appid="270150",
+                        name="RWR",
+                        basepath="/lib1/steamapps/common/RWR",
+                        modpath="/lib1/steamapps/workshop/content/270150",
+                    ),
+                },
+                {
+                    "270150": GameInfo(
+                        appid="270150",
+                        name="RWR",
+                        basepath="/lib2/steamapps/common/RWR",
+                        modpath="/lib2/steamapps/workshop/content/270150",
+                    ),
+                },
+            ]
+            with patch.object(scanner, "discover_mods_for_game", return_value=["mod1"]):
+                result = _scan_from_libraries(scanner, [lib1, lib2], greedy_parsing=True)
+
+        # Warnings should contain W_DUPLICATE_APPID
+        self.assertIn("warnings", result)
+        self.assertTrue(
+            any("W_DUPLICATE_APPID" in w for w in result["warnings"]),
+            msg=f"Expected W_DUPLICATE_APPID in warnings, got {result['warnings']}",
+        )
+        # First library's game should be kept (not overwritten)
+        self.assertEqual(result["game"][0]["basepath"], "/lib1/steamapps/common/RWR")
+
     def test_list_games_filtered_by_steamlib(self) -> None:
         db = {
             "steamlib": [{"path": "/mnt/d/Games/steamapps", "contains_libraryfolders_vdf": False, "game": []}],

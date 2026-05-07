@@ -2,6 +2,9 @@
   <el-container style="height: 100vh">
     <el-aside width="200px">
       <el-menu :default-active="currentRoute" router>
+        <el-menu-item index="/data-source">
+          <span>📡 数据源</span>
+        </el-menu-item>
         <el-menu-item index="/forest">
           <span>📊 Forest 可视化</span>
         </el-menu-item>

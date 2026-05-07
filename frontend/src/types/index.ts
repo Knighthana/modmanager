@@ -63,3 +63,51 @@ export interface SseProgress {
   total: number
   message: string
 }
+
+// ── DataSource types ────────────────────────────────────────────────────────
+
+export type DiscoverMode = 'all' | 'auto' | 'manual'
+
+export interface LibraryRow {
+  index: number
+  path: string
+  gameCount: number
+  modCount: number
+}
+
+export interface GameRow {
+  index: number
+  appid: string
+  name: string
+  basepath: string
+  modpath: string
+  modCount: number
+  libraryIndex: number
+}
+
+export interface ModRow {
+  index: number
+  modid: string
+  name: string
+  appid: string
+  path: string
+  libraryIndex: number
+  gameIndex: number
+}
+
+export interface DataSourceState {
+  discoveryMode: DiscoverMode
+  manualPath: string
+  workingPathstyle: string
+  greedyParsing: boolean
+  cachePath: string
+  libraries: LibraryRow[]
+  games: GameRow[]
+  mods: ModRow[]
+  warnings: string[]
+  libraryVisibility: Record<number, boolean>
+  gameVisibility: Record<number, boolean>
+  duplicateResolutions: Record<string, number>
+  isScanning: boolean
+  lastResult: Record<string, unknown> | null
+}

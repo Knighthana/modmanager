@@ -1,7 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  { path: '/', redirect: '/forest' },
+  { path: '/', redirect: '/data-source' },
+  {
+    path: '/data-source',
+    name: 'data-source',
+    component: () => import('../pages/DataSourcePage.vue'),
+  },
   {
     path: '/forest',
     name: 'forest',
