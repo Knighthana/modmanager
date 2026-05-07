@@ -250,6 +250,7 @@
 | TODO-7 | ForestStore 状态刷新丢失 | `storedDatabase`（DataSource 传入的数据库）、`pipelineForm`（rules paths 等）仅在 Pinia 内存中，刷新丢失；应接入 persistence 模块 |
 | TODO-8 | ConflictsPage branch decisions 刷新丢失 | 用户裁决的分支选择仅在 Pinia 内存中，刷新丢失 |
 | TODO-9 | `onDbPathBlur` 静默失败 | ForestPage 加载 database 文件失败时无用户反馈 |
+| TODO-10 | 空输入校验 | 不能为空的字段（如手动路径、database 路径、rules paths）需后端先对空传入做正确解析与警告，前端再加空校验拦截 |
 
 ---
 
