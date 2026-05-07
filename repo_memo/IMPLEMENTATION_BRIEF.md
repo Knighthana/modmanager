@@ -53,7 +53,7 @@
 2. 扫描契约：`STEAM_DISCOVERY.md`
 3. 字段字典：`DATABASE_FIELDS.md`
 4. 流程总览：`process_description.md`
-5. 快照记录：`doc_contract_snapshot.md`
+5. 快照记录：`repo_logs/2026-04-21_doc_contract_snapshot.md`
 
 ## 第二阶段（实现）必改点
 1. `discover_steam_libraries` 必须从主 VDF 扩展发现全部库
@@ -185,7 +185,7 @@
 3. M4：GUI hover 整链高亮、分叉节点超链接、用户选枝 UI、插件运行链、老浏览器 fallback。
 
 ## Forest 可视化开工门槛（文档先行）
-1. 实现前必须先阅读 `FOREST_VISUALIZATION_DESIGN.md` 的数据流、坑位清单、Go/No-Go 与验收用例。
+1. 实现前必须先阅读 `repo_logs/2026-04-22_FOREST_VISUALIZATION_DESIGN.md` 的数据流、坑位清单、Go/No-Go 与验收用例。
 2. 本轮若仅做文档持久化，不允许改动 `src/`、`tests/`、`pyproject.toml`。
 
 ## aggregated_rule_set DSL 冻结（2026-04-22）

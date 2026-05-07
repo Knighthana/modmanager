@@ -51,7 +51,7 @@
 
 将 bootstrap + engine + backup 暴露为 REST 接口。
 
-设计文档：`repo_memo/direct/DESIGN_PHASE2_WEB_API.md`
+设计文档：`repo_memo/direct/DESIGN_REST_API.md`
 决策记录：7 个问题全部已确认 ✅（含 Q7 方案 A 独立对等）
 
 ### 已完成的模块（`modmanager_web` 独立子包）

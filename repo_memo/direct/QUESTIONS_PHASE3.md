@@ -16,9 +16,9 @@
 | # | 约束 | 来源 |
 |---|------|------|
 | 1 | **Web 形态**：在 Web 上投射管理终端 | `description/gui_description.md` |
-| 2 | **架构**：通过 `modmanager_web` REST API + SSE 通信 | `DESIGN_PHASE2_WEB_API.md` |
+| 2 | **架构**：通过 `modmanager_web` REST API + SSE 通信 | `DESIGN_REST_API.md` |
 | 3 | **调度**：orchestrator 是 GUI 唯一调度入口（与 CLI 共享内核） | `DESIGN_BOOTSTRAP_ORCHESTRATOR.md` |
-| 4 | **CLI 与 GUI 独立对等**（方案 A，共享内核模式） | `DESIGN_PHASE2_WEB_API.md` Q7 |
+| 4 | **CLI 与 GUI 独立对等**（方案 A，共享内核模式） | `DESIGN_REST_API.md` Q7 |
 | 5 | **进度推送**：SSE 已就绪（`text/event-stream`） | Phase 2 `sse.py` |
 | 6 | **CORS 已开放**：`allow_origins=["*"]` | Phase 2 `app.py` |
 | 7 | **action_order 由 GUI 运行时注入** | `RULE_AGGREGATION_DESIGN.md` |

@@ -285,7 +285,7 @@ def aggregate(
     user_config_path: str,
     *,
     action_orders: dict[str, int] | None = None,
-    sidecar_refs: dict[str, dict[int, str]] | None = None,
+    sidecar_refs: dict[str, dict[str, dict[int, str]]] | None = None,
     output_path: str | None = None,
 ) -> tuple[dict[str, Any] | None, list[str], list[str]]:
     """聚合多份 kmm_rule 文件为 aggregated_rule_set。
@@ -294,7 +294,7 @@ def aggregate(
         kmm_rule_paths: kmm_rule JSON 文件的绝对路径列表
         user_config_path: 由 bootstrap 解析后的 user_config.json 绝对路径
         action_orders: mixed_id -> action_order 的映射（可选，由 GUI 注入）
-        sidecar_refs: mixed_id -> {action_index: sidecar_ref} 的映射（可选）
+        sidecar_refs: file_abs_path -> mixed_id -> {action_index: sidecar_ref} 的映射（可选）
         output_path: 若提供，将结果写入此路径
 
     Returns:

@@ -1,12 +1,11 @@
-# Phase 2: Web API 层 — 设计文档
+# REST API 设计
 
-> **2026-05-06 注**：本文档为 Phase 2 实现时的历史设计快照。
+> **2026-05-06 注**：本文档为历史设计快照。
 > 其中 `"forest"` key 在 P0 后已改为 `"trees"`，`PipelineResult.forest` 已改为 `PipelineResult.trees`。
 > 当前权威规范以 `repo_memo/direct/DESIGN_P0_FOREST_IMPLEMENTATION.md` 和实际代码为准。
 
 创建：2026-04-30
 状态：已完成 ✅
-前置实现：Phase 1（bootstrap + orchestrator）✅
 所有 7 个决策已确认
 
 ---
@@ -190,6 +189,13 @@ web = [
 | `POST` | `/api/pipeline/apply` | 应用替换（SSE） | SSE |
 | `POST` | `/api/pipeline/run` | 全流水线（SSE） | SSE |
 | `POST` | `/api/pipeline/visualize` | Forest JSON → SVG/ASCII/DOT 可视化 | JSON |
+| `POST` | `/api/config/save` | 保存 user_config | JSON |
+| `POST` | `/api/database/load` | 从路径加载 database.json | JSON |
+| `POST` | `/api/pipeline/restore` | 从备份恢复文件 | SSE |
+| `POST` | `/api/rules/scan` | 扫描目录列出 kmm_rule 文件 | JSON |
+| `POST` | `/api/rules/read` | 读取单个 kmm_rule 文件内容 | JSON |
+| `POST` | `/api/backups/list` | 列出备份目录摘要 | JSON |
+| `POST` | `/api/backups/inspect` | 查看备份详情 | JSON |
 
 ### 4.3 端点详设
 
