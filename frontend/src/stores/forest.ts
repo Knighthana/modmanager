@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { streamSse } from '../api/sse'
 import { apiPost } from '../api/client'
 import type { SseProgress } from '../api/sse'
-import type { TreeNode, Changerequest, ConflictItem, PipelineParams } from '../types'
+import type { TreeNode, Changerequest, ConflictItem, PipelineParams, DiscoverParams } from '../types'
 
 export interface MappingEntry {
   path: string
@@ -30,14 +30,6 @@ export interface DatabaseSummary {
   libraries: number
   games: number
   mods: number
-}
-
-export interface DiscoverParams {
-  mode: string
-  paths: string[] | null
-  workingPathstyle: string
-  greedyParsing: boolean
-  cachePath: string | null
 }
 
 export function generateBackupDir(): string {
@@ -68,6 +60,8 @@ export const useForestStore = defineStore('forest', () => {
     workingPathstyle: 'linux',
     greedyParsing: false,
     cachePath: '/tmp/modmanager_database_generated.json',
+    discoveryMode: 'auto' as 'auto' | 'manual',
+    manualSteamPath: '',
   })
 
   // ── last successful pipeline params (for recalculate) ──
@@ -183,12 +177,22 @@ export const useForestStore = defineStore('forest', () => {
     }
   }
 
-  async function discoverDatabase(params: DiscoverParams) {
+  async function discoverDatabase() {
     isRunning.value = true
     errors.value = []
     warnings.value = []
     databaseSummary.value = null
     storedDatabase.value = null
+
+    const params: DiscoverParams = {
+      mode: pipelineForm.value.discoveryMode,
+      paths: pipelineForm.value.discoveryMode === 'manual'
+        ? [pipelineForm.value.manualSteamPath]
+        : null,
+      workingPathstyle: pipelineForm.value.workingPathstyle,
+      greedyParsing: pipelineForm.value.greedyParsing,
+      cachePath: pipelineForm.value.cachePath,
+    }
 
     await streamSse('/database/generate', params, {
       onProgress(p: SseProgress) {
@@ -273,6 +277,8 @@ export const useForestStore = defineStore('forest', () => {
       workingPathstyle: 'linux',
       greedyParsing: false,
       cachePath: '/tmp/modmanager_database_generated.json',
+      discoveryMode: 'auto',
+      manualSteamPath: '',
     }
   }
 

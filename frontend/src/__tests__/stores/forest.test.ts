@@ -210,8 +210,12 @@ describe('useForestStore', () => {
     })
 
     const store = useForestStore()
-    const params = { mode: 'auto', paths: null, workingPathstyle: 'linux', greedyParsing: false, cachePath: '/tmp/db.json' }
-    await store.discoverDatabase(params)
+    // discoverDatabase now reads from pipelineForm internally
+    store.pipelineForm.discoveryMode = 'auto'
+    store.pipelineForm.workingPathstyle = 'linux'
+    store.pipelineForm.greedyParsing = false
+    store.pipelineForm.cachePath = '/tmp/db.json'
+    await store.discoverDatabase()
 
     // After discoverDatabase, databaseSummary should be set
     expect(store.databaseSummary).not.toBeNull()
@@ -252,5 +256,89 @@ describe('useForestStore', () => {
     expect(store.userConfig!.game).toBe('valheim')
     // Should have called both discover and save
     expect(callCount).toBeGreaterThanOrEqual(2)
+  })
+
+  // ── M1-05: mode switching tests ─────────────────────────────────────────
+
+  it('default mode is auto, discoverDatabase sends mode=auto with paths=null', async () => {
+    const mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+
+    const sseChunks = [
+      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"dommod":[]},"errors":[],"warnings":[]}\n\n',
+    ]
+    const encoder = new TextEncoder()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      body: {
+        getReader() {
+          let idx = 0
+          return {
+            read() {
+              if (idx >= sseChunks.length) {
+                return Promise.resolve({ done: true, value: undefined })
+              }
+              return Promise.resolve({ done: false, value: encoder.encode(sseChunks[idx++]) })
+            },
+          }
+        },
+      },
+    })
+
+    const store = useForestStore()
+    expect(store.pipelineForm.discoveryMode).toBe('auto')
+
+    // Set form fields via pipelineForm so discoverDatabase picks them up
+    store.pipelineForm.workingPathstyle = 'linux'
+    store.pipelineForm.greedyParsing = false
+    store.pipelineForm.cachePath = '/tmp/db.json'
+    await store.discoverDatabase()
+
+    // Verify that fetch was called with mode='auto' and paths=null
+    const callUrl = mockFetch.mock.calls[0][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(callUrl).toContain('/database/generate')
+    expect(callBody.mode).toBe('auto')
+    expect(callBody.paths).toBeNull()
+  })
+
+  it('manual mode sends mode=manual with paths=[input path]', async () => {
+    const mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+
+    const sseChunks = [
+      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"dommod":[]},"errors":[],"warnings":[]}\n\n',
+    ]
+    const encoder = new TextEncoder()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      body: {
+        getReader() {
+          let idx = 0
+          return {
+            read() {
+              if (idx >= sseChunks.length) {
+                return Promise.resolve({ done: true, value: undefined })
+              }
+              return Promise.resolve({ done: false, value: encoder.encode(sseChunks[idx++]) })
+            },
+          }
+        },
+      },
+    })
+
+    const store = useForestStore()
+    store.pipelineForm.discoveryMode = 'manual'
+    store.pipelineForm.manualSteamPath = '/tmp/fixture/steamapps'
+    store.pipelineForm.workingPathstyle = 'linux'
+    store.pipelineForm.greedyParsing = false
+    store.pipelineForm.cachePath = '/tmp/db.json'
+    await store.discoverDatabase()
+
+    const callUrl = mockFetch.mock.calls[0][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(callUrl).toContain('/database/generate')
+    expect(callBody.mode).toBe('manual')
+    expect(callBody.paths).toEqual(['/tmp/fixture/steamapps'])
   })
 })

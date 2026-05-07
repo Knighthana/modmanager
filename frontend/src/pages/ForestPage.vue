@@ -21,15 +21,31 @@
         <el-form-item label="Cache path">
           <el-input v-model="store.pipelineForm.cachePath" placeholder="/tmp/modmanager_database_generated.json" />
         </el-form-item>
+        <el-form-item label="发现模式">
+          <el-radio-group v-model="store.pipelineForm.discoveryMode">
+            <el-radio value="auto">🔍 自动发现 Steam 库</el-radio>
+            <el-radio value="manual">📁 手动指定路径</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="store.pipelineForm.discoveryMode === 'manual'" label="Steam 库路径">
+          <el-input v-model="store.pipelineForm.manualSteamPath"
+                    placeholder="/tmp/fixture/steamapps" />
+          <div style="font-size:12px;color:#999;margin-top:4px;">
+            💡 指向 steamapps/ 目录（含 appmanifest 和 workshop/content 的父目录）
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-button
             type="warning"
             :loading="store.isRunning"
-            :disabled="store.isRunning"
+            :disabled="store.isRunning || isDiscoverDisabled"
             @click="onDiscover"
           >
             {{ store.isRunning ? '探测中...' : '🔍 自动探测 Steam 库' }}
           </el-button>
+          <span v-if="isDiscoverDisabled" style="margin-left: 8px; font-size: 12px; color: #999;">
+            请输入 Steam 库路径
+          </span>
         </el-form-item>
         <!-- 探测结果摘要 -->
         <el-form-item v-if="store.databaseSummary && !store.errors.length" label="探测结果">
@@ -233,14 +249,12 @@ function getFilteredTrees(): TreeNode[] {
 
 const hasBranchingTrees = computed(() => store.trees.some(t => t.resolved_state === 'pending'))
 
+const isDiscoverDisabled = computed(() =>
+  store.pipelineForm.discoveryMode === 'manual' && !store.pipelineForm.manualSteamPath
+)
+
 async function onDiscover() {
-  await store.discoverDatabase({
-    mode: 'auto',
-    paths: null,
-    workingPathstyle: store.pipelineForm.workingPathstyle,
-    greedyParsing: store.pipelineForm.greedyParsing,
-    cachePath: store.pipelineForm.cachePath,
-  })
+  await store.discoverDatabase()
 
   // Auto-populate form on success
   if (store.databaseSummary && !store.errors.length) {

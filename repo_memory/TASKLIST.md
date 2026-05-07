@@ -235,6 +235,43 @@
 
 ---
 
+## 🗒️ 待讨论事项（TODO）
+
+以下为 2026-05-07 记录，需后续讨论决策：
+
+| # | 事项 | 说明 |
+|---|------|------|
+| TODO-1 | "数据源"应有独立选项卡 | 数据源发现（Steam 库扫描、手动指定等）属于基础环境配置，应独立于 Forest 页面，且跨选项卡切换应暂存状态 |
+| TODO-2 | 支持清理 `/tmp/` 中本应用运行时文件 | 自动探测会在 `/tmp/` 下生成 database cache 和 user_config，需要提供一键清理选项 |
+| TODO-3 | "仅分枝"空结果提示语修正 | 当前无分枝时显示"暂无森林图。请先点击'计算映射'。"——应改为"无分枝冲突"或类似（若已执行过计算但有森林无分枝） |
+| TODO-4 | BackupPage GUI 审查 | 界面与当初约定的功能对不上，需整体重审 |
+
+---
+
+## Phase P5: 手动模式 + Fixture 集成 ✅
+
+ForestPage 数据源发现面板新增手动模式，支持用户指定 `steamapps/` 起始路径；`generate_fixture.py` 新增 `--with-db` 一步到位。
+
+**设计文档**：`repo_memory/direct/DESIGN_P4_GUI_GAP_CLOSURE.md` §9
+
+### M1: ForestPage 手动模式
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| M1-01 | `pipelineForm` 新增 `discoveryMode: 'auto' \| 'manual'` + `manualSteamPath` | `stores/forest.ts` | done |
+| M1-02 | `discoverDatabase()` 根据 mode 切换 `auto`/`manual` + `paths` 参数 | `stores/forest.ts` | done |
+| M1-03 | ForestPage 数据源面板加 radio 切换 + 条件显示路径输入框 | `pages/ForestPage.vue` | done |
+| M1-04 | 扩展 `DiscoverParams` 类型 | `frontend/src/types/` | done |
+| M1-05 | 前端 Vitest 更新（mode 切换） | `frontend/src/__tests__/` | done |
+
+### M2: Fixture 生成器增强
+
+| # | 任务 | 模块 | 状态 |
+|---|------|------|------|
+| M2-01 | `generate_fixture.py` 新增 `--with-db` 参数：生成 fixture 后自动调 `generate_database(mode='manual')` 并写 `database.json` | `tools/generate_fixture.py` | done |
+
+---
+
 ## Future（远期）
 
 ### P2: 引擎细节修复 ✅

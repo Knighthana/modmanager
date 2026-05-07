@@ -414,13 +414,14 @@ def main():
         description="modmanager_cli 测试 Fixture 生成器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-模式说明:
-  full  完整镜像目录结构，为每个文件生成轻量 mock（文本内容）
-  hot   仅创建被 kmm_rule 实际引用的路径和文件，用于快速迭代
+ 模式说明:
+   full  完整镜像目录结构，为每个文件生成轻量 mock（文本内容）
+   hot   仅创建被 kmm_rule 实际引用的路径和文件，用于快速迭代
 
-用法示例:
-  python tools/generate_fixture.py full  -o /tmp/kmm_fixture --clean
-  python tools/generate_fixture.py hot   -o /tmp/kmm_fixture --clean
+ 用法示例:
+   python tools/generate_fixture.py full  -o /tmp/kmm_fixture --clean
+   python tools/generate_fixture.py hot   -o /tmp/kmm_fixture --clean
+   python tools/generate_fixture.py hot   -o /tmp/kmm_fixture --with-db
         """,
     )
     parser.add_argument(
@@ -438,6 +439,11 @@ def main():
         "--clean",
         action="store_true",
         help="生成前清空输出目录",
+    )
+    parser.add_argument(
+        "--with-db",
+        action="store_true",
+        help="生成后自动调用 generate_database 并写入 database.json",
     )
 
     args = parser.parse_args()
@@ -469,6 +475,26 @@ def main():
 
     elapsed = time.time() - start
     print_stats(output_dir, elapsed)
+
+    # ── --with-db: 生成 database.json ──────────────────────────────────────
+    if args.with_db:
+        print("\n" + "=" * 60)
+        print("  📊 生成数据库 (--with-db)")
+        print("=" * 60)
+
+        output_steamapps_dir = str(output_dir / "steamapps")
+        from modmanager.bootstrap import generate_database
+        from modmanager.iojson import write_json_file
+
+        db = generate_database(
+            "manual",
+            paths=[output_steamapps_dir],
+            greedy_parsing=True,
+        )
+        db_path = output_dir / "database.json"
+        write_json_file(db_path, db)
+        print(f'  📊 数据库已生成: {db_path}')
+        print(f'     Games: {len(db.get("game", []))} | Mods: {len(db.get("dommod", []))}')
 
 
 if __name__ == "__main__":

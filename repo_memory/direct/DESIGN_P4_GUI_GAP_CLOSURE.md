@@ -267,3 +267,65 @@
 | D6 | 路径安全校验策略？ | **不做**。安全由操作语义保证（只读 vs 写入），不在路由层做字符串级过滤 |
 | D7 | restore 通过 orchestrator 还是直接调 backup_ops？ | 直接调 `backup_ops.restore_from_backup()`，restore 语义简单无需编排 |
 | D8 | restore 是否需要 SSE 流？ | 是，支持进度回调（逐个文件报告进度） |
+
+---
+
+## 9. Phase P5 追加：手动模式 + Fixture 集成
+
+### 9.1 背景
+
+Fixture 生成后，需要手动调用 `generate_database(mode='manual', paths=[...])` 生成 database.json。当前前端 ForestPage 只有"自动探测"（`mode='auto'`），无法指定手动路径。
+
+`POST /api/database/generate` 的后端 schema 已支持 `mode: "manual"` + `paths: list[str]`，只差前端暴露。
+
+### 9.2 ForestPage 手动模式
+
+**UI 变更**：在数据源发现面板添加模式选择：
+
+```
+扫描模式:  (•) 🔍 自动发现 Steam 库    ( ) 📁 手动指定路径
+
+┌─ 手动模式（展开时）──────────────────────────┐
+│ Steam 库路径:                                │
+│ ┌──────────────────────────────────────────┐ │
+│ │ /tmp/fixture/steamapps                   │ │
+│ └──────────────────────────────────────────┘ │
+│ 💡 指向 steamapps/ 目录（含 appmanifest 和   │
+│    workshop/content 的父目录）                │
+└──────────────────────────────────────────────┘
+```
+
+**约束**：
+
+| 条件 | 行为 |
+|------|------|
+| 自动模式（默认） | `mode: 'auto'`, `paths: null` — 现有行为不变 |
+| 手动模式 + 路径为空 | 按钮 disabled + tooltip "请输入 Steam 库路径" |
+| 手动模式 + 路径有效 | `mode: 'manual'`, `paths: [用户输入]` |
+| Database JSON 手动填入 | 不变（已有功能，填入已生成的 database.json 直接使用，跳过扫描） |
+
+**涉及文件**（仅前端）：
+
+| 文件 | 改动 |
+|------|------|
+| `frontend/src/stores/forest.ts` | `pipelineForm` 加 `discoveryMode` + `manualSteamPath`；`discoverDatabase()` 按模式切换参数 |
+| `frontend/src/pages/ForestPage.vue` | radio 切换 + 条件路径输入框 |
+| `frontend/src/types/` | 扩展 `DiscoverParams` |
+| `frontend/src/__tests__/` | mode 切换测试 |
+
+**后端零改动**。
+
+### 9.3 Fixture 生成器增强
+
+`generate_fixture.py` 新增 `--with-db` 参数：
+
+```bash
+python tools/generate_fixture.py hot -o /tmp/fixture --with-db
+# 生成 fixture + 自动调 generate_database(mode='manual') + 写 database.json
+```
+
+**涉及文件**：`tools/generate_fixture.py`
+
+### 9.4 任务分解
+
+见 `repo_memory/TASKLIST.md` Phase P5（M1: 5 前端任务 + M2: 1 工具任务）

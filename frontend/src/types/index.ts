@@ -49,6 +49,14 @@ export interface PipelineParams {
   branch_decisions?: Record<string, string>
 }
 
+export interface DiscoverParams {
+  mode: string
+  paths: string[] | null
+  workingPathstyle: string
+  greedyParsing: boolean
+  cachePath: string | null
+}
+
 export interface SseProgress {
   step: string
   finished: number
