@@ -251,6 +251,8 @@
 | TODO-8 | ConflictsPage branch decisions 刷新丢失 | 用户裁决的分支选择仅在 Pinia 内存中，刷新丢失 |
 | TODO-9 | `onDbPathBlur` 静默失败 | ForestPage 加载 database 文件失败时无用户反馈 |
 | TODO-10 | 空输入校验 | 不能为空的字段（如手动路径、database 路径、rules paths）需后端先对空传入做正确解析与警告，前端再加空校验拦截 |
+| TODO-11 | Rules / user_config 路径无 ~ 展开 | `path_resolver._expand_path` 仅用于 database 路径；aggregate() 和 compute 端点的 `kmm_rule_paths` / `user_config_path` 不经 path_resolver |
+| TODO-12 | Rules paths 前端无路径预检 | 填了无效路径后端才报错，前端无输入校验 |
 
 ---
 

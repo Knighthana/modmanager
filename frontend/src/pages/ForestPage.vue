@@ -130,7 +130,7 @@
             type="error"
             :closable="false"
             style="margin-bottom: 4px; cursor: pointer;"
-            @click="(e: MouseEvent) => onMessageClick(err, e.currentTarget as HTMLElement)"
+            @click="(e: MouseEvent) => onMessageClick(err, e)"
           />
         </el-collapse-item>
         <el-collapse-item v-if="store.warnings.length" title="警告 ({{ store.warnings.length }})" name="warnings">
@@ -141,7 +141,7 @@
             type="warning"
             :closable="false"
             style="margin-bottom: 4px; cursor: pointer;"
-            @click="(e: MouseEvent) => onMessageClick(warn, e.currentTarget as HTMLElement)"
+            @click="(e: MouseEvent) => onMessageClick(warn, e)"
           />
         </el-collapse-item>
       </el-collapse>
@@ -330,17 +330,18 @@ function prepareParams() {
   }
 }
 
-function onMessageClick(msg: string, el: HTMLElement) {
+function onMessageClick(msg: string, e: MouseEvent) {
     const desc = getDescription(msg)
     if (desc) {
-        showPopup(desc, el)
+        showPopup(desc, e.currentTarget as HTMLElement, e)
     }
 }
 
 function showDbInfo(e: MouseEvent) {
     showPopup(
         '数据源已在 📡 数据源 页面中配置。<br/>若已从数据源页应用，数据库将自动传入；否则可在此手动填写。',
-        e.currentTarget as HTMLElement
+        e.currentTarget as HTMLElement,
+        e
     )
 }
 
