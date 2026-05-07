@@ -114,7 +114,10 @@
       <el-col :span="6">
         <el-card shadow="never">
           <span style="font-size: 13px; color: var(--el-text-color-secondary);">错误</span>
-          <div style="font-size: 24px; font-weight: 600; color: var(--el-color-danger);">{{ store.errors.length }}</div>
+          <div style="font-size: 24px; font-weight: 600;"
+               :style="{ color: store.errors.length > 0 ? 'var(--el-color-danger)' : 'var(--el-text-color-primary)' }">
+            {{ store.errors.length }}
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -170,18 +173,8 @@
       </el-form>
     </el-card>
 
-    <!-- 无分枝冲突提示 -->
-    <el-alert
-      v-if="showBranchingOnly && store.trees.length > 0 && !hasBranchingTrees"
-      title="无分枝冲突"
-      type="info"
-      :closable="false"
-      description="当前所有树均已裁决，没有待处理的分枝冲突。"
-      style="margin-bottom: 16px;"
-    />
-
     <!-- ForestViewer -->
-    <ForestViewer />
+    <ForestViewer :empty-message="emptyMessage" />
   </div>
 </template>
 
@@ -272,6 +265,12 @@ function getFilteredTrees(): TreeNode[] {
 }
 
 const hasBranchingTrees = computed(() => store.trees.some(t => t.resolved_state === 'pending'))
+
+const emptyMessage = computed(() =>
+  showBranchingOnly.value
+    ? '当前森林中不存在待裁决的分支问题'
+    : '暂无森林图。请先点击"计算映射"。'
+)
 
 const isDiscoverDisabled = computed(() =>
   store.pipelineForm.discoveryMode === 'manual' && !store.pipelineForm.manualSteamPath
