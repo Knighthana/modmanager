@@ -1,5 +1,10 @@
 # DESIGN_BOOTSTRAP — Bootstrap 环境初始化
 
+> Status: archived
+> Authority: reference-only
+> Read-Tier: on-demand
+> Purpose: 保留 Bootstrap 模块设计与阶段性决策背景，供历史追溯使用
+
 > 来源：DESIGN_BOOTSTRAP_ORCHESTRATOR.md（bootstrap 部分）+ QUESTIONS_BOOTSTRAP.md（合并）
 > 状态：已完成 ✅
 

@@ -1,5 +1,9 @@
 # DESIGN_GUI — 前端 GUI 设计
 
+> Status: active
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 规定前端 GUI 的总体架构、交互边界与页面级设计原则
 > 状态：DRAFT
 > 来源：DESIGN_PHASE3_GUI.md + DESIGN_P3_GUI2.md + DESIGN_GUI_CONVENTIONS.md（合并）
 > 创建：2026-05-08
@@ -8,9 +12,8 @@
 
 ## 一、Phase 3 总设计（DESIGN_PHASE3_GUI.md）
 
-> **注**：本文档为 Phase 3 实现时的历史设计快照。
-> §4 中的 `ForestNode` 类型在 P0 后已改为 `TreeNode`（新增 `root_path`/`refs`/`resolved_state`）。
-> 当前权威规范以实际代码为准。
+> **维护说明**：本文档保留了 Phase 3 的设计来源，但当前仍作为 GUI 总体设计的现行文档使用。
+> 其中 §4 的 `ForestNode` 类型在 P0 后已改为 `TreeNode`（新增 `root_path` / `refs` / `resolved_state`）；涉及森林输出结构时，以 `repo_memo/DESIGN_FOREST_MODEL.md` 和实际类型定义为准。
 
 ### 决策汇总
 

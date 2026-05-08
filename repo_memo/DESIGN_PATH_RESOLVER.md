@@ -1,6 +1,10 @@
 # DESIGN_PATH_RESOLVER — 通用路径解析模块
 
-> 状态：DRAFT  
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 路径规范化模块设计；所有路径猜测集中于此，下游只做合规性校验
+
 > 来源：2026-05-07 用户讨论 — DataSource 手动路径、Database JSON、User config 等多处需要路径猜测  
 > 原则：所有"猜测"集中于此模块；产出后的路径为规范值，下游只做合规性校验
 

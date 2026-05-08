@@ -1,7 +1,12 @@
 # DESIGN_BACKUP — Backup 实现设计
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 定义 backup_dir 推导、备份恢复流程与 backup 子系统的职责边界
+
 > 来源：DESIGN_P1_BACKUP.md + BACKUP_DIR_BUILDER_DESIGN.md（合并）
-> 状态：已完成 ✅
+> 实现状态：已落地并持续生效
 
 ---
 

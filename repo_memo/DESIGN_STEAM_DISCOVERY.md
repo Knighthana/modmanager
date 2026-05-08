@@ -1,5 +1,10 @@
 # Steam Discovery Contract
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: Steam 自动发现合约；定义从本机 Steam 安装中发现库路径、appid 与工坊条目的流程
+
 ## 目标
 从本机 Steam 安装中自动发现：
 - 所有 Steam 库路径

@@ -1,5 +1,10 @@
 # 引擎核心不变量
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: always
+> Purpose: 冻结引擎输出与运行时必须满足的不变量，作为 engine 修改的硬约束
+
 > 来源：repo_logs/2026-04-21_M1_EXECUTION_CONTRACT.md，经 P0 后更新
 
 ## 数据结构不变量

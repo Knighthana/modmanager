@@ -1,7 +1,12 @@
 # DESIGN_ORCHESTRATOR — Orchestrator 流水线调度
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 定义 orchestrator 的调度职责、阶段串联方式与 CLI/GUI 共享入口边界
+
 > 来源：DESIGN_BOOTSTRAP_ORCHESTRATOR.md（orchestrator 部分）
-> 状态：已完成 ✅
+> 实现状态：已落地并持续生效
 
 ---
 

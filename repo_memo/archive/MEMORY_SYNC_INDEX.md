@@ -1,5 +1,10 @@
 # Memory Sync Index
 
+> Status: archived
+> Authority: reference-only
+> Read-Tier: on-demand
+> Purpose: 保留从 memories 到 repo_memo 的历史同步记录，供审计与追溯使用
+
 用于记录从 /memories 到 repo_memo 的摘要同步。
 
 ## 记录规则

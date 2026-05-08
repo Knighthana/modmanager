@@ -1,5 +1,9 @@
 # DESIGN_P4_GUI_GAP_CLOSURE — GUI 缺口补齐
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 记录 GUI 缺口补齐阶段的现行约束与实现边界，作为相关模块维护与回归检查的依据
 > 状态：FINAL ✅（2026-05-07 实现完成）  
 > 来源：`work_memo/2026-05-06.md` 中记录的 3 个 GUI 缺口  
 > 依赖：P0-P3 全部已完成（322 Python + 18 前端 tests）  

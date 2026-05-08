@@ -1,5 +1,11 @@
 # Process Description (repo_memo authoritative)
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: always
+> Purpose: 提供系统主流程、模块分工与当前阶段总览，作为跨模块任务的总览入口
+> Supersedes: `description/process_description.md`
+
 这是当前阶段的执行总览文档，用于替代 `description/process_description.md` 的指挥作用。
 
 ## 业务目标

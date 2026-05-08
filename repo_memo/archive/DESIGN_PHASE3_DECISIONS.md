@@ -1,5 +1,10 @@
 # Phase 3: 前端 GUI — 不确定性问题
 
+> Status: archived
+> Authority: reference-only
+> Read-Tier: on-demand
+> Purpose: 保留 Phase 3 GUI 设计期的问题列表与已完成决策，供历史追溯与方案比对使用
+
 创建：2026-04-30
 状态：全部已决策 ✅
 前置完成：Phase 1（bootstrap + orchestrator）✅ + Phase 2（Web API）✅

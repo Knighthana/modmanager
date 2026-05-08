@@ -1,11 +1,16 @@
 # REST API 设计
 
-> **2026-05-06 注**：本文档为历史设计快照。
-> 其中 `"forest"` key 在 P0 后已改为 `"trees"`，`PipelineResult.forest` 已改为 `PipelineResult.trees`。
-> 当前权威规范以 `repo_memo/DESIGN_FOREST_MODEL.md` 和实际代码为准。
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 约束 Web API 的接口形态、SSE 通信方式与 Web 层行为边界
+
+> **维护说明（2026-05-06）**：本文档仍作为 Web 层的现行规范使用。
+> 其中早期设计中的 `"forest"` key 在 P0 后已统一改为 `"trees"`，`PipelineResult.forest` 已改为 `PipelineResult.trees`。
+> 涉及映射输出结构时，以 `repo_memo/DESIGN_FOREST_MODEL.md` 定义的现行输出契约为准；其余 Web API 行为约束以本文档为准。
 
 创建：2026-04-30
-状态：已完成 ✅
+实现状态：已落地并持续生效
 所有 7 个决策已确认
 
 ---

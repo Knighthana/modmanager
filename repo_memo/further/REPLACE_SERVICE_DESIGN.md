@@ -1,5 +1,10 @@
 # Replace Service Design
 
+> Status: future
+> Authority: reference-only
+> Read-Tier: on-demand
+> Purpose: 记录替换执行层独立化的远期方案，供未来规划与演进预留参考
+
 ## 目标
 提供一个只负责“替换执行”的接口层，保持单一职责。
 

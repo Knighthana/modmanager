@@ -1,5 +1,10 @@
 # Engineering Patterns
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: always
+> Purpose: 记录跨任务复用的工程模式、校验顺序与开发环境约束
+
 来源：/memories/patterns.md
 更新时间：2026-05-06
 

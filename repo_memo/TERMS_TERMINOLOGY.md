@@ -1,5 +1,10 @@
 # Terminology Freeze
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: always
+> Purpose: 冻结核心术语及其主字段，禁止历史别名重新进入实现与数据结构
+
 ## 1. 主 VDF 发现点
 - 术语：主 VDF 发现点
 - 定义：某个 `steamapps` 路径下存在 `libraryfolders.vdf`，可用于扩展发现全部 Steam 库。

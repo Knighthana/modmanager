@@ -1,7 +1,12 @@
 # Rule Aggregation Design
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 定义多份 kmm_rule 聚合为 aggregated_rule_set 的规则、边界与输入输出契约
+
 更新时间：2026-04-30
-状态：最终版（已实现验证 ✅）
+实现状态：已落地并持续生效
 
 ---
 

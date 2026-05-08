@@ -1,5 +1,9 @@
 # DESIGN_P6_DATASOURCE_TAB — 数据源独立选项卡
 
+> Status: active
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 规定数据源独立选项卡的目标、问题域与设计方向，指导后续 GUI 数据源改造
 > 状态：DRAFT  
 > 来源：2026-05-07 用户讨论（数据源独立 + 去重 + 展示 + 暂存）  
 > 依赖：P0-P5 全部已完成（338 Python + 42 前端 tests）  

@@ -1,7 +1,12 @@
 # DESIGN_FOREST_MODEL — 森林模型重构
 
+> Status: stable
+> Authority: authoritative
+> Read-Tier: task-scoped
+> Purpose: 定义 compute_mapping 的森林模型、解析流程与 trees/final_mapping 输出契约
+
 > 来源：DESIGN_P0_FOREST_RISK_ANALYSIS.md + DESIGN_P0_FOREST_IMPLEMENTATION.md（合并）
-> 状态：已完成 ✅
+> 实现状态：已落地并持续生效
 
 ---
 
