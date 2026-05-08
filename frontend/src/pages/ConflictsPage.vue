@@ -42,7 +42,7 @@
         <template #default="{ row }">
           <el-radio-group
             :model-value="store.branchDecisions[row.root_path]"
-            @change="(val: string) => store.setDecision(row.root_path, val)"
+            @change="(val) => store.setDecision(row.root_path, val as string)"
           >
             <el-radio
               v-for="c in row.candidates"

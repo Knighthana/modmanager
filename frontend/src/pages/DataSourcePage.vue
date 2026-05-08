@@ -113,7 +113,7 @@
                 v-if="store.duplicateAppids.includes(row.appid)"
                 v-model="store.duplicateResolutions[row.appid]"
                 :value="row.libraryIndex"
-                @change="(val: number) => store.setDuplicateResolution(row.appid, val)"
+                @change="(val) => store.setDuplicateResolution(row.appid, val as number)"
               >
                 &nbsp;
               </el-radio>
@@ -184,7 +184,7 @@
                 v-if="store.duplicateAppids.includes(row.appid)"
                 v-model="store.duplicateResolutions[row.appid]"
                 :value="row.libraryIndex"
-                @change="(val: number) => store.setDuplicateResolution(row.appid, val)"
+                @change="(val) => store.setDuplicateResolution(row.appid, val as number)"
               >
                 &nbsp;
               </el-radio>
