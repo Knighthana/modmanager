@@ -27,7 +27,7 @@
 - 扫描契约：`STEAM_DISCOVERY.md`
 - 字段定义：`DATABASE_FIELDS.md`
 - 示例数据：`*.example`
-- 执行指令：`IMPLEMENTATION_BRIEF.md`
+- 执行指令：`DOCUMENT_GOVERNANCE.md`、`TASKLIST.md`
 
 ## 关键约束
 - 单概念单字段名，禁止历史别名继续落库

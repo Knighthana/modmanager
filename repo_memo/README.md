@@ -11,7 +11,7 @@
 1. 先读 `TERMINOLOGY.md`
 2. 再读 `STEAM_DISCOVERY.md`
 3. 再读 `DATABASE_FIELDS.md`
-4. 按 `IMPLEMENTATION_BRIEF.md` 执行
+4. 按 `DOCUMENT_GOVERNANCE.md` 和 `TASKLIST.md` 执行
 
 ## 同步规则
 - `description/` 仅作为用户与 Plan 的沟通目录，不作为 implement 默认输入

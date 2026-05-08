@@ -51,3 +51,19 @@
 - `action_order`：聚合器或 GUI 在运行时注入的动作顺序，类型必须为 int
 - 默认值为 `0`，表示未指定或不可靠，不做猜测补全
 - 命中过程冲突且 `action_order` 相等，或任一冲突方的 `action_order=0` 时，必须直接抛错
+
+## 11. 聚合器输出
+- `operation[]` — 聚合后的 mod 操作列表（key: `"operation"`，替代旧 `"mod"`）
+- action 类型：`replace` / `create` / `delete`（`hold` 在聚合器阶段已过滤，不出现在输出中）
+- `from_type` / `into_type`：`"file"` 或 `"path"`（path 时列表每项以 `/` 结尾）
+
+## 12. 引擎输出
+- `trees` — P0 后替代旧 `"forest"`，独立根+引用模型的森林
+- `TreeNode` — 树结点：`root_path`、`destin_mixed_id`、`changerequest`、`refs`、`resolved_state`
+- `changerequest` — 单个操作映射：`path`、`action`、`mixed_id`、`hashtype`、`hashvalue`
+- `resolved_state` — `pending` / `kept` / `deleted` / `failed` / `skipped`
+- `refs` — 此树引用的其他树根路径（独立根+引用模型）
+- `final_mapping` — 决议后的最终文件映射列表
+
+## 13. 数据库扩展
+- `dommod[]` — mod 列表：`mixed_id`（appid:modid 格式）、`path`（以 / 结尾）、`localdate`
