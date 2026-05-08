@@ -53,7 +53,11 @@ class SchemaLoadTests(unittest.TestCase):
         from modmanager.engine import VALID_ACTIONS
         schema = get_output_schema()
         schema_enum = set(schema["$defs"]["ChangeRequest"]["properties"]["action"]["enum"])
-        self.assertSetEqual(schema_enum, VALID_ACTIONS)
+        # "hold" is a valid INPUT action (engine skips it silently) but must NEVER
+        # appear in changerequest OUTPUT.  The output schema enum is therefore a
+        # strict subset of VALID_ACTIONS with "hold" excluded.
+        self.assertNotIn("hold", schema_enum)
+        self.assertTrue(schema_enum.issubset(VALID_ACTIONS))
 
     def test_validate_output_rejects_missing_keys(self) -> None:
         errs = validate_output_collect({"warnings": [], "errors": []})

@@ -12,6 +12,7 @@ from pathlib import Path
 from fastapi import APIRouter
 
 from modmanager.backup_ops import load_backup_info, detect_dirty_state, inspect_conflict
+from modmanager.path_resolver import resolve_directory_path
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import BackupListRequest, BackupInspectRequest
@@ -33,11 +34,12 @@ async def backups_list(req: BackupListRequest):
         return adapt_error("dir is required")
 
     try:
+        scan_dir = resolve_directory_path(scan_dir, Path(scan_dir.rstrip("/")).name)
+    except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
+        return adapt_error(str(exc))
+
+    try:
         entries = os.listdir(scan_dir)
-    except FileNotFoundError:
-        return adapt_error(f"directory not found: {scan_dir}")
-    except NotADirectoryError:
-        return adapt_error(f"not a directory: {scan_dir}")
     except PermissionError:
         return adapt_error(f"permission denied: {scan_dir}")
     except OSError as exc:

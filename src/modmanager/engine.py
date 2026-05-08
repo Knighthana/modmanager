@@ -56,6 +56,10 @@ def _build_change_request(
     hashvalue: str,
     item: dict[str, Any],
 ) -> dict[str, Any]:
+    assert action != "hold", (
+        f"E_INTERNAL: hold action must not appear in changerequest "
+        f"(path={path!r}). This is a bug in the aggregator or engine pipeline."
+    )
     return {
         "path": path,
         "action": action,

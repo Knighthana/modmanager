@@ -5,6 +5,8 @@ All endpoints return SSE streams with progress updates.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
@@ -36,13 +38,12 @@ async def pipeline_compute(req: ComputeRequest):
     """
 
     def do_work(*, on_progress):
-        import os
-        rule_paths = [os.path.expanduser(p) for p in req.kmm_rule_paths]
-        user_cfg = os.path.expanduser(req.user_config_path) if req.user_config_path else req.user_config_path
+        from modmanager.path_resolver import resolve_file_path
+        rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
+        user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else req.user_config_path
 
         db = req.database
         if isinstance(db, str):
-            from modmanager.path_resolver import resolve_file_path
             from modmanager.iojson import load_json_file
             resolved = resolve_file_path(db, 'database.json')
             db = load_json_file(resolved)
@@ -205,13 +206,12 @@ async def pipeline_run(req: RunRequest):
     """
 
     def do_work(*, on_progress):
-        import os
-        rule_paths = [os.path.expanduser(p) for p in req.kmm_rule_paths]
-        user_cfg = os.path.expanduser(req.user_config_path) if req.user_config_path else req.user_config_path
+        from modmanager.path_resolver import resolve_file_path
+        rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
+        user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else req.user_config_path
 
         db = req.database
         if isinstance(db, str):
-            from modmanager.path_resolver import resolve_file_path
             from modmanager.iojson import load_json_file
             resolved = resolve_file_path(db, 'database.json')
             db = load_json_file(resolved)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -21,13 +22,26 @@ def create_app() -> FastAPI:
         redoc_url="/api/redoc",
     )
 
-    # CORS — open for local development; tighten for production if needed.
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Determine build output early — used for both CORS and static-file mounting.
+    static_dir = Path(__file__).parent.parent.parent / "frontend" / "dist"
+    prod_build = static_dir.exists() and (static_dir / "index.html").exists()
+
+    # CORS — only needed in development (Vite dev server).
+    # In production the frontend is served from the same origin, so no CORS required.
+    # Tauri2 migration: set KMM_CORS_ORIGINS=tauri://localhost,https://tauri.localhost
+    if not prod_build:
+        dev_origins_env = os.environ.get(
+            "KMM_CORS_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173",
+        )
+        origins = [o.strip() for o in dev_origins_env.split(",") if o.strip()]
+        if origins:
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=origins,
+                allow_methods=["POST", "GET"],
+                allow_headers=["Content-Type"],
+            )
 
     # ── Built-in endpoints ────────────────────────────────────────────────
     @app.get("/api/health")
@@ -46,8 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(backups.router, prefix="/api/backups", tags=["backups"])
 
     # ── Static file mount + SPA fallback (only when build artefact exists) ──
-    static_dir = Path(__file__).parent.parent.parent / "frontend" / "dist"
-    if static_dir.exists() and (static_dir / "index.html").exists():
+    if prod_build:
         assets_dir = static_dir / "assets"
         if assets_dir.exists():
             app.mount(

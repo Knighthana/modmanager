@@ -20,3 +20,8 @@
 8. 输出契约：`compute_mapping` 返回 `trees`（非 `forest`），`final_mapping` 格式不变。
 9. 分岔裁决：单操作树自动裁决，多操作树标记 pending 等待决策。
 10. 文档先行：架构级改动必须先在 repo_memo/ 产出设计文档，再改代码。
+
+## 开发环境约束
+
+- **Python / pip**：所有 Python 操作（安装依赖、运行测试、启动服务）必须在项目根目录的 `.venv/` 虚拟环境中执行。禁止向系统 Python 或其他虚拟环境安装包。
+- **Node / npm**：所有 Node 操作必须通过本机安装的 `fnm` 管理的 Node 版本执行。版本固定见项目根目录 `.node-version`，进入目录后 fnm 自动切换。禁止绕过 fnm 直接调用系统 node/npm。

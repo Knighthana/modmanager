@@ -11,6 +11,8 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
+from modmanager.path_resolver import resolve_directory_path, resolve_file_path
+
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import RulesScanRequest, RulesReadRequest
 
@@ -23,16 +25,16 @@ async def rules_scan(req: RulesScanRequest):
 
     Returns an ``ApiResponse`` with ``{ files: [{ name, path, size }] }``.
     """
-    scan_dir = req.dir
-    if not scan_dir:
+    if not req.dir:
         return adapt_error("dir is required")
 
     try:
+        scan_dir = resolve_directory_path(req.dir, Path(req.dir.rstrip("/")).name)
+    except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
+        return adapt_error(str(exc))
+
+    try:
         entries = os.listdir(scan_dir)
-    except FileNotFoundError:
-        return adapt_error(f"directory not found: {scan_dir}")
-    except NotADirectoryError:
-        return adapt_error(f"not a directory: {scan_dir}")
     except PermissionError:
         return adapt_error(f"permission denied: {scan_dir}")
     except OSError as exc:
@@ -64,17 +66,16 @@ async def rules_read(req: RulesReadRequest):
     Returns an ``ApiResponse`` with ``{ content, name, path, size }``.
     Returns ``ok: false`` if the file does not exist or cannot be read.
     """
-    file_path = req.path
-    if not file_path:
+    if not req.path:
         return adapt_error("path is required")
 
-    p = Path(file_path)
-    if not p.exists():
-        return adapt_error(f"file not found: {file_path}")
-    if not p.is_file():
-        return adapt_error(f"not a file: {file_path}")
+    try:
+        file_path = resolve_file_path(req.path, Path(req.path).name)
+    except (FileNotFoundError, IsADirectoryError, ValueError) as exc:
+        return adapt_error(str(exc))
 
     try:
+        p = Path(file_path)
         content = p.read_text(encoding="utf-8")
         st = p.stat()
         return adapt_dict_result({

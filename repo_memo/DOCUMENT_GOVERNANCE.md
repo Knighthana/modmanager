@@ -25,3 +25,8 @@
 ## 执行门禁
 - 实现任务必须引用 repo_memo 中的文档路径；缺失路径视为无效
 - 涉及字段命名变更时，先更新 TERMS_TERMINOLOGY.md 与相关设计文档，再改代码
+
+## AI Agent 使用约束
+- `description/` 目录对 AI agent **禁止**用于推导实现逻辑、Schema 约束或字段定义
+- Agent 任务必须以 `repo_memo/` 和 `repo_spec/` 为唯一权威来源
+- `description/` 仅由人类管理者在明确指令下被动更新，agent 读取该目录内容时须忽略其规范含义

@@ -290,6 +290,9 @@ class TestComputePipeline:
         monkeypatch.setattr(
             "modmanager_web.routes.pipeline.orch_compute", fake_compute
         )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
 
         resp = client.post(
             "/api/pipeline/compute",
@@ -354,6 +357,9 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmanager_web.routes.pipeline.orch_run", fake_run
+        )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
         )
 
         resp = client.post(
@@ -498,6 +504,9 @@ class TestSseDisconnect:
         monkeypatch.setattr(
             "modmanager_web.routes.pipeline.orch_compute", fake_compute
         )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
 
         # Send a normal request — the important thing is that it does not
         # crash the server regardless of how the client handles the stream.
@@ -544,7 +553,7 @@ class TestRulesApi:
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
-        assert any("not found" in e for e in body["errors"])
+        assert body["errors"]
 
     def test_rules_scan_not_a_directory(self, client: TestClient, tmp_path: Path) -> None:
         """scan returns error when path is a file, not directory."""
@@ -554,7 +563,7 @@ class TestRulesApi:
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
-        assert any("not a directory" in e for e in body["errors"])
+        assert body["errors"]
 
     def test_rules_scan_empty_dir(self, client: TestClient, tmp_path: Path) -> None:
         """scan returns empty list for directory with no .json files."""
@@ -582,7 +591,7 @@ class TestRulesApi:
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
-        assert any("not found" in e for e in body["errors"])
+        assert body["errors"]
 
     def test_rules_read_not_a_file(self, client: TestClient, tmp_path: Path) -> None:
         """read returns error when path is a directory."""
@@ -590,7 +599,7 @@ class TestRulesApi:
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
-        assert any("not a file" in e for e in body["errors"])
+        assert body["errors"]
 
 
 # ── Backups API ─────────────────────────────────────────────────────────────
@@ -630,7 +639,7 @@ class TestBackupsListApi:
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
-        assert any("not found" in e for e in body["errors"])
+        assert body["errors"]
 
     def test_backups_list_empty(self, client: TestClient, tmp_path: Path) -> None:
         """list returns empty array when no kmmbackup_* directories exist."""

@@ -689,3 +689,55 @@ Task 14: 测试                         ← 见 §11
 4. `POST /api/pipeline/compute` SSE 流正确返回进度 + 结果
 5. `POST /api/pipeline/run` 全流水线 SSE 流正确
 6. 已有 CLI 测试（261）不被破坏
+
+---
+
+## 5. Web 层安全约定
+
+> 更新：2026-05-08 质量审计
+
+### 应用定性
+
+本项目为**本地应用**，Web 层仅作跨平台 GUI 的实现手段（控制面板），并非公网 Web 服务。
+用户 = 机器的所有者，对本机文件有完整读写权限，不存在越权访问问题。
+
+唯一真实的外部威胁：用户浏览器中的恶意网页向 `127.0.0.1:8000` 发跨域请求，
+在用户不知情的情况下触发 backup/apply 等操作（与文件读写权限无关，是操作触发问题）。
+CORS 配置的目的仅为阻断此类场景，不是访问控制手段。
+路径规范化的目的是"输入归一化"，不是"访问限制"。
+
+### 5.1 CORS 策略
+
+- **禁止** `allow_origins=["*"]`
+- 检测逻辑：复用 `static_dir.exists()` 判断（已用于静态文件挂载）
+  - `frontend/dist/` 存在（生产态） → 不挂载 CORS 中间件（同 origin，无需）
+  - `frontend/dist/` 不存在（开发态） → 允许 `["http://localhost:5173", "http://127.0.0.1:5173"]`
+- 开发者零配置，无需 `.env` 文件
+- **Tauri2 迁移预留**：届时追加 `tauri://localhost`（macOS/Linux）和 `https://tauri.localhost`（Windows）
+  实现：通过环境变量 `KMM_CORS_ORIGINS`（逗号分隔）覆盖开发态默认值
+
+### 5.2 路径输入规范化（Web 路由入口）
+
+**定性：输入归一化，不是访问控制。** 本地应用用户对自己的文件有完整权限。
+
+原则：所有原始用户路径输入在 Web 路由层过且仅过一遍 `path_resolver`，之后视为规范路径。
+下游模块（orchestrator/engine 等）只做合规性断言，不再猜测路径。
+
+读类入口（目标必须存在）：
+
+| 路由文件 | 字段 | 使用函数 |
+|----------|------|----------|
+| `routes/rules.py` `/read` | `req.path` | `resolve_file_path` |
+| `routes/rules.py` `/scan` | `req.dir` | `resolve_directory_path` |
+| `routes/backups.py` `/list` | `req.dir` | `resolve_directory_path` |
+| `routes/pipeline.py` `/compute` `/run` | `req.kmm_rule_paths[]` | `resolve_file_path`（每项） |
+| `routes/pipeline.py` `/compute` `/run` | `req.user_config_path` | `resolve_file_path` |
+
+写类入口（目标不一定存在，不走 `path_resolver`）：
+
+| 路由文件 | 字段 | 处理方式 |
+|----------|------|----------|
+| `routes/config.py` `/save` | `req.output_path` | `Path(output_path).expanduser().resolve()`（纯规范化） |
+
+`path_resolver` 抛出异常时，路由层捕获并返回 `{"ok": false, "errors": [...]}`，
+SSE 端点中异常会被 `stream_with_progress` 捕获并作为 SSE error 事件推送（原始错误信息保留，对本地用户有调试价值）。

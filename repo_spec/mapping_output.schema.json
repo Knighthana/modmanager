@@ -39,9 +39,9 @@
           "type": "string"
         },
         "action": {
-          "description": "File operation semantics.",
+          "description": "File operation semantics. 'hold' MUST NOT appear here; its presence indicates a bug in the aggregator or engine pipeline.",
           "type": "string",
-          "enum": ["hold", "replace", "create", "delete"]
+          "enum": ["replace", "create", "delete"]
         },
         "action_order": {
           "description": "Runtime-injected action ordering hint. Defaults to 0 when missing or unreliable.",

@@ -32,7 +32,8 @@ async def save_config(req: SaveConfigRequest):
     Returns an ``ApiResponse`` with the saved path on success.
     """
     try:
-        write_json_file(req.output_path, req.config)
-        return adapt_dict_result({"saved": req.output_path})
+        output_path = str(Path(req.output_path).expanduser().resolve())
+        write_json_file(output_path, req.config)
+        return adapt_dict_result({"saved": output_path})
     except Exception as exc:
         return adapt_error(str(exc))
