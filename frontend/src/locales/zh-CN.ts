@@ -146,7 +146,7 @@ export const STR = {
     modTable: (n: number) => `📦 MOD (${n})`,
     libName: (n: number) => `库#${n + 1}`,
     colIndex: '序号',
-    colVis: '👁',
+    colVis: '可见性',
     colGameCount: '游戏',
     colModCount: 'MOD',
     colPath: '路径',
