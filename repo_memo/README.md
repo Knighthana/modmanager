@@ -8,10 +8,11 @@
 - 为后续实现和测试修复提供唯一参考
 
 ## 使用顺序
-1. 先读 `TERMINOLOGY.md`
-2. 再读 `STEAM_DISCOVERY.md`
-3. 再读 `DATABASE_FIELDS.md`
-4. 按 `DOCUMENT_GOVERNANCE.md` 和 `TASKLIST.md` 执行
+1. 先读 `TERMS_TERMINOLOGY.md`
+2. 再读 `DESIGN_STEAM_DISCOVERY.md`
+3. 再读 `DOCUMENT_GOVERNANCE.md`
+4. 根据当前阶段阅读设计文档（`DESIGN_*.md`）和工程约束（`PATTERNS_ENGINEERING.md`）
+5. 映射表参考 `TERMS_FIELD_FREEZE.md`
 
 ## 同步规则
 - `description/` 仅作为用户与 Plan 的沟通目录，不作为 implement 默认输入
@@ -46,7 +47,7 @@
 ## 执行门禁
 1. 实现任务必须引用本目录中的文档路径；缺失路径视为无效任务单。
 2. 实现阶段不得以 `description/` 推导新规则，只可根据 `repo_memo/` 与 Plan 指令执行。
-3. 涉及字段命名变更时，必须先更新 `TERMINOLOGY.md` 与 `DATABASE_FIELDS.md`，再改 `src/` 与 `tests/`。
+3. 涉及字段命名变更时，必须先更新 `TERMS_TERMINOLOGY.md` 与 `repo_spec/database.schema.json`，再改 `src/` 与 `tests/`。
 4. 若 `repo_memo/` 与 `description/` 冲突，以 `repo_memo/` 为准，并将差异记录到 `MEMORY_SYNC_INDEX.md`。
 
 ## 违规后果

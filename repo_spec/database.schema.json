@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Database",
-  "description": "Schema for database.json — system-discovered mod, game, and Steam library data.",
+  "description": "Schema for database.json — system-discovered mod, game, and Steam library data. Field dictionary sourced from DATABASE_FIELDS.md (merged 2026-05-08).",
   "type": "object",
   "required": [
     "OS",
@@ -12,36 +12,41 @@
   "additionalProperties": false,
   "properties": {
     "OS": {
-      "$ref": "#/$defs/OS"
+      "$ref": "#/$defs/OS",
+      "description": "Operating system path style configuration. Contains workingpathstyle and steamlibpathstyle to handle cross-platform path normalization between Linux and Windows."
     },
     "steamlib": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/SteamLib"
-      }
+      },
+      "description": "List of discovered Steam library paths. Each entry corresponds to a steamapps directory. CRUD operations are always allowed (create: add manual lib path; read: query current lib paths and source status; update: modify lib path and sync related game/dommod paths; delete: remove lib path and cascade-remove game/dommod no longer belonging to any lib)."
     },
     "game": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/Game"
-      }
+      },
+      "description": "List of installed games discovered from appmanifest ACF files across all Steam libraries."
     },
     "dommod": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/DomMod"
-      }
+      },
+      "description": "List of dominant mod entries (optional). Each entry represents a mod identified by mixed_id (appid:modid format). Populated during workshop/custom mod discovery."
     },
     "warnings": {
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "Non-fatal warnings generated during database generation or discovery (e.g., duplicate appids, missing ACF files, parsing issues)."
     },
     "history": {
       "type": "object",
       "additionalProperties": true,
-      "description": "UI state container; structure is intentionally loose and evolves with the GUI."
+      "description": "UI state container; structure is intentionally loose and evolves with the GUI. May contain locale settings, panel layout ratios, and other persistent UI preferences."
     }
   },
   "$defs": {
@@ -52,14 +57,17 @@
         "steamlibpathstyle"
       ],
       "additionalProperties": false,
+      "description": "Operating system path style configuration.",
       "properties": {
         "workingpathstyle": {
           "type": "string",
-          "enum": ["linux", "windows"]
+          "enum": ["linux", "windows"],
+          "description": "Path style of the current working/runtime environment. Determines how file paths are normalized before processing."
         },
         "steamlibpathstyle": {
           "type": "string",
-          "enum": ["linux", "windows"]
+          "enum": ["linux", "windows"],
+          "description": "Original path style of the discovered Steam library. Used to detect cross-platform library paths (e.g., WSL accessing Windows Steam libraries)."
         }
       }
     },
@@ -69,21 +77,22 @@
         "path"
       ],
       "additionalProperties": false,
+      "description": "A discovered Steam library (corresponds to a steamapps directory). Each library may contain multiple installed games and is optionally the master discovery point holding libraryfolders.vdf.",
       "properties": {
         "path": {
           "type": "string",
-          "description": "Absolute path to the steamapps directory."
+          "description": "Absolute path to the steamapps directory. This is the root for scanning appmanifest and appworkshop ACF files."
         },
         "contains_libraryfolders_vdf": {
           "type": "boolean",
-          "description": "True when this steamapps path contains the master libraryfolders.vdf for discovery."
+          "description": "True when this steamapps path contains the master libraryfolders.vdf file for expanded library discovery. Only one library per system typically has this flag set to true."
         },
         "game": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "List of appid strings installed in this library."
+          "description": "List of appid strings installed in this library. These appids are used to scope workshop mod discovery (greedy_parsing off: only parse mods for these appids; greedy_parsing on: allow broader parsing)."
         }
       }
     },
@@ -97,29 +106,36 @@
         "mods_found"
       ],
       "additionalProperties": false,
+      "description": "An installed game entry discovered from an appmanifest ACF file. Contains metadata about the game's install location and discovered workshop content.",
       "properties": {
         "appid": {
-          "type": "string"
+          "type": "string",
+          "description": "Steam Application ID. Used as the primary key for matching rules and aggregating mod information."
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Human-readable game name as extracted from the appmanifest ACF file (field: 'name')."
+        },
+        "localdate": {
+          "type": "integer",
+          "description": "Unix timestamp of the game's last local update (from appmanifest LastUpdated field). Used for backup_id generation and change detection."
         },
         "basepath": {
           "type": "string",
           "pattern": "/$",
-          "description": "Game install base path; MUST end with a forward slash."
+          "description": "Game install base path (the 'installdir' from appmanifest). MUST end with a forward slash. This is the directory containing the game's executable and assets."
         },
         "modpath": {
           "type": "string",
           "pattern": "/$",
-          "description": "Workshop mod content path; MUST end with a forward slash."
+          "description": "Workshop mod content path for this game (steamapps/workshop/content/<appid>/). MUST end with a forward slash. Used as the base directory for discovering installed workshop mods."
         },
         "mods_found": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "List of modid/contentid strings discovered for this game."
+          "description": "List of modid/contentid strings discovered for this game from appworkshop ACF files. Each entry corresponds to a workshop mod installed for this game."
         }
       }
     },
@@ -130,20 +146,21 @@
         "path"
       ],
       "additionalProperties": false,
+      "description": "A dominant/local mod entry. Represents a mod that has been identified either through workshop discovery or manual registration. The mixed_id uniquely identifies the mod across the system.",
       "properties": {
         "mixed_id": {
           "type": "string",
           "pattern": "^[^:]+:.+$",
-          "description": "Colon-separated appid:modid composite identifier."
+          "description": "Colon-separated composite identifier in the format 'appid:modid'. This is the authoritative key for referencing mods across rules, mappings, and the database."
+        },
+        "localdate": {
+          "type": "integer",
+          "description": "Unix timestamp of the mod's last local modification time. Used for backup_id generation (fallback when workshop ACF timeupdated is unavailable) and change detection."
         },
         "path": {
           "type": "string",
           "pattern": "/$",
-          "description": "Absolute path to the mod directory; MUST end with a forward slash."
-        },
-        "localdate": {
-          "type": "integer",
-          "description": "Unix timestamp of the mod's last local update."
+          "description": "Absolute path to the mod directory. MUST end with a forward slash. This is the filesystem root for the mod's installed content."
         }
       }
     }

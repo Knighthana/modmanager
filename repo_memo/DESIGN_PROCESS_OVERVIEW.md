@@ -23,11 +23,13 @@
 4. 仅当无可用工作目录时提示用户介入
 
 ## 数据契约分工
-- 术语冻结：`TERMINOLOGY.md`
-- 扫描契约：`STEAM_DISCOVERY.md`
-- 字段定义：`DATABASE_FIELDS.md`
+- 术语冻结：`TERMS_TERMINOLOGY.md`
+- 扫描契约：`DESIGN_STEAM_DISCOVERY.md`
+- 字段冻结：`TERMS_FIELD_FREEZE.md`
+- 字段定义：`repo_spec/database.schema.json`
 - 示例数据：`*.example`
-- 执行指令：`DOCUMENT_GOVERNANCE.md`、`TASKLIST.md`
+- 工程约束：`PATTERNS_ENGINEERING.md`
+- 执行指令：`DOCUMENT_GOVERNANCE.md`
 
 ## 关键约束
 - 单概念单字段名，禁止历史别名继续落库
