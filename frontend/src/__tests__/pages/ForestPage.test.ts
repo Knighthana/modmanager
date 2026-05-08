@@ -54,7 +54,7 @@ describe('ForestPage — onDbPathBlur (TODO-9)', () => {
     const mockApiPost = apiPost as ReturnType<typeof vi.fn>
     mockApiPost.mockResolvedValue({
       ok: true,
-      data: { steamlib: [], game: [], dommod: [] },
+      data: { steamlib: [], game: [], mod: [] },
       errors: [],
       warnings: [],
     })
@@ -74,7 +74,7 @@ describe('ForestPage — onDbPathBlur (TODO-9)', () => {
     const mockApiPost = apiPost as ReturnType<typeof vi.fn>
     mockApiPost.mockResolvedValue({
       ok: true,
-      data: { steamlib: [], game: [], dommod: [] },
+      data: { steamlib: [], game: [], mod: [] },
       errors: [],
       warnings: [],
     })
@@ -87,7 +87,7 @@ describe('ForestPage — onDbPathBlur (TODO-9)', () => {
     await (wrapper.vm as unknown as { onDbPathBlur: () => Promise<void> }).onDbPathBlur()
 
     expect(store.dbManualOverride).toBe(false)
-    expect(store.storedDatabase).toEqual({ steamlib: [], game: [], dommod: [] })
+    expect(store.storedDatabase).toEqual({ steamlib: [], game: [], mod: [] })
   })
 
   it('keeps dbManualOverride true on failed load, preserving user input', async () => {

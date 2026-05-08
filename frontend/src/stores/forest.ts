@@ -213,7 +213,7 @@ export const useForestStore = defineStore('forest', () => {
           databaseSummary.value = {
             libraries: (result.data.steamlib as unknown[])?.length ?? 0,
             games: (result.data.game as unknown[])?.length ?? 0,
-            mods: (result.data.dommod as unknown[])?.length ?? 0,
+            mods: (result.data.mod as unknown[])?.length ?? 0,
           }
         } else if (result.errors?.length) {
           errors.value.push(...result.errors)

@@ -152,7 +152,7 @@ def main():
                     "mods_found": ALL_MOD_IDS,
                 }
             ],
-            "dommod": [
+            "mod": [
                 {
                     "mixed_id": "270150:2606099273",
                     "localdate": 0,

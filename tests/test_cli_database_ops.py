@@ -201,7 +201,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
     def test_steamlib_add_command_updates_database_file(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             db_path = Path(td) / "database.json"
-            write_json_file(db_path, {"steamlib": [], "game": [], "dommod": []})
+            write_json_file(db_path, {"steamlib": [], "game": [], "mod": []})
 
             with patch(
                 "sys.argv",
@@ -224,7 +224,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
     def test_steamlib_remove_missing_returns_error_code(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             db_path = Path(td) / "database.json"
-            write_json_file(db_path, {"steamlib": [], "game": [], "dommod": []})
+            write_json_file(db_path, {"steamlib": [], "game": [], "mod": []})
 
             with patch(
                 "sys.argv",
@@ -269,7 +269,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 {
                     "steamlib": [{"path": "/mnt/d/Games/steamapps", "contains_libraryfolders_vdf": False, "game": []}],
                     "game": [],
-                    "dommod": [],
+                    "mod": [],
                 },
             )
 
@@ -277,7 +277,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 "updated_database": {
                     "steamlib": [{"path": "/mnt/d/Games/steamapps", "contains_libraryfolders_vdf": False, "game": ["270150"]}],
                     "game": [{"appid": "270150", "modpath": "/mnt/d/Games/steamapps/workshop/content/270150", "mods_found": []}],
-                    "dommod": [],
+                    "mod": [],
                 },
                 "changes": {"games_added": ["270150"], "games_removed": [], "games_updated": [], "mods_added": {}, "mods_removed": {}},
                 "warnings": [],
@@ -308,7 +308,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 {
                     "steamlib": [],
                     "game": [],
-                    "dommod": [],
+                    "mod": [],
                 },
             )
 
@@ -335,7 +335,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 {
                     "steamlib": [{"path": "/mnt/d/Games/steamapps", "contains_libraryfolders_vdf": False, "game": ["270150"]}],
                     "game": [{"appid": "old"}],
-                    "dommod": [{"mixed_id": "old:old", "path": "/x", "localdate": 0}],
+                    "mod": [{"mixed_id": "old:old", "path": "/x", "localdate": 0}],
                 },
             )
 
@@ -343,7 +343,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 "database": {
                     "steamlib": [{"path": "/mnt/d/Games/steamapps", "contains_libraryfolders_vdf": False, "game": ["270150"]}],
                     "game": [{"appid": "270150", "modpath": "/mnt/d/Games/steamapps/workshop/content/270150", "mods_found": ["2606099273"]}],
-                    "dommod": [{"mixed_id": "270150:2606099273", "path": "/mnt/d/Games/steamapps/workshop/content/270150/2606099273", "localdate": 0}],
+                    "mod": [{"mixed_id": "270150:2606099273", "path": "/mnt/d/Games/steamapps/workshop/content/270150/2606099273", "localdate": 0}],
                 },
                 "stats": {"libraries_count": 1, "games_count": 1, "mods_count": 1},
                 "errors": [],
@@ -363,7 +363,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
 
             self.assertEqual(code, 0)
             db = load_json_file(db_path)
-            self.assertEqual(db["dommod"][0]["mixed_id"], "270150:2606099273")
+            self.assertEqual(db["mod"][0]["mixed_id"], "270150:2606099273")
 
     def test_regen_empty_steamlib_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -373,7 +373,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 {
                     "steamlib": [],
                     "game": [],
-                    "dommod": [],
+                    "mod": [],
                 },
             )
 

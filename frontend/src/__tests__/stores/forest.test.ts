@@ -209,7 +209,7 @@ describe('useForestStore', () => {
 
     // Only the database/generate SSE endpoint
     const sseChunks = [
-      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"dommod":[]},"errors":[],"warnings":[]}\n\n',
+      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"mod":[]},"errors":[],"warnings":[]}\n\n',
     ]
     const encoder = new TextEncoder()
     mockFetch.mockResolvedValue({
@@ -285,7 +285,7 @@ describe('useForestStore', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     const sseChunks = [
-      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"dommod":[]},"errors":[],"warnings":[]}\n\n',
+      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"mod":[]},"errors":[],"warnings":[]}\n\n',
     ]
     const encoder = new TextEncoder()
     mockFetch.mockResolvedValue({
@@ -327,7 +327,7 @@ describe('useForestStore', () => {
     vi.stubGlobal('fetch', mockFetch)
 
     const sseChunks = [
-      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"dommod":[]},"errors":[],"warnings":[]}\n\n',
+      'event: result\ndata: {"ok":true,"data":{"steamlib":[],"game":[],"mod":[]},"errors":[],"warnings":[]}\n\n',
     ]
     const encoder = new TextEncoder()
     mockFetch.mockResolvedValue({

@@ -38,12 +38,12 @@ class DatabaseOpsTests(unittest.TestCase):
         self.assertTrue(removed)
         self.assertEqual(db["steamlib"], [])
 
-    def test_game_crud_updates_membership_and_dommod(self) -> None:
+    def test_game_crud_updates_membership_and_mod(self) -> None:
         db = {
             "OS": {"workingpathstyle": "linux", "steamlibpathstyle": "windows"},
             "steamlib": [{"path": "/mnt/d/Games/steamapps", "contains_libraryfolders_vdf": False, "game": []}],
             "game": [],
-            "dommod": [],
+            "mod": [],
         }
 
         created, _ = add_manual_game(
@@ -56,16 +56,16 @@ class DatabaseOpsTests(unittest.TestCase):
         )
         self.assertTrue(created)
         self.assertIn("270150", db["steamlib"][0]["game"])
-        self.assertEqual(db["dommod"][0]["mixed_id"], "270150:2606099273")
+        self.assertEqual(db["mod"][0]["mixed_id"], "270150:2606099273")
 
         ok, _ = update_manual_game(db, appid="270150", updates={"mods_found": ["3428584891"]})
         self.assertTrue(ok)
-        self.assertEqual(db["dommod"][0]["mixed_id"], "270150:3428584891")
+        self.assertEqual(db["mod"][0]["mixed_id"], "270150:3428584891")
 
         removed, _ = remove_manual_game(db, appid="270150")
         self.assertTrue(removed)
         self.assertEqual(db["game"], [])
-        self.assertEqual(db["dommod"], [])
+        self.assertEqual(db["mod"], [])
 
     def test_discover_with_fallback_uses_manual_when_auto_fails(self) -> None:
         manual = [{"path": "/mnt/d/Games", "contains_libraryfolders_vdf": False}]
@@ -99,7 +99,7 @@ class DatabaseOpsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 discover_with_fallback(working_pathstyle="linux", manual_override_steamlibs=[])
 
-    def test_liveupdate_reports_changes_and_rebuilds_dommod(self) -> None:
+    def test_liveupdate_reports_changes_and_rebuilds_mod(self) -> None:
         db = {
             "OS": {"workingpathstyle": "linux", "steamlibpathstyle": "windows"},
             "steamlib": [
@@ -119,7 +119,7 @@ class DatabaseOpsTests(unittest.TestCase):
                     "mods_found": ["2606099273"],
                 }
             ],
-            "dommod": [
+            "mod": [
                 {
                     "mixed_id": "270150:2606099273",
                     "localdate": 0,
@@ -152,9 +152,9 @@ class DatabaseOpsTests(unittest.TestCase):
         self.assertEqual(result["changes"]["games_added"], ["107410"])
         self.assertIn("3428584891", result["changes"]["mods_added"]["270150"])
         updated = result["updated_database"]
-        self.assertEqual(len(updated["dommod"]), 2)
+        self.assertEqual(len(updated["mod"]), 2)
 
-    def test_regen_rebuilds_game_and_dommod(self) -> None:
+    def test_regen_rebuilds_game_and_mod(self) -> None:
         db = {
             "OS": {"workingpathstyle": "linux", "steamlibpathstyle": "windows"},
             "steamlib": [
@@ -165,7 +165,7 @@ class DatabaseOpsTests(unittest.TestCase):
                 }
             ],
             "game": [{"appid": "old", "mods_found": ["old"]}],
-            "dommod": [{"mixed_id": "old:old", "path": "/x", "localdate": 0}],
+            "mod": [{"mixed_id": "old:old", "path": "/x", "localdate": 0}],
         }
 
         with patch("modmanager.database_ops.SteamScanner.discover_games_in_library") as mock_games:
@@ -185,7 +185,7 @@ class DatabaseOpsTests(unittest.TestCase):
         rebuilt = result["database"]
         self.assertEqual(result["stats"]["games_count"], 1)
         self.assertEqual(rebuilt["game"][0]["appid"], "270150")
-        self.assertEqual(rebuilt["dommod"][0]["mixed_id"], "270150:2606099273")
+        self.assertEqual(rebuilt["mod"][0]["mixed_id"], "270150:2606099273")
 
     def test_verify_database_integrity_detects_mismatch(self) -> None:
         bad = {
@@ -197,10 +197,10 @@ class DatabaseOpsTests(unittest.TestCase):
                     "mods_found": ["2606099273"],
                 }
             ],
-            "dommod": [],
+            "mod": [],
         }
         issues = verify_database_integrity(bad)
-        self.assertTrue(any("missing dommod" in issue for issue in issues))
+        self.assertTrue(any("missing mod" in issue for issue in issues))
 
     def test_discover_with_fallback_manual_only_skips_auto(self) -> None:
         """manual_only=True → auto_libraries is empty (no auto discover)."""
@@ -292,7 +292,7 @@ class DatabaseOpsTests(unittest.TestCase):
                 {"appid": "1", "modpath": "/mnt/d/Games/steamapps/workshop/content/1"},
                 {"appid": "2", "modpath": "/mnt/e/Games/steamapps/workshop/content/2"},
             ],
-            "dommod": [],
+            "mod": [],
         }
         filtered = list_games(db, steamlib_path="/mnt/d/Games")
         self.assertEqual(len(filtered), 1)

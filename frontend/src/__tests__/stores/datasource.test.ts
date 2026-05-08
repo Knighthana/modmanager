@@ -34,7 +34,7 @@ function makeMinimalDatabase(): Record<string, unknown> {
         mods_found: ['mod3'],
       },
     ],
-    dommod: [
+    mod: [
       { mixed_id: '270150:mod1', path: '/lib1/steamapps/workshop/content/270150/mod1', localdate: 0 },
       { mixed_id: '270150:mod2', path: '/lib1/steamapps/workshop/content/270150/mod2', localdate: 0 },
       { mixed_id: '107410:mod3', path: '/lib2/steamapps/workshop/content/107410/mod3', localdate: 0 },

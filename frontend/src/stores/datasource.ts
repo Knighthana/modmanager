@@ -176,7 +176,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   function _populateFromDatabase(db: Record<string, unknown>) {
     const steamlib = (db.steamlib as Array<Record<string, unknown>>) || []
     const gameList = (db.game as Array<Record<string, unknown>>) || []
-    const dommod = (db.dommod as Array<Record<string, unknown>>) || []
+    const mod = (db.mod as Array<Record<string, unknown>>) || []
 
     // Build library index: path → index
     const libIndex: Record<string, number> = {}
@@ -242,8 +242,8 @@ export const useDataSourceStore = defineStore('datasource', () => {
       gameByAppid[g.appid] = g.index
     }
 
-    for (let i = 0; i < dommod.length; i++) {
-      const d = dommod[i]
+    for (let i = 0; i < mod.length; i++) {
+      const d = mod[i]
       const mixedId = String(d.mixed_id || '')
       const parts = mixedId.split(':')
       const appid = parts[0] || ''

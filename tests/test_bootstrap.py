@@ -175,7 +175,7 @@ class TestGenerateDatabase(TestCase):
                     }
                 ],
                 "game": [],
-                "dommod": [],
+                "mod": [],
             }
             Path(cache_path).write_text(json.dumps(cache_data), encoding="utf-8")
 

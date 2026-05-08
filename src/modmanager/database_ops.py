@@ -26,12 +26,12 @@ def _ensure_database_shape(database: dict[str, Any]) -> None:
     database.setdefault("OS", {"workingpathstyle": "linux", "steamlibpathstyle": "linux"})
     database.setdefault("steamlib", [])
     database.setdefault("game", [])
-    database.setdefault("dommod", [])
+    database.setdefault("mod", [])
 
 
-def _dommod_index(database: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _mod_index(database: dict[str, Any]) -> dict[str, dict[str, Any]]:
     idx: dict[str, dict[str, Any]] = {}
-    for item in database.get("dommod", []):
+    for item in database.get("mod", []):
         if not isinstance(item, dict):
             continue
         mixed_id = item.get("mixed_id")
@@ -40,9 +40,9 @@ def _dommod_index(database: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return idx
 
 
-def _build_dommod_from_games(games: list[dict[str, Any]], old_dommod: dict[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    old_dommod = old_dommod or {}
-    dommods: list[dict[str, Any]] = []
+def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    old_mod = old_mod or {}
+    mods: list[dict[str, Any]] = []
     for game in games:
         appid = str(game.get("appid", ""))
         modpath = game.get("modpath")
@@ -53,16 +53,17 @@ def _build_dommod_from_games(games: list[dict[str, Any]], old_dommod: dict[str, 
         for modid in mods_found if isinstance(mods_found, list) else []:
             modid_str = str(modid)
             mixed_id = f"{appid}:{modid_str}"
-            prev = old_dommod.get(mixed_id, {})
+            prev = old_mod.get(mixed_id, {})
             localdate = prev.get("localdate", game.get("localdate", 0))
-            dommods.append(
+            mods.append(
                 {
                     "mixed_id": mixed_id,
                     "localdate": localdate if isinstance(localdate, (int, float)) else 0,
                     "path": f"{normalized_modpath}/{modid_str}",
+                    "managed": False,
                 }
             )
-    return dommods
+    return mods
 
 
 def _merge_libraries(auto_libraries: list[SteamLibraryInfo], manual_libraries: list[SteamLibraryInfo]) -> list[SteamLibraryInfo]:
@@ -133,7 +134,7 @@ def _scan_from_libraries(
                 }
 
     games_out = sorted(game_map.values(), key=lambda g: _numeric_sort_key(g['appid']))
-    dommods_out = _build_dommod_from_games(games_out)
+    mods_out = _build_mod_from_games(games_out)
 
     return {
         "OS": {
@@ -142,7 +143,7 @@ def _scan_from_libraries(
         },
         "steamlib": steamlibs_out,
         "game": games_out,
-        "dommod": dommods_out,
+        "mod": mods_out,
         "warnings": warnings,
     }
 
@@ -248,9 +249,9 @@ def remove_manual_steamlib(database: dict[str, Any], *, path: str) -> tuple[bool
     for lib in database["steamlib"]:
         lib["game"] = [x for x in lib.get("game", []) if str(x) not in removed_appids]
 
-    database["dommod"] = [
+    database["mod"] = [
         d
-        for d in database["dommod"]
+        for d in database["mod"]
         if str(d.get("mixed_id", "")).split(":", 1)[0] not in removed_appids
     ]
 
@@ -287,12 +288,12 @@ def update_manual_steamlib(database: dict[str, Any], *, old_path: str, new_path:
                 elif normalized.startswith(old_norm + "/"):
                     game[key] = new_norm + normalized[len(old_norm):]
 
-    for dom in database["dommod"]:
-        value = dom.get("path")
+    for mod in database["mod"]:
+        value = mod.get("path")
         if isinstance(value, str):
             normalized = normalize_posix(value)
             if normalized.startswith(old_norm + "/"):
-                dom["path"] = new_norm + normalized[len(old_norm):]
+                mod["path"] = new_norm + normalized[len(old_norm):]
 
     return True, "steam library updated"
 
@@ -356,8 +357,8 @@ def add_manual_game(
     database["game"].append(game)
     _add_game_membership(database, appid, game["modpath"])
 
-    old_dommod = _dommod_index(database)
-    database["dommod"] = _build_dommod_from_games(database["game"], old_dommod)
+    old_mod = _mod_index(database)
+    database["mod"] = _build_mod_from_games(database["game"], old_mod)
     return True, "game added"
 
 
@@ -371,8 +372,8 @@ def remove_manual_game(database: dict[str, Any], *, appid: str) -> tuple[bool, s
         return False, "game not found"
 
     _remove_game_membership(database, appid)
-    database["dommod"] = [
-        d for d in database["dommod"] if str(d.get("mixed_id", "")).split(":", 1)[0] != appid
+    database["mod"] = [
+        d for d in database["mod"] if str(d.get("mixed_id", "")).split(":", 1)[0] != appid
     ]
     return True, "game removed"
 
@@ -405,8 +406,8 @@ def update_manual_game(database: dict[str, Any], *, appid: str, updates: dict[st
     if isinstance(target.get("modpath"), str):
         _add_game_membership(database, appid, target["modpath"])
 
-    old_dommod = _dommod_index(database)
-    database["dommod"] = _build_dommod_from_games(database["game"], old_dommod)
+    old_mod = _mod_index(database)
+    database["mod"] = _build_mod_from_games(database["game"], old_mod)
     return True, "game updated"
 
 
@@ -417,7 +418,7 @@ def verify_database_integrity(database: dict[str, Any]) -> list[str]:
     game_by_appid: dict[str, dict[str, Any]] = {
         str(g.get("appid", "")): g for g in database["game"] if isinstance(g, dict)
     }
-    dom_by_mixed = _dommod_index(database)
+    mod_by_mixed = _mod_index(database)
 
     for appid, game in game_by_appid.items():
         mods = [str(m) for m in game.get("mods_found", []) if str(m)]
@@ -428,27 +429,27 @@ def verify_database_integrity(database: dict[str, Any]) -> list[str]:
         for modid in mods:
             mixed_id = f"{appid}:{modid}"
             expected_path = f"{normalized_modpath}/{modid}"
-            dom = dom_by_mixed.get(mixed_id)
-            if dom is None:
-                issues.append(f"missing dommod for {mixed_id}")
+            mod = mod_by_mixed.get(mixed_id)
+            if mod is None:
+                issues.append(f"missing mod for {mixed_id}")
                 continue
-            dom_path = dom.get("path")
-            if not isinstance(dom_path, str) or normalize_posix(dom_path) != expected_path:
-                issues.append(f"dommod path mismatch for {mixed_id}")
+            mod_path = mod.get("path")
+            if not isinstance(mod_path, str) or normalize_posix(mod_path) != expected_path:
+                issues.append(f"mod path mismatch for {mixed_id}")
 
-    for mixed_id in dom_by_mixed:
+    for mixed_id in mod_by_mixed:
         parts = split_mixed_id(mixed_id)
         if parts is None:
-            issues.append(f"invalid dommod mixed_id: {mixed_id}")
+            issues.append(f"invalid mod mixed_id: {mixed_id}")
             continue
         appid, modid = parts
         game = game_by_appid.get(appid)
         if game is None:
-            issues.append(f"dommod references missing game: {mixed_id}")
+            issues.append(f"mod references missing game: {mixed_id}")
             continue
         mods = [str(m) for m in game.get("mods_found", [])]
         if modid not in mods:
-            issues.append(f"dommod references missing mod entry: {mixed_id}")
+            issues.append(f"mod references missing mod entry: {mixed_id}")
 
     return sorted(set(issues))
 

@@ -94,7 +94,7 @@ describe('DataSourcePage', () => {
     expect(wrapper.text()).not.toContain('前往 Forest')
 
     // Set lastResult
-    store.lastResult = { steamlib: [], game: [], dommod: [] }
+    store.lastResult = { steamlib: [], game: [], mod: [] }
     await wrapper.vm.$nextTick()
 
     // Apply button should appear

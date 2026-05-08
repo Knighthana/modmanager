@@ -247,9 +247,9 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                     assert_directory_path(str(g["modpath"]), label=f"game[].modpath")
                 if "basepath" in g:
                     assert_directory_path(str(g["basepath"]), label=f"game[].basepath")
-        for mod in database.get("dommod", []):
+        for mod in database.get("mod", []):
             if isinstance(mod, dict) and "path" in mod:
-                assert_directory_path(str(mod["path"]), label=f"dommod[].path")
+                assert_directory_path(str(mod["path"]), label=f"mod[].path")
 
     # ── input structure validation ──────────────────────────────────────────────
     aggregated_rule_set_errors = validate_aggregated_rule_set(aggregated_rule_set)

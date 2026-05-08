@@ -494,7 +494,7 @@ def main():
         db_path = output_dir / "database.json"
         write_json_file(db_path, db)
         print(f'  📊 数据库已生成: {db_path}')
-        print(f'     Games: {len(db.get("game", []))} | Mods: {len(db.get("dommod", []))}')
+        print(f'     Games: {len(db.get("game", []))} | Mods: {len(db.get("mod", []))}')
 
 
 if __name__ == "__main__":

@@ -77,13 +77,13 @@ def build_db_parser() -> argparse.ArgumentParser:
     steamlib_update.add_argument("--old-path", required=True, help="Current steam library path")
     steamlib_update.add_argument("--new-path", required=True, help="New steam library path")
 
-    liveupdate = sub.add_parser("liveupdate", help="Incremental update of game/dommod by steamlib")
+    liveupdate = sub.add_parser("liveupdate", help="Incremental update of game/mod by steamlib")
     liveupdate.add_argument("--database", required=True, help="Path to database json")
     liveupdate.add_argument("--out", help="Write changes json to file; stdout if omitted")
     liveupdate.add_argument("--working-pathstyle", default="linux", choices=["linux", "windows"])
     liveupdate.add_argument("--greedy-parsing", action="store_true")
 
-    regen = sub.add_parser("regen", help="Rebuild game/dommod from steamlib")
+    regen = sub.add_parser("regen", help="Rebuild game/mod from steamlib")
     regen.add_argument("--database", required=True, help="Path to database json")
     regen.add_argument("--out", help="Write result json to file; stdout if omitted")
     regen.add_argument("--working-pathstyle", default="linux", choices=["linux", "windows"])

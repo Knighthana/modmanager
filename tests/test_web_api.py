@@ -169,7 +169,7 @@ class TestGenerateDatabase:
             return {
                 "steamlib": [{"path": "/manual/steamapps", "contains_libraryfolders_vdf": False, "game": []}],
                 "game": [],
-                "dommod": [],
+                "mod": [],
                 "warnings": [],
             }
 
@@ -207,7 +207,7 @@ class TestGenerateDatabase:
                         "mods_found": [],
                     },
                 ],
-                "dommod": [],
+                "mod": [],
                 "warnings": ["W_DUPLICATE_APPID: appid 270150 found in multiple libraries: /lib1/steamapps/common/RWR and /lib2/steamapps/common/RWR"],
             }
 
@@ -823,7 +823,7 @@ class TestLoadDatabase:
     def test_load_database_from_path_success(self, client, tmp_path):
         # 创建临时 database.json
         db_file = tmp_path / "database.json"
-        db_file.write_text(json.dumps({"game": [], "dommod": []}))
+        db_file.write_text(json.dumps({"game": [], "mod": []}))
 
         resp = client.post("/api/database/load", json={"path": str(db_file)})
         assert resp.status_code == 200
