@@ -848,6 +848,192 @@ class TestLoadDatabase:
         assert body["ok"] is False
 
 
+# ── Tilde expansion tests (TODO-11) ──────────────────────────────────────────
+
+
+class TestTildeExpansion:
+    """``POST /api/pipeline/compute`` and ``/run`` with ``~`` paths must expand correctly.
+
+    The route handler calls ``resolve_file_path`` which internally expands
+    ``~`` / ``$HOME`` via ``os.path.expanduser``.  We override ``HOME`` so that
+    ``~/file.json`` resolves into a ``tmp_path``-based location.
+    """
+
+    def _set_home(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        """Redirect HOME to *tmp_path* so ``~`` resolves under our control."""
+        monkeypatch.setenv("HOME", str(tmp_path))
+
+    def test_compute_expands_tilde_in_kmm_rule_paths(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Tilde in kmm_rule_paths is expanded before reaching orchestrator."""
+        self._set_home(monkeypatch, tmp_path)
+
+        # Create files under the fake HOME
+        rule_file = tmp_path / "my_rules.json"
+        rule_file.write_text('{"operation": []}')
+        cfg_file = tmp_path / "user_config.json"
+        cfg_file.write_text('{"game_permissions": {}}')
+
+        captured: dict = {}
+
+        def fake_compute(**kwargs):
+            captured["rule_paths"] = kwargs.get("kmm_rule_paths", [])
+            captured["user_cfg"] = kwargs.get("user_config_path", "")
+            if kwargs.get("on_progress"):
+                kwargs["on_progress"]("aggregate", 1, 1, "done")
+            return PipelineResult(
+                ok=True, trees=[], final_mapping=[], mapping_result={},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+        )
+        # Do NOT mock resolve_file_path — we want the real expansion
+
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": {"steamlib": []},
+                # Use ~ path that resolves to tmp_path/my_rules.json
+                "kmm_rule_paths": ["~/my_rules.json"],
+                "user_config_path": "~/user_config.json",
+            },
+        )
+        assert resp.status_code == 200
+
+        # The captured paths should be expanded absolute paths
+        assert len(captured.get("rule_paths", [])) == 1
+        resolved_rule = captured["rule_paths"][0]
+        assert resolved_rule == str(rule_file), f"Expected {rule_file}, got {resolved_rule}"
+        # user_config should also be expanded
+        assert captured.get("user_cfg") == str(cfg_file)
+        # No literal tilde should remain
+        assert "~" not in str(captured)
+        assert "~" not in str(captured.get("user_cfg", ""))
+
+    def test_run_expands_tilde_in_kmm_rule_paths(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Tilde expansion in /run endpoint."""
+        self._set_home(monkeypatch, tmp_path)
+
+        rule_file = tmp_path / "run_rule.json"
+        rule_file.write_text('{"operation": []}')
+        cfg_file = tmp_path / "user_config.json"
+        cfg_file.write_text('{"game_permissions": {}}')
+
+        captured: dict = {}
+
+        def fake_run(**kwargs):
+            captured["rule_paths"] = kwargs.get("kmm_rule_paths", [])
+            captured["user_cfg"] = kwargs.get("user_config_path", "")
+            if kwargs.get("on_progress"):
+                for step in ["aggregate", "compute", "backup", "apply"]:
+                    kwargs["on_progress"](step, 1, 1, "done")
+            return PipelineResult(
+                ok=True, trees=[], final_mapping=[], mapping_result={},
+                backup_result={"ok": True, "backed_up": [], "skipped": []},
+                apply_result={"ok": True, "applied": [], "skipped": []},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_run", fake_run
+        )
+
+        resp = client.post(
+            "/api/pipeline/run",
+            json={
+                "database": {"steamlib": []},
+                "kmm_rule_paths": ["~/run_rule.json"],
+                "user_config_path": "~/user_config.json",
+                "backup_dir": "/tmp",
+            },
+        )
+        assert resp.status_code == 200
+        assert len(captured.get("rule_paths", [])) == 1
+        assert captured["rule_paths"][0] == str(rule_file)
+        assert "~" not in str(captured)
+
+    def test_compute_expands_tilde_in_user_config_path(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Tilde in user_config_path is expanded."""
+        self._set_home(monkeypatch, tmp_path)
+
+        cfg_file = tmp_path / "user_config.json"
+        cfg_file.write_text('{"game_permissions": {}}')
+        rule_file = tmp_path / "dummy.json"
+        rule_file.write_text('{"operation": []}')
+
+        captured: dict = {}
+
+        def fake_compute(**kwargs):
+            captured["user_cfg"] = kwargs.get("user_config_path", "")
+            if kwargs.get("on_progress"):
+                kwargs["on_progress"]("aggregate", 1, 1, "done")
+            return PipelineResult(
+                ok=True, trees=[], final_mapping=[], mapping_result={},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+        )
+
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": {"steamlib": []},
+                "kmm_rule_paths": [str(rule_file)],
+                "user_config_path": "~/user_config.json",
+            },
+        )
+        assert resp.status_code == 200
+        assert captured.get("user_cfg") == str(cfg_file)
+        assert "~" not in str(captured.get("user_cfg", ""))
+
+    def test_database_path_with_tilde_expands(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When database is a path string with ~, it gets expanded."""
+        self._set_home(monkeypatch, tmp_path)
+
+        db_file = tmp_path / "database.json"
+        db_file.write_text('{"steamlib": []}')
+        rule_file = tmp_path / "dummy.json"
+        rule_file.write_text('{"operation": []}')
+        cfg_file = tmp_path / "user_config.json"
+        cfg_file.write_text('{"game_permissions": {}}')
+
+        captured: dict = {}
+
+        def fake_compute(**kwargs):
+            captured["db"] = kwargs.get("database", None)
+            captured["rule_paths"] = kwargs.get("kmm_rule_paths", [])
+            if kwargs.get("on_progress"):
+                kwargs["on_progress"]("aggregate", 1, 1, "done")
+            return PipelineResult(
+                ok=True, trees=[], final_mapping=[], mapping_result={},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+        )
+
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": "~/database.json",
+                "kmm_rule_paths": [str(rule_file)],
+                "user_config_path": str(cfg_file),
+            },
+        )
+        assert resp.status_code == 200
+        # The database should have been loaded and passed as a dict (not a string)
+        assert isinstance(captured.get("db"), dict)
+        assert "steamlib" in captured["db"]
+
+
 # ── Helper ────────────────────────────────────────────────────────────────
 
 

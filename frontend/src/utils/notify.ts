@@ -1,3 +1,5 @@
+import { STR } from '../locales/zh-CN'
+
 type NotifyPlatform = 'browser' | 'tauri';
 
 let platform: NotifyPlatform = 'browser';
@@ -25,7 +27,7 @@ export function showPopup(
         popup.innerHTML = `
             <div style="max-width:400px;padding:12px;background:var(--el-bg-color);border:1px solid var(--el-border-color);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:13px;line-height:1.6;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                    <strong>说明</strong>
+                    <strong>${STR.notify.popupTitle}</strong>
                     <span style="cursor:pointer;font-size:16px;" onclick="this.closest('.notify-popup').remove()">×</span>
                 </div>
                 <div>${content}</div>

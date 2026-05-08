@@ -2,6 +2,19 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 
+// Mock Element Plus — retain original exports, override ElMessage
+vi.mock('element-plus', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('element-plus')>()
+  return {
+    ...actual,
+    ElMessage: {
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+    },
+  }
+})
+
 // Mock API client and SSE
 vi.mock('../../api/client', () => ({
   apiPost: vi.fn(),
@@ -9,6 +22,13 @@ vi.mock('../../api/client', () => ({
 
 vi.mock('../../api/sse', () => ({
   streamSse: vi.fn(),
+}))
+
+vi.mock('../../utils/paths', () => ({
+  ensureTrailingSlash: (p: string | undefined | null) => {
+    if (!p) return '/'
+    return p.endsWith('/') ? p : p + '/'
+  },
 }))
 
 import BackupPage from '../../pages/BackupPage.vue'
@@ -31,7 +51,7 @@ const elStubs = {
   'el-form-item': { template: '<div class="el-form-item-stub"><slot /></div>' },
   'el-card': { template: '<div class="el-card-stub"><slot /><div v-if="$slots.header" class="el-card-header"><slot name="header" /></div></div>' },
   'el-table': { template: '<div class="el-table-stub"><slot /></div>' },
-  'el-table-column': { template: '<div class="el-table-column-stub"><slot /></div>' },
+  'el-table-column': { template: '<div class="el-table-column-stub"><slot :row="{}" :column="{}" :$index="0" /></div>' },
   'el-empty': { template: '<div class="el-empty-stub">{{ $attrs.description }}</div>' },
   'el-dialog': { template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>' },
   'el-tag': { template: '<span class="el-tag-stub"><slot /></span>' },

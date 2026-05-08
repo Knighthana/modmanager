@@ -1,16 +1,16 @@
 <template>
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h2>冲突裁决</h2>
+      <h2>{{ STR.conflictsPage.title }}</h2>
       <div style="display: flex; gap: 8px;">
-        <el-button @click="onClearDecisions">重置决策</el-button>
+        <el-button @click="onClearDecisions">{{ STR.conflictsPage.resetDecisions }}</el-button>
         <el-tooltip
           v-if="!store.lastSuccessfulParams"
-          content="请先在 Forest 页面执行计算"
+          :content="STR.conflictsPage.tooltipText"
           placement="top"
         >
           <el-button type="primary" @click="onRecalculate" :disabled="true">
-            重新计算
+            {{ STR.conflictsPage.recalculate }}
           </el-button>
         </el-tooltip>
         <el-button
@@ -19,13 +19,13 @@
           @click="onRecalculate"
           :disabled="store.isRunning"
         >
-          重新计算
+          {{ STR.conflictsPage.recalculate }}
         </el-button>
       </div>
     </div>
 
     <!-- Empty state -->
-    <el-empty v-if="store.conflictList.length === 0" description="暂无冲突，所有树已确定解析" />
+    <el-empty v-if="store.conflictList.length === 0" :description="STR.conflictsPage.noConflicts" />
 
     <!-- Conflict table -->
     <el-table
@@ -36,9 +36,9 @@
       highlight-current-row
       @row-click="onRowClick"
     >
-      <el-table-column prop="root_path" label="目标路径" min-width="200" />
-      <el-table-column prop="destin_mixed_id" label="Destin" width="160" />
-      <el-table-column label="候选操作" min-width="400">
+      <el-table-column prop="root_path" :label="STR.conflictsPage.targetPath" min-width="200" />
+      <el-table-column prop="destin_mixed_id" :label="STR.conflictsPage.destin" width="160" />
+      <el-table-column :label="STR.conflictsPage.candidates" min-width="400">
         <template #default="{ row }">
           <el-radio-group
             :model-value="store.branchDecisions[row.root_path]"
@@ -63,15 +63,16 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
 import type { ConflictItem } from '../types'
+import { STR } from '../locales/zh-CN'
 
 const route = useRoute()
 const store = useForestStore()
 const tableRef = ref()
 
 function formatCandidate(candidate: string): string {
-  if (candidate === '!') return '删除此文件'
-  if (candidate === '') return '保留此文件（跳过）'
-  return `替换为 ${candidate}`
+  if (candidate === '!') return STR.conflictsPage.deleteFile
+  if (candidate === '') return STR.conflictsPage.keepFile
+  return STR.conflictsPage.replaceWith(candidate)
 }
 
 function onClearDecisions() {

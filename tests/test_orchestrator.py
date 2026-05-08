@@ -86,7 +86,7 @@ class TestApply(TestCase):
         with tempfile.TemporaryDirectory() as td:
             result = apply(
                 final_mapping=[],
-                backup_dir=str(Path(td) / "nonexistent"),
+                backup_dir=str(Path(td) / "nonexistent") + "/",
                 dry_run=False,
             )
             self.assertFalse(result.get("ok"))

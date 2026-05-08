@@ -1,43 +1,43 @@
 <template>
   <div>
-    <h2>📡 数据源</h2>
+    <h2>{{ STR.dataSourcePage.title }}</h2>
 
     <!-- Mode + Settings -->
     <el-card shadow="never" style="margin-bottom: 16px;">
       <template #header>
-        <span>数据源发现</span>
+        <span>{{ STR.dataSourcePage.discoveryCard }}</span>
       </template>
       <el-form label-width="140px">
-        <el-form-item label="发现模式">
+        <el-form-item :label="STR.dataSourcePage.discoveryMode">
           <el-radio-group v-model="store.discoveryMode">
-            <el-radio value="all">🌐 全部（自动 + 手动）</el-radio>
-            <el-radio value="auto">🔍 仅自动</el-radio>
-            <el-radio value="manual">📁 仅手动</el-radio>
+            <el-radio value="all">{{ STR.dataSourcePage.modeAll }}</el-radio>
+            <el-radio value="auto">{{ STR.dataSourcePage.modeAuto }}</el-radio>
+            <el-radio value="manual">{{ STR.dataSourcePage.modeManual }}</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="Working pathstyle">
+        <el-form-item :label="STR.dataSourcePage.workingPathstyle">
           <el-select v-model="store.workingPathstyle" style="width: 200px;">
             <el-option label="auto" value="auto" />
             <el-option label="linux" value="linux" />
             <el-option label="windows" value="windows" />
           </el-select>
         </el-form-item>
-        <el-form-item label="Greedy parsing">
+        <el-form-item :label="STR.dataSourcePage.greedyParsing">
           <el-switch v-model="store.greedyParsing" />
         </el-form-item>
-        <el-form-item label="Cache path">
-          <el-input v-model="store.cachePath" placeholder="/tmp/modmanager_database_generated.json" />
+        <el-form-item :label="STR.dataSourcePage.cachePath">
+          <el-input v-model="store.cachePath" :placeholder="STR.dataSourcePage.cachePathPlaceholder" />
         </el-form-item>
         <el-form-item
           v-if="store.discoveryMode === 'manual' || store.discoveryMode === 'all'"
-          label="手动路径"
+          :label="STR.dataSourcePage.manualPathLabel"
         >
           <el-input
             v-model="store.manualPath"
-            placeholder="/tmp/fixture/steamapps"
+            :placeholder="STR.dataSourcePage.manualPathPlaceholder"
           />
           <div style="font-size:12px;color:#999;margin-top:4px;">
-            💡 指向 Steam 库目录（含 steamapps/ 子目录的父目录），路径应以 / 结尾
+            {{ STR.dataSourcePage.manualPathHint }}
           </div>
         </el-form-item>
         <el-form-item>
@@ -47,10 +47,10 @@
             :disabled="store.isScanning || isDiscoverDisabled"
             @click="onScan"
           >
-            {{ store.isScanning ? '扫描中...' : '🔍 扫描 Steam 库' }}
+            {{ store.isScanning ? STR.dataSourcePage.scanning : STR.dataSourcePage.scanBtn }}
           </el-button>
           <span v-if="isDiscoverDisabled" style="margin-left: 8px; font-size: 12px; color: #999;">
-            请输入手动路径
+            {{ STR.dataSourcePage.manualPathRequired }}
           </span>
         </el-form-item>
       </el-form>
@@ -61,11 +61,11 @@
       <!-- 库摘要表 -->
       <el-card shadow="never" style="margin-bottom: 16px;">
         <template #header>
-          <span>📊 库摘要 ({{ store.libraries.length }})</span>
+          <span>{{ STR.dataSourcePage.libSummary(store.libraries.length) }}</span>
         </template>
         <el-table :data="store.libraries" border stripe size="small">
-          <el-table-column label="序号" width="60" type="index" />
-          <el-table-column label="👁" width="70">
+          <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
+          <el-table-column :label="STR.dataSourcePage.colVis" width="70">
             <template #default="{ row }: { row: LibraryRow }">
               <el-button
                 v-if="store.libraryVisibility[row.index] !== false"
@@ -85,14 +85,14 @@
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column label="库名" width="100">
+          <el-table-column :label="STR.dataSourcePage.colLibName" width="100">
             <template #default="{ row }: { row: LibraryRow }">
-              库#{{ row.index + 1 }}
+              {{ STR.dataSourcePage.libName(row.index) }}
             </template>
           </el-table-column>
-          <el-table-column label="游戏" width="80" prop="gameCount" />
-          <el-table-column label="MOD" width="80" prop="modCount" />
-          <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
+          <el-table-column :label="STR.dataSourcePage.colGameCount" width="80" prop="gameCount" />
+          <el-table-column :label="STR.dataSourcePage.colModCount" width="80" prop="modCount" />
+          <el-table-column :label="STR.dataSourcePage.colPath" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: LibraryRow }">
               <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.path) }}</div>
             </template>
@@ -103,10 +103,10 @@
       <!-- 游戏表 -->
       <el-card shadow="never" style="margin-bottom: 16px;">
         <template #header>
-          <span>📋 游戏 ({{ store.filteredGames.length }})</span>
+          <span>{{ STR.dataSourcePage.gameTable(store.filteredGames.length) }}</span>
         </template>
         <el-table :data="store.filteredGames" border stripe size="small">
-          <el-table-column label="序号" width="60" type="index" />
+          <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
           <el-table-column label="[选]" width="70">
             <template #default="{ row }: { row: GameRow }">
               <el-radio
@@ -119,7 +119,7 @@
               </el-radio>
             </template>
           </el-table-column>
-          <el-table-column label="👁" width="70">
+          <el-table-column :label="STR.dataSourcePage.colVis" width="70">
             <template #default="{ row }: { row: GameRow }">
               <el-button
                 v-if="store.gameVisibility[row.index] !== false"
@@ -139,14 +139,14 @@
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column label="appid" width="90" prop="appid" />
-          <el-table-column label="名称" min-width="140" prop="name" show-overflow-tooltip />
-          <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
+          <el-table-column :label="STR.dataSourcePage.colAppid" width="90" prop="appid" />
+          <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
+          <el-table-column :label="STR.dataSourcePage.colPath" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: GameRow }">
               <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.basepath) }}</div>
             </template>
           </el-table-column>
-          <el-table-column label="MOD 数" width="80">
+          <el-table-column :label="STR.dataSourcePage.colModCount" width="80">
             <template #default="{ row }: { row: GameRow }">
               <el-button
                 link
@@ -157,14 +157,14 @@
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column label="所属库" width="80">
+          <el-table-column :label="STR.dataSourcePage.colBelongingLib" width="80">
             <template #default="{ row }: { row: GameRow }">
               <el-button
                 link
                 type="primary"
                 @click="scrollToLibrary(row.libraryIndex)"
               >
-                库#{{ row.libraryIndex + 1 }}
+                {{ STR.dataSourcePage.libName(row.libraryIndex) }}
               </el-button>
             </template>
           </el-table-column>
@@ -174,10 +174,10 @@
       <!-- MOD 表 -->
       <el-card shadow="never" style="margin-bottom: 16px;">
         <template #header>
-          <span>📦 MOD ({{ store.filteredMods.length }})</span>
+          <span>{{ STR.dataSourcePage.modTable(store.filteredMods.length) }}</span>
         </template>
         <el-table :data="store.filteredMods" border stripe size="small">
-          <el-table-column label="序号" width="60" type="index" />
+          <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
           <el-table-column label="[选]" width="70">
             <template #default="{ row }: { row: ModRow }">
               <el-radio
@@ -190,9 +190,9 @@
               </el-radio>
             </template>
           </el-table-column>
-          <el-table-column label="MODID" width="120" prop="modid" show-overflow-tooltip />
-          <el-table-column label="名称" min-width="140" prop="name" show-overflow-tooltip />
-          <el-table-column label="所属 APPID" width="100">
+          <el-table-column :label="STR.dataSourcePage.colModId" width="120" prop="modid" show-overflow-tooltip />
+          <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
+          <el-table-column :label="STR.dataSourcePage.colBelongingAppid" width="100">
             <template #default="{ row }: { row: ModRow }">
               <el-button
                 link
@@ -203,18 +203,18 @@
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column label="所属库" width="80">
+          <el-table-column :label="STR.dataSourcePage.colBelongingLib" width="80">
             <template #default="{ row }: { row: ModRow }">
               <el-button
                 link
                 type="primary"
                 @click="scrollToLibrary(row.libraryIndex)"
               >
-                库#{{ row.libraryIndex + 1 }}
+                {{ STR.dataSourcePage.libName(row.libraryIndex) }}
               </el-button>
             </template>
           </el-table-column>
-          <el-table-column label="路径" min-width="200" class-name="horizontal-cell-scroll">
+          <el-table-column :label="STR.dataSourcePage.colPath" min-width="200" class-name="horizontal-cell-scroll">
             <template #default="{ row }: { row: ModRow }">
               <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.path) }}</div>
             </template>
@@ -226,7 +226,7 @@
     <!-- 警告区 -->
     <div v-if="store.warnings.length > 0" style="margin-bottom: 16px;">
       <el-alert
-        title="扫描警告"
+        :title="STR.dataSourcePage.scanWarning"
         type="warning"
         :closable="false"
         show-icon
@@ -236,7 +236,7 @@
             <li v-for="(w, i) in store.warnings" :key="'w-' + i">
               {{ w }}
               <span v-if="w.includes('W_DUPLICATE_APPID')" style="color: var(--el-color-danger);">
-                — 请在游戏表中选择需要保留的库
+                {{ STR.dataSourcePage.duplicateAppidHint }}
               </span>
             </li>
           </ul>
@@ -251,7 +251,7 @@
         size="large"
         @click="applyAndGoToForest"
       >
-        🚀 应用此数据源 → 前往 Forest
+        {{ STR.dataSourcePage.applyBtn }}
       </el-button>
     </div>
   </div>
@@ -264,6 +264,7 @@ import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
+import { STR } from '../locales/zh-CN'
 import type { LibraryRow, GameRow, ModRow } from '../types'
 
 const store = useDataSourceStore()

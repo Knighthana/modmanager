@@ -4,9 +4,10 @@
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 规定前端 GUI 的总体架构、交互边界与页面级设计原则
-> 状态：DRAFT
 > 来源：DESIGN_PHASE3_GUI.md + DESIGN_P3_GUI2.md + DESIGN_GUI_CONVENTIONS.md（合并）
 > 创建：2026-05-08
+> 更新：2026-05-09 — 补充 §二.3 分支决策持久化（TODO-8）、§三.1 onDbPathBlur 校验（TODO-9）
+> 更新：2026-05-09 — 重构 Tab 结构（7 页）、新增 RulesOverviewPage + SettingsPage 设计、DataSource 职责扩展
 
 ---
 
@@ -32,6 +33,7 @@
 | Q11 | **Element Plus** |
 | Q12 | **SPA + Vue Router** |
 | Q13 | **Pinia** — `useForestStore` 集中管理 pipeline 结果 |
+| Q14 | Tab 职责划分 | 7 页：数据源→规则概览→设置→Forest→冲突→操作→规则制定（dumb） |
 
 ### 架构总览
 
@@ -113,16 +115,18 @@ frontend/
 
 ### Vue Router 设计
 
-四个页面（后扩展为五个），一个 layout shell。
+七页面结构，一个 layout shell。
 
 | 路由 | 页面 | 说明 |
 |------|------|------|
-| `/` | 重定向 | → `/forest` |
-| `/forest` | ForestPage | Forest 可视化 |
+| `/` | 重定向 | → `/datasource` |
+| `/datasource` | DataSourcePage | 数据源：Steam 扫描、database 管理、规则文件扫描、user_config 发现 |
+| `/rules-overview` | RulesOverviewPage | 规则概览：展示当前 rule 与 database 中被覆盖的 game/mod 清单（方案A） |
+| `/settings` | SettingsPage | 设置：管理 user_config.json |
+| `/forest` | ForestPage | Forest 可视化（仅计算映射，不执行 backup/apply） |
 | `/conflicts` | ConflictsPage | 冲突裁决 |
-| `/rules` | RulesPage | 规则管理 |
-| `/backup` | BackupPage | 备份恢复 |
-| `/datasource` | DataSourcePage | 数据源发现 |
+| `/operations` | OperationsPage | 备份/应用/恢复操作 |
+| `/rule-editor` | RuleEditorPage | 规则制定（dumb 占位，远期功能） |
 
 ### Element Plus 组件映射
 
@@ -140,6 +144,39 @@ frontend/
 | 通知 | `ElNotification` / `ElMessage` |
 | 加载 | `v-loading` directive |
 | Badge | `el-badge`（冲突数量红点） |
+
+### 规则概览页（RulesOverviewPage）
+
+**定位**：在干净的 database 与选中的 rule 之间，展示覆盖关系，让用户确认无误后再进入 Forest 计算。
+
+**展示内容**（方案 A——从 rule 出发）：
+- 顶部：当前选中的 rule 文件列表（文件名 + nickname）
+- 主体：rule 中定义的所有 `mixed_id` 列表
+  - 对每个 mixed_id，标注在 database 中是否有对应条目
+  - 有对应：显示 game 名称、mod 路径、managed 状态
+  - 无对应：标记"缺失"，提示该 mod 未安装
+- 辅助：rule 文件的 `nickname`、`preview`、`readme` 信息
+- 底部：确认按钮 → 将确认后的 database + rules 传入 Forest 页
+
+**约束**：
+- 本页为纯展示+确认，不做任何写操作
+- 缺失的 mixed_id 高亮警告但不阻断流程（用户可选择忽略并继续）
+- 从 DataSource 页传入干净的 database（所有 managed 标记已正确设置）
+
+### 设置页（SettingsPage）
+
+**定位**：user_config.json 的可视化管理界面。
+
+**展示/编辑字段**：
+- `bakprefix`：备份目录名前缀（可编辑，默认 `kmmbackup_`）
+- `bakignore`：备份忽略模式列表（可增删）
+- `database_output_path`：database.json 输出路径（可编辑）
+- `aggregated_ruleset_output_path`：aggregated_rule_set.json 输出路径（可编辑）
+
+**行为**：
+- 加载时从后端 `POST /api/config/discover` 获取当前配置
+- 用户修改后点击"保存"，调用 `POST /api/config/save`
+- 保存成功显示提示，失败显示错误详情
 
 ### 实现顺序
 
@@ -197,6 +234,22 @@ Task 25: 测试
 
 **阶段 B**（后续可选）：真正拖拽（drag & drop）。
 
+#### 3. 分支决策持久化（TODO-8）
+
+**问题**：用户在 ConflictsPage 做出的分支决策（`branch_decisions`）仅保存在页面本地状态，刷新或切换页面后丢失。
+
+**方案**：
+- 在 `ForestStore` 中新增 `branchDecisions: Record&lt;string, string&gt;` 响应式状态（key=`root_path`，value=选中源的 `root_path`）
+- `setDecision()` action 同时写入 store
+- ConflictsPage 的 `branchDecisions` 从 store 读取，不再依赖页面本地 computed
+- `reset()` 不清除 `branchDecisions`——与 `lastSuccessfulParams` 同级保留
+- 组件挂载时从 store 恢复已有决策到 UI 选中状态
+
+**涉及文件**：
+- `frontend/src/stores/forest.ts` — 新增 `branchDecisions` 状态 + `setDecision` action
+- `frontend/src/pages/ConflictsPage.vue` — 改为从 store 读取/写入
+- `frontend/src/__tests__/` — 补充持久化回归测试
+
 ### 测试策略
 
 | # | 测试 | 说明 |
@@ -222,6 +275,20 @@ Task 25: 测试
 |------|--------|------|---------|
 | 锁定 | disabled，灰色 | "手动填写" | 解锁 → 可写 |
 | 解锁 | editable，白色 | "使用自动" | 锁定 → 恢复自动值 |
+
+**onDbPathBlur 校验（TODO-9）**：
+
+Database 路径输入框失焦（blur）时触发路径解析，不得静默失败：
+
+1. 调用后端 `POST /api/database/load` 尝试加载路径指向的 `database.json`
+2. **加载成功** → 更新 `storedDatabase`，自动切换回锁定状态，输入框显示解析后的规范路径
+3. **加载失败** → 显示错误气泡（复用 `notify.ts` / `errorCodes.ts`），**保留用户输入不清空**
+4. 用户可在看到错误后修正路径，再次失焦触发重试
+
+约束：
+- 校验失败**必须**给出可见的用户反馈，不得静默忽略
+- 校验期间不阻塞 UI（异步执行）
+- 空输入不触发校验
 
 ### 2. prepareParams 数据库优先级
 

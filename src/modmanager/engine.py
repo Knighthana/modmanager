@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .path_resolver import assert_directory_path, assert_file_path
 from .paths import (
     build_game_index,
     is_numeric_modid,
@@ -232,6 +233,23 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
         ``"final_mapping"``.
     """
     branch_decisions = branch_decisions or {}
+
+    # ── path convention gate (A2-01) ────────────────────────────────────────────
+    # Validate that directory paths in the database end with '/' and file paths
+    # do not.  This is an assertion-style check — any violation is a bug upstream.
+    if isinstance(database, dict):
+        for lib in database.get("steamlib", []):
+            if isinstance(lib, dict) and "path" in lib:
+                assert_directory_path(str(lib["path"]), label=f"steamlib[].path")
+        for g in database.get("game", []):
+            if isinstance(g, dict):
+                if "modpath" in g:
+                    assert_directory_path(str(g["modpath"]), label=f"game[].modpath")
+                if "basepath" in g:
+                    assert_directory_path(str(g["basepath"]), label=f"game[].basepath")
+        for mod in database.get("dommod", []):
+            if isinstance(mod, dict) and "path" in mod:
+                assert_directory_path(str(mod["path"]), label=f"dommod[].path")
 
     # ── input structure validation ──────────────────────────────────────────────
     aggregated_rule_set_errors = validate_aggregated_rule_set(aggregated_rule_set)

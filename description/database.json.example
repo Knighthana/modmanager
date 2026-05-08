@@ -3,8 +3,7 @@
     "string1": "这个文件是一个示例文件, 旨在展示`database.json`的结构",
     "string2": "`database.json`是一个由程序自行探索系统后生成的文件, 所以不应该作为启动的前置条件, 也不应该由用户手动编辑",
     "string3": "`database.json`高度与具体的硬件和正在运行的操作系统相关, 因此它的细节可能会因人而异",
-    "string4": "steamlib可以通过自动搜索或手动指定来装入",
-    "string5": "dommod是指那些`aggregated_rule_set.json`中sub不为空的mod, 但这不意味着它们不是其他mod的sub, 这只是意味着“它们有需要被备份的‘可能性’”"
+    "string4": "steamlib可以通过自动搜索或手动指定来装入"
   },
   "OS":{
     "workingpathstyle" : "linux",
@@ -30,6 +29,7 @@
   "game": [
     {
       "appid": "241100",
+      "managed": true,
       "name": "!unknown",
       "localdate": 0,
       "basepath": "!unknown",
@@ -49,6 +49,7 @@
     },
     {
       "appid": "107410",
+      "managed": true,
       "name": "ARMA 3",
       "localdate": 1774295847,
       "basepath": "/mnt/d/Games/steamapps/common/ARMA 3/",
@@ -60,6 +61,7 @@
     },
     {
       "appid": "270150",
+      "managed": true,
       "name": "Running With Rifles",
       "localdate": 1776603485,
       "basepath": "/mnt/d/Games/steamapps/common/RunningWithRifles/",
@@ -67,11 +69,12 @@
       "mods_found":["2606099273", "3425312546", "3426079135", "3428584891", "3430161019"],
       "comment":{
         "string1": "通过解析`appworkshop_270150.acf`可以获取mod列表与其中的`timeupdated`",
-        "string2": "记得顺便把涉及到的`dommod`的`localdate`属性顺便填了, 免得要反复开关文件"
+        "string2": "记得顺便把涉及到的`mod`的`localdate`属性顺便填了"
       }
     },
     {
       "appid": "431960",
+      "managed": true,
       "name": "Wallpaper Engine",
       "localdate": 1757007735,
       "basepath": "/mnt/d/Games/steamapps/common/WallpaperEngine/",
@@ -80,6 +83,7 @@
     },
     {
       "appid": "616720",
+      "managed": true,
       "name": "Live2DViewerEX",
       "localdate": 1757007735,
       "basepath": "/mnt/d/Games/steamapps/common/Live2DViewerEX/",
@@ -87,9 +91,10 @@
       "mods_found": ["921515078"]
     }
   ],
-  "dommod": [
+  "mod": [
     {
       "mixed_id": "270150:2606099273",
+      "managed": true,
       "localdate": 1776317725,
       "path": "/mnt/d/Games/steamapps/workshop/content/270150/2606099273/"
     }

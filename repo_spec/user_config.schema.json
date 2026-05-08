@@ -1,0 +1,67 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://knighthana.github.io/modmanager/schemas/user_config.schema.json",
+    "title": "UserConfig",
+    "description": "用户配置文件 schema。控制工具运行时行为（备份前缀、输出路径、路径别名）。",
+    "type": "object",
+    "required": [],
+    "additionalProperties": true,
+    "properties": {
+        "schema_namespace": {
+            "description": "Schema namespace identifier.",
+            "type": "string",
+            "const": "KMM_UserConfig"
+        },
+        "schema_version": {
+            "description": "Schema version string.",
+            "type": "string"
+        },
+        "bakprefix": {
+            "description": "备份目录名前缀。默认值 'kmmbackup_'。",
+            "type": "string",
+            "default": "kmmbackup_"
+        },
+        "bakignore": {
+            "description": "备份扫描时忽略的路径/通配模式列表。",
+            "type": "array",
+            "default": ["kmmbackup_"],
+            "items": {
+                "type": "string"
+            }
+        },
+        "database_output_path": {
+            "description": "database.json 的输出路径。为 null 时使用平台默认位置（Linux: ~/.local/share/kmm/，Windows: exe 所在目录）。",
+            "type": ["string", "null"],
+            "default": null
+        },
+        "aggregated_ruleset_output_path": {
+            "description": "aggregated_rule_set.json 的输出路径。为 null 时使用平台默认位置。",
+            "type": ["string", "null"],
+            "default": null
+        },
+        "path_alias": {
+            "description": "路径别名列表。当前无消费者，保留供未来扩展。",
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "object",
+                "required": ["description", "path_handle", "path_target"],
+                "additionalProperties": false,
+                "properties": {
+                    "description": {
+                        "description": "人类可读的别名说明。",
+                        "type": "string"
+                    },
+                    "path_handle": {
+                        "description": "路径别名引用句柄。",
+                        "type": "string"
+                    },
+                    "path_target": {
+                        "description": "别名对应的本地文件系统路径。",
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

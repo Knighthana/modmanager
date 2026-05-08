@@ -135,7 +135,49 @@ def resolve_file_path(input_str: str, filename: str) -> str:
     )
 
 
+# ── 下游门禁断言 ────────────────────────────────────────────────────────────
+#
+# 以下函数用于 engine / backup_ops 等下游模块入口处的合规性检查。
+# 违规时直接 raise ValueError，不做静默修补。
+
+
+def assert_directory_path(path: str, label: str = "path") -> None:
+    """断言 *path* 是目录路径（以 ``/`` 结尾），否则 raise ValueError。
+
+    Args:
+        path: 待检查的路径字符串
+        label: 出错时用于标识路径来源的描述标签
+
+    Raises:
+        ValueError: 当路径不以 ``/`` 结尾时
+    """
+    if not path.endswith('/'):
+        raise ValueError(
+            f"E_PATH_GATE_DIR: {label}={path!r} must end with '/' "
+            f"(directory path convention violated)"
+        )
+
+
+def assert_file_path(path: str, label: str = "path") -> None:
+    """断言 *path* 是文件路径（不以 ``/`` 结尾），否则 raise ValueError。
+
+    Args:
+        path: 待检查的路径字符串
+        label: 出错时用于标识路径来源的描述标签
+
+    Raises:
+        ValueError: 当路径以 ``/`` 结尾时
+    """
+    if path.endswith('/'):
+        raise ValueError(
+            f"E_PATH_GATE_FILE: {label}={path!r} must NOT end with '/' "
+            f"(file path convention violated)"
+        )
+
+
 __all__ = [
     "resolve_directory_path",
     "resolve_file_path",
+    "assert_directory_path",
+    "assert_file_path",
 ]

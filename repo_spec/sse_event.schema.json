@@ -1,0 +1,103 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "SseEvent",
+    "description": "Schema for SSE (Server-Sent Events) emitted by modmanager_web.sse.stream_with_progress().",
+    "oneOf": [
+        {
+            "$ref": "#/$defs/ProgressEvent"
+        },
+        {
+            "$ref": "#/$defs/ResultEvent"
+        },
+        {
+            "$ref": "#/$defs/ErrorEvent"
+        }
+    ],
+    "$defs": {
+        "ProgressEvent": {
+            "description": "Progress update event emitted during long-running operations.",
+            "type": "object",
+            "required": ["type", "step", "finished", "total", "message"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "progress"
+                },
+                "step": {
+                    "description": "Current pipeline step identifier (e.g. 'aggregate', 'compute', 'backup', 'apply').",
+                    "type": "string"
+                },
+                "finished": {
+                    "description": "Number of work units completed within the current step.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "total": {
+                    "description": "Total number of work units in the current step. -1 means unknown total.",
+                    "type": "integer",
+                    "minimum": -1
+                },
+                "message": {
+                    "description": "Human-readable progress message.",
+                    "type": "string"
+                }
+            }
+        },
+        "ResultEvent": {
+            "description": "Final result event emitted when the operation completes successfully.",
+            "type": "object",
+            "required": ["type", "payload"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "result"
+                },
+                "payload": {
+                    "description": "ApiResponse structure (see DESIGN_REST_API.md §4.1). Contains ok, data, errors, and warnings fields.",
+                    "type": "object",
+                    "required": ["ok", "data", "errors", "warnings"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "ok": {
+                            "description": "Indicates whether the operation succeeded.",
+                            "type": "boolean"
+                        },
+                        "data": {
+                            "description": "Response payload. May be null when ok is false.",
+                            "type": ["object", "null"]
+                        },
+                        "errors": {
+                            "description": "Fatal error messages. Each string begins with an E_ code.",
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "warnings": {
+                            "description": "Non-fatal warning messages. Each string begins with a W_ code.",
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "ErrorEvent": {
+            "description": "Error event emitted when an unhandled exception occurs during the operation.",
+            "type": "object",
+            "required": ["type", "message"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "const": "error"
+                },
+                "message": {
+                    "description": "Error message describing what went wrong.",
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

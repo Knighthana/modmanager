@@ -27,8 +27,8 @@ class IntegrationFixture:
             "game": [
                 {
                     "appid": "270150",
-                    "basepath": str(self.game_root),
-                    "modpath": str(self.mod_root),
+                    "basepath": str(self.game_root) + "/",
+                    "modpath": str(self.mod_root) + "/",
                 }
             ]
         }
@@ -512,8 +512,8 @@ class F013_HistoryTolerance(unittest.TestCase):
                 "game": [
                     {
                         "appid": "270150",
-                        "basepath": str(fixture.game_root),
-                        "modpath": str(fixture.mod_root),
+                        "basepath": str(fixture.game_root) + "/",
+                        "modpath": str(fixture.mod_root) + "/",
                         "custom_field": "metadata",  # Extra field
                     }
                 ]

@@ -27,8 +27,8 @@ class EngineTests(unittest.TestCase):
             "game": [
                 {
                     "appid": "270150",
-                    "basepath": str(game_root),
-                    "modpath": str(mod_root),
+                    "basepath": str(game_root) + "/",
+                    "modpath": str(mod_root) + "/",
                 }
             ]
         }

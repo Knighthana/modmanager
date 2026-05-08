@@ -93,6 +93,9 @@ async def backups_inspect(req: BackupInspectRequest):
     if not p.is_dir():
         return adapt_error(f"not a directory: {backup_path}")
 
+    # Ensure directory path ends with / per path conventions (A2 gate)
+    backup_path = backup_path.rstrip("/") + "/"
+
     try:
         # Load backup info
         info = load_backup_info(backup_path)

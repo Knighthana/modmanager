@@ -1,3 +1,4 @@
+import { STR } from '../locales/zh-CN'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { streamSse } from '../api/sse'
@@ -249,7 +250,7 @@ export const useForestStore = defineStore('forest', () => {
         })
       }
     } catch {
-      errors.value.push('Failed to discover or save user_config')
+      errors.value.push(STR.forestStore.failedDiscoverConfig)
     }
   }
 
@@ -265,7 +266,7 @@ export const useForestStore = defineStore('forest', () => {
     // ── 输出字段：每次新计算时清空 ──
     trees.value = []
     finalMapping.value = []
-    branchDecisions.value = {}
+    // branchDecisions — 保留（用户决策跨刷新/切换页面持久化，与 lastSuccessfulParams 同级）
     errors.value = []
     warnings.value = []
     svgContent.value = ''

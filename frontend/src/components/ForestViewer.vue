@@ -5,7 +5,7 @@
       v-if="!store.svgContent && !store.isRunning"
       style="text-align: center; padding: 40px; color: #999;"
     >
-      {{ props.emptyMessage || '暂无森林图。请先点击"计算映射"。' }}
+      {{ props.emptyMessage || STR.forestViewer.emptyFallback }}
     </div>
     <div
       v-if="store.svgContent"
@@ -33,6 +33,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useForestStore } from '../stores/forest'
+import { STR } from '../locales/zh-CN'
 
 const props = defineProps<{
     emptyMessage?: string

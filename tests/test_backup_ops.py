@@ -110,14 +110,14 @@ class TestBuildFilefoldertree(TestCase):
 class TestBackupDirLifecycle(TestCase):
     def test_init_creates_error_status(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
             info = load_backup_info(bdir)
             self.assertEqual(info["filefoldertree_status"], "error")
 
     def test_finalize_creates_ready_status(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
             (Path(bdir) / "data.txt").write_bytes(b"test")
             info = finalize_backup_dir(bdir)
@@ -126,7 +126,7 @@ class TestBackupDirLifecycle(TestCase):
 
     def test_finalize_tree_contains_backed_files(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
             (Path(bdir) / "file.txt").write_bytes(b"content")
             info = finalize_backup_dir(bdir)
@@ -135,7 +135,7 @@ class TestBackupDirLifecycle(TestCase):
 
     def test_load_returns_empty_for_missing_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(load_backup_info(str(Path(tmp) / "nonexistent")), {})
+            self.assertEqual(load_backup_info(str(Path(tmp) / "nonexistent") + "/"), {})
 
     def test_load_returns_empty_for_invalid_json(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -146,39 +146,39 @@ class TestBackupDirLifecycle(TestCase):
 # ── Phase 9: check_backup_gate ────────────────────────────────────────────────
 
 class TestCheckBackupGate(TestCase):
-    def _ready_backup(self, tmp: str) -> str:
-        bdir = str(Path(tmp) / "backup")
+    def ready_backup_dir(self, tmp: str) -> str:
+        bdir = str(Path(tmp) / "backup") + "/"
         init_backup_dir(bdir)
         finalize_backup_dir(bdir)
         return bdir
 
-    def test_passes_for_ready_backup(self):
+    def test_passes_forready_backup_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             self.assertEqual(check_backup_gate(bdir), [])
 
     def test_fails_for_missing_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
-            errors = check_backup_gate(str(Path(tmp) / "nonexistent"))
+            errors = check_backup_gate(str(Path(tmp) / "nonexistent") + "/")
             self.assertTrue(any("E_BACKUP_DIR_MISSING" in e for e in errors))
 
     def test_fails_for_error_status(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)  # status=error
             errors = check_backup_gate(bdir)
             self.assertTrue(any("E_BACKUP_TREE_INCOMPLETE" in e for e in errors))
 
     def test_fails_for_missing_backupinfo(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             Path(bdir).mkdir()
             errors = check_backup_gate(bdir)
             self.assertTrue(any("E_BACKUP_INFO_MISSING" in e for e in errors))
 
     def test_fails_for_ready_status_but_missing_tree(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             # Write info with ready status but no filefoldertree
             Path(bdir).mkdir()
             (Path(bdir) / "backupinfo.json").write_text(
@@ -197,7 +197,7 @@ class TestRunDifferentialBackup(TestCase):
             src.parent.mkdir()
             src.write_bytes(b"content_a")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             result = run_differential_backup(bdir, [str(src)])
 
             self.assertTrue(result["ok"])
@@ -207,7 +207,7 @@ class TestRunDifferentialBackup(TestCase):
 
     def test_skips_nonexistent_file(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             result = run_differential_backup(bdir, ["/nonexistent/path/file.txt"])
 
             self.assertTrue(result["ok"])
@@ -216,7 +216,7 @@ class TestRunDifferentialBackup(TestCase):
 
     def test_empty_file_list_finalizes_ready(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             result = run_differential_backup(bdir, [])
 
             self.assertTrue(result["ok"])
@@ -228,7 +228,7 @@ class TestRunDifferentialBackup(TestCase):
             src.parent.mkdir()
             src.write_bytes(b"\xde\xad\xbe\xef")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(src)])
             info = load_backup_info(bdir)
 
@@ -243,7 +243,7 @@ class TestRunDifferentialBackup(TestCase):
             for f in files:
                 f.write_bytes(b"data")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             result = run_differential_backup(bdir, [str(f) for f in files])
 
             self.assertTrue(result["ok"])
@@ -257,7 +257,7 @@ class TestRunDifferentialBackup(TestCase):
             (src_dir / "nested").mkdir()
             (src_dir / "nested" / "b.txt").write_bytes(b"b")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             result = run_differential_backup(bdir, [str(src_dir)])
 
             self.assertTrue(result["ok"])
@@ -268,8 +268,8 @@ class TestRunDifferentialBackup(TestCase):
 # ── Phase 11: apply_final_mapping ────────────────────────────────────────────
 
 class TestApplyFinalMapping(TestCase):
-    def _ready_backup(self, tmp: str) -> str:
-        bdir = str(Path(tmp) / "backup")
+    def ready_backup_dir(self, tmp: str) -> str:
+        bdir = str(Path(tmp) / "backup") + "/"
         init_backup_dir(bdir)
         finalize_backup_dir(bdir)
         return bdir
@@ -293,7 +293,7 @@ class TestApplyFinalMapping(TestCase):
             dest = Path(tmp) / "dest.txt"
             dest.write_bytes(b"old content")
 
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             result = apply_final_mapping([self._entry(str(dest), str(src))], bdir)
 
             self.assertTrue(result["ok"])
@@ -305,7 +305,7 @@ class TestApplyFinalMapping(TestCase):
             src.write_bytes(b"created")
             dest = Path(tmp) / "new_dir" / "new.txt"
 
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             result = apply_final_mapping([self._entry(str(dest), str(src), "create")], bdir)
 
             self.assertTrue(result["ok"])
@@ -316,7 +316,7 @@ class TestApplyFinalMapping(TestCase):
             target = Path(tmp) / "to_delete.txt"
             target.write_bytes(b"data")
 
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             entry = {"path": str(target), "request": {"path": "!", "action": "delete", "mixed_id": "x:y", "hashtype": "sha256", "hashvalue": "0"}}
             result = apply_final_mapping([entry], bdir)
 
@@ -325,7 +325,7 @@ class TestApplyFinalMapping(TestCase):
 
     def test_delete_nonexistent_target_is_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             entry = {"path": str(Path(tmp) / "ghost.txt"), "request": {"path": "!", "action": "delete", "mixed_id": "x:y", "hashtype": "sha256", "hashvalue": "0"}}
             result = apply_final_mapping([entry], bdir)
 
@@ -338,7 +338,7 @@ class TestApplyFinalMapping(TestCase):
             src.write_bytes(b"x")
             dest = Path(tmp) / "dest.txt"
 
-            bdir = str(Path(tmp) / "nonexistent_backup")
+            bdir = str(Path(tmp) / "nonexistent_backup") + "/"
             result = apply_final_mapping([self._entry(str(dest), str(src))], bdir)
 
             self.assertFalse(result["ok"])
@@ -351,7 +351,7 @@ class TestApplyFinalMapping(TestCase):
             dest = Path(tmp) / "dest.txt"
             dest.write_bytes(b"old")
 
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             result = apply_final_mapping([self._entry(str(dest), str(src))], bdir, dry_run=True)
 
             self.assertTrue(result["ok"])
@@ -360,7 +360,7 @@ class TestApplyFinalMapping(TestCase):
     def test_source_not_found_is_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp) / "dest.txt"
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
 
             result = apply_final_mapping(
                 [self._entry(str(dest), "/nonexistent/src.txt")], bdir
@@ -379,7 +379,7 @@ class TestApplyFinalMapping(TestCase):
             src.write_bytes(b"new")
 
             dest = target_dir / "new_file.png"
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
 
             # delete the old file
             del_entry = {
@@ -418,7 +418,7 @@ class TestApplyFinalMapping(TestCase):
             (src_dir / "nested" / "b.txt").write_bytes(b"b")
 
             dest = Path(tmp) / "game" / "maps" / "dir1"
-            bdir = self._ready_backup(tmp)
+            bdir = self.ready_backup_dir(tmp)
             result = apply_final_mapping([self._entry(str(dest), str(src_dir))], bdir)
 
             self.assertTrue(result["ok"])
@@ -435,7 +435,7 @@ class TestRestoreFromBackup(TestCase):
             orig.parent.mkdir()
             orig.write_bytes(b"original")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
             orig.write_bytes(b"modified")
@@ -451,7 +451,7 @@ class TestRestoreFromBackup(TestCase):
             orig.parent.mkdir()
             orig.write_bytes(b"same content")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
             result = restore_from_backup(bdir, [str(orig)])
@@ -462,7 +462,7 @@ class TestRestoreFromBackup(TestCase):
 
     def test_gate_fails_without_backup_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
-            result = restore_from_backup(str(Path(tmp) / "nonexistent"))
+            result = restore_from_backup(str(Path(tmp) / "nonexistent") + "/")
             self.assertFalse(result["ok"])
             self.assertTrue(any("E_BACKUP_DIR_MISSING" in e for e in result["errors"]))
 
@@ -474,7 +474,7 @@ class TestRestoreFromBackup(TestCase):
             orig1.write_bytes(b"aaa")
             orig2.write_bytes(b"bbb")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig1), str(orig2)])
 
             orig1.write_bytes(b"aaa_modified")
@@ -493,7 +493,7 @@ class TestRestoreFromBackup(TestCase):
 class TestPhase13Governance(TestCase):
     def test_detect_dirty_state_for_error_status(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)  # status=error
             result = detect_dirty_state(bdir)
             self.assertTrue(result["dirty"])
@@ -501,7 +501,7 @@ class TestPhase13Governance(TestCase):
 
     def test_detect_dirty_state_clean_after_finalize(self):
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
             (Path(bdir) / "file.txt").write_bytes(b"ok")
             finalize_backup_dir(bdir)
@@ -514,7 +514,7 @@ class TestPhase13Governance(TestCase):
             orig = Path(tmp) / "orig" / "x.txt"
             orig.parent.mkdir()
             orig.write_bytes(b"before")
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
             mirrored = Path(bdir) / str(orig).lstrip("/")
@@ -529,7 +529,7 @@ class TestPhase13Governance(TestCase):
             orig = Path(tmp) / "game" / "keep.txt"
             orig.parent.mkdir(parents=True)
             orig.write_bytes(b"original")
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
             orig.write_bytes(b"changed")
@@ -557,24 +557,25 @@ class TestLoopProtectionCollectPaths(TestCase):
     def test_loop_protection_collect_paths(self):
         """_collect_backup_original_paths skips kmmbackup_* directories."""
         with tempfile.TemporaryDirectory() as tmp:
-            bdir = Path(tmp) / "backup"
-            init_backup_dir(str(bdir))
+            bdir = str(Path(tmp) / "backup") + "/"
+            init_backup_dir(bdir)
+            bdir_path = Path(bdir)
 
             # Normal file that should be collected
-            normal_file = bdir / "normal.txt"
+            normal_file = bdir_path / "normal.txt"
             normal_file.write_bytes(b"normal")
 
             # File inside kmmbackup_* dir that should be skipped
-            skip_dir = bdir / f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc"
+            skip_dir = bdir_path / f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc"
             skip_dir.mkdir()
             (skip_dir / "skipped.txt").write_bytes(b"skipped")
 
             # Nested kmmbackup_ dir deeper in path
-            nested = bdir / "some" / f"{_HARDCODED_BACKUP_SKIP_PREFIX}other"
+            nested = bdir_path / "some" / f"{_HARDCODED_BACKUP_SKIP_PREFIX}other"
             nested.mkdir(parents=True)
             (nested / "nested_skip.txt").write_bytes(b"nested")
 
-            result = _collect_backup_original_paths(str(bdir))
+            result = _collect_backup_original_paths(bdir)
             paths = [p for p in result]
 
             self.assertIn("/normal.txt", paths)
@@ -613,7 +614,7 @@ class TestLoopProtectionCollectPaths(TestCase):
             orig.parent.mkdir(parents=True)
             orig.write_bytes(b"original")
 
-            bdir = str(Path(tmp) / "backup")
+            bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
             # Now add a kmmbackup_ dir inside the backup (simulating nested backup)

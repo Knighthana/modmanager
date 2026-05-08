@@ -24,9 +24,9 @@
 
 ## 数据维护流程
 1. 永远允许用户手动维护 `steamlib`（CRUD）
-2. `liveupdate`：按 `steamlib` 变化增量刷新 `game` / `dommod`
-3. `regen`：清空 `game` / `dommod` 后按最新 `steamlib` 全量重建
-4. 仅当无可用工作目录时提示用户介入
+2. `liveupdate`：按 `steamlib` 变化增量刷新 `game` / `mod`
+3. 去重：用户在 DataSource 页面通过 `managed` 标记筛选 game 和 mod，同名 appid / mixed_id 最多一个 managed=true
+4. `regen`：清空 `game` / `mod` 后按最新 `steamlib` 全量重建
 
 ## 数据契约分工
 - 术语冻结：`TERMS_TERMINOLOGY.md`

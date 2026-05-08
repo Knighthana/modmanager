@@ -55,25 +55,27 @@ kmm_rule 文件的顶层结构：
 
 ### 2.2 user_config.json
 
-由 bootstrap 按三级搜索链（`~/.config/kmm/` → 软件本体目录 → PWD，后者覆盖前者）拼接后，将**单一确定路径**传入聚合器。聚合器不负责搜索或生成。
+user_config 的搜索、生成与字段规范已迁移至 `DESIGN_STORAGE.md` §3。
 
-bootstrap 的职责：若三级搜索均未找到 `user_config.json`，按 `user_config.json.example` 的样式在软件本体目录生成默认文件。
+聚合器不负责 user_config 的搜索或生成。调用方（orchestrator / CLI / Web API）通过 bootstrap 获取已解析的 user_config 后，将**单一确定路径**传入聚合器。
 
-`user_config.json` 的 schema 参考 `description/user_config.json.example`：
+bootstrap 的职责：
+- 若调用方显式传入 `user_config_path`，直接使用该路径
+- 若未传入，在平台默认位置搜索（Linux: `~/.config/kmm/`，Windows: `%appdata%/kmm/`）
+- 若文件不存在，尝试在目标位置创建默认空配置文件；成功则标记 `first_use = true`
+- 若创建失败，报告权限错误
 
-```json
-{
-  "path_alias": [
-    {
-      "description": "本机kmmrule存储位置1",
-      "path_handle": "rule_base_path_1",
-      "path_target": "/home/knighthana/workspace/modmanager/"
-    }
-  ]
-}
-```
+`user_config.json` 当前字段：
 
-注意：`path_alias` **当前没有消费者**。`provenance_ref` 已固定为绝对路径，不再使用 `path_handle:` 格式。保留此字段仅供未来扩展。
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `bakprefix` | `string` | 备份目录名前缀，默认 `"kmmbackup_"` |
+| `bakignore` | `string[]` | 备份扫描忽略模式 |
+| `database_output_path` | `string \| null` | `database.json` 输出路径 |
+| `aggregated_ruleset_output_path` | `string \| null` | `aggregated_rule_set.json` 输出路径 |
+| `path_alias` | `object[]` | 路径别名（当前无消费者，保留供未来扩展） |
+
+Schema 定义见 `repo_spec/user_config.schema.json`。
 
 ### 2.3 action_order 映射（可选）
 

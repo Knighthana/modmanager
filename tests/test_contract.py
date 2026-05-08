@@ -24,8 +24,8 @@ def _mk_db(tmp_path: Path) -> dict[str, Any]:
         "game": [
             {
                 "appid": "1",
-                "basepath": str(game_root),
-                "modpath": str(mod_root),
+                "basepath": str(game_root) + "/",
+                "modpath": str(mod_root) + "/",
             }
         ]
     }

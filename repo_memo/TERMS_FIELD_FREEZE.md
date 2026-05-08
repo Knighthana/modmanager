@@ -10,7 +10,9 @@
 - `OS.workingpathstyle` / `OS.steamlibpathstyle`
 - `steamlib[].game`
 - `game[].mods_found`
-- `dommod[].mixed_id`
+- `mod[].mixed_id`
+- `mod[].managed`
+- `game[].managed`
 
 ## 输出结构冻结
 - compute_mapping 输出 key: `"trees"`（数组），`"final_mapping"`（数组）
@@ -23,3 +25,4 @@
 - ~~appitemid~~
 - ~~itemid（若表示 mod 列表）~~
 - ~~forest（已改为 trees）~~
+- ~~dommod~~（已改为 mod）

@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "BranchDecisions",
+    "description": "Schema for branch_decisions — user decisions made on the ConflictsPage to resolve branch conflicts.",
+    "$comment": "用户在 ConflictsPage 做出的分支决策映射",
+    "type": "object",
+    "additionalProperties": false,
+    "propertyNames": {
+        "description": "Target root_path (the destination file path that has multiple candidates).",
+        "type": "string"
+    },
+    "patternProperties": {
+        "^.*$": {
+            "description": "Chosen source root_path for the given target.",
+            "type": "string"
+        }
+    }
+}

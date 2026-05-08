@@ -1,28 +1,30 @@
+import { STR } from '../locales/zh-CN'
+
 export const WARNING_DESCRIPTIONS: Record<string, string> = {
-    'W_LOCAL_MOD_MISSING': '本地未安装该 mod，对应映射将被跳过',
-    'W_NO_SOURCE_MATCH': 'mod 源文件不存在（可能未安装），对应条目将被跳过',
-    'W_MISSING_SOURCE_ROOT': '缺少源目录',
-    'W_MISSING_DEST_ROOT': '缺少目标目录',
-    'W_CREATE_TARGET_EXISTS_OVERWRITE': '目标文件已存在，将被覆盖',
-    'W_FOREST_BRANCHING': '该树有多个候选操作，需要用户裁决',
-    'W_SOURCE_DELETED': '操作的源文件已被删除，该操作被跳过',
-    'W_SOURCE_DIRECTORY_DELETED': '操作的源目录已被删除，该操作被跳过',
-    'W_DUPLICATE_APPID': '同一 appid 在多个库中出现',
-    'W_EMPTY_ACTIONLIST_AFTER_FILTER': '规则聚合后 actionlist 为空（所有 action 被 hold 过滤），该 mod 的映射将被跳过',
+    'W_LOCAL_MOD_MISSING': STR.errorCodes.W_LOCAL_MOD_MISSING,
+    'W_NO_SOURCE_MATCH': STR.errorCodes.W_NO_SOURCE_MATCH,
+    'W_MISSING_SOURCE_ROOT': STR.errorCodes.W_MISSING_SOURCE_ROOT,
+    'W_MISSING_DEST_ROOT': STR.errorCodes.W_MISSING_DEST_ROOT,
+    'W_CREATE_TARGET_EXISTS_OVERWRITE': STR.errorCodes.W_CREATE_TARGET_EXISTS_OVERWRITE,
+    'W_FOREST_BRANCHING': STR.errorCodes.W_FOREST_BRANCHING,
+    'W_SOURCE_DELETED': STR.errorCodes.W_SOURCE_DELETED,
+    'W_SOURCE_DIRECTORY_DELETED': STR.errorCodes.W_SOURCE_DIRECTORY_DELETED,
+    'W_DUPLICATE_APPID': STR.errorCodes.W_DUPLICATE_APPID,
+    'W_EMPTY_ACTIONLIST_AFTER_FILTER': STR.errorCodes.W_EMPTY_ACTIONLIST_AFTER_FILTER,
 };
 
 export const ERROR_DESCRIPTIONS: Record<string, string> = {
-    'E_DATABASE_INVALID': '数据库格式无效，缺少必要字段',
-    'E_AGGREGATED_RULE_SET_INVALID': '规则集格式无效',
-    'E_FILE_CIRCULAR_DEP': '文件级循环依赖',
-    'E_BRANCH_DECISION_INVALID': '分支决策无效',
-    'E_BACKUP_DIR_MISSING': '备份目录不存在',
-    'E_BACKUP_INFO_MISSING': '备份元数据缺失',
-    'E_BACKUP_TREE_INCOMPLETE': '备份文件树不完整',
-    'E_BACKUP_TREE_MISSING': '备份文件树缺失',
-    'E_TREE_CONFLICT': '文件树冲突',
-    'E_ENTITY_CONFLICT': '实体文件冲突',
-    'E_TREE_CONFLICT_TARGET_DRIFT': '目标文件内容与备份不一致',
+    'E_DATABASE_INVALID': STR.errorCodes.E_DATABASE_INVALID,
+    'E_AGGREGATED_RULE_SET_INVALID': STR.errorCodes.E_AGGREGATED_RULE_SET_INVALID,
+    'E_FILE_CIRCULAR_DEP': STR.errorCodes.E_FILE_CIRCULAR_DEP,
+    'E_BRANCH_DECISION_INVALID': STR.errorCodes.E_BRANCH_DECISION_INVALID,
+    'E_BACKUP_DIR_MISSING': STR.errorCodes.E_BACKUP_DIR_MISSING,
+    'E_BACKUP_INFO_MISSING': STR.errorCodes.E_BACKUP_INFO_MISSING,
+    'E_BACKUP_TREE_INCOMPLETE': STR.errorCodes.E_BACKUP_TREE_INCOMPLETE,
+    'E_BACKUP_TREE_MISSING': STR.errorCodes.E_BACKUP_TREE_MISSING,
+    'E_TREE_CONFLICT': STR.errorCodes.E_TREE_CONFLICT,
+    'E_ENTITY_CONFLICT': STR.errorCodes.E_ENTITY_CONFLICT,
+    'E_TREE_CONFLICT_TARGET_DRIFT': STR.errorCodes.E_TREE_CONFLICT_TARGET_DRIFT,
 };
 
 /** 从错误/警告消息中提取类型代码 */

@@ -71,4 +71,7 @@
 - `final_mapping` — 决议后的最终文件映射列表
 
 ## 13. 数据库扩展
-- `dommod[]` — mod 列表：`mixed_id`（appid:modid 格式）、`path`（以 / 结尾）、`localdate`
+- `mod[]` — mod 列表（原 `dommod`，已废弃该名称）：`mixed_id`（appid:modid 格式）、`path`（以 / 结尾）、`localdate`、`managed`（boolean，是否接受管理）
+- `game[].managed` — boolean，同名 appid 最多一个为 true
+- `mod[].managed` — boolean，同名 mixed_id 最多一个为 true
+- `history` — 操作历史记录数组（预留，当前为空）

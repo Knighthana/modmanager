@@ -1,18 +1,18 @@
 <template>
   <div>
-    <h2>Forest 可视化</h2>
+    <h2>{{ STR.forestPage.title }}</h2>
 
     <!-- PipelineForm -->
     <el-card shadow="never" style="margin-bottom: 16px;">
       <template #header>
-        <span>Pipeline 参数</span>
+        <span>{{ STR.forestPage.pipelineParams }}</span>
       </template>
       <el-form :model="store.pipelineForm" label-width="140px">
-        <el-form-item label="Database 路径">
+        <el-form-item :label="STR.forestPage.dbPathLabel">
           <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
             <el-input
               v-model="dbPathDisplay"
-              :placeholder="store.dbManualOverride ? '输入 database.json 路径' : ''"
+              :placeholder="store.dbManualOverride ? STR.forestPage.dbPathPlaceholder : ''"
               :disabled="!store.dbManualOverride"
               style="flex: 1;"
               :ref="(el: any) => dbInputRef = el"
@@ -36,34 +36,28 @@
               style="flex-shrink: 0;"
               @click="onDbManualOverride"
             >
-              {{ store.dbManualOverride ? '使用自动' : '手动填写' }}
+              {{ store.dbManualOverride ? STR.forestPage.useAuto : STR.forestPage.manualInput }}
             </el-button>
           </div>
         </el-form-item>
-        <el-form-item label="Database JSON">
+        <el-form-item :label="STR.forestPage.dbJsonLabel">
           <el-input
             v-model="store.pipelineForm.databaseJson"
             type="textarea"
             :rows="7"
-            placeholder='{
-  &quot;comment&quot;: {
-    &quot;string1&quot;: &quot;留空使用上方路径中的文件，否则将会使用本栏中的任何输入作为database的输入来源&quot;
-  },
-  &quot;steamlib&quot;: [...],
-  ...
-}'
+            :placeholder="STR.forestPage.dbJsonPlaceholder()"
           />
         </el-form-item>
-        <el-form-item label="Rules paths">
-          <el-input v-model="store.pipelineForm.rulesPaths" placeholder="Comma-separated paths to kmm_rule files" />
+        <el-form-item :label="STR.forestPage.rulesPathsLabel">
+          <el-input v-model="store.pipelineForm.rulesPaths" :placeholder="STR.forestPage.rulesPathsPlaceholder" />
         </el-form-item>
-        <el-form-item label="User config 路径">
-          <el-input v-model="store.pipelineForm.userConfigPath" placeholder="自动探测后自动填入" />
+        <el-form-item :label="STR.forestPage.userConfigLabel">
+          <el-input v-model="store.pipelineForm.userConfigPath" :placeholder="STR.forestPage.userConfigPlaceholder" />
         </el-form-item>
-        <el-form-item label="Backup dir">
-          <el-input v-model="store.pipelineForm.backupDir" placeholder="自动推导（留空则自动）" />
+        <el-form-item :label="STR.forestPage.backupDirLabel">
+          <el-input v-model="store.pipelineForm.backupDir" :placeholder="STR.forestPage.backupDirPlaceholder" />
         </el-form-item>
-        <el-form-item label="Dry run">
+        <el-form-item :label="STR.forestPage.dryRunLabel">
           <el-switch v-model="store.pipelineForm.dryRun" />
         </el-form-item>
         <el-form-item>
@@ -73,7 +67,7 @@
             :disabled="store.isRunning"
             @click="onCompute"
           >
-            {{ store.isRunning ? '计算中...' : '📊 计算映射' }}
+            {{ store.isRunning ? STR.forestPage.computeBtnRunning : STR.forestPage.computeBtn }}
           </el-button>
           <el-button
             type="success"
@@ -82,10 +76,10 @@
             @click="onRun"
             style="margin-left: 8px;"
           >
-            ⚡ 应用流水线
+            {{ STR.forestPage.runBtn }}
           </el-button>
           <span style="margin-left: 8px; font-size: 12px; color: #999;">
-            "计算映射"仅分析不修改文件 | "应用流水线"将执行备份+替换
+            {{ STR.forestPage.hintText }}
           </span>
         </el-form-item>
       </el-form>
@@ -95,25 +89,25 @@
     <el-row v-if="hasResult" :gutter="16" style="margin-bottom: 16px;">
       <el-col :span="6">
         <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">Trees 结点</span>
+          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.treesCount }}</span>
           <div style="font-size: 24px; font-weight: 600;">{{ store.trees.length }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">冲突</span>
+          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.conflicts }}</span>
           <div style="font-size: 24px; font-weight: 600;">{{ store.conflictList.length }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">最终映射</span>
+          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.finalMapping }}</span>
           <div style="font-size: 24px; font-weight: 600;">{{ store.finalMapping.length }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">错误</span>
+          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.errors }}</span>
           <div style="font-size: 24px; font-weight: 600;"
                :style="{ color: store.errors.length > 0 ? 'var(--el-color-danger)' : 'var(--el-text-color-primary)' }">
             {{ store.errors.length }}
@@ -125,7 +119,7 @@
     <!-- 错误与警告面板 -->
     <div v-if="store.errors.length || store.warnings.length" style="margin-bottom: 16px;">
       <el-collapse v-model="activeCollapseNames">
-        <el-collapse-item v-if="store.errors.length" title="错误 ({{ store.errors.length }})" name="errors">
+        <el-collapse-item v-if="store.errors.length" :title="`${STR.forestPage.errors} (${store.errors.length})`" name="errors">
           <el-alert
             v-for="(err, i) in store.errors"
             :key="'err-' + i"
@@ -136,7 +130,7 @@
             @click="(e: MouseEvent) => onMessageClick(err, e)"
           />
         </el-collapse-item>
-        <el-collapse-item v-if="store.warnings.length" title="警告 ({{ store.warnings.length }})" name="warnings">
+        <el-collapse-item v-if="store.warnings.length" :title="`${STR.forestPage.warnings} (${store.warnings.length})`" name="warnings">
           <el-alert
             v-for="(warn, i) in store.warnings"
             :key="'warn-' + i"
@@ -152,8 +146,8 @@
       <!-- 提示：若全是 W_LOCAL_MOD_MISSING，建议先运行自动探测 -->
       <el-alert
         v-if="store.errors.every(e => e.startsWith('W_')) && store.errors.length > 0"
-        title="提示"
-        description="所有错误均为 warning 级别（如 W_LOCAL_MOD_MISSING），通常是因为数据源为空。请先切换到上方'数据源发现'面板，运行'自动探测 Steam 库'获取数据库后再试。"
+        :title="STR.forestPage.allWarningsHintTitle"
+        :description="STR.forestPage.allWarningsHintDesc"
         type="info"
         :closable="false"
         style="margin-top: 8px;"
@@ -163,11 +157,11 @@
     <!-- 展示模式切换 -->
     <el-card v-if="hasResult" shadow="never" style="margin-bottom: 16px;">
       <el-form label-width="140px">
-        <el-form-item label="展示模式">
+        <el-form-item :label="STR.forestPage.displayMode">
           <el-switch
             v-model="showBranchingOnly"
-            active-text="仅分枝"
-            inactive-text="全部树"
+            :active-text="STR.forestPage.branchingOnly"
+            :inactive-text="STR.forestPage.allTrees"
           />
         </el-form-item>
       </el-form>
@@ -180,12 +174,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
+import { ElNotification } from 'element-plus'
 import { useForestStore, generateBackupDir } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 import { apiPost } from '../api/client'
 import type { TreeNode } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription } from '../utils/errorCodes'
+import { STR } from '../locales/zh-CN'
 
 const store = useForestStore()
 
@@ -204,11 +200,11 @@ const dbPathDisplay = computed({
     get(): string {
         // 锁定状态：显示带后缀的完整文字
         if (!store.dbManualOverride) {
-            const base = store.storedDatabase 
-                ? 'Frontend Storage' 
-                : (store.pipelineForm.databasePath || '');
+        const base = store.storedDatabase 
+            ? STR.forestPage.frontendStorage
+            : (store.pipelineForm.databasePath || '');
             if (!base) return '';
-            return `${base} (从数据源页面自动传入)`;
+            return `${base}${STR.forestPage.autoInherited}`;
         }
         // 解锁状态：仅显示路径
         return store.pipelineForm.databasePath || '';
@@ -245,17 +241,40 @@ function onDbManualOverride() {
 }
 
 async function onDbPathBlur() {
+    // 锁定状态下不触发校验
     if (!store.dbManualOverride) return;
     const path = store.pipelineForm.databasePath;
-    if (!path) return;
+    // 空输入不触发校验
+    if (!path || !path.trim()) return;
 
     try {
-        const resp = await apiPost('/database/load', { path });
+        const resp = await apiPost('/database/load', { path: path.trim() });
         if (resp.ok && resp.data) {
+            // 成功：更新 storedDatabase，自动切换回锁定状态
             store.storedDatabase = resp.data as Record<string, unknown>;
+            store.dbManualOverride = false;
+            // 显示解析后的路径（来自响应或保留输入）
+            store.pipelineForm.databasePath = path.trim();
+        } else {
+            // 失败：显示错误气泡
+            const errMsg = (resp.errors && resp.errors.length > 0)
+                ? resp.errors.join('; ')
+                : STR.forestPage.loadFailed;
+            ElNotification({
+                title: STR.forestPage.validationFailed,
+                message: errMsg,
+                type: 'error',
+                duration: 5000,
+            });
         }
-    } catch {
-        // 静默失败，用户可继续手动调整
+    } catch (err) {
+        // 异常：显示错误气泡
+        ElNotification({
+            title: STR.forestPage.validationError,
+            message: String(err),
+            type: 'error',
+            duration: 5000,
+        });
     }
 }
 
@@ -266,11 +285,15 @@ function getFilteredTrees(): TreeNode[] {
 
 const hasBranchingTrees = computed(() => store.trees.some(t => t.resolved_state === 'pending'))
 
-const emptyMessage = computed(() =>
-  showBranchingOnly.value
-    ? '当前森林中不存在待裁决的分支问题'
-    : '暂无森林图。请先点击"计算映射"。'
-)
+const emptyMessage = computed(() => {
+  if (store.trees.length === 0) {
+    return STR.forestPage.emptyNoForest
+  }
+  if (showBranchingOnly.value) {
+    return STR.forestPage.emptyNoBranching
+  }
+  return ''
+})
 
 const isDiscoverDisabled = computed(() =>
   store.pipelineForm.discoveryMode === 'manual' && !store.pipelineForm.manualSteamPath
@@ -338,7 +361,7 @@ function onMessageClick(msg: string, e: MouseEvent) {
 
 function showDbInfo(e: MouseEvent) {
     showPopup(
-        '数据库已在 <a class="popup-link" data-route="/data-source">📡 数据源</a> 页面中配置。<br/>若已从数据源页应用，数据库将自动传入；否则可在此手动填写。',
+        STR.forestPage.dbInfoPopup,
         e.currentTarget as HTMLElement,
         e
     )

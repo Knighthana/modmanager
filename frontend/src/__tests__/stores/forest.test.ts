@@ -51,7 +51,7 @@ describe('useForestStore', () => {
     expect(store.branchDecisions).toEqual({})
   })
 
-  it('reset clears all data including lastSuccessfulParams', () => {
+  it('reset clears output data but preserves branchDecisions', () => {
     const store = useForestStore()
     store.trees = [{ root_path: '/a.png', destin_mixed_id: 'mod:A', changerequest: [], refs: [], resolved_state: 'kept' }]
     store.errors = ['some error']
@@ -66,8 +66,28 @@ describe('useForestStore', () => {
     store.reset()
     expect(store.trees).toEqual([])
     expect(store.errors).toEqual([])
-    expect(store.branchDecisions).toEqual({})
+    // branchDecisions survives reset (TODO-8: persist across recompute)
+    expect(store.branchDecisions).toEqual({ '/a.png': '/m1/a.png' })
     expect(store.lastSuccessfulParams).toBeNull()
+  })
+
+  it('branchDecisions survives multiple reset calls', () => {
+    const store = useForestStore()
+    store.setDecision('/a.png', '/m1/a.png')
+    store.setDecision('/b.png', '/m2/b.png')
+    expect(Object.keys(store.branchDecisions).length).toBe(2)
+
+    // First reset — decisions survive
+    store.reset()
+    expect(store.branchDecisions).toEqual({ '/a.png': '/m1/a.png', '/b.png': '/m2/b.png' })
+
+    // Second reset — still survive
+    store.reset()
+    expect(store.branchDecisions).toEqual({ '/a.png': '/m1/a.png', '/b.png': '/m2/b.png' })
+
+    // clearDecisions still works explicitly
+    store.clearDecisions()
+    expect(store.branchDecisions).toEqual({})
   })
 
   it('isClean returns true when no errors and no unresolved conflicts', () => {

@@ -57,5 +57,5 @@
 
 ## 数据维护接口（规划冻结）
 - `steamlib`：必须提供 CRUD（增、删、改、查）接口。
-- `liveupdate`：根据 `steamlib` 变化增量更新 `game`、`dommod`。
-- `regen`：清空 `game`、`dommod` 后，按最新 `steamlib` 全量重建。
+- `liveupdate`：根据 `steamlib` 变化增量更新 `game`、`mod`。
+- `regen`：清空 `game`、`mod` 后，按最新 `steamlib` 全量重建。

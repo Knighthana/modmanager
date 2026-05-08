@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from .acf_parser import get_workshop_timeupdated, parse_appmanifest_acf
+from .path_resolver import assert_directory_path, assert_file_path
 from .paths import normalize_posix
 
 
@@ -184,6 +185,7 @@ def init_backup_dir(backup_dir: str) -> None:
     Status is set to ``"error"`` until ``finalize_backup_dir`` completes the
     tree scan and flips it to ``"ready"``.
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     _write_backup_info(backup_dir, {"filefoldertree_status": "error"})
 
 
@@ -192,6 +194,7 @@ def finalize_backup_dir(backup_dir: str) -> dict[str, Any]:
 
     Returns the completed backupinfo dict.
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     tree = build_filefoldertree_with_hashes(backup_dir)
     info: dict[str, Any] = {"filefoldertree_status": "ready", "filefoldertree": tree}
     _write_backup_info(backup_dir, info)
@@ -211,6 +214,7 @@ def detect_dirty_state(backup_dir: str) -> dict[str, Any]:
           "partial_files": [str],
         }
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     backup_dir = _normalized(backup_dir)
     backup_path = Path(backup_dir)
     if not backup_path.exists():
@@ -253,6 +257,7 @@ def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None
     1) backup tree integrity (tree hash vs file hash in backup dir)
     2) optional target drift (target differs from backup copy)
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     backup_dir = _normalized(backup_dir)
     final_mapping = final_mapping or []
 
@@ -307,6 +312,7 @@ def check_backup_gate(backup_dir: str) -> list[str]:
 
     An empty list means the gate passes and replacement is safe.
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     errors: list[str] = []
     backup_path = Path(backup_dir)
     if not backup_path.exists():
@@ -342,6 +348,7 @@ def run_differential_backup(
 
         {"ok": bool, "backed_up": [str], "skipped": [str], "errors": [str]}
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     init_backup_dir(backup_dir)
     backup_path = Path(backup_dir)
     backed_up: list[str] = []
@@ -391,6 +398,7 @@ def apply_final_mapping(
 
         {"ok": bool, "applied": [str], "skipped": [str], "errors": [str]}
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     gate_errors = check_backup_gate(backup_dir)
     if gate_errors:
         return {"ok": False, "applied": [], "skipped": [], "errors": gate_errors}
@@ -475,6 +483,7 @@ def restore_from_backup(
                     "warnings": [str],
                 }
     """
+    assert_directory_path(backup_dir, label="backup_dir")
     gate_errors = check_backup_gate(backup_dir)
     if gate_errors:
         return {
