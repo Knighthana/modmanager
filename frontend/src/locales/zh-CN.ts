@@ -215,7 +215,7 @@ export const STR = {
     E_TREE_CONFLICT: '文件树冲突',
     E_ENTITY_CONFLICT: '实体文件冲突',
     E_TREE_CONFLICT_TARGET_DRIFT: '目标文件内容与备份不一致',
-    E_DUPLICATE_APPID: '同一 appid 在多个库中出现，请选择需要保留的库',
-    E_DUPLICATE_MIXED_ID: '同一 mixed_id 在数据库中存在多个条目，请选择需要保留的 MOD',
+    E_DUPLICATE_APPID: '同一 appid 在多个 Steam 库中重复出现。由于无法自动判断应对哪个库中的游戏进行操作，请在游戏表中为每个重复的 appid 勾选一个 radio，保留需要管理的库。',
+    E_DUPLICATE_MIXED_ID: '同一 mixed_id（appid:modid）存在多个条目。由于无法自动判断应使用哪个路径下的 MOD，请在 MOD 表中为每个重复的 mixed_id 勾选一个 radio，保留需要使用的条目。',
   },
 }

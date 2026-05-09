@@ -243,15 +243,22 @@
 
     <!-- 扫描错误（E_DUPLICATE 等） -->
     <div v-if="store.errors.length > 0" style="margin-top: 12px;">
-      <el-alert
+      <div
         v-for="(err, idx) in store.errors"
         :key="'err-'+idx"
-        :title="err"
-        type="error"
-        show-icon
-        :closable="false"
-        style="margin-bottom: 4px;"
-      />
+        style="margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"
+      >
+        <el-tag type="danger" size="small">{{ extractCode(err) || err }}</el-tag>
+        <span style="font-size: 13px; color: var(--el-text-color-regular);">{{ getDescription(err) || err }}</span>
+        <el-button
+          size="small"
+          text
+          type="info"
+          @click="(e: MouseEvent) => onErrorPopup(err, e)"
+          style="padding: 0 4px; font-size: 14px;"
+          title="查看排障指南"
+        >?</el-button>
+      </div>
     </div>
 
     <!-- 错误区（逐条平铺） -->
@@ -296,6 +303,8 @@ import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
 import type { LibraryRow, GameRow, ModRow } from '../types'
+import { showPopup } from '../utils/notify'
+import { getDescription, extractCode } from '../utils/errorCodes'
 
 const store = useDataSourceStore()
 const forestStore = useForestStore()
@@ -353,6 +362,12 @@ function onModManagedChange(row: ModRow) {
     }
   }
   localManagedMods[`mod-${row.index}`] = true
+}
+
+// ── error popup helper ──
+function onErrorPopup(errMsg: string, event: MouseEvent) {
+  const desc = getDescription(errMsg) || errMsg
+  showPopup(desc, event.target as HTMLElement, event)
 }
 
 // ── confirm & save ──
