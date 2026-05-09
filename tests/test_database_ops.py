@@ -276,11 +276,11 @@ class DatabaseOpsTests(unittest.TestCase):
             with patch.object(scanner, "discover_mods_for_game", return_value=["mod1"]):
                 result = _scan_from_libraries(scanner, [lib1, lib2], greedy_parsing=True)
 
-        # Warnings should contain W_DUPLICATE_APPID
-        self.assertIn("warnings", result)
+        # Errors should contain E_DUPLICATE_APPID
+        self.assertIn("errors", result)
         self.assertTrue(
-            any("W_DUPLICATE_APPID" in w for w in result["warnings"]),
-            msg=f"Expected W_DUPLICATE_APPID in warnings, got {result['warnings']}",
+            any("E_DUPLICATE_APPID" in w for w in result["errors"]),
+            msg=f"Expected E_DUPLICATE_APPID in errors, got {result['errors']}",
         )
         # First library's game should be kept (not overwritten)
         self.assertEqual(result["game"][0]["basepath"], "/lib1/steamapps/common/RWR")

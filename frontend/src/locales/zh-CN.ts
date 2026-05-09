@@ -197,7 +197,6 @@ export const STR = {
     W_FOREST_BRANCHING: '该树有多个候选操作，需要用户裁决',
     W_SOURCE_DELETED: '操作的源文件已被删除，该操作被跳过',
     W_SOURCE_DIRECTORY_DELETED: '操作的源目录已被删除，该操作被跳过',
-    W_DUPLICATE_APPID: '同一 appid 在多个库中出现',
     W_EMPTY_ACTIONLIST_AFTER_FILTER: '规则聚合后 actionlist 为空（所有 action 被 hold 过滤），该 mod 的映射将被跳过',
     // Errors
     E_DATABASE_INVALID: '数据库格式无效，缺少必要字段',
@@ -211,5 +210,7 @@ export const STR = {
     E_TREE_CONFLICT: '文件树冲突',
     E_ENTITY_CONFLICT: '实体文件冲突',
     E_TREE_CONFLICT_TARGET_DRIFT: '目标文件内容与备份不一致',
+    E_DUPLICATE_APPID: '同一 appid 在多个库中出现，请选择需要保留的库',
+    E_DUPLICATE_MIXED_ID: '同一 mixed_id 在数据库中存在多个条目，请选择需要保留的 MOD',
   },
 }

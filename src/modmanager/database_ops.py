@@ -40,9 +40,10 @@ def _mod_index(database: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return idx
 
 
-def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[str, Any]] | None = None, errors: list[str] | None = None) -> list[dict[str, Any]]:
     old_mod = old_mod or {}
     mods: list[dict[str, Any]] = []
+    seen_mixed_ids: set[str] = set()
     for game in games:
         appid = str(game.get("appid", ""))
         modpath = game.get("modpath")
@@ -53,6 +54,13 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
         for modid in mods_found if isinstance(mods_found, list) else []:
             modid_str = str(modid)
             mixed_id = f"{appid}:{modid_str}"
+            if mixed_id in seen_mixed_ids:
+                if errors is not None:
+                    errors.append(
+                        f"E_DUPLICATE_MIXED_ID: mixed_id {mixed_id} appears multiple times"
+                    )
+                continue
+            seen_mixed_ids.add(mixed_id)
             prev = old_mod.get(mixed_id, {})
             localdate = prev.get("localdate", game.get("localdate", 0))
             mods.append(
@@ -98,6 +106,7 @@ def _scan_from_libraries(
     game_map: dict[str, dict[str, Any]] = {}
     steamlibs_out: list[dict[str, Any]] = []
     warnings: list[str] = []
+    errors: list[str] = []
 
     for lib in libraries:
         path = _ensure_steamapps(lib.path)
@@ -118,8 +127,8 @@ def _scan_from_libraries(
             should_parse = greedy_parsing or not scoped_ids or appid in scoped_ids
             mods = scanner.discover_mods_for_game(appid, game_info.modpath) if should_parse else []
             if appid in game_map:
-                warnings.append(
-                    f"W_DUPLICATE_APPID: appid {appid} found in multiple libraries: "
+                errors.append(
+                    f"E_DUPLICATE_APPID: appid {appid} found in multiple libraries: "
                     f"{game_map[appid].get('basepath', '')} and {game_info.basepath}"
                 )
                 # Keep first occurrence — do not overwrite
@@ -131,10 +140,11 @@ def _scan_from_libraries(
                     "basepath": normalize_posix(game_info.basepath),
                     "modpath": normalize_posix(game_info.modpath),
                     "mods_found": mods,
+                    "managed": False,
                 }
 
     games_out = sorted(game_map.values(), key=lambda g: _numeric_sort_key(g['appid']))
-    mods_out = _build_mod_from_games(games_out)
+    mods_out = _build_mod_from_games(games_out, errors=errors)
 
     return {
         "OS": {
@@ -145,6 +155,7 @@ def _scan_from_libraries(
         "game": games_out,
         "mod": mods_out,
         "warnings": warnings,
+        "errors": errors,
     }
 
 
@@ -510,7 +521,7 @@ def liveupdate_database(
             "mods_removed": mods_removed,
         },
         "warnings": updated.get("warnings", []),
-        "errors": [],
+        "errors": updated.get("errors", []),
     }
 
 
@@ -542,7 +553,7 @@ def regen_database(
             "games_count": len(rebuilt.get("game", [])),
             "mods_count": sum(len(g.get("mods_found", [])) for g in rebuilt.get("game", [])),
         },
-        "errors": [],
+        "errors": rebuilt.get("errors", []),
         "warnings": rebuilt.get("warnings", []),
     }
 

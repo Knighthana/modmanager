@@ -187,10 +187,10 @@ class TestGenerateDatabase:
         assert captured_kwargs.get("mode") == "manual"
         assert captured_kwargs.get("paths") == ["/some/path"]
 
-    def test_generate_database_duplicate_appid_warning(
+    def test_generate_database_duplicate_appid_error(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Duplicate appid across libraries should be reported in warnings."""
+        """Duplicate appid across libraries should be reported in errors."""
 
         def fake_generate(**kwargs):
             return {
@@ -208,7 +208,8 @@ class TestGenerateDatabase:
                     },
                 ],
                 "mod": [],
-                "warnings": ["W_DUPLICATE_APPID: appid 270150 found in multiple libraries: /lib1/steamapps/common/RWR and /lib2/steamapps/common/RWR"],
+                "warnings": [],
+                "errors": ["E_DUPLICATE_APPID: appid 270150 found in multiple libraries: /lib1/steamapps/common/RWR and /lib2/steamapps/common/RWR"],
             }
 
         monkeypatch.setattr(
@@ -226,13 +227,13 @@ class TestGenerateDatabase:
         assert len(result_events) == 1
         data = result_events[0]["data"]
         assert data["ok"] is True
-        # Warnings in the response should include the duplicate appid warning
-        result_warnings = data.get("warnings", []) or []
-        # Also check if the database data has warnings embedded
-        db_warnings = data.get("data", {}).get("warnings", []) or []
-        all_warnings = result_warnings + db_warnings
-        assert any("W_DUPLICATE_APPID" in w for w in all_warnings), (
-            f"Expected W_DUPLICATE_APPID in warnings, got {all_warnings}"
+        # Errors in the response should include the duplicate appid error
+        result_errors = data.get("errors", []) or []
+        # Also check if the database data has errors embedded
+        db_errors = data.get("data", {}).get("errors", []) or []
+        all_errors = result_errors + db_errors
+        assert any("E_DUPLICATE_APPID" in w for w in all_errors), (
+            f"Expected E_DUPLICATE_APPID in errors, got {all_errors}"
         )
 
     def test_generate_database_invalid_mode(
