@@ -1,11 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
-  { path: '/', redirect: '/data-source' },
+  { path: '/', redirect: '/datasource' },
   {
-    path: '/data-source',
-    name: 'data-source',
+    path: '/datasource',
+    name: 'datasource',
     component: () => import('../pages/DataSourcePage.vue'),
+  },
+  {
+    path: '/rules-overview',
+    name: 'rules-overview',
+    component: () => import('../pages/RulesOverviewPage.vue'),
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('../pages/SettingsPage.vue'),
   },
   {
     path: '/forest',
@@ -18,14 +28,14 @@ const routes = [
     component: () => import('../pages/ConflictsPage.vue'),
   },
   {
-    path: '/rules',
-    name: 'rules',
-    component: () => import('../pages/RulesPage.vue'),
+    path: '/operations',
+    name: 'operations',
+    component: () => import('../pages/OperationsPage.vue'),
   },
   {
-    path: '/backup',
-    name: 'backup',
-    component: () => import('../pages/BackupPage.vue'),
+    path: '/rule-editor',
+    name: 'rule-editor',
+    component: () => import('../pages/RuleEditorPage.vue'),
   },
 ]
 

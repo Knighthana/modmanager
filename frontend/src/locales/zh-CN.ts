@@ -166,8 +166,12 @@ export const STR = {
   layoutShell: {
     title: "🔧 Knighthana's<br/>Mod Manager",
     navDatasource: '📡 数据源',
+    navRulesOverview: '规则概览',
+    navSettings: '设置',
     navForest: '📊 Forest 可视化',
     navConflicts: '⚔️ 冲突裁决',
+    navOperations: '备份/应用/恢复',
+    navRuleEditor: '规则制定',
     navRules: '📋 规则管理',
     navBackup: '🗄️ 备份恢复',
   },

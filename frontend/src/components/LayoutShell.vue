@@ -7,8 +7,14 @@
         </div>
       </div>
       <el-menu :default-active="currentRoute" router>
-        <el-menu-item index="/data-source">
+        <el-menu-item index="/datasource">
           <span>{{ STR.layoutShell.navDatasource }}</span>
+        </el-menu-item>
+        <el-menu-item index="/rules-overview">
+          <span>{{ STR.layoutShell.navRulesOverview }}</span>
+        </el-menu-item>
+        <el-menu-item index="/settings">
+          <span>{{ STR.layoutShell.navSettings }}</span>
         </el-menu-item>
         <el-menu-item index="/forest">
           <span>{{ STR.layoutShell.navForest }}</span>
@@ -17,11 +23,11 @@
           <span>{{ STR.layoutShell.navConflicts }}</span>
           <el-badge v-if="store.unresolvedCount > 0" :value="store.unresolvedCount" />
         </el-menu-item>
-        <el-menu-item index="/rules">
-          <span>{{ STR.layoutShell.navRules }}</span>
+        <el-menu-item index="/operations">
+          <span>{{ STR.layoutShell.navOperations }}</span>
         </el-menu-item>
-        <el-menu-item index="/backup">
-          <span>{{ STR.layoutShell.navBackup }}</span>
+        <el-menu-item index="/rule-editor">
+          <span>{{ STR.layoutShell.navRuleEditor }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>

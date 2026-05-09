@@ -14,6 +14,6 @@
 - [x] TODO-13: i18n 预备：字符串集中映射
 - [x] TODO-14: 数据 Schema 明确定义（8 份全部就位：aggregated_rule_set / backupinfo / branch_decisions / database / kmm_rule / mapping_output / sse_event / user_config）
 - [ ] TODO-15: Forest SVG 自适应视窗缩放 + 视窗功能增强
-- [ ] TODO-16: 数据源页面去重功能未正确生效；game/mod 的 radio 未正确出现
-- [ ] TODO-17: 数据源页面表头应显示"可见性"而非眼睛 emoji
-- [ ] TODO-18: W_DUPLICATE_APPID → E_DUPLICATE_APPID；W_DUPLICATE_MODID → E_DUPLICATE_MODID；修正错误计数
+- [x] TODO-16: 数据源页面去重功能未正确生效；game/mod 的 radio 未正确出现
+- [x] TODO-17: 数据源页面表头应显示"可见性"而非眼睛 emoji
+- [x] TODO-18: E_DUPLICATE_APPID + E_DUPLICATE_MIXED_ID；错误平铺展示
