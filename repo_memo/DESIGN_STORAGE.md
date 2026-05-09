@@ -5,7 +5,7 @@
 > Read-Tier: task-scoped
 > Purpose: 冻结项目所有持久化存储的分类、默认位置、搜索策略与生命周期。作为跨模块存储行为的唯一权威来源。
 > 创建：2026-05-09
-> 更新：2026-05-09 — 新增 §8.5 偏好保存时机（TODO-21）、§8.5.1 前端 Database 副本生命周期、§8.6 用户偏好生命周期（TODO-23）
+> 更新：2026-05-09 — 新增 §8.5 偏好保存时机（TODO-21）、§8.5.1 前端 Database 副本生命周期、§8.5.2 前端 user_config 副本生命周期、§8.6 用户偏好生命周期（TODO-23）
 > Supersedes: 替代 `DESIGN_RULE_AGGREGATOR.md` §2.2 中过时的三级搜索链描述
 
 ---
@@ -249,6 +249,23 @@ interface PersistenceAdapter {
 | 其他选项卡读取 database | 从 localStorage 读取，**不**发起后端文件 I/O |
 
 **目的**：前端与后端数据保持同步的同时，减少无谓的文件读取操作。database 的权威副本始终在后端磁盘文件中，前端 localStorage 为只读缓存。
+
+### 8.5.2 前端 user_config 副本生命周期
+
+user_config 采用与 database 相同的"前后端双副本、以后端为准"模式：
+
+| 事件 | 行为 |
+|------|------|
+| 应用启动 | 后端 `POST /api/config/discover` 加载 user_config → 写入前端 localStorage |
+| 用户修改设置 | 仅修改前端内存中的副本（SettingsPage 的 `ref`），不立即写入 |
+| 用户点击"保存设置" | 调用 `POST /api/config/save` 写入后端磁盘 → 后端返回更新后的 config → 覆盖前端 localStorage |
+| 其他位置读取 user_config | 从 localStorage 读取，**不**发起后端文件 I/O |
+
+**触发同步的关键动作**：
+- **启动时**：从后端拉取一次
+- **保存时**：推送到后端并刷新前端副本
+
+其余时间前端与后端各自独立，不互相打扰。
 
 ### 8.6 用户偏好生命周期
 
