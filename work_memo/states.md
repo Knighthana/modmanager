@@ -2,11 +2,11 @@
 
 ## TODO
 - [ ] TODO-10: （挂起）空输入校验
-- [ ] TODO-15: Forest SVG 自适应视窗缩放 + 视窗功能增强
+- [ ] TODO-15: 【第一步】Forest SVG 自适应视窗宽度缩放；（第二步挂起）视窗功能增强
 - [ ] TODO-19: （挂起）为重复待选择 radio 的 game 和 mod 提供显眼的视觉提示，解决冲突后消除
-- [ ] TODO-20: 选项卡解耦——各选项卡独立设计，避免互相影响
+- [ ] TODO-20: 选项卡解耦——【第一步】先做全面审查，摸底当前各选项卡间的耦合情况；【第二步】各选项卡独立设计，避免互相影响
 - [ ] TODO-21: "发现模式"偏好保存应在"扫描 Steam 库"按钮按下后执行前端持久化
-- [ ] TODO-22: Database 路径 / Database JSON / Rule paths 迁入"数据源"选项卡
+- [ ] TODO-22: 三项迁移：①移除"Forest可视化"选项卡中的 Database JSON 栏，排查所有涉及到的接口和数据存储有无孤儿接口或孤儿存储，之后只保留"设置"页面中的"数据库JSON"一处权威的"当前数据库JSON显示/修改提交界面"；②"Forest可视化"界面的 Rule paths 移入"规则概览页面"，并改为支持分别通过 `[]/path/to/file` 或 `/path/to/search/` 两种方式指定 rules 来源，将所有 rules 汇总到一个大列表中，提供显示和操作的方式；③去除"Forest可视化"选项卡的"user config路径"，移到"设置"页面的单独一栏，排查接口和存储有无跟着迁移，有无孤儿接口或存储行为
 - [ ] TODO-23: user config 路径迁入"设置"；启动时未配置则导航到设置页并提示填写；已配置则前往用户偏好的"默认开始页"
 - [ ] TODO-24: backup dir 语义澄清——backup dir 由 `build_backup_dir()` 自动推导（见 DESIGN_BACKUP.md），非用户自由填写；当前 ForestPage 上的 backup_dir 输入框需审查
 - [ ] TODO-25: "Forest 可视化"中的 dry run 和"应用流水线"功能迁入"文件操作"选项卡，并且测试文件操作相关功能是否符合预期(目前不符合)；
