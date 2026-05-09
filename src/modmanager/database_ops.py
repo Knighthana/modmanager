@@ -103,7 +103,7 @@ def _scan_from_libraries(
     *,
     greedy_parsing: bool,
 ) -> dict[str, Any]:
-    game_map: dict[str, dict[str, Any]] = {}
+    game_map: dict[str, list[dict[str, Any]]] = {}
     steamlibs_out: list[dict[str, Any]] = []
     warnings: list[str] = []
     errors: list[str] = []
@@ -129,11 +129,9 @@ def _scan_from_libraries(
             if appid in game_map:
                 errors.append(
                     f"E_DUPLICATE_APPID: appid {appid} found in multiple libraries: "
-                    f"{game_map[appid].get('basepath', '')} and {game_info.basepath}"
+                    f"{game_map[appid][0].get('basepath', '')} and {game_info.basepath}"
                 )
-                # Keep first occurrence — do not overwrite
-            else:
-                game_map[appid] = {
+                game_map[appid].append({
                     "appid": game_info.appid,
                     "name": game_info.name,
                     "localdate": 0,
@@ -141,9 +139,22 @@ def _scan_from_libraries(
                     "modpath": normalize_posix(game_info.modpath),
                     "mods_found": mods,
                     "managed": False,
-                }
+                })
+            else:
+                game_map[appid] = [{
+                    "appid": game_info.appid,
+                    "name": game_info.name,
+                    "localdate": 0,
+                    "basepath": normalize_posix(game_info.basepath),
+                    "modpath": normalize_posix(game_info.modpath),
+                    "mods_found": mods,
+                    "managed": False,
+                }]
 
-    games_out = sorted(game_map.values(), key=lambda g: _numeric_sort_key(g['appid']))
+    games_out: list[dict[str, Any]] = []
+    for entries in game_map.values():
+        games_out.extend(entries)
+    games_out.sort(key=lambda g: _numeric_sort_key(g['appid']))
     mods_out = _build_mod_from_games(games_out, errors=errors)
 
     return {

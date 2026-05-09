@@ -13,9 +13,6 @@
         <el-menu-item index="/rules-overview">
           <span>{{ STR.layoutShell.navRulesOverview }}</span>
         </el-menu-item>
-        <el-menu-item index="/settings">
-          <span>{{ STR.layoutShell.navSettings }}</span>
-        </el-menu-item>
         <el-menu-item index="/forest">
           <span>{{ STR.layoutShell.navForest }}</span>
         </el-menu-item>
@@ -28,6 +25,9 @@
         </el-menu-item>
         <el-menu-item index="/rule-editor">
           <span>{{ STR.layoutShell.navRuleEditor }}</span>
+        </el-menu-item>
+        <el-menu-item index="/settings">
+          <span>{{ STR.layoutShell.navSettings }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
