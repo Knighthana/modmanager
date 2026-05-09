@@ -199,7 +199,7 @@ export const useForestStore = defineStore('forest', () => {
         : null,
       workingPathstyle: pipelineForm.value.workingPathstyle,
       greedyParsing: pipelineForm.value.greedyParsing,
-      cachePath: pipelineForm.value.cachePath,
+      cache_path: pipelineForm.value.cachePath,
     }
 
     await streamSse('/database/generate', params, {

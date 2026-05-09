@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter
 from modmanager.bootstrap import discover_user_config
 from modmanager.iojson import write_json_file

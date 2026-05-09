@@ -54,7 +54,7 @@ export interface DiscoverParams {
   paths: string[] | null
   workingPathstyle: string
   greedyParsing: boolean
-  cachePath: string | null
+  cache_path: string | null
 }
 
 export interface SseProgress {

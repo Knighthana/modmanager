@@ -116,7 +116,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
       paths: apiPaths,
       workingPathstyle: workingPathstyle.value,
       greedyParsing: greedyParsing.value,
-      cachePath: apiMode === 'manual' ? null : databaseOutputPath.value,
+      cache_path: apiMode === 'manual' ? null : databaseOutputPath.value,
     }
 
     await streamSse('/database/generate', params, {
