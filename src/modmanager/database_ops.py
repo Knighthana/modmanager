@@ -70,6 +70,21 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
                     "managed": False,
                 }
             )
+    # Sort mods: by appid (numeric), then modid (numeric), then modid (string for non-numeric)
+    def _mod_sort_key(m: dict[str, Any]) -> tuple[int, int, str]:
+        mixed_id = str(m.get("mixed_id", ""))
+        parts = mixed_id.split(":", 1)
+        try:
+            appid_num = int(parts[0]) if parts else 0
+        except ValueError:
+            appid_num = 0
+        try:
+            modid_num = int(parts[1]) if len(parts) > 1 else 0
+        except ValueError:
+            modid_num = 0
+        modid_str = parts[1] if len(parts) > 1 else ""
+        return (appid_num, modid_num, modid_str)
+    mods.sort(key=_mod_sort_key)
     return mods
 
 
