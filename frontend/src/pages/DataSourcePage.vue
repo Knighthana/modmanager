@@ -241,24 +241,18 @@
       </el-alert>
     </div>
 
-    <!-- 扫描错误（E_DUPLICATE 等） -->
+    <!-- 扫描错误（E_DUPLICATE 等）点击弹出排障指南 -->
     <div v-if="store.errors.length > 0" style="margin-top: 12px;">
-      <div
+      <el-alert
         v-for="(err, idx) in store.errors"
         :key="'err-'+idx"
-        style="margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"
-      >
-        <el-tag type="danger" size="small">{{ extractCode(err) || err }}</el-tag>
-        <span style="font-size: 13px; color: var(--el-text-color-regular);">{{ getDescription(err) || err }}</span>
-        <el-button
-          size="small"
-          text
-          type="info"
-          @click="(e: MouseEvent) => onErrorPopup(err, e)"
-          style="padding: 0 4px; font-size: 14px;"
-          title="查看排障指南"
-        >?</el-button>
-      </div>
+        :title="err"
+        type="error"
+        show-icon
+        :closable="false"
+        style="margin-bottom: 4px; cursor: pointer;"
+        @click="(e: MouseEvent) => onErrorPopup(err, e)"
+      />
     </div>
 
     <!-- 错误区（逐条平铺） -->

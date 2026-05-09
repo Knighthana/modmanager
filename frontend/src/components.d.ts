@@ -37,7 +37,6 @@ declare module 'vue' {
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
-    ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ForestViewer: typeof import('./components/ForestViewer.vue')['default']
     LayoutShell: typeof import('./components/LayoutShell.vue')['default']
