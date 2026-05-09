@@ -161,7 +161,7 @@ export const STR = {
     applyBtn: '🚀 应用此数据源 → 前往 Forest',
     confirmToRulesOverview: '✅ 确认并进入规则概览',
     databaseJsonAdvanced: 'Database JSON（高级）',
-    saveCurrentSelection: '保存当前选择',
+    saveCurrentSelection: '💾 保存当前选择',
   },
 
   // ── LayoutShell ───────────────────────────────────────────────────────

@@ -276,7 +276,7 @@
     <!-- 底部按钮 -->
     <div v-if="store.lastResult" style="margin-bottom: 16px;">
       <el-button
-        type="default"
+        type="success"
         size="large"
         :loading="isSaving"
         :disabled="isSaving"
