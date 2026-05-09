@@ -26,6 +26,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   const games = ref<GameRow[]>([])
   const mods = ref<ModRow[]>([])
   const warnings = ref<string[]>([])
+  const errors = ref<string[]>([])
 
   const libraryVisibility = ref<Record<number, boolean>>({})
   const gameVisibility = ref<Record<number, boolean>>({})
@@ -57,9 +58,22 @@ export const useDataSourceStore = defineStore('datasource', () => {
       .map(([appid]) => appid)
   })
 
+  const duplicateMixedIds = computed(() => {
+    const seen: Record<string, number> = {}
+    for (const m of mods.value) {
+      const key = `${m.appid}:${m.modid}`
+      seen[key] = (seen[key] || 0) + 1
+    }
+    return Object.entries(seen)
+      .filter(([, count]) => count > 1)
+      .map(([mixedId]) => mixedId)
+  })
+
   // ── actions ───────────────────────────────────────────────────────────
   async function scan() {
     isScanning.value = true
+    warnings.value = []
+    errors.value = []
 
     // Determine mode and paths for the API call
     let apiMode: string
@@ -128,6 +142,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     if (saved.games) games.value = saved.games
     if (saved.mods) mods.value = saved.mods
     if (saved.warnings) warnings.value = saved.warnings
+    if (saved.errors) errors.value = saved.errors
     if (saved.libraryVisibility) libraryVisibility.value = saved.libraryVisibility
     if (saved.gameVisibility) gameVisibility.value = saved.gameVisibility
     if (saved.duplicateResolutions) duplicateResolutions.value = saved.duplicateResolutions
@@ -145,6 +160,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
       games: games.value,
       mods: mods.value,
       warnings: warnings.value,
+      errors: errors.value,
       libraryVisibility: libraryVisibility.value,
       gameVisibility: gameVisibility.value,
       duplicateResolutions: duplicateResolutions.value,
@@ -232,6 +248,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
         modpath,
         modCount: modsFound.length,
         libraryIndex: gi,
+        managed: (g as Record<string, unknown>).managed as boolean ?? false,
       })
     }
 
@@ -260,6 +277,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
         path: String(d.path || ''),
         libraryIndex,
         gameIndex,
+        managed: (d as Record<string, unknown>).managed as boolean ?? false,
       })
     }
 
@@ -273,7 +291,8 @@ export const useDataSourceStore = defineStore('datasource', () => {
     libraries.value = libArr
     games.value = gameArr
     mods.value = modArr
-    warnings.value = (db.warnings as string[]) || []
+    warnings.value = [...warnings.value, ...((db.warnings as string[]) || [])]
+    errors.value = [...errors.value, ...((db.errors as string[]) || [])]
 
     // Initialize visibility
     const newLibVis: Record<number, boolean> = {}
@@ -299,6 +318,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     games.value = []
     mods.value = []
     warnings.value = []
+    errors.value = []
     libraryVisibility.value = {}
     gameVisibility.value = {}
     duplicateResolutions.value = {}
@@ -317,6 +337,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     games,
     mods,
     warnings,
+    errors,
     libraryVisibility,
     gameVisibility,
     duplicateResolutions,
@@ -326,6 +347,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     filteredGames,
     filteredMods,
     duplicateAppids,
+    duplicateMixedIds,
     // actions
     scan,
     loadFromCache,

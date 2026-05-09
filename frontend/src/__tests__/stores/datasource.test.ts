@@ -115,8 +115,8 @@ describe('useDataSourceStore', () => {
       { index: 1, path: '/lib2', gameCount: 1, modCount: 1 },
     ]
     store.games = [
-      { index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 0 },
-      { index: 1, appid: '107410', name: 'Arma 3', basepath: '', modpath: '', modCount: 1, libraryIndex: 1 },
+      { index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 0, managed: false },
+      { index: 1, appid: '107410', name: 'Arma 3', basepath: '', modpath: '', modCount: 1, libraryIndex: 1, managed: false },
     ]
     store.libraryVisibility = { 0: true, 1: true }
     store.gameVisibility = { 0: true, 1: true }
@@ -140,13 +140,13 @@ describe('useDataSourceStore', () => {
       { index: 1, path: '/lib2', gameCount: 1, modCount: 1 },
     ]
     store.games = [
-      { index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 0 },
-      { index: 1, appid: '107410', name: 'Arma 3', basepath: '', modpath: '', modCount: 1, libraryIndex: 1 },
+      { index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 0, managed: false },
+      { index: 1, appid: '107410', name: 'Arma 3', basepath: '', modpath: '', modCount: 1, libraryIndex: 1, managed: false },
     ]
     store.mods = [
-      { index: 0, modid: 'mod1', name: 'mod1', appid: '270150', path: '', libraryIndex: 0, gameIndex: 0 },
-      { index: 1, modid: 'mod2', name: 'mod2', appid: '270150', path: '', libraryIndex: 0, gameIndex: 0 },
-      { index: 2, modid: 'mod3', name: 'mod3', appid: '107410', path: '', libraryIndex: 1, gameIndex: 1 },
+      { index: 0, modid: 'mod1', name: 'mod1', appid: '270150', path: '', libraryIndex: 0, gameIndex: 0, managed: false },
+      { index: 1, modid: 'mod2', name: 'mod2', appid: '270150', path: '', libraryIndex: 0, gameIndex: 0, managed: false },
+      { index: 2, modid: 'mod3', name: 'mod3', appid: '107410', path: '', libraryIndex: 1, gameIndex: 1, managed: false },
     ]
     store.libraryVisibility = { 0: true, 1: true }
     store.gameVisibility = { 0: true, 1: true }
@@ -167,9 +167,9 @@ describe('useDataSourceStore', () => {
   it('duplicateAppids detects appids appearing in multiple libraries', () => {
     const store = useDataSourceStore()
     store.games = [
-      { index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 0 },
-      { index: 1, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 1 },
-      { index: 2, appid: '107410', name: 'Arma 3', basepath: '', modpath: '', modCount: 1, libraryIndex: 1 },
+      { index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 0, managed: false },
+      { index: 1, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 2, libraryIndex: 1, managed: false },
+      { index: 2, appid: '107410', name: 'Arma 3', basepath: '', modpath: '', modCount: 1, libraryIndex: 1, managed: false },
     ]
 
     expect(store.duplicateAppids).toEqual(['270150'])
@@ -182,7 +182,7 @@ describe('useDataSourceStore', () => {
     store.discoveryMode = 'manual'
     store.manualPath = '/tmp/test'
     store.libraries = [{ index: 0, path: '/test', gameCount: 1, modCount: 1 }]
-    store.games = [{ index: 0, appid: '99999', name: 'Test', basepath: '', modpath: '', modCount: 0, libraryIndex: 0 }]
+    store.games = [{ index: 0, appid: '99999', name: 'Test', basepath: '', modpath: '', modCount: 0, libraryIndex: 0, managed: false }]
     store.libraryVisibility = { 0: true }
     store.warnings = ['W_DUPLICATE_APPID: appid 99999']
 
@@ -227,7 +227,7 @@ describe('useDataSourceStore', () => {
 
   it('setGameVisibility toggles visibility', () => {
     const store = useDataSourceStore()
-    store.games = [{ index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 0, libraryIndex: 0 }]
+    store.games = [{ index: 0, appid: '270150', name: 'RWR', basepath: '', modpath: '', modCount: 0, libraryIndex: 0, managed: false }]
     store.gameVisibility = { 0: true }
 
     store.setGameVisibility(0, false)
@@ -244,5 +244,17 @@ describe('useDataSourceStore', () => {
 
     store.setDuplicateResolution('270150', 0)
     expect(store.duplicateResolutions['270150']).toBe(0)
+  })
+
+  it('duplicateMixedIds detects mixed_ids appearing in multiple libraries', () => {
+    const store = useDataSourceStore()
+    store.mods = [
+      { index: 0, modid: 'mod1', name: 'mod1', appid: '270150', path: '', libraryIndex: 0, gameIndex: 0, managed: false },
+      { index: 1, modid: 'mod1', name: 'mod1', appid: '270150', path: '', libraryIndex: 1, gameIndex: 0, managed: false },
+      { index: 2, modid: 'mod2', name: 'mod2', appid: '270150', path: '', libraryIndex: 0, gameIndex: 0, managed: false },
+      { index: 3, modid: 'mod3', name: 'mod3', appid: '107410', path: '', libraryIndex: 1, gameIndex: 1, managed: false },
+    ]
+
+    expect(store.duplicateMixedIds).toEqual(['270150:mod1'])
   })
 })

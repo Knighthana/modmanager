@@ -84,21 +84,21 @@ describe('DataSourcePage', () => {
     expect(scanBtn).toBeTruthy()
   })
 
-  it('shows "应用此数据源" button when lastResult is set', async () => {
+  it('shows "确认并进入规则概览" button when lastResult is set', async () => {
     const wrapper = mount(DataSourcePage, {
       global: { plugins: [router], stubs: elStubs },
     })
     const store = useDataSourceStore()
 
     // Initially no button
-    expect(wrapper.text()).not.toContain('前往 Forest')
+    expect(wrapper.text()).not.toContain('确认并进入规则概览')
 
     // Set lastResult
     store.lastResult = { steamlib: [], game: [], mod: [] }
     await wrapper.vm.$nextTick()
 
     // Apply button should appear
-    expect(wrapper.text()).toContain('前往 Forest')
+    expect(wrapper.text()).toContain('确认并进入规则概览')
   })
 
   it('setLibraryVisibility toggles library visibility via store', () => {
@@ -128,5 +128,93 @@ describe('DataSourcePage', () => {
     // Warning alert should appear
     const alertEl = wrapper.find('.el-alert-stub')
     expect(alertEl.exists()).toBe(true)
+  })
+
+  it('onGameManagedChange mutually excludes other games with same appid', () => {
+    const store = useDataSourceStore()
+    store.games = [
+      { index: 0, appid: '270150', name: 'RWR', basepath: '/lib1', modpath: '', modCount: 2, libraryIndex: 0, managed: false },
+      { index: 1, appid: '270150', name: 'RWR', basepath: '/lib2', modpath: '', modCount: 2, libraryIndex: 1, managed: false },
+      { index: 2, appid: '107410', name: 'Arma3', basepath: '/lib3', modpath: '', modCount: 1, libraryIndex: 1, managed: false },
+    ]
+
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    // Mount triggers initLocalManaged from store.games
+    const vm = wrapper.vm as any
+
+    // Select game 0 (appid=270150)
+    vm.onGameManagedChange(store.games[0])
+    expect(vm.localManagedGames['game-0']).toBe(true)
+    expect(vm.localManagedGames['game-1']).toBe(false)
+    expect(vm.localManagedGames['game-2']).toBe(false)
+
+    // Select game 1 (same appid) — game 0 becomes false
+    vm.onGameManagedChange(store.games[1])
+    expect(vm.localManagedGames['game-0']).toBe(false)
+    expect(vm.localManagedGames['game-1']).toBe(true)
+    expect(vm.localManagedGames['game-2']).toBe(false)
+  })
+
+  it('onModManagedChange mutually excludes other mods with same mixed_id', () => {
+    const store = useDataSourceStore()
+    store.mods = [
+      { index: 0, modid: 'mod1', name: 'mod1', appid: '270150', path: '/lib1/mod1', libraryIndex: 0, gameIndex: 0, managed: false },
+      { index: 1, modid: 'mod1', name: 'mod1', appid: '270150', path: '/lib2/mod1', libraryIndex: 1, gameIndex: 0, managed: false },
+      { index: 2, modid: 'mod2', name: 'mod2', appid: '270150', path: '/lib1/mod2', libraryIndex: 0, gameIndex: 0, managed: false },
+    ]
+    store.games = [
+      { index: 0, appid: '270150', name: 'RWR', basepath: '/lib1', modpath: '', modCount: 2, libraryIndex: 0, managed: false },
+    ]
+
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const vm = wrapper.vm as any
+
+    // Select mod 0 (mixed_id=270150:mod1)
+    vm.onModManagedChange(store.mods[0])
+    expect(vm.localManagedMods['mod-0']).toBe(true)
+    expect(vm.localManagedMods['mod-1']).toBe(false)
+    expect(vm.localManagedMods['mod-2']).toBe(false)
+
+    // Select mod 1 (same mixed_id) — mod 0 becomes false
+    vm.onModManagedChange(store.mods[1])
+    expect(vm.localManagedMods['mod-0']).toBe(false)
+    expect(vm.localManagedMods['mod-1']).toBe(true)
+    expect(vm.localManagedMods['mod-2']).toBe(false)
+  })
+
+  it('confirm button calls save API and shows errors on failure', async () => {
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const store = useDataSourceStore()
+
+    store.lastResult = { steamlib: [], game: [], mod: [] }
+    store.cachePath = '/tmp/test.json'
+    await wrapper.vm.$nextTick()
+
+    // Mock fetch (apiPost uses fetch + res.json)
+    const mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: false,
+        errors: ['E_DUPLICATE_APPID: conflict on appid 270150'],
+        data: null,
+        warnings: [],
+      }),
+    })
+
+    const vm = wrapper.vm as any
+    await vm.onConfirmAndGoToRules()
+    await wrapper.vm.$nextTick()
+
+    // Save errors should be displayed
+    expect(vm.saveErrors.length).toBeGreaterThan(0)
+    expect(vm.saveErrors[0]).toContain('E_DUPLICATE_APPID')
   })
 })

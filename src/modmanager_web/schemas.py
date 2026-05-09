@@ -57,6 +57,17 @@ class GenerateDatabaseRequest(BaseModel):
     cache_path: str | None = None
 
 
+class SaveDatabaseRequest(BaseModel):
+    """Request body for ``POST /api/database/save``.
+
+    Receives the full database dict with managed fields applied,
+    validates managed constraints, and writes to output_path.
+    """
+
+    database: dict[str, Any]
+    output_path: str
+
+
 # ── Pipeline endpoints ────────────────────────────────────────────────────
 
 

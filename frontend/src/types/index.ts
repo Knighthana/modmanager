@@ -83,6 +83,7 @@ export interface GameRow {
   modpath: string
   modCount: number
   libraryIndex: number
+  managed: boolean
 }
 
 export interface ModRow {
@@ -93,6 +94,7 @@ export interface ModRow {
   path: string
   libraryIndex: number
   gameIndex: number
+  managed: boolean
 }
 
 export interface DataSourceState {
@@ -105,6 +107,7 @@ export interface DataSourceState {
   games: GameRow[]
   mods: ModRow[]
   warnings: string[]
+  errors: string[]
   libraryVisibility: Record<number, boolean>
   gameVisibility: Record<number, boolean>
   duplicateResolutions: Record<string, number>

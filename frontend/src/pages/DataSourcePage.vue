@@ -111,9 +111,9 @@
             <template #default="{ row }: { row: GameRow }">
               <el-radio
                 v-if="store.duplicateAppids.includes(row.appid)"
-                v-model="store.duplicateResolutions[row.appid]"
-                :value="row.libraryIndex"
-                @change="(val) => store.setDuplicateResolution(row.appid, val as number)"
+                :model-value="localManagedGames[`game-${row.index}`] === true"
+                :value="true"
+                @change="() => onGameManagedChange(row)"
               >
                 &nbsp;
               </el-radio>
@@ -181,10 +181,10 @@
           <el-table-column label="[选]" width="70">
             <template #default="{ row }: { row: ModRow }">
               <el-radio
-                v-if="store.duplicateAppids.includes(row.appid)"
-                v-model="store.duplicateResolutions[row.appid]"
-                :value="row.libraryIndex"
-                @change="(val) => store.setDuplicateResolution(row.appid, val as number)"
+                v-if="store.duplicateMixedIds.includes(`${row.appid}:${row.modid}`)"
+                :model-value="localManagedMods[`mod-${row.index}`] === true"
+                :value="true"
+                @change="() => onModManagedChange(row)"
               >
                 &nbsp;
               </el-radio>
@@ -235,9 +235,24 @@
           <ul style="margin: 4px 0; padding-left: 20px;">
             <li v-for="(w, i) in store.warnings" :key="'w-' + i">
               {{ w }}
-              <span v-if="w.includes('W_DUPLICATE_APPID')" style="color: var(--el-color-danger);">
-                {{ STR.dataSourcePage.duplicateAppidHint }}
-              </span>
+            </li>
+          </ul>
+        </template>
+      </el-alert>
+    </div>
+
+    <!-- 错误区（逐条平铺） -->
+    <div v-if="saveErrors.length > 0" style="margin-bottom: 16px;">
+      <el-alert
+        title="保存校验失败"
+        type="error"
+        :closable="false"
+        show-icon
+      >
+        <template #default>
+          <ul style="margin: 4px 0; padding-left: 20px;">
+            <li v-for="(e, i) in saveErrors" :key="'e-' + i">
+              {{ e }}
             </li>
           </ul>
         </template>
@@ -249,19 +264,21 @@
       <el-button
         type="primary"
         size="large"
-        @click="applyAndGoToForest"
+        :loading="isSaving"
+        @click="onConfirmAndGoToRules"
       >
-        {{ STR.dataSourcePage.applyBtn }}
+        {{ STR.dataSourcePage.confirmToRulesOverview }}
       </el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
+import { apiPost } from '../api/client'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
@@ -270,6 +287,122 @@ import type { LibraryRow, GameRow, ModRow } from '../types'
 const store = useDataSourceStore()
 const forestStore = useForestStore()
 const router = useRouter()
+
+// ── local managed state (independent of store, not persisted) ──
+const localManagedGames = reactive<Record<string, boolean>>({})
+const localManagedMods = reactive<Record<string, boolean>>({})
+
+// ── save state ──
+const isSaving = ref(false)
+const saveErrors = ref<string[]>([])
+
+// ── initialize local managed from store ──
+function initLocalManaged() {
+  // Clear and re-initialize from store.games
+  for (const key of Object.keys(localManagedGames)) {
+    delete localManagedGames[key]
+  }
+  for (const g of store.games) {
+    localManagedGames[`game-${g.index}`] = g.managed ?? false
+  }
+
+  for (const key of Object.keys(localManagedMods)) {
+    delete localManagedMods[key]
+  }
+  for (const m of store.mods) {
+    localManagedMods[`mod-${m.index}`] = m.managed ?? false
+  }
+}
+
+watch(
+  [() => store.games, () => store.mods],
+  () => { initLocalManaged() },
+  { immediate: true, deep: true },
+)
+
+// ── radio change handlers ──
+function onGameManagedChange(row: GameRow) {
+  // Set all games with same appid to false, then current to true
+  for (const g of store.games) {
+    if (g.appid === row.appid) {
+      localManagedGames[`game-${g.index}`] = false
+    }
+  }
+  localManagedGames[`game-${row.index}`] = true
+}
+
+function onModManagedChange(row: ModRow) {
+  const mixedId = `${row.appid}:${row.modid}`
+  // Set all mods with same mixed_id to false, then current to true
+  for (const m of store.mods) {
+    if (`${m.appid}:${m.modid}` === mixedId) {
+      localManagedMods[`mod-${m.index}`] = false
+    }
+  }
+  localManagedMods[`mod-${row.index}`] = true
+}
+
+// ── confirm & save ──
+async function onConfirmAndGoToRules() {
+  if (!store.lastResult) return
+  saveErrors.value = []
+  isSaving.value = true
+
+  // Build save payload: clone lastResult, apply local managed states
+  const db = JSON.parse(JSON.stringify(store.lastResult)) as Record<string, unknown>
+
+  // Apply game managed
+  const gameArr = (db.game as Array<Record<string, unknown>>) || []
+  for (let i = 0; i < gameArr.length; i++) {
+    const key = `game-${i}`
+    if (key in localManagedGames) {
+      gameArr[i].managed = localManagedGames[key]
+    }
+  }
+
+  // Apply mod managed
+  const modArr = (db.mod as Array<Record<string, unknown>>) || []
+  for (let i = 0; i < modArr.length; i++) {
+    const key = `mod-${i}`
+    if (key in localManagedMods) {
+      modArr[i].managed = localManagedMods[key]
+    }
+  }
+
+  // Default output path: same as cache path or a sensible default
+  const outputPath = store.cachePath || '/tmp/modmanager_database_generated.json'
+
+  try {
+    const resp = await apiPost('/database/save', {
+      database: db,
+      output_path: outputPath,
+    })
+
+    if (resp.ok) {
+      // Pass database to forest store, then navigate to rules-overview
+      forestStore.storedDatabase = db
+      forestStore.pipelineForm.manualSteamPath = store.manualPath
+      forestStore.pipelineForm.databasePath = ''
+      forestStore.dbManualOverride = false
+
+      if (!forestStore.userConfig) {
+        await forestStore.loadConfig()
+      }
+      if (forestStore.userConfig) {
+        forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
+      }
+
+      router.push('/rules-overview')
+    } else {
+      // Show errors flat (no counting)
+      saveErrors.value = resp.errors || ['保存失败']
+    }
+  } catch (err) {
+    saveErrors.value = [`保存请求异常: ${err}`]
+  } finally {
+    isSaving.value = false
+  }
+}
 
 const isDiscoverDisabled = computed(() => {
   if (store.discoveryMode === 'manual') {
@@ -326,24 +459,6 @@ function scrollToFirstMod(game: GameRow) {
     const targetRow = modTableRows[firstMod.index]
     scrollintotabitem(targetRow as HTMLElement | null)
   }
-}
-
-async function applyAndGoToForest() {
-  if (store.lastResult) {
-    forestStore.storedDatabase = store.lastResult
-    forestStore.pipelineForm.manualSteamPath = store.manualPath
-    forestStore.pipelineForm.databasePath = ''
-    forestStore.dbManualOverride = false // 重新锁定
-
-    // 同步加载 user_config
-    if (!forestStore.userConfig) {
-      await forestStore.loadConfig()
-    }
-    if (forestStore.userConfig) {
-      forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
-    }
-  }
-  router.push('/forest')
 }
 </script>
 
