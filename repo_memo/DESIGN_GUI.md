@@ -8,6 +8,7 @@
 > 创建：2026-05-08
 > 更新：2026-05-09 — 补充 §二.3 分支决策持久化（TODO-8）、§三.1 onDbPathBlur 校验（TODO-9）
 > 更新：2026-05-09 — 重构 Tab 结构（7 页）、新增 RulesOverviewPage + SettingsPage 设计、DataSource 职责扩展
+> 更新：2026-05-09 — 新增 §选项卡解耦原则（TODO-20）、§字段归属迁移（TODO-22/25）
 
 ---
 
@@ -127,6 +128,32 @@ frontend/
 | `/conflicts` | ConflictsPage | 冲突裁决 |
 | `/operations` | OperationsPage | 备份/应用/恢复操作 |
 | `/rule-editor` | RuleEditorPage | 规则制定（dumb 占位，远期功能） |
+
+### 选项卡解耦原则（TODO-20）
+
+各选项卡应尽可能**独立设计**，避免通过共享 store 状态产生隐式耦合：
+
+| 原则 | 说明 |
+|------|------|
+| **单向数据流** | 上游选项卡产出数据 → 下游选项卡消费。不做反向依赖 |
+| **传递边界明确** | 选项卡间通过 router params / store 快照传递，不通过实时双向绑定 |
+| **各自可独立渲染** | 任一选项卡在缺少上游数据时，应显示明确的空状态提示，而非崩溃或假死 |
+| **store 读写分离** | 每个选项卡只写自己负责的 store 字段，只读上游选项卡写入的字段 |
+
+### 字段归属迁移（TODO-22 / TODO-25）
+
+当前 ForestPage 上的以下字段需迁出：
+
+| 字段 | 当前位置 | 目标选项卡 |
+|------|----------|-----------|
+| Database 路径输入框 | ForestPage | **数据源**（DataSourcePage） |
+| Database JSON 编辑区 | ForestPage | **数据源**（DataSourcePage） |
+| Rule paths 选择 | ForestPage | **数据源**（DataSourcePage） |
+| dry run 开关 | ForestPage | **文件操作**（OperationsPage） |
+| "应用流水线"按钮 | ForestPage | **文件操作**（OperationsPage） |
+| backup dir 输入框 | ForestPage | 移除——backup dir 由 `build_backup_dir()` 自动推导（见 DESIGN_BACKUP.md） |
+
+ForestPage 迁出后仅保留：**计算映射**按钮 + SVG 可视化面板。
 
 ### Element Plus 组件映射
 

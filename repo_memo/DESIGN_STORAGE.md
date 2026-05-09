@@ -5,6 +5,7 @@
 > Read-Tier: task-scoped
 > Purpose: 冻结项目所有持久化存储的分类、默认位置、搜索策略与生命周期。作为跨模块存储行为的唯一权威来源。
 > 创建：2026-05-09
+> 更新：2026-05-09 — 新增 §8.5 偏好保存时机（TODO-21）、§8.6 用户偏好生命周期（TODO-23）
 > Supersedes: 替代 `DESIGN_RULE_AGGREGATOR.md` §2.2 中过时的三级搜索链描述
 
 ---
@@ -221,6 +222,29 @@ interface PersistenceAdapter {
 - `modmanager:forest-store` 使用深度 watch，字段变更自动持久化
 - `reset()` 不清除持久化的输入字段（pipelineForm、storedDatabase 等保留）
 - 分支决策 `branchDecisions` 通过 store 状态管理，不在 localStorage 中单独存储
+
+### 8.5 偏好保存时机（TODO-21）
+
+用户在前端对各选项卡的操作偏好，应在以下时机触发持久化：
+
+| 操作 | 触发时机 | 说明 |
+|------|----------|------|
+| 数据源"扫描 Steam 库" | **按钮按下后** | 保存 discoveryMode、manualPath、cachePath 等扫描参数 |
+| 数据源可见性切换 | 即时（现有行为保持） | 库/游戏/MOD 的 visibility 开关 |
+| 数据源 managed 选择 | 仅"确认并进入规则概览"时 | 不在每次 radio 点击时持久化 |
+| 设置页修改 | 用户点击"保存"按钮后 | 调用 `POST /api/config/save` |
+
+**原则**：数据量小、用户频繁调整的（如可见性）即时保存；涉及数据一致性校验的（如 managed）批量提交时保存。
+
+### 8.6 用户偏好生命周期
+
+| 阶段 | 行为 |
+|------|------|
+| **加载** | 应用启动时，从 localStorage 恢复 `modmanager:datasource` 和 `modmanager:forest-store`。不存在时使用默认值 |
+| **更新** | 按 §8.5 的时机自动或手动触发 `persistence.set()` |
+| **清除** | 用户可通过浏览器"清除站点数据"清除。工具本身不提供"重置所有偏好"按钮（现阶段） |
+| **迁移** | 键名前缀 `modmanager:` 预留版本号空间。未来若数据结构变动，采用 `modmanager:v2:` 前缀 + 旧键自动迁移策略 |
+| **start page 偏好（TODO-23）** | 在 `modmanager:forest-store` 或独立键中存储 `startPage` 字段。user_config 未配置时导航到 `/settings`；已配置时导航到 `startPage` 指定的默认页 |
 
 ---
 
