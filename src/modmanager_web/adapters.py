@@ -79,13 +79,12 @@ def adapt_apply_result(result: dict) -> dict:
 
 
 def adapt_dict_result(data: dict) -> dict:
-    """Wrap a plain dict (e.g. from ``discover_user_config`` or
-    ``generate_database``) into an ``ApiResponse``-shaped dict."""
+    """适配 discover_user_config / generate_database 的返回。"""
     return {
         "ok": True,
         "data": data,
-        "errors": [],
-        "warnings": [],
+        "errors": data.get("errors", []),
+        "warnings": data.get("warnings", []),
     }
 
 

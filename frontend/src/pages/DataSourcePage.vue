@@ -241,6 +241,19 @@
       </el-alert>
     </div>
 
+    <!-- 扫描错误（E_DUPLICATE 等） -->
+    <div v-if="store.errors.length > 0" style="margin-top: 12px;">
+      <el-alert
+        v-for="(err, idx) in store.errors"
+        :key="'err-'+idx"
+        :title="err"
+        type="error"
+        show-icon
+        :closable="false"
+        style="margin-bottom: 4px;"
+      />
+    </div>
+
     <!-- 错误区（逐条平铺） -->
     <div v-if="saveErrors.length > 0" style="margin-bottom: 16px;">
       <el-alert

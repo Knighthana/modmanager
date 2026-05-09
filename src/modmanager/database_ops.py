@@ -68,22 +68,32 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
                     "localdate": localdate if isinstance(localdate, (int, float)) else 0,
                     "path": f"{normalized_modpath}/{modid_str}",
                     "managed": False,
+                    "_lib_index": game.get("_lib_index", 0),
                 }
             )
     # Sort mods: by appid (numeric), then modid (numeric), then modid (string for non-numeric)
-    def _mod_sort_key(m: dict[str, Any]) -> tuple[int, int, str]:
+    def _mod_sort_key(m: dict[str, Any]) -> tuple[tuple[int, int, str], tuple[int, int, str], str, int]:
+        """Sort key: (appid_key, modid_key, mod_path, lib_index)."""
         mixed_id = str(m.get("mixed_id", ""))
         parts = mixed_id.split(":", 1)
+        a = parts[0] if parts else ""
+        m_str = parts[1] if len(parts) > 1 else ""
+        # appid key — align with _numeric_sort_key contract
         try:
-            appid_num = int(parts[0]) if parts else 0
+            a_key = (0, int(a), a)
         except ValueError:
-            appid_num = 0
+            a_key = (1, 0, a)
+        # modid key
         try:
-            modid_num = int(parts[1]) if len(parts) > 1 else 0
+            m_key = (0, int(m_str), m_str)
         except ValueError:
-            modid_num = 0
-        modid_str = parts[1] if len(parts) > 1 else ""
-        return (appid_num, modid_num, modid_str)
+            m_key = (1, 0, m_str)
+        # path distinguishes same mixed_id across libraries
+        mod_path = str(m.get("path", ""))
+        lib_idx = m.get("_lib_index", 0)
+        if not isinstance(lib_idx, int):
+            lib_idx = 0
+        return (a_key, m_key, mod_path, lib_idx)
     mods.sort(key=_mod_sort_key)
     return mods
 
@@ -122,7 +132,7 @@ def _scan_from_libraries(
     warnings: list[str] = []
     errors: list[str] = []
 
-    for lib in libraries:
+    for lib_index, lib in enumerate(libraries):
         path = _ensure_steamapps(lib.path)
         if not path.endswith('/'):
             path += '/'
@@ -155,6 +165,7 @@ def _scan_from_libraries(
                     "modpath": normalize_posix(game_info.modpath),
                     "mods_found": mods,
                     "managed": False,
+                    "_lib_index": lib_index,
                 })
             else:
                 game_map[appid] = [{
@@ -165,6 +176,7 @@ def _scan_from_libraries(
                     "modpath": normalize_posix(game_info.modpath),
                     "mods_found": mods,
                     "managed": False,
+                    "_lib_index": lib_index,
                 }]
 
     games_out: list[dict[str, Any]] = []
@@ -172,6 +184,11 @@ def _scan_from_libraries(
         games_out.extend(entries)
     games_out.sort(key=lambda g: _numeric_sort_key(g['appid']))
     mods_out = _build_mod_from_games(games_out, errors=errors)
+
+    for g in games_out:
+        g.pop("_lib_index", None)
+    for m in mods_out:
+        m.pop("_lib_index", None)
 
     return {
         "OS": {
