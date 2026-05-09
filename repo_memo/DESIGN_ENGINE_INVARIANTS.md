@@ -4,6 +4,7 @@
 > Authority: authoritative
 > Read-Tier: always
 > Purpose: 冻结引擎输出与运行时必须满足的不变量，作为 engine 修改的硬约束
+> 更新：2026-05-09 — 新增扫描器错误码 E_DUPLICATE_APPID / E_DUPLICATE_MIXED_ID
 
 > 来源：repo_logs/2026-04-21_M1_EXECUTION_CONTRACT.md，经 P0 后更新
 
@@ -31,3 +32,10 @@
 - `W_MISSING_DEST_ROOT` — 目标 mixed_id 找不到对应 modpath，跳过
 - `W_MISSING_INTO` — into 列表缺失或为空，跳过
 - `W_MISSING_FROM` — from 列表缺失或为空（非 delete），跳过
+
+## 错误码清单（扫描器 / 数据库产生）
+
+以下错误码由 `database_ops.py` 在扫描过程中产生，非引擎产生：
+
+- `E_DUPLICATE_APPID` — 同一 appid 在多个 Steam 库中被发现，存在重复的 game 条目。用户必须通过 `managed` 标记解决冲突
+- `E_DUPLICATE_MIXED_ID` — 同一 mixed_id（appid:modid）在数据库中存在多个条目。用户必须通过 `managed` 标记解决冲突

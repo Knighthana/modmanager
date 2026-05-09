@@ -128,6 +128,46 @@ A4（前端 onDbPathBlur 校验）     ──→  依赖 A3 的 store 结构
 
 ---
 
+## 6. 第二阶段：DataSource 去重 + E_DUP 错误码（TODO-16, TODO-17, TODO-18）
+
+### TODO-16: DataSource 页面去重（managed + radio）
+
+**设计文档**：`DESIGN_GUI_DATASOURCE_TAB.md` §3.3（2026-05-09 修订版）
+
+**原则**：进来不管，出去必须合法。
+
+| # | 任务 | 模块 |
+|---|------|------|
+| 16-01 | `ModRow` 类型新增 `managed: boolean` | `types/index.ts` |
+| 16-02 | `_populateFromDatabase` 读取 `managed` 初始化 radio 状态 | `datasource.ts` |
+| 16-03 | 计算重复组：`duplicateAppids`（按 appid）+ `duplicateMixedIds`（按 mixed_id） | `datasource.ts` |
+| 16-04 | Game 表 radio：每组重复条目各一个 radio，绑定本地 managed 状态。Game/Mod 表各自独立 | `DataSourcePage.vue` |
+| 16-05 | Mod 表 radio：同上，按 mixed_id 分组 | `DataSourcePage.vue` |
+| 16-06 | "确认并进入规则概览"按钮 → 收集 managed → `POST /api/database/save` → 后端校验写入 | 前后端 |
+| 16-07 | 后端校验失败返回错误列表，前端逐条平铺展示 | 前后端 |
+| 16-08 | 修正 warnings 传递：累积而非覆盖 | `datasource.ts` |
+| 16-09 | 前端测试更新 | `DataSourcePage.test.ts` / `datasource.test.ts` |
+
+### TODO-17: 表头"可见性" ✅ 已完成（commit a00c5e1）
+
+### TODO-18: W_DUPLICATE → E_DUPLICATE
+
+**设计文档**：`DESIGN_ENGINE_INVARIANTS.md`（2026-05-09 新增错误码清单）
+
+| # | 任务 | 模块 |
+|---|------|------|
+| 18-01 | `W_DUPLICATE_APPID` → `E_DUPLICATE_APPID` | `database_ops.py` |
+| 18-02 | 新增 `E_DUPLICATE_MIXED_ID` 检测（遍历 mod 列表检测同 mixed_id 重复） | `database_ops.py` |
+| 18-03 | 重复消息列入 errors 列表（非 warnings） | `database_ops.py` |
+| 18-04 | `errorCodes.ts`：移入 `ERROR_DESCRIPTIONS`，新增 `E_DUPLICATE_MIXED_ID` | 前端 |
+| 18-05 | `zh-CN.ts`：key 名同步更新 | 前端 |
+| 18-06 | `DataSourcePage.vue`：`W_DUPLICATE` → `E_DUPLICATE` | 前端 |
+| 18-07 | 错误/警告逐条平铺（不计数） | 前端 |
+| 18-08 | 测试更新（Python 2 文件 + TS 2 文件） | 测试 |
+| 18-09 | 全量回归 | 验证 |
+
+---
+
 ## 5. 涉及文件汇总
 
 ### 后端

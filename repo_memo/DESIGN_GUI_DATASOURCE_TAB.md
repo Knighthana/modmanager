@@ -4,9 +4,9 @@
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 规定数据源独立选项卡的目标、问题域与设计方向，指导后续 GUI 数据源改造
-> 状态：DRAFT  
 > 来源：2026-05-07 用户讨论（数据源独立 + 去重 + 展示 + 暂存）  
 > 依赖：P0-P5 全部已完成（338 Python + 42 前端 tests）  
+> 更新：2026-05-09 — 重写 §3.3 重复 ID 决策（managed 字段 + 进来不管出去合法 + 批量提交）
 
 ---
 
@@ -123,20 +123,46 @@
 
 偏好存入 persistence（跨 tab 暂存，与 TODO-1 生命周期一致）。
 
-### 3.3 重复 ID 决策
+### 3.3 重复 ID 决策（managed + radio）
 
-- 同一 `appid` 在多行出现时，该 appid 的所有行共享一个 radio group
-- 同一 `modid`（在相同 appid 下）在多行出现时，共享一个 radio group
-- 不同 `appid`/`modid` 之间 radio group 独立
-- 未选择的重复行仅显示（灰显），不参与后续 pipeline
-- 决策同样存入 persistence
+**原则**：进来不管，出去必须合法。
 
-### 3.4 跳转
+**数据模型**：
+- 每个 `game` 条目有 `managed: boolean` 字段
+- 每个 `mod` 条目有 `managed: boolean` 字段
+- 同 `appid` 的 game 条目中，最多一个 `managed: true`
+- 同 `mixed_id` 的 mod 条目中，最多一个 `managed: true`
 
+**加载时（读入）**：
+- 从 `database.json` 读取 `managed` 字段，直接反映到 radio 状态
+- 不做合法性校验——允许多个同名的 `managed: true` 并存（前端如实展示）
+- radio 仅展示状态，不做即时写入
+
+**编辑时**：
+- 用户点击 radio 切换 `managed` 状态，仅改变前端本地状态
+- Game 表的 radio 和 Mod 表的 radio **各自独立**，不共用 v-model
+- `managed: false` 的条目仍正常显示，只是 radio 为 unchecked
+- 重复组中任一 radio 被选中时，同组其他 radio 自动变为 unchecked（前端本地互斥）
+
+**离开时（写出）**：
+- 点击"确认并进入规则概览"按钮
+- 收集当前所有条目的 `managed` 状态
+- 调用 `POST /api/database/save`，后端校验：
+  - 同 appid 最多一个 `managed: true`
+  - 同 mixed_id 最多一个 `managed: true`
+- 校验通过 → 写入 `database.json` → 导航到规则概览页
+- 校验失败 → 返回具体错误列表，**逐条平铺展示**（不计数），用户修正后重试
+
+**错误展示**：
+- 错误和警告**逐条平铺**，不显示计数
+- 每条错误/警告包含完整描述，用户可直接定位问题
+
+### 3.4 跳转与导航
+
+- 底部按钮：**"确认并进入规则概览"**——触发 §3.3 的批量保存流程
+- 保存成功 → 导航到 `/rules-overview`
 - 点击游戏表的"MOD 数" → `scrollintotabitem(element)` 跳转到该游戏的第一个 MOD
 - 点击 MOD 表的"所属库" → 跳转到库摘要行
-- 点击 MOD 表的"所属 APPID" → 跳转到对应游戏行
-- `scrollintotabitem()` 封装为独立函数，当前实现用 `scrollIntoView`，预留 Tauri 接口
 
 ### 3.5 表格定长
 
