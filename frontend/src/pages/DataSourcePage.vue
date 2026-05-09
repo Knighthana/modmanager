@@ -25,9 +25,6 @@
         <el-form-item :label="STR.dataSourcePage.greedyParsing">
           <el-switch v-model="store.greedyParsing" />
         </el-form-item>
-        <el-form-item :label="STR.dataSourcePage.databaseOutputPath">
-          <el-input v-model="store.databaseOutputPath" :placeholder="STR.dataSourcePage.databaseOutputPathPlaceholder" />
-        </el-form-item>
         <el-form-item
           v-if="store.discoveryMode === 'manual' || store.discoveryMode === 'all'"
           :label="STR.dataSourcePage.manualPathLabel"

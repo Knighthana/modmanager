@@ -35,6 +35,26 @@ export const useDataSourceStore = defineStore('datasource', () => {
   const isScanning = ref(false)
   const lastResult = ref<Record<string, unknown> | null>(null)
 
+  // 恢复持久化的 database 副本（§8.5.1）
+  try {
+    const savedDb = pers.load<{
+      libraries: LibraryRow[]
+      games: GameRow[]
+      mods: ModRow[]
+      warnings: string[]
+      errors: string[]
+      lastResult: Record<string, unknown> | null
+    }>('datasource-db')
+    if (savedDb) {
+      libraries.value = savedDb.libraries || []
+      games.value = savedDb.games || []
+      mods.value = savedDb.mods || []
+      warnings.value = savedDb.warnings || []
+      errors.value = savedDb.errors || []
+      lastResult.value = savedDb.lastResult || null
+    }
+  } catch { /* 忽略 */ }
+
   // ── getters ────────────────────────────────────────────────────────────
   const filteredGames = computed(() =>
     games.value.filter(g => libraryVisibility.value[g.libraryIndex] !== false),
@@ -300,6 +320,18 @@ export const useDataSourceStore = defineStore('datasource', () => {
       newGameVis[g.index] = gameVisibility.value[g.index] ?? true
     }
     gameVisibility.value = newGameVis
+
+    // 持久化到 localStorage（§8.5.1 前端 Database 副本生命周期）
+    try {
+      pers.save('datasource-db', {
+        libraries: libraries.value,
+        games: games.value,
+        mods: mods.value,
+        warnings: warnings.value,
+        errors: errors.value,
+        lastResult: lastResult.value,
+      })
+    } catch { /* localStorage 不可用时静默忽略 */ }
   }
 
   function _resetState() {

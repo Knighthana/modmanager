@@ -164,6 +164,13 @@ export const STR = {
     saveCurrentSelection: '💾 保存当前选择',
   },
 
+  // ── SettingsPage ──────────────────────────────────────────────────────
+  settingsPage: {
+    title: '设置',
+    saveBtn: '保存设置',
+    databaseJsonAdvanced: 'Database JSON（高级）',
+  },
+
   // ── LayoutShell ───────────────────────────────────────────────────────
   layoutShell: {
     title: "🔧 Knighthana's<br/>Mod Manager",
