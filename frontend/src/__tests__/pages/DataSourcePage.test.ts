@@ -193,7 +193,7 @@ describe('DataSourcePage', () => {
     const store = useDataSourceStore()
 
     store.lastResult = { steamlib: [], game: [], mod: [] }
-    store.cachePath = '/tmp/test.json'
+    store.databaseOutputPath = '/tmp/test.json'
     await wrapper.vm.$nextTick()
 
     // Mock fetch (apiPost uses fetch + res.json)
@@ -210,7 +210,7 @@ describe('DataSourcePage', () => {
     })
 
     const vm = wrapper.vm as any
-    await vm.onConfirmAndGoToRules()
+    await vm.onConfirm()
     await wrapper.vm.$nextTick()
 
     // Save errors should be displayed

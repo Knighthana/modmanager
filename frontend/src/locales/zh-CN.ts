@@ -133,8 +133,8 @@ export const STR = {
     modeManual: '📁 仅手动',
     workingPathstyle: 'Working pathstyle',
     greedyParsing: 'Greedy parsing',
-    cachePath: 'Cache path',
-    cachePathPlaceholder: '/tmp/modmanager_database_generated.json',
+    databaseOutputPath: 'database.json 输出路径',
+    databaseOutputPathPlaceholder: '/tmp/modmanager_database_generated.json',
     manualPathLabel: '手动路径',
     manualPathPlaceholder: '/tmp/fixture/steamapps',
     manualPathHint: '💡 指向 Steam 库目录（含 steamapps/ 子目录的父目录），路径应以 / 结尾',
@@ -160,6 +160,8 @@ export const STR = {
     duplicateAppidHint: '— 请在游戏表中选择需要保留的库',
     applyBtn: '🚀 应用此数据源 → 前往 Forest',
     confirmToRulesOverview: '✅ 确认并进入规则概览',
+    databaseJsonAdvanced: 'Database JSON（高级）',
+    saveCurrentSelection: '保存当前选择',
   },
 
   // ── LayoutShell ───────────────────────────────────────────────────────

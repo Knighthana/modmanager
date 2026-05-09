@@ -25,8 +25,8 @@
         <el-form-item :label="STR.dataSourcePage.greedyParsing">
           <el-switch v-model="store.greedyParsing" />
         </el-form-item>
-        <el-form-item :label="STR.dataSourcePage.cachePath">
-          <el-input v-model="store.cachePath" :placeholder="STR.dataSourcePage.cachePathPlaceholder" />
+        <el-form-item :label="STR.dataSourcePage.databaseOutputPath">
+          <el-input v-model="store.databaseOutputPath" :placeholder="STR.dataSourcePage.databaseOutputPathPlaceholder" />
         </el-form-item>
         <el-form-item
           v-if="store.discoveryMode === 'manual' || store.discoveryMode === 'all'"
@@ -276,10 +276,20 @@
     <!-- 底部按钮 -->
     <div v-if="store.lastResult" style="margin-bottom: 16px;">
       <el-button
+        type="default"
+        size="large"
+        :loading="isSaving"
+        :disabled="isSaving"
+        @click="onSave"
+      >
+        {{ STR.dataSourcePage.saveCurrentSelection }}
+      </el-button>
+      <el-button
         type="primary"
         size="large"
         :loading="isSaving"
-        @click="onConfirmAndGoToRules"
+        :disabled="isSaving"
+        @click="onConfirm"
       >
         {{ STR.dataSourcePage.confirmToRulesOverview }}
       </el-button>
@@ -299,6 +309,7 @@ import { STR } from '../locales/zh-CN'
 import type { LibraryRow, GameRow, ModRow } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription, extractCode } from '../utils/errorCodes'
+import { ElMessage } from 'element-plus'
 
 const store = useDataSourceStore()
 const forestStore = useForestStore()
@@ -364,9 +375,9 @@ function onErrorPopup(errMsg: string, event: MouseEvent) {
   showPopup(desc, event.target as HTMLElement, event)
 }
 
-// ── confirm & save ──
-async function onConfirmAndGoToRules() {
-  if (!store.lastResult) return
+// ── shared save logic ──
+async function doSave(): Promise<boolean> {
+  if (!store.lastResult) return false
   saveErrors.value = []
   isSaving.value = true
 
@@ -391,8 +402,8 @@ async function onConfirmAndGoToRules() {
     }
   }
 
-  // Default output path: same as cache path or a sensible default
-  const outputPath = store.cachePath || '/tmp/modmanager_database_generated.json'
+  // Default output path
+  const outputPath = store.databaseOutputPath || '/tmp/modmanager_database_generated.json'
 
   try {
     const resp = await apiPost('/database/save', {
@@ -401,7 +412,7 @@ async function onConfirmAndGoToRules() {
     })
 
     if (resp.ok) {
-      // Pass database to forest store, then navigate to rules-overview
+      // Pass database to forest store
       forestStore.storedDatabase = db
       forestStore.pipelineForm.manualSteamPath = store.manualPath
       forestStore.pipelineForm.databasePath = ''
@@ -413,16 +424,32 @@ async function onConfirmAndGoToRules() {
       if (forestStore.userConfig) {
         forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
       }
-
-      router.push('/rules-overview')
+      return true
     } else {
-      // Show errors flat (no counting)
       saveErrors.value = resp.errors || ['保存失败']
+      return false
     }
   } catch (err) {
     saveErrors.value = [`保存请求异常: ${err}`]
+    return false
   } finally {
     isSaving.value = false
+  }
+}
+
+// ── save only (no navigation) ──
+async function onSave() {
+  const ok = await doSave()
+  if (ok) {
+    ElMessage.success('已保存')
+  }
+}
+
+// ── save & navigate to rules overview ──
+async function onConfirm() {
+  const ok = await doSave()
+  if (ok) {
+    router.push('/rules-overview')
   }
 }
 

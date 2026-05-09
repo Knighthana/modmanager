@@ -102,7 +102,7 @@ export interface DataSourceState {
   manualPath: string
   workingPathstyle: string
   greedyParsing: boolean
-  cachePath: string
+  databaseOutputPath: string
   libraries: LibraryRow[]
   games: GameRow[]
   mods: ModRow[]

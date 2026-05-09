@@ -20,7 +20,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   const manualPath = ref('')
   const workingPathstyle = ref('linux')
   const greedyParsing = ref(false)
-  const cachePath = ref('/tmp/modmanager_database_generated.json')
+  const databaseOutputPath = ref('/tmp/modmanager_database_generated.json')
 
   const libraries = ref<LibraryRow[]>([])
   const games = ref<GameRow[]>([])
@@ -96,7 +96,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
       paths: apiPaths,
       workingPathstyle: workingPathstyle.value,
       greedyParsing: greedyParsing.value,
-      cachePath: apiMode === 'manual' ? null : cachePath.value,
+      cachePath: apiMode === 'manual' ? null : databaseOutputPath.value,
     }
 
     await streamSse('/database/generate', params, {
@@ -137,7 +137,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     if (saved.manualPath) manualPath.value = saved.manualPath
     if (saved.workingPathstyle) workingPathstyle.value = saved.workingPathstyle
     if (saved.greedyParsing !== undefined) greedyParsing.value = saved.greedyParsing
-    if (saved.cachePath) cachePath.value = saved.cachePath
+    if (saved.databaseOutputPath) databaseOutputPath.value = saved.databaseOutputPath
     if (saved.libraries) libraries.value = saved.libraries
     if (saved.games) games.value = saved.games
     if (saved.mods) mods.value = saved.mods
@@ -155,7 +155,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
       manualPath: manualPath.value,
       workingPathstyle: workingPathstyle.value,
       greedyParsing: greedyParsing.value,
-      cachePath: cachePath.value,
+      databaseOutputPath: databaseOutputPath.value,
       libraries: libraries.value,
       games: games.value,
       mods: mods.value,
@@ -307,7 +307,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     manualPath.value = ''
     workingPathstyle.value = 'linux'
     greedyParsing.value = false
-    cachePath.value = '/tmp/modmanager_database_generated.json'
+    databaseOutputPath.value = '/tmp/modmanager_database_generated.json'
     libraries.value = []
     games.value = []
     mods.value = []
@@ -326,7 +326,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     manualPath,
     workingPathstyle,
     greedyParsing,
-    cachePath,
+    databaseOutputPath,
     libraries,
     games,
     mods,
