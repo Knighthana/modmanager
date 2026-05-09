@@ -107,7 +107,7 @@
         </template>
         <el-table :data="store.filteredGames" border stripe size="small">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
-          <el-table-column label="[选]" width="70">
+          <el-table-column label="[选]" width="50">
             <template #default="{ row }: { row: GameRow }">
               <el-radio
                 v-if="store.duplicateAppids.includes(row.appid)"
@@ -178,7 +178,7 @@
         </template>
         <el-table :data="store.filteredMods" border stripe size="small">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
-          <el-table-column label="[选]" width="70">
+          <el-table-column label="[选]" width="50">
             <template #default="{ row }: { row: ModRow }">
               <el-radio
                 v-if="store.duplicateMixedIds.includes(`${row.appid}:${row.modid}`)"

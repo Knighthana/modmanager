@@ -32,7 +32,7 @@ class DatabaseOpsTests(unittest.TestCase):
 
         updated, _ = update_manual_steamlib(db, old_path="/mnt/d/Games", new_path="/mnt/e/Games")
         self.assertTrue(updated)
-        self.assertEqual(db["steamlib"][0]["path"], "/mnt/e/Games/steamapps")
+        self.assertEqual(db["steamlib"][0]["path"], "/mnt/e/Games/steamapps/")
 
         removed, _ = remove_manual_steamlib(db, path="/mnt/e/Games")
         self.assertTrue(removed)
@@ -90,7 +90,7 @@ class DatabaseOpsTests(unittest.TestCase):
                     )
 
         self.assertEqual(len(database["steamlib"]), 1)
-        self.assertEqual(database["steamlib"][0]["path"], "/mnt/d/Games/steamapps")
+        self.assertEqual(database["steamlib"][0]["path"], "/mnt/d/Games/steamapps/")
         self.assertEqual(database["game"][0]["appid"], "270150")
         self.assertEqual(database["game"][0]["mods_found"], ["2606099273"])
 
@@ -235,7 +235,7 @@ class DatabaseOpsTests(unittest.TestCase):
         mock_auto.assert_not_called()
         # Only manual library should appear
         self.assertEqual(len(database["steamlib"]), 1)
-        self.assertEqual(database["steamlib"][0]["path"], "/mnt/d/Games/steamapps")
+        self.assertEqual(database["steamlib"][0]["path"], "/mnt/d/Games/steamapps/")
 
     def test_scan_from_libraries_detects_duplicate_appid(self) -> None:
         """Same appid in two different libraries → warning, first wins."""

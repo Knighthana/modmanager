@@ -59,7 +59,6 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
                     errors.append(
                         f"E_DUPLICATE_MIXED_ID: mixed_id {mixed_id} appears multiple times"
                     )
-                continue
             seen_mixed_ids.add(mixed_id)
             prev = old_mod.get(mixed_id, {})
             localdate = prev.get("localdate", game.get("localdate", 0))
@@ -110,6 +109,8 @@ def _scan_from_libraries(
 
     for lib in libraries:
         path = _ensure_steamapps(lib.path)
+        if not path.endswith('/'):
+            path += '/'
         scoped_ids = set(str(x) for x in (lib.games_found or []))
 
         discovered_games = scanner.discover_games_in_library(path)
@@ -222,6 +223,8 @@ def add_manual_steamlib(
 ) -> tuple[bool, str]:
     _ensure_database_shape(database)
     target = _ensure_steamapps(path)
+    if not target.endswith('/'):
+        target += '/'
 
     for lib in database["steamlib"]:
         if normalize_posix(str(lib.get("path", ""))) == target:
@@ -242,6 +245,8 @@ def add_manual_steamlib(
 def remove_manual_steamlib(database: dict[str, Any], *, path: str) -> tuple[bool, str]:
     _ensure_database_shape(database)
     target = _ensure_steamapps(path)
+    if not target.endswith('/'):
+        target += '/'
 
     removed = False
     removed_appids: set[str] = set()
@@ -262,7 +267,7 @@ def remove_manual_steamlib(database: dict[str, Any], *, path: str) -> tuple[bool
         appid = str(game.get("appid", ""))
         modpath = normalize_posix(str(game.get("modpath", "")))
         basepath = normalize_posix(str(game.get("basepath", "")))
-        if modpath.startswith(target + "/") or basepath.startswith(target + "/"):
+        if modpath.startswith(target) or basepath.startswith(target):
             removed_appids.add(appid)
 
     database["steamlib"] = kept_steamlib
@@ -283,7 +288,11 @@ def remove_manual_steamlib(database: dict[str, Any], *, path: str) -> tuple[bool
 def update_manual_steamlib(database: dict[str, Any], *, old_path: str, new_path: str) -> tuple[bool, str]:
     _ensure_database_shape(database)
     old_norm = _ensure_steamapps(old_path)
+    if not old_norm.endswith('/'):
+        old_norm += '/'
     new_norm = _ensure_steamapps(new_path)
+    if not new_norm.endswith('/'):
+        new_norm += '/'
 
     for lib in database["steamlib"]:
         if normalize_posix(str(lib.get("path", ""))) == new_norm and new_norm != old_norm:
@@ -307,14 +316,14 @@ def update_manual_steamlib(database: dict[str, Any], *, old_path: str, new_path:
                 normalized = normalize_posix(value)
                 if normalized == old_norm:
                     game[key] = new_norm
-                elif normalized.startswith(old_norm + "/"):
+                elif normalized.startswith(old_norm):
                     game[key] = new_norm + normalized[len(old_norm):]
 
     for mod in database["mod"]:
         value = mod.get("path")
         if isinstance(value, str):
             normalized = normalize_posix(value)
-            if normalized.startswith(old_norm + "/"):
+            if normalized.startswith(old_norm):
                 mod["path"] = new_norm + normalized[len(old_norm):]
 
     return True, "steam library updated"

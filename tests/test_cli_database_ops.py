@@ -219,7 +219,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
 
             self.assertEqual(code, 0)
             db = load_json_file(db_path)
-            self.assertEqual(db["steamlib"][0]["path"], "/mnt/d/Games/steamapps")
+            self.assertEqual(db["steamlib"][0]["path"], "/mnt/d/Games/steamapps/")
 
     def test_steamlib_remove_missing_returns_error_code(self) -> None:
         with tempfile.TemporaryDirectory() as td:

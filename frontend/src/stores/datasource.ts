@@ -210,19 +210,6 @@ export const useDataSourceStore = defineStore('datasource', () => {
 
     // Build game list with library index
     const gameArr: GameRow[] = []
-    const gameIdsInLib: Map<number, Set<string>> = new Map()
-    for (let i = 0; i < steamlib.length; i++) {
-      gameIdsInLib.set(i, new Set())
-    }
-
-    for (const lib of steamlib) {
-      const p = String(lib.path || '')
-      const li = libIndex[p]
-      const gameIds = (lib.game as Array<unknown>) || []
-      for (const appid of gameIds) {
-        gameIdsInLib.get(li)?.add(String(appid))
-      }
-    }
 
     for (let i = 0; i < gameList.length; i++) {
       const g = gameList[i]
@@ -230,10 +217,12 @@ export const useDataSourceStore = defineStore('datasource', () => {
       const modpath = String(g.modpath || '')
       const basepath = String(g.basepath || '')
 
-      // Determine library index from gameIdsInLib
+      // Determine library index by basepath prefix matching
       let gi = 0
-      for (const [li, ids] of gameIdsInLib.entries()) {
-        if (ids.has(appid)) {
+      const bp = String(g.basepath || '')
+      for (let li = 0; li < steamlib.length; li++) {
+        const libPath = String(steamlib[li].path || '')
+        if (libPath && bp.startsWith(libPath)) {
           gi = li
           break
         }
