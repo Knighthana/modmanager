@@ -241,20 +241,25 @@ export const useDataSourceStore = defineStore('datasource', () => {
       })
     }
 
-    // Build mod list
+    // Build mod list — match to game via path prefix (not appid alone)
     const modArr: ModRow[] = []
-    const gameByAppid: Record<string, number> = {}
-    for (const g of gameArr) {
-      gameByAppid[g.appid] = g.index
-    }
-
     for (let i = 0; i < mod.length; i++) {
       const d = mod[i]
       const mixedId = String(d.mixed_id || '')
       const parts = mixedId.split(':')
       const appid = parts[0] || ''
       const modid = parts[1] || ''
-      const gameIndex = gameByAppid[appid] !== undefined ? gameByAppid[appid] : 0
+      const modPath = String(d.path || '')
+      
+      // Match mod to game by modpath prefix
+      let gameIndex = 0
+      for (let gi = 0; gi < gameArr.length; gi++) {
+        const gModpath = String(gameArr[gi].modpath || '')
+        if (gModpath && modPath.startsWith(gModpath)) {
+          gameIndex = gi
+          break
+        }
+      }
       const gameRow = gameArr[gameIndex]
       const libraryIndex = gameRow ? gameRow.libraryIndex : 0
 
@@ -263,7 +268,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
         modid,
         name: modid,
         appid,
-        path: String(d.path || ''),
+        path: modPath,
         libraryIndex,
         gameIndex,
         managed: (d as Record<string, unknown>).managed as boolean ?? false,
