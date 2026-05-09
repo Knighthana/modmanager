@@ -5,7 +5,7 @@
 > Read-Tier: task-scoped
 > Purpose: 冻结项目所有持久化存储的分类、默认位置、搜索策略与生命周期。作为跨模块存储行为的唯一权威来源。
 > 创建：2026-05-09
-> 更新：2026-05-09 — 新增 §8.5 偏好保存时机（TODO-21）、§8.6 用户偏好生命周期（TODO-23）
+> 更新：2026-05-09 — 新增 §8.5 偏好保存时机（TODO-21）、§8.5.1 前端 Database 副本生命周期、§8.6 用户偏好生命周期（TODO-23）
 > Supersedes: 替代 `DESIGN_RULE_AGGREGATOR.md` §2.2 中过时的三级搜索链描述
 
 ---
@@ -233,8 +233,22 @@ interface PersistenceAdapter {
 | 数据源可见性切换 | 即时（现有行为保持） | 库/游戏/MOD 的 visibility 开关 |
 | 数据源 managed 选择 | 仅"确认并进入规则概览"时 | 不在每次 radio 点击时持久化 |
 | 设置页修改 | 用户点击"保存"按钮后 | 调用 `POST /api/config/save` |
+| 数据库扫描结果 | 后端更新时同步刷新 | 扫描完成/保存 managed 后，前端从 API 响应中获取最新 database 并覆盖本地副本 |
 
 **原则**：数据量小、用户频繁调整的（如可见性）即时保存；涉及数据一致性校验的（如 managed）批量提交时保存。
+
+### 8.5.1 前端 Database 副本生命周期
+
+前端 Pinia store 中持有的 database 副本（`games`、`mods`、`libraries`）遵循以下规则：
+
+| 事件 | 行为 |
+|------|------|
+| 页面刷新 / 重新打开 | **保留**。通过 localStorage 持久化，不清除 |
+| "扫描 Steam 库"完成 | 后端返回新 database → 覆盖前端副本 → 写入 localStorage |
+| "保存当前选择" / "确认并进入"完成 | 后端写入 managed 字段并返回更新后的 database → 覆盖前端副本 → 写入 localStorage |
+| 其他选项卡读取 database | 从 localStorage 读取，**不**发起后端文件 I/O |
+
+**目的**：前端与后端数据保持同步的同时，减少无谓的文件读取操作。database 的权威副本始终在后端磁盘文件中，前端 localStorage 为只读缓存。
 
 ### 8.6 用户偏好生命周期
 
