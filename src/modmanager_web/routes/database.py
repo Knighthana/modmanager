@@ -115,6 +115,43 @@ async def save_database(req: SaveDatabaseRequest):
             "warnings": [],
         }
 
+    # ── 条件清除 E_DUPLICATE：仅当该类型重复全部被 managed 解决时才清除 ──
+    from collections import Counter
+
+    # 检查 game 重复是否已全部解决（每组恰好一个 managed=true）
+    appid_counts = Counter(str(g.get("appid", "")) for g in games_raw)
+    duplicate_appids = {a for a, c in appid_counts.items() if c > 1}
+    appid_managed = Counter()
+    for g in games_raw:
+        if g.get("managed"):
+            a = str(g.get("appid", ""))
+            if a in duplicate_appids:
+                appid_managed[a] += 1
+    all_games_resolved = all(appid_managed.get(a, 0) == 1 for a in duplicate_appids)
+
+    # 检查 mod 重复是否已全部解决
+    mods_raw = db.get("mod", []) or []
+    mid_counts = Counter(str(m.get("mixed_id", "")) for m in mods_raw)
+    duplicate_mids = {m for m, c in mid_counts.items() if c > 1}
+    mid_managed = Counter()
+    for m in mods_raw:
+        if m.get("managed"):
+            mid = str(m.get("mixed_id", ""))
+            if mid in duplicate_mids:
+                mid_managed[mid] += 1
+    all_mods_resolved = all(mid_managed.get(m, 0) == 1 for m in duplicate_mids)
+
+    if all_games_resolved:
+        if "errors" in db:
+            db["errors"] = [e for e in db["errors"] if not str(e).startswith("E_DUPLICATE_APPID")]
+        if "warnings" in db:
+            db["warnings"] = [w for w in db["warnings"] if not str(w).startswith("E_DUPLICATE_APPID")]
+    if all_mods_resolved:
+        if "errors" in db:
+            db["errors"] = [e for e in db["errors"] if not str(e).startswith("E_DUPLICATE_MIXED_ID")]
+        if "warnings" in db:
+            db["warnings"] = [w for w in db["warnings"] if not str(w).startswith("E_DUPLICATE_MIXED_ID")]
+
     # ── Write to file ─────────────────────────────────────────────────────
     try:
         write_json_file(req.output_path, db)
@@ -123,7 +160,7 @@ async def save_database(req: SaveDatabaseRequest):
 
     return {
         "ok": True,
-        "data": {"path": req.output_path},
+        "data": {"path": req.output_path, "database": db},
         "errors": [],
         "warnings": [],
     }

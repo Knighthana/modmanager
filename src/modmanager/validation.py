@@ -178,6 +178,12 @@ def validate_database(database: Any) -> list[str]:
     if not isinstance(games, list):
         return [f"E_DATABASE_INVALID: database['game'] must be list, got {type(games).__name__}"]
 
+    # Determine whether managed filtering should be applied
+    has_any_managed = any(
+        isinstance(g.get("managed"), bool) and g.get("managed") is True
+        for g in games if isinstance(g, dict)
+    )
+
     # Track seen appids for uniqueness
     seen_appids: set[str] = set()
 
@@ -196,11 +202,15 @@ def validate_database(database: Any) -> list[str]:
             errors.append(f"E_DATABASE_INVALID: game[{idx}]['appid'] cannot be empty string")
             continue
 
-        # Check uniqueness
-        if appid in seen_appids:
-            errors.append(f"E_DATABASE_INVALID: game[{idx}]['appid'] {appid!r} is not unique")
-            continue
-        seen_appids.add(appid)
+        # If managed filtering is active and this entry is not managed, skip uniqueness check
+        if has_any_managed and not game_obj.get("managed"):
+            pass  # skip uniqueness check, but continue to check paths below
+        else:
+            # Check uniqueness
+            if appid in seen_appids:
+                errors.append(f"E_DATABASE_INVALID: game[{idx}]['appid'] {appid!r} is not unique")
+                continue
+            seen_appids.add(appid)
 
         # Check required path fields
         basepath = game_obj.get("basepath")

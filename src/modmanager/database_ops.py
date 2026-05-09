@@ -62,12 +62,13 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
             seen_mixed_ids.add(mixed_id)
             prev = old_mod.get(mixed_id, {})
             localdate = prev.get("localdate", game.get("localdate", 0))
+            managed = prev.get("managed", False)
             mods.append(
                 {
                     "mixed_id": mixed_id,
                     "localdate": localdate if isinstance(localdate, (int, float)) else 0,
-                    "path": f"{normalized_modpath}/{modid_str}",
-                    "managed": False,
+                    "path": f"{normalized_modpath}/{modid_str}/",
+                    "managed": managed,
                     "_lib_index": game.get("_lib_index", 0),
                 }
             )
@@ -126,6 +127,7 @@ def _scan_from_libraries(
     libraries: list[SteamLibraryInfo],
     *,
     greedy_parsing: bool,
+    old_games: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     game_map: dict[str, list[dict[str, Any]]] = {}
     steamlibs_out: list[dict[str, Any]] = []
@@ -161,10 +163,10 @@ def _scan_from_libraries(
                     "appid": game_info.appid,
                     "name": game_info.name,
                     "localdate": 0,
-                    "basepath": normalize_posix(game_info.basepath),
-                    "modpath": normalize_posix(game_info.modpath),
+                    "basepath": normalize_posix(game_info.basepath) + '/',
+                    "modpath": normalize_posix(game_info.modpath) + '/',
                     "mods_found": mods,
-                    "managed": False,
+                    "managed": old_games.get(appid, {}).get("managed", False) if old_games else False,
                     "_lib_index": lib_index,
                 })
             else:
@@ -172,10 +174,10 @@ def _scan_from_libraries(
                     "appid": game_info.appid,
                     "name": game_info.name,
                     "localdate": 0,
-                    "basepath": normalize_posix(game_info.basepath),
-                    "modpath": normalize_posix(game_info.modpath),
+                    "basepath": normalize_posix(game_info.basepath) + '/',
+                    "modpath": normalize_posix(game_info.modpath) + '/',
                     "mods_found": mods,
-                    "managed": False,
+                    "managed": old_games.get(appid, {}).get("managed", False) if old_games else False,
                     "_lib_index": lib_index,
                 }]
 
@@ -183,6 +185,18 @@ def _scan_from_libraries(
     for entries in game_map.values():
         games_out.extend(entries)
     games_out.sort(key=lambda g: _numeric_sort_key(g['appid']))
+
+    # Auto-managed: 无重复的 appid 默认 managed=true（首次扫描时用）
+    # 如果 old_games 中有用户之前保存的值则保留
+    _appid_counts: dict[str, int] = {}
+    for g in games_out:
+        appid = str(g.get("appid", ""))
+        _appid_counts[appid] = _appid_counts.get(appid, 0) + 1
+    for g in games_out:
+        appid = str(g.get("appid", ""))
+        if _appid_counts.get(appid, 1) == 1 and not g.get("managed"):
+            g["managed"] = True
+
     mods_out = _build_mod_from_games(games_out, errors=errors)
 
     for g in games_out:
@@ -413,9 +427,10 @@ def add_manual_game(
         "appid": appid,
         "name": name,
         "localdate": localdate,
-        "basepath": normalize_posix(basepath),
-        "modpath": normalize_posix(modpath),
+        "basepath": normalize_posix(basepath) + '/',
+        "modpath": normalize_posix(modpath) + '/',
         "mods_found": mods,
+        "managed": True,
     }
     database["game"].append(game)
     _add_game_membership(database, appid, game["modpath"])
@@ -454,14 +469,16 @@ def update_manual_game(database: dict[str, Any], *, appid: str, updates: dict[st
     if target is None:
         return False, "game not found"
 
-    allowed = {"name", "localdate", "basepath", "modpath", "mods_found"}
+    allowed = {"name", "localdate", "basepath", "modpath", "mods_found", "managed"}
     for key, value in updates.items():
         if key not in allowed:
             continue
         if key in {"basepath", "modpath"} and isinstance(value, str):
-            target[key] = normalize_posix(value)
+            target[key] = normalize_posix(value) + '/'
         elif key == "mods_found" and isinstance(value, list):
             target[key] = sorted(set(str(m) for m in value))
+        elif key == "managed" and isinstance(value, bool):
+            target[key] = value
         else:
             target[key] = value
 
@@ -538,9 +555,9 @@ def liveupdate_database(
         for lib in old_db["steamlib"]
     ]
 
-    updated = _scan_from_libraries(scanner, libraries, greedy_parsing=greedy_parsing)
-
     old_games = {str(g.get("appid", "")): g for g in old_db.get("game", [])}
+    updated = _scan_from_libraries(scanner, libraries, greedy_parsing=greedy_parsing, old_games=old_games)
+
     new_games = {str(g.get("appid", "")): g for g in updated.get("game", [])}
 
     old_ids = set(old_games.keys())
@@ -597,7 +614,8 @@ def regen_database(
         for lib in database["steamlib"]
     ]
 
-    rebuilt = _scan_from_libraries(scanner, libraries, greedy_parsing=greedy_parsing)
+    old_games = {str(g.get("appid", "")): g for g in database.get("game", [])}
+    rebuilt = _scan_from_libraries(scanner, libraries, greedy_parsing=greedy_parsing, old_games=old_games)
     return {
         "database": rebuilt,
         "stats": {

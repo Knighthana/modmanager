@@ -39,3 +39,14 @@
 
 - `E_DUPLICATE_APPID` — 同一 appid 在多个 Steam 库中被发现，存在重复的 game 条目。用户必须通过 `managed` 标记解决冲突
 - `E_DUPLICATE_MIXED_ID` — 同一 mixed_id（appid:modid）在数据库中存在多个条目。用户必须通过 `managed` 标记解决冲突
+
+## managed 过滤行为
+
+`validate_database()` 在处理 game 条目的 appid 唯一性时，遵循以下规则：
+
+1. 遍历所有 game，检测是否存在任何一个 `managed: true` 条目
+2. 若存在 → **仅对 `managed: true` 的条目检查 appid 唯一性**；`managed: false` 的条目跳过唯一性检查
+3. 若不存在（旧数据库 / 首次扫描）→ 对所有条目检查唯一性（向后兼容）
+4. 无论 managed 值如何，`basepath` 和 `modpath` 的类型/非空检查始终执行
+
+此行为确保"流水线下游仅消费 managed: true 的条目"（DESIGN_STORAGE.md §6）这一约束在验证阶段即被贯彻。

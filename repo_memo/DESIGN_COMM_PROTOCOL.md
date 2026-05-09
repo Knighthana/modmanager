@@ -81,6 +81,7 @@
 | `POST` | `/api/config/save` | — | 保存 user_config |
 | `POST` | `/api/database/generate` | SSE | 扫描 Steam 库生成 database |
 | `POST` | `/api/database/load` | — | 从路径加载 database.json |
+| `POST` | `/api/database/save` | — | 保存 database（含 managed 校验） |
 | `POST` | `/api/pipeline/compute` | SSE | 聚合 + 计算映射 |
 | `POST` | `/api/pipeline/backup` | SSE | 差异备份 |
 | `POST` | `/api/pipeline/apply` | SSE | 应用映射到磁盘 |

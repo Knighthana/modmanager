@@ -305,8 +305,8 @@ export const useDataSourceStore = defineStore('datasource', () => {
     libraries.value = libArr
     games.value = gameArr
     mods.value = modArr
-    warnings.value = [...warnings.value, ...((db.warnings as string[]) || [])]
-    errors.value = [...errors.value, ...((db.errors as string[]) || [])]
+    warnings.value = (db.warnings as string[]) || []
+    errors.value = (db.errors as string[]) || []
 
     // Initialize visibility
     const newLibVis: Record<number, boolean> = {}
@@ -332,6 +332,11 @@ export const useDataSourceStore = defineStore('datasource', () => {
         lastResult: lastResult.value,
       })
     } catch { /* localStorage 不可用时静默忽略 */ }
+  }
+
+  function updateDatabase(db: Record<string, unknown>) {
+    lastResult.value = db
+    _populateFromDatabase(db)
   }
 
   function _resetState() {
@@ -376,6 +381,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     duplicateMixedIds,
     // actions
     scan,
+    updateDatabase,
     loadFromCache,
     saveToCache,
     clearCache,

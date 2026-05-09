@@ -145,6 +145,7 @@
 
 **加载时（读入）**：
 - 从 `database.json` 读取 `managed` 字段，直接反映到 radio 状态
+- 无重复 appid/mixed_id 的条目在扫描后自动设为 `managed: true`，前端 radio 默认选中
 - 不做合法性校验——允许多个同名的 `managed: true` 并存（前端如实展示）
 - radio 仅展示状态，不做即时写入
 
@@ -172,24 +173,7 @@
 - 所有同组重复冲突解决后（每组最多一个 `managed: true`），视觉提示自动消除
 - 视觉提示的颜色/样式应与普通错误/警告区分——它是"待决策"而非"已出错"
 
-### 3.4 跳转与导航
-
-- 底部按钮：**"确认并进入规则概览"**——触发 §3.3 的批量保存流程
-- 保存成功 → 导航到 `/rules-overview`
-- 点击游戏表的"MOD 数" → `scrollintotabitem(element)` 跳转到该游戏的第一个 MOD
-- 点击 MOD 表的"所属库" → 跳转到库摘要行
-
-### 3.5 表格定长
-
-```css
-.horizontal-cell-scroll {
-  white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-```
-
-应用于路径列。名称列截断 + hover tooltip（Element Plus `el-table-column` 默认行为）。
+**管道消费**：`compute_mapping` 入口处的 `validate_database` 对 appid 唯一性检查遵循 managed 过滤规则——若数据库中存在任何 `managed: true` 条目，则仅对 managed=true 的条目检查唯一性；非 managed 条目的路径字段（basepath、modpath）仍正常校验。
 
 ---
 

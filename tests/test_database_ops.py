@@ -283,7 +283,7 @@ class DatabaseOpsTests(unittest.TestCase):
             msg=f"Expected E_DUPLICATE_APPID in errors, got {result['errors']}",
         )
         # First library's game should be kept (not overwritten)
-        self.assertEqual(result["game"][0]["basepath"], "/lib1/steamapps/common/RWR")
+        self.assertEqual(result["game"][0]["basepath"], "/lib1/steamapps/common/RWR/")
 
     def test_list_games_filtered_by_steamlib(self) -> None:
         db = {

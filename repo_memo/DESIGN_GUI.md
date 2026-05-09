@@ -30,7 +30,7 @@
 | Q7 | **仅 localhost** |
 | Q8 | **npm + Vite + TypeScript** |
 | Q9 | **`frontend/`**（项目根目录） |
-| Q10 | **后端渲染 SVG** → API 返回 → `v-html` + 事件委托交互 |
+| Q10 | **后端渲染 SVG** → API 返回 → `v-html` 插入 DOM → `svg-pan-zoom` 接管缩放/平移 → 事件委托交互 |
 | Q11 | **Element Plus** |
 | Q12 | **SPA + Vue Router** |
 | Q13 | **Pinia** — `useForestStore` 集中管理 pipeline 结果 |
@@ -97,7 +97,7 @@ frontend/
 │   │   └── DataSourcePage.vue   ← 数据源发现面板
 │   ├── components/
 │   │   ├── LayoutShell.vue      ← 全局布局
-│   │   ├── ForestViewer.vue     ← SVG 渲染 + zoom/pan 交互
+│   │   ├── ForestViewer.vue     ← SVG 渲染 (svg-pan-zoom) + hover/click 交互 + 小地图 + 重置按钮
 │   │   ├── ConflictPanel.vue    ← 冲突列表 + 候选选择
 │   │   ├── SseStatusBar.vue     ← SSE 进度条
 │   │   └── ...
@@ -229,14 +229,38 @@ Task 25: 测试
 
 | 能力 | 状态 |
 |------|------|
-| zoom/pan（滚轮缩放 + 拖拽平移）| ✅ |
+| zoom/pan（svg-pan-zoom 库接管，viewBox 操作）| ✅ |
 | pending 树点击跳转 ConflictsPage | ✅ |
 | 冲突裁决（ConflictsPage 表格单选）| ✅ |
 | SVG 结点属性：`data-tree-node`、`data-tree-pending` | ✅ |
 | 引用边渲染（虚线）| ✅ |
 | `resolved_state` 着色（pending→红、deleted→灰等）| ✅ |
+| 自适应容器宽度（fit + resize）| ✅ |
+| 容器高度匹配缩放后 SVG（无纵向空白）| ✅ |
 
 ### 新增功能
+
+#### 0. ForestViewer 渲染方案
+
+**方案选型**：从 CSS `transform: scale() translate()` 迁移为 `svg-pan-zoom` 库（操作 SVG `viewBox`）。
+
+| 维度 | 旧方案 (CSS transform) | 新方案 (svg-pan-zoom) |
+|------|----------------------|----------------------|
+| 缩放方式 | `transform: scale()` 作用于包裹 div | 直接操作 SVG `viewBox` |
+| 渲染质量 | 非整数倍缩放模糊 | 始终矢量锐利 |
+| 事件坐标 | 需手动换算 | 原生 SVG 坐标系 |
+| 缩放/平移 | 手写 ~100 行 | 库内置 |
+| 自适应容器 | 手写 fitToContainer + ResizeObserver | `fit: true` + `resize()` |
+
+**新增功能**：
+
+- **重置视图按钮**：容器上方工具栏，调用 `fit()` + `center()` 恢复初始状态
+- **小地图**：左上角 180×120px 半透明浮动窗，矩形表示全图区域 + 蓝色视口框
+  - 全图区域矩形：浅灰底 + 边框，标示 SVG viewBox 整体范围
+  - 视口矩形：蓝色半透明，标示当前可见区域
+  - 可点击：点击小地图任意位置 → 主视图 pan 到对应位置
+  - 视口框实时同步主视图的 pan/zoom 状态
+  - 后续可选：用户自定义显示位置或隐藏
 
 #### 1. hover 整链高亮
 

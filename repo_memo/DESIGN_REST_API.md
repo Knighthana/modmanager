@@ -196,6 +196,7 @@ web = [
 | `POST` | `/api/pipeline/visualize` | Forest JSON → SVG/ASCII/DOT 可视化 | JSON |
 | `POST` | `/api/config/save` | 保存 user_config | JSON |
 | `POST` | `/api/database/load` | 从路径加载 database.json | JSON |
+| `POST` | `/api/database/save` | 保存 database（含 managed 校验） | JSON |
 | `POST` | `/api/pipeline/restore` | 从备份恢复文件 | SSE |
 | `POST` | `/api/rules/scan` | 扫描目录列出 kmm_rule 文件 | JSON |
 | `POST` | `/api/rules/read` | 读取单个 kmm_rule 文件内容 | JSON |
@@ -263,6 +264,48 @@ data: {"step":"scan","finished":1,"total":1,"message":"Steam discovery complete"
 event: result
 data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
 ```
+
+#### `POST /api/database/save`
+
+校验 managed 约束后写入 database.json。请求体包含完整 database 字典和目标输出路径。
+
+```json
+// ← Request
+{
+  "database": { /* database dict，含 game[].managed 和 mod[].managed */ },
+  "output_path": "/tmp/modmanager_database_generated.json"
+}
+
+// → 200 (成功)
+{
+  "ok": true,
+  "data": {
+    "path": "/tmp/modmanager_database_generated.json",
+    "database": { /* 清洗后的 database dict——E_DUPLICATE 错误在对应冲突组全部解决后被移除 */ }
+  },
+  "errors": [],
+  "warnings": []
+}
+
+// → 200 (校验失败)
+{
+  "ok": false,
+  "data": null,
+  "errors": [
+    "E_DUPLICATE_APPID: game[3] appid=270150 的 managed=true 与 game[5] 冲突，同一 appid 最多一个 managed=true"
+  ],
+  "warnings": []
+}
+```
+
+**校验规则**：
+- 同一 `appid` 的 game 条目中，最多一个 `managed: true`
+- 同一 `mixed_id` 的 mod 条目中，最多一个 `managed: true`
+- 校验通过后，条件清除已解决的 `E_DUPLICATE_APPID` / `E_DUPLICATE_MIXED_ID` 错误：
+  - 仅当**该类型所有重复组**都恰好有一个 `managed: true` 时才清除对应错误
+  - 未解决的重复组错误保留
+
+**同步语义**：前端在成功响应中获取 `data.database` 覆盖本地 store（见 DESIGN_STORAGE.md §8.5.1）；不应使用请求中的原始 database 更新本地状态。
 
 #### `POST /api/pipeline/compute`
 

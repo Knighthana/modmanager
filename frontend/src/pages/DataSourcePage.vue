@@ -409,11 +409,17 @@ async function doSave(): Promise<boolean> {
     })
 
     if (resp.ok) {
+      // Use the cleaned database returned by the backend
+      const savedDb = (resp.data as { path: string; database: Record<string, unknown> })?.database || db
+
       // Pass database to forest store
-      forestStore.storedDatabase = db
+      forestStore.storedDatabase = savedDb
       forestStore.pipelineForm.manualSteamPath = store.manualPath
       forestStore.pipelineForm.databasePath = ''
       forestStore.dbManualOverride = false
+
+      // Update datasource store so managed values are reflected in local state
+      store.updateDatabase(savedDb)
 
       if (!forestStore.userConfig) {
         await forestStore.loadConfig()
@@ -466,6 +472,7 @@ onBeforeUnmount(() => {
 })
 
 async function onScan() {
+  store.saveToCache()
   await store.scan()
 }
 
