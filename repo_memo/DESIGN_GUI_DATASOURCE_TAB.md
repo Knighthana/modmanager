@@ -6,7 +6,7 @@
 > Purpose: 规定数据源独立选项卡的目标、问题域与设计方向，指导后续 GUI 数据源改造
 > 来源：2026-05-07 用户讨论（数据源独立 + 去重 + 展示 + 暂存）  
 > 依赖：P0-P5 全部已完成（338 Python + 42 前端 tests）  
-> 更新：2026-05-09 — 重写 §3.3 重复 ID 决策（managed 字段 + 进来不管出去合法 + 批量提交）；补充库归属匹配规则（basepath/modpath 前缀匹配）
+> 更新：2026-05-09 — 重写 §3.3 重复 ID 决策（managed 字段 + 进来不管出去合法 + 批量提交）；补充库归属匹配规则（basepath/modpath 前缀匹配）+ MOD 排列顺序（appid+modid 数值序）
 
 ---
 
@@ -138,6 +138,10 @@
 - Mod 条目的"所属库"通过 `path` 前缀匹配 game 的 `modpath` 确定：mod 的 path 必然以所属 game 的 modpath 开头
 - 匹配失败时回退到 `libraryIndex = 0`
 - **禁止**仅凭 `appid` 或 `mixed_id` 做库归属推断——同 ID 可跨库出现，必须用路径前缀匹配
+
+**MOD 排列顺序**：
+- MOD 表条目按 `(appid数值, modid数值, modid字符串)` 三级排序
+- 同 APPID 的 MOD 聚集显示；同 mixed_id 的跨库重复条目相邻，便于 radio 对比选择
 
 **加载时（读入）**：
 - 从 `database.json` 读取 `managed` 字段，直接反映到 radio 状态
