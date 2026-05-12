@@ -37,9 +37,9 @@
               <div
                 v-for="(item, idx) in store.manualPaths"
                 :key="idx"
-                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; min-height: 24px;"
               >
-                <span style="font-family: monospace; font-size: 13px;">{{ item }}</span>
+                <code style="font-size: 13px; line-height: 24px;">{{ item }}</code>
                 <el-button size="small" type="danger" text @click="removeManualPath(idx)">删除</el-button>
               </div>
             </div>
@@ -127,18 +127,6 @@
         </template>
         <el-table :data="store.filteredGames" border stripe size="small">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
-          <el-table-column label="[选]" width="50">
-            <template #default="{ row }: { row: GameRow }">
-              <el-radio
-                v-if="store.duplicateAppids.includes(row.appid)"
-                :model-value="localManagedGames[`game-${row.index}`] === true"
-                :value="true"
-                @change="() => onGameManagedChange(row)"
-              >
-                &nbsp;
-              </el-radio>
-            </template>
-          </el-table-column>
           <el-table-column :label="STR.dataSourcePage.colVis" width="70">
             <template #default="{ row }: { row: GameRow }">
               <el-button
@@ -198,18 +186,6 @@
         </template>
         <el-table :data="store.filteredMods" border stripe size="small">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
-          <el-table-column label="[选]" width="50">
-            <template #default="{ row }: { row: ModRow }">
-              <el-radio
-                v-if="store.duplicateMixedIds.includes(`${row.appid}:${row.modid}`)"
-                :model-value="localManagedMods[`mod-${row.index}`] === true"
-                :value="true"
-                @change="() => onModManagedChange(row)"
-              >
-                &nbsp;
-              </el-radio>
-            </template>
-          </el-table-column>
           <el-table-column :label="STR.dataSourcePage.colModId" width="120" prop="modid" show-overflow-tooltip />
           <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
           <el-table-column :label="STR.dataSourcePage.colBelongingAppid" width="100">

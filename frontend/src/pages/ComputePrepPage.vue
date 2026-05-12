@@ -1,10 +1,11 @@
 <template>
   <div class="compute-prep-page">
+    <h2>计算准备</h2>
     <!-- ── Empty state: no rules selected ────────────────────────────── -->
     <template v-if="noRulesSelected">
       <el-card shadow="never">
         <el-empty description="请先在规则概览选择规则">
-          <router-link to="/rules-overview">[前往规则概览]</router-link>
+          <el-button size="small" text @click="$router.push('/rules-overview')">前往规则概览</el-button>
         </el-empty>
       </el-card>
     </template>
@@ -18,8 +19,6 @@
 
     <!-- ── Main content ─────────────────────────────────────────────── -->
     <template v-else>
-      <h2>计算准备</h2>
-
       <!-- Top action bar -->
       <div class="action-bar">
         <div class="action-buttons">

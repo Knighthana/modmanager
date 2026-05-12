@@ -178,16 +178,17 @@ export const STR = {
   // ── LayoutShell ───────────────────────────────────────────────────────
   layoutShell: {
     title: "🔧 Knighthana's<br/>Mod Manager",
-    navDatasource: '📡 数据源',
+    navDatasource: '📡 数据来源',
     navRulesOverview: '📋 规则概览',
-    navSettings: '⚙️ 设置',
-    navForest: '📊 Forest 可视化',
+    navSettings: '⚙️ 设置面板',
+    navForest: '🌲 森林可视',
     navConflicts: '⚔️ 冲突裁决',
     navOperations: '💾 文件操作',
     navRuleEditor: '✏️ 规则制定',
     navComputePrep: '🧮 计算准备',
     navRules: '📋 规则管理',
     navBackup: '🗄️ 备份恢复',
+    navAdvanced: '🔧 进阶用户',
   },
 
   // ── OperationsPage ────────────────────────────────────────────────────

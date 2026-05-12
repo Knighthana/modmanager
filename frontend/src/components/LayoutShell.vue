@@ -33,7 +33,7 @@
           <span>{{ STR.layoutShell.navSettings }}</span>
         </el-menu-item>
         <el-menu-item index="/advanced">
-          <span>高级</span>
+          <span>{{ STR.layoutShell.navAdvanced }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>

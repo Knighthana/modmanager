@@ -259,8 +259,9 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.text()).toContain('前往设置页管理')
-    const settingsLink = wrapper.find('.router-link-stub')
+    const settingsLink = wrapper.find('.el-btn-stub')
     expect(settingsLink.exists()).toBe(true)
+    expect(settingsLink.text()).toContain('前往设置页管理')
   })
 
   // ── Expand / collapse ────────────────────────────────────────────────
@@ -283,8 +284,9 @@ describe('RulesOverviewPage', () => {
 
     // Find the first expand button and click it
     const expandButtons = wrapper.findAll('.el-btn-stub')
-    expect(expandButtons.length).toBeGreaterThan(0)
-    await expandButtons[0].trigger('click')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
 
@@ -312,7 +314,9 @@ describe('RulesOverviewPage', () => {
 
     // Expand first file
     const expandButtons = wrapper.findAll('.el-btn-stub')
-    await expandButtons[0].trigger('click')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
@@ -341,7 +345,9 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
-    await expandButtons[0].trigger('click')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
@@ -367,7 +373,9 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
-    await expandButtons[0].trigger('click')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
@@ -395,22 +403,26 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
 
     // Expand
-    await expandButtons[0].trigger('click')
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('我的规则集')
 
     // Collapse (click again)
-    await expandButtons[0].trigger('click')
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
 
     // The text should still be in DOM if the detail was cached, but the detail section
     // should be hidden. Actually with v-if, it should be gone from DOM.
     // Let's check: the button text changes from "展开 ▾" to "收起 ▲" and back
-    expect(wrapper.findAll('.el-btn-stub')[0].text()).toContain('展开')
+    const expandBtnAgain = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtnAgain).toBeTruthy()
+    expect(expandBtnAgain!.text()).toContain('展开')
   })
 
   // ── Read error handling ──────────────────────────────────────────────
@@ -435,7 +447,9 @@ describe('RulesOverviewPage', () => {
 
     // Expand first file
     const expandButtons = wrapper.findAll('.el-btn-stub')
-    await expandButtons[0].trigger('click')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
@@ -648,7 +662,9 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
-    await expandButtons[0].trigger('click')
+    const expandBtn = expandButtons.find(b => b.text().includes('展开'))
+    expect(expandBtn).toBeTruthy()
+    await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()

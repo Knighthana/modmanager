@@ -18,6 +18,7 @@
       </el-alert>
 
       <el-form label-width="220px" @submit.prevent>
+        <div class="section-subtitle">基本设置</div>
         <!-- 备份目录前缀 -->
         <el-form-item label="备份目录名前缀">
           <el-input v-model="form.bakprefix" placeholder="kmmbackup_" />
@@ -75,13 +76,13 @@
           <el-input v-model="form.userConfigPath" placeholder="~/.local/share/kmm/user_config.json" />
         </el-form-item>
 
-        <el-divider content-position="left">规则来源</el-divider>
+        <div class="section-subtitle">规则来源</div>
 
         <!-- 规则来源 -->
         <el-form-item label="规则来源">
           <div style="width: 100%;">
             <div style="margin-bottom: 8px; font-size: 13px; color: #888;">
-              目录以 / 结尾，或以 .kmmrule.json 结尾的文件
+              填写目录：自动扫描目录中 <code>.kmmrule.json</code> 文件；填写文件名：单独登记该文件
             </div>
             <div
               v-if="form.ruleSources.length > 0"
@@ -113,7 +114,7 @@
 
         <!-- 保存按钮 -->
         <el-form-item>
-          <el-button type="primary" @click="onSaveConfig" :loading="saving">
+          <el-button type="primary" size="small" @click="onSaveConfig" :loading="saving">
             {{ STR.settingsPage.saveBtn }}
           </el-button>
         </el-form-item>
@@ -237,3 +238,14 @@ function removeRuleSource(idx: number) {
   form.value.ruleSources.splice(idx, 1)
 }
 </script>
+
+<style scoped>
+.section-subtitle {
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+  padding: 8px 0 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e4e7ed;
+}
+</style>
