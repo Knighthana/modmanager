@@ -1,0 +1,130 @@
+{
+  "games": [
+    {
+      "id": "game-001",
+      "name": "Stardew Valley",
+      "path": "/tmp/fixture/stardew_valley",
+      "exe": "StardewValley.exe",
+      "mods": [
+        {
+          "id": "mod-001",
+          "name": "SMAPI",
+          "version": "4.1.0",
+          "path": "/tmp/fixture/stardew_valley/mods/SMAPI",
+          "enabled": true,
+          "category": "framework"
+        },
+        {
+          "id": "mod-002",
+          "name": "UI Info Suite 2",
+          "version": "2.3.1",
+          "path": "/tmp/fixture/stardew_valley/mods/UIInfoSuite2",
+          "enabled": true,
+          "category": "ui"
+        }
+      ]
+    },
+    {
+      "id": "game-002",
+      "name": "Cyberpunk 2077",
+      "path": "/tmp/fixture/cyberpunk2077",
+      "exe": "Cyberpunk2077.exe",
+      "mods": [
+        {
+          "id": "mod-003",
+          "name": "Cyber Engine Tweaks",
+          "version": "1.32.1",
+          "path": "/tmp/fixture/cyberpunk2077/mods/CET",
+          "enabled": true,
+          "category": "framework"
+        },
+        {
+          "id": "mod-004",
+          "name": "Appearance Menu Mod",
+          "version": "2.5.0",
+          "path": "/tmp/fixture/cyberpunk2077/mods/AppearanceMenu",
+          "enabled": false,
+          "category": "ui"
+        }
+      ]
+    },
+    {
+      "id": "game-003",
+      "name": "Skyrim SE",
+      "path": "/tmp/fixture/skyrim_se",
+      "exe": "SkyrimSE.exe",
+      "mods": [
+        {
+          "id": "mod-005",
+          "name": "SKSE64",
+          "version": "2.2.6",
+          "path": "/tmp/fixture/skyrim_se/mods/SKSE64",
+          "enabled": true,
+          "category": "framework"
+        },
+        {
+          "id": "mod-006",
+          "name": "Unofficial Skyrim SE Patch",
+          "version": "4.3.2",
+          "path": "/tmp/fixture/skyrim_se/mods/USSEP",
+          "enabled": true,
+          "category": "patch"
+        }
+      ]
+    },
+    {
+      "id": "game-004",
+      "name": "Factorio",
+      "path": "/tmp/fixture/factorio",
+      "exe": "factorio.exe",
+      "mods": [
+        {
+          "id": "mod-007",
+          "name": "Krastorio 2",
+          "version": "1.4.0",
+          "path": "/tmp/fixture/factorio/mods/Krastorio2",
+          "enabled": true,
+          "category": "overhaul"
+        },
+        {
+          "id": "mod-008",
+          "name": "Space Exploration",
+          "version": "0.6.110",
+          "path": "/tmp/fixture/factorio/mods/SpaceExploration",
+          "enabled": false,
+          "category": "overhaul"
+        }
+      ]
+    },
+    {
+      "id": "game-005",
+      "name": "RimWorld",
+      "path": "/tmp/fixture/rimworld",
+      "exe": "RimWorldWin64.exe",
+      "mods": [
+        {
+          "id": "mod-009",
+          "name": "Harmony",
+          "version": "2.3.1",
+          "path": "/tmp/fixture/rimworld/mods/Harmony",
+          "enabled": true,
+          "category": "framework"
+        },
+        {
+          "id": "mod-010",
+          "name": "RimHUD",
+          "version": "1.15.0",
+          "path": "/tmp/fixture/rimworld/mods/RimHUD",
+          "enabled": true,
+          "category": "ui"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "generated": "2026-05-13T10:00:00Z",
+    "totalGames": 5,
+    "totalMods": 10
+  }
+}

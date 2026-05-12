@@ -1,0 +1,14 @@
+{
+  "user_config": {
+    "bakprefix": "kmmbackup_",
+    "bakignore": ["*.tmp", ".git/"],
+    "database_output_path": "/tmp/modmanager_database_generated.json",
+    "aggregated_ruleset_output_path": "/tmp/aggregated_rule_set.json",
+    "rule_sources": ["/home/user/kmm_rules/", "/home/user/special.kmmrule.json"]
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "discovered": "2026-05-13T10:00:00Z",
+    "source": "mock"
+  }
+}

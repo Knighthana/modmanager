@@ -1,0 +1,67 @@
+{
+  "status": "completed",
+  "started_at": "2026-05-13T10:00:00Z",
+  "finished_at": "2026-05-13T10:00:05Z",
+  "duration_ms": 5230,
+  "steps": [
+    {
+      "name": "scan_games",
+      "status": "completed",
+      "finished_at": "2026-05-13T10:00:01Z",
+      "result": {
+        "games_found": 5,
+        "games_scanned": 5
+      }
+    },
+    {
+      "name": "collect_mods",
+      "status": "completed",
+      "finished_at": "2026-05-13T10:00:02Z",
+      "result": {
+        "mods_found": 10,
+        "mods_enabled": 7,
+        "mods_disabled": 3
+      }
+    },
+    {
+      "name": "check_conflicts",
+      "status": "completed",
+      "finished_at": "2026-05-13T10:00:04Z",
+      "result": {
+        "conflicts_detected": 2,
+        "conflict_details": [
+          {
+            "mod_a": "mod-007",
+            "mod_b": "mod-008",
+            "type": "file_overlap",
+            "files": ["data/core/gameplay.lua", "data/core/balance.lua"],
+            "severity": "warning"
+          },
+          {
+            "mod_a": "mod-001",
+            "mod_b": "mod-002",
+            "type": "dependency",
+            "description": "UI Info Suite 2 requires SMAPI >= 4.0",
+            "severity": "info"
+          }
+        ]
+      }
+    },
+    {
+      "name": "apply_rules",
+      "status": "completed",
+      "finished_at": "2026-05-13T10:00:05Z",
+      "result": {
+        "rules_applied": 8,
+        "resolutions": 0
+      }
+    }
+  ],
+  "summary": {
+    "total_steps": 4,
+    "completed_steps": 4,
+    "failed_steps": 0,
+    "warnings": 1,
+    "errors": 0
+  }
+}

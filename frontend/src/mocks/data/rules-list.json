@@ -1,0 +1,21 @@
+{
+  "files": [
+    {
+      "name": "my_mods.kmmrule.json",
+      "path": "/home/user/kmm_rules/my_mods.kmmrule.json"
+    },
+    {
+      "name": "extra.kmmrule.json",
+      "path": "/home/user/kmm_rules/extra.kmmrule.json"
+    },
+    {
+      "name": "unused.kmmrule.json",
+      "path": "/home/user/kmm_rules/unused.kmmrule.json"
+    }
+  ],
+  "metadata": {
+    "total_files": 3,
+    "scan_paths": ["/home/user/kmm_rules/", "/home/user/special.kmmrule.json"],
+    "scanned_at": "2026-05-13T10:00:00Z"
+  }
+}

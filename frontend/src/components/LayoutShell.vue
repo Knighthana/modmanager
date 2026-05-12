@@ -13,6 +13,9 @@
         <el-menu-item index="/rules-overview">
           <span>{{ STR.layoutShell.navRulesOverview }}</span>
         </el-menu-item>
+        <el-menu-item index="/compute-prep">
+          <span>{{ STR.layoutShell.navComputePrep }}</span>
+        </el-menu-item>
         <el-menu-item index="/forest">
           <span>{{ STR.layoutShell.navForest }}</span>
         </el-menu-item>

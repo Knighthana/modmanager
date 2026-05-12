@@ -1,17 +1,98 @@
 <template>
   <div>
     <h2>{{ STR.settingsPage.title }}</h2>
+
     <el-card shadow="never" style="margin-top: 16px;">
       <el-form label-width="220px" @submit.prevent>
+        <!-- 备份目录前缀 -->
         <el-form-item label="备份目录名前缀">
           <el-input v-model="form.bakprefix" placeholder="kmmbackup_" />
         </el-form-item>
-        <el-form-item label="数据库路径">
-          <el-input v-model="form.databaseOutputPath" placeholder="~/.local/share/kmm/database.json" />
+
+        <!-- 备份忽略模式 -->
+        <el-form-item label="备份忽略模式">
+          <div style="width: 100%;">
+            <div style="margin-bottom: 8px;">
+              <el-button size="small" @click="onAddBakignore">+ 添加模式</el-button>
+              <template v-if="addingBakignore">
+                <el-input
+                  v-model="newBakignore"
+                  placeholder="输入忽略模式"
+                  size="small"
+                  style="width: 200px; margin-left: 8px;"
+                  @keyup.enter="confirmAddBakignore"
+                />
+                <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddBakignore">
+                  确定
+                </el-button>
+                <el-button size="small" @click="cancelAddBakignore">
+                  取消
+                </el-button>
+              </template>
+            </div>
+            <div
+              v-if="form.bakignore.length > 0"
+              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px;"
+            >
+              <div
+                v-for="(item, idx) in form.bakignore"
+                :key="idx"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;"
+              >
+                <span style="font-family: monospace; font-size: 13px;">{{ item }}</span>
+                <el-button size="small" type="danger" text @click="removeBakignore(idx)">删除</el-button>
+              </div>
+            </div>
+          </div>
         </el-form-item>
-        <el-form-item label="聚合规则集输出路径">
-          <el-input v-model="form.aggregatedOutputPath" placeholder="~/.local/share/kmm/aggregated_rule_set.json" />
+
+        <!-- Database 输出路径 -->
+        <el-form-item label="Database 输出路径">
+          <el-input v-model="form.databaseOutputPath" placeholder="/tmp/modmanager_database_generated.json" />
         </el-form-item>
+
+        <!-- Aggregated Rules 输出路径 -->
+        <el-form-item label="Aggregated Rules 输出路径">
+          <el-input v-model="form.aggregatedOutputPath" placeholder="/tmp/aggregated_rule_set.json" />
+        </el-form-item>
+
+        <el-divider content-position="left">规则来源</el-divider>
+
+        <!-- 规则来源 -->
+        <el-form-item label="规则来源">
+          <div style="width: 100%;">
+            <div style="margin-bottom: 8px; font-size: 13px; color: #888;">
+              目录以 / 结尾，或以 .kmmrule.json 结尾的文件
+            </div>
+            <div
+              v-if="form.ruleSources.length > 0"
+              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
+            >
+              <div
+                v-for="(item, idx) in form.ruleSources"
+                :key="idx"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;"
+              >
+                <span style="font-family: monospace; font-size: 13px;">{{ item }}</span>
+                <el-button size="small" type="danger" text @click="removeRuleSource(idx)">删除</el-button>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <el-input
+                v-model="newRuleSource"
+                placeholder="添加来源"
+                size="small"
+                style="width: 300px;"
+                @keyup.enter="confirmAddRuleSource"
+              />
+              <el-button size="small" type="primary" style="margin-left: 8px;" @click="confirmAddRuleSource">
+                添加
+              </el-button>
+            </div>
+          </div>
+        </el-form-item>
+
+        <!-- 保存按钮 -->
         <el-form-item>
           <el-button type="primary" @click="onSaveConfig" :loading="saving">
             {{ STR.settingsPage.saveBtn }}
@@ -19,87 +100,54 @@
         </el-form-item>
       </el-form>
     </el-card>
-
-    <!-- Database JSON（高级，默认折叠） -->
-    <el-card shadow="never" style="margin-top: 16px;">
-      <el-collapse>
-        <el-collapse-item :title="STR.settingsPage.databaseJsonAdvanced">
-          <el-input
-            type="textarea"
-            :rows="12"
-            v-model="databaseJsonText"
-            placeholder="Database JSON 内容..."
-          />
-          <el-button
-            type="success"
-            style="margin-top: 8px;"
-            @click="onSaveDatabaseJson"
-            :loading="savingDb"
-          >
-            💾 保存到后端
-          </el-button>
-        </el-collapse-item>
-      </el-collapse>
-    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
-import { useDataSourceStore } from '../stores/datasource'
 import { STR } from '../locales/zh-CN'
 
-const dsStore = useDataSourceStore()
+interface SettingsForm {
+  bakprefix: string
+  bakignore: string[]
+  databaseOutputPath: string
+  aggregatedOutputPath: string
+  ruleSources: string[]
+}
 
-const form = ref({
+const form = ref<SettingsForm>({
   bakprefix: 'kmmbackup_',
+  bakignore: [],
   databaseOutputPath: '',
   aggregatedOutputPath: '',
+  ruleSources: [],
 })
+
 const saving = ref(false)
 
-// Database JSON（从 datasource store 重建）
-const databaseJsonText = computed({
-  get: () => {
-    const db = {
-      steamlib: dsStore.libraries.map(l => ({
-        path: l.path,
-        game: dsStore.games.filter(g => g.libraryIndex === l.index).map(g => g.appid),
-      })),
-      game: dsStore.games.map(g => ({
-        appid: g.appid,
-        name: g.name,
-        basepath: g.basepath,
-        modpath: g.modpath,
-        mods_found: [],
-        managed: g.managed,
-      })),
-      mod: dsStore.mods.map(m => ({
-        mixed_id: `${m.appid}:${m.modid}`,
-        path: m.path,
-        managed: m.managed,
-      })),
-      warnings: dsStore.warnings,
-      errors: dsStore.errors,
-      history: [],
-    }
-    return JSON.stringify(db, null, 2)
-  },
-  set: () => {},
-})
-const savingDb = ref(false)
+// bakignore add state
+const addingBakignore = ref(false)
+const newBakignore = ref('')
+
+// rule source add state
+const newRuleSource = ref('')
 
 onMounted(async () => {
   try {
-    const result = await apiPost<Record<string, unknown>>('/api/config/discover', {})
+    const result = await apiPost<{ user_config: Record<string, unknown> }>('/api/config/discover', {})
     if (result.ok && result.data) {
-      form.value.bakprefix = (result.data.bakprefix as string) || 'kmmbackup_'
-      form.value.databaseOutputPath = (result.data.database_output_path as string) || ''
-      form.value.aggregatedOutputPath = (result.data.aggregated_ruleset_output_path as string) || ''
+      const uc = result.data.user_config || {}
+      form.value.bakprefix = (uc.bakprefix as string) || 'kmmbackup_'
+      form.value.bakignore = (uc.bakignore as string[]) || []
+      form.value.databaseOutputPath = (uc.database_output_path as string) || ''
+      form.value.aggregatedOutputPath = (uc.aggregated_ruleset_output_path as string) || ''
+      form.value.ruleSources = (uc.rule_sources as string[]) || []
     }
-  } catch { /* 加载失败忽略 */ }
+  } catch {
+    // 加载失败忽略
+  }
 })
 
 async function onSaveConfig() {
@@ -109,8 +157,10 @@ async function onSaveConfig() {
       output_path: null,
       config: {
         bakprefix: form.value.bakprefix,
+        bakignore: form.value.bakignore,
         database_output_path: form.value.databaseOutputPath || null,
         aggregated_ruleset_output_path: form.value.aggregatedOutputPath || null,
+        rule_sources: form.value.ruleSources,
       },
     })
     if (result.ok) {
@@ -125,22 +175,42 @@ async function onSaveConfig() {
   }
 }
 
-async function onSaveDatabaseJson() {
-  savingDb.value = true
-  try {
-    const db = JSON.parse(databaseJsonText.value)
-    const result = await apiPost('/api/database/save', {
-      database: db,
-    })
-    if (result.ok) {
-      ElMessage.success('Database JSON 已同步到后端')
-    } else {
-      ElMessage.error(result.errors?.[0] || '同步失败')
-    }
-  } catch (e) {
-    ElMessage.error('JSON 格式错误')
-  } finally {
-    savingDb.value = false
+// ── bakignore management ──
+
+function onAddBakignore() {
+  addingBakignore.value = true
+  newBakignore.value = ''
+}
+
+function confirmAddBakignore() {
+  const val = newBakignore.value.trim()
+  if (val) {
+    form.value.bakignore.push(val)
   }
+  addingBakignore.value = false
+  newBakignore.value = ''
+}
+
+function cancelAddBakignore() {
+  addingBakignore.value = false
+  newBakignore.value = ''
+}
+
+function removeBakignore(idx: number) {
+  form.value.bakignore.splice(idx, 1)
+}
+
+// ── rule sources management ──
+
+function confirmAddRuleSource() {
+  const val = newRuleSource.value.trim()
+  if (val) {
+    form.value.ruleSources.push(val)
+  }
+  newRuleSource.value = ''
+}
+
+function removeRuleSource(idx: number) {
+  form.value.ruleSources.splice(idx, 1)
 }
 </script>

@@ -37,6 +37,11 @@ const routes = [
     name: 'rule-editor',
     component: () => import('../pages/RuleEditorPage.vue'),
   },
+  {
+    path: '/compute-prep',
+    name: 'compute-prep',
+    component: () => import('../pages/ComputePrepPage.vue'),
+  },
 ]
 
 export const router = createRouter({
