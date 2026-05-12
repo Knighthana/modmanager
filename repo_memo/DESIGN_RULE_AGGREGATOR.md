@@ -5,14 +5,14 @@
 > Read-Tier: task-scoped
 > Purpose: 定义多份 kmm_rule 聚合为 aggregated_rule_set 的规则、边界与输入输出契约
 
-更新时间：2026-04-30
+更新时间：2026-04-30 | 2026-05-13 — 命名约定从 `kmm_rule_*.json` 改为 `*.kmmrule.json`
 实现状态：已落地并持续生效
 
 ---
 
 ## 1. 定位
 
-聚合器是一个与 M1 引擎**逻辑独立**的模块，负责将多份 `kmm_rule_*.json` 文件合并为单份 `aggregated_rule_set.json`，供 M1 引擎消费。
+聚合器是一个与 M1 引擎**逻辑独立**的模块，负责将多份 `*.kmmrule.json` 文件合并为单份 `aggregated_rule_set.json`，供 M1 引擎消费。
 
 - **输入**：多份 kmm_rule JSON 文件 + `user_config.json`（bootstrap 传入的确定路径）+ 可选的 `action_order` 映射 + 可选的 `sidecar_ref` 注入映射
 - **输出**：`aggregated_rule_set`（内存对象，可选写文件）

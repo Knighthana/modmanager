@@ -187,19 +187,26 @@ web = [
 | 方法 | 路径 | 说明 | 响应类型 |
 |------|------|------|----------|
 | `GET` | `/api/health` | 健康检查 | JSON |
-| `POST` | `/api/config/discover` | discover_user_config | JSON |
-| `POST` | `/api/database/generate` | generate_database（SSE 进度） | SSE |
-| `POST` | `/api/pipeline/compute` | 聚合 + 计算映射（SSE） | SSE |
-| `POST` | `/api/pipeline/backup` | 差异备份（SSE） | SSE |
-| `POST` | `/api/pipeline/apply` | 应用替换（SSE） | SSE |
-| `POST` | `/api/pipeline/run` | 全流水线（SSE） | SSE |
-| `POST` | `/api/pipeline/visualize` | Forest JSON → SVG/ASCII/DOT 可视化 | JSON |
-| `POST` | `/api/config/save` | 保存 user_config | JSON |
+| `POST` | `/api/config/discover` | 加载 user_config.json | JSON |
+| `POST` | `/api/config/save` | 保存 user_config（含 rule_sources 路径归一化） | JSON |
+| `POST` | `/api/database/generate` | 扫描 Steam 库生成 database.json（纯数据，无 managed） | SSE |
 | `POST` | `/api/database/load` | 从路径加载 database.json | JSON |
-| `POST` | `/api/database/save` | 保存 database（含 managed 校验） | JSON |
+| `POST` | `/api/database/save` | 保存 database（移除 managed 校验；用于高级页编辑） | JSON |
+| `POST` | `/api/pipeline/compute` | 聚合 + 计算映射；接收可选 managed_entries | SSE |
+| `POST` | `/api/pipeline/backup` | 差异备份 | SSE |
+| `POST` | `/api/pipeline/apply` | 应用替换 | SSE |
+| `POST` | `/api/pipeline/run` | 全流水线（聚合→计算→备份→应用） | SSE |
 | `POST` | `/api/pipeline/restore` | 从备份恢复文件 | SSE |
-| `POST` | `/api/rules/scan` | 扫描目录列出 kmm_rule 文件 | JSON |
-| `POST` | `/api/rules/read` | 读取单个 kmm_rule 文件内容 | JSON |
+| `POST` | `/api/pipeline/visualize` | Forest JSON → SVG 可视化 | JSON |
+| `POST` | `/api/rules/scan` | 扫描目录列出 `*.kmmrule.json` 文件 | JSON |
+| `POST` | `/api/rules/read` | 读取单个 kmmrule 文件内容 | JSON |
+| `POST` | `/api/rules/aggregate` | 【新】聚合选定规则文件 → aggregated_rule_set.json | SSE |
+| `POST` | `/api/rules/affected-entries` | 【新】查询聚合规则影响的 game/mod（供计算准备页） | JSON |
+| `POST` | `/api/rules/load-aggregated` | 【新】加载 aggregated_rule_set.json 原文（供高级页） | JSON |
+| `GET` | `/api/workspace/status` | 【新】获取 workspace.json 全部内容 | JSON |
+| `POST` | `/api/workspace/save-inputs` | 【新】更新 workspace inputs | JSON |
+| `POST` | `/api/workspace/save-decisions` | 【新】保存 branch_decisions | JSON |
+| `POST` | `/api/workspace/save-results` | 【新】保存 compute 结果摘要 + inputs_hash | JSON |
 | `POST` | `/api/backups/list` | 列出备份目录摘要 | JSON |
 | `POST` | `/api/backups/inspect` | 查看备份详情 | JSON |
 

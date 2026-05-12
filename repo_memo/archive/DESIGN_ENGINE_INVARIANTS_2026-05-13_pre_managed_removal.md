@@ -5,7 +5,6 @@
 > Read-Tier: always
 > Purpose: 冻结引擎输出与运行时必须满足的不变量，作为 engine 修改的硬约束
 > 更新：2026-05-09 — 新增扫描器错误码 E_DUPLICATE_APPID / E_DUPLICATE_MIXED_ID
-> 更新：2026-05-13 — 移除 managed 过滤行为（迁移至 orchestrator + workspace）；engine 不再承担重复条目过滤职责
 
 > 来源：repo_logs/2026-04-21_M1_EXECUTION_CONTRACT.md，经 P0 后更新
 
@@ -19,7 +18,6 @@
 - 文件级环检测：基于具体文件链路，mod 级依赖环不直接判错；检测到环时产生告警 `W_FOREST_CYCLE_DETECTED`
 - 森林允许分枝，分枝需告警（`W_FOREST_BRANCHING`）并等待用户决策
 - 同输入同输出（确定性）
-- engine 接收的 `database` 参数为**已过滤的纯数据**（不含 managed 标记，不含重复条目）。过滤职责由 orchestrator 承担（详见 `DESIGN_WORKSPACE_STATE.md` §6）
 
 ## 路径约定
 - workingpathstyle 与 steamlibpathstyle 不一致时，先统一路径风格再参与计算
@@ -35,23 +33,20 @@
 - `W_MISSING_INTO` — into 列表缺失或为空，跳过
 - `W_MISSING_FROM` — from 列表缺失或为空（非 delete），跳过
 
-## 错误码清单（扫描器产生）
+## 错误码清单（扫描器 / 数据库产生）
 
 以下错误码由 `database_ops.py` 在扫描过程中产生，非引擎产生：
 
-- `E_DUPLICATE_APPID` — 同一 appid 在多个 Steam 库中被发现，存在重复的 game 条目。重复条目全部保留在 database.json 中，用户通过 workspace.managed_entries 解决冲突
-- `E_DUPLICATE_MIXED_ID` — 同一 mixed_id（appid:modid）在数据库中存在多个条目。同上，通过 workspace.managed_entries 解决
+- `E_DUPLICATE_APPID` — 同一 appid 在多个 Steam 库中被发现，存在重复的 game 条目。用户必须通过 `managed` 标记解决冲突
+- `E_DUPLICATE_MIXED_ID` — 同一 mixed_id（appid:modid）在数据库中存在多个条目。用户必须通过 `managed` 标记解决冲突
 
-## 重复条目过滤（orchestrator 职责，非 engine）
+## managed 过滤行为
 
-`validate_database()` 不再包含 managed 过滤逻辑。engine 假设接收到的 database 已经过 orchestrator 过滤。
+`validate_database()` 在处理 game 条目的 appid 唯一性时，遵循以下规则：
 
-orchestrator 过滤规则：
-1. 若 `compute` 请求中包含 `managed_entries` → 按列表过滤：
-   - 对 `game[]`：若某 appid 在 managed_entries.game 中 → 仅保留 `basepath` 在列表中的条目
-   - 对 `mod[]`：若某 mixed_id 在 managed_entries.mod 中 → 仅保留 `path` 在列表中的条目
-2. 若某 appid/mixed_id 不在 managed_entries 中 → 保留全部（用户未干预）
-3. 若无 managed_entries → database 原样传入 engine
-4. 过滤后的 database 传入 `compute_mapping`
+1. 遍历所有 game，检测是否存在任何一个 `managed: true` 条目
+2. 若存在 → **仅对 `managed: true` 的条目检查 appid 唯一性**；`managed: false` 的条目跳过唯一性检查
+3. 若不存在（旧数据库 / 首次扫描）→ 对所有条目检查唯一性（向后兼容）
+4. 无论 managed 值如何，`basepath` 和 `modpath` 的类型/非空检查始终执行
 
-此规则确保 engine 无需理解 managed 语义，仅处理已去重的数据。
+此行为确保"流水线下游仅消费 managed: true 的条目"（DESIGN_STORAGE.md §6）这一约束在验证阶段即被贯彻。

@@ -7,7 +7,6 @@
 > 来源：2026-05-07 用户讨论（数据源独立 + 去重 + 展示 + 暂存）  
 > 依赖：P0-P5 全部已完成（338 Python + 42 前端 tests）  
 > 更新：2026-05-09 — 重写 §3.3 重复 ID 决策（managed 字段 + 进来不管出去合法 + 批量提交）；补充库归属匹配规则（basepath/modpath 前缀匹配）+ MOD 排列顺序（appid+modid 数值序）+ TODO-19 视觉提示规定
-> 更新：2026-05-13 — 重写 §3.3：managed 决策从 DataSourcePage 完全移除。重复条目纯展示，不做裁决。预选移至计算准备页（checkbox + managed_entries 作为 compute 参数）
 
 ---
 
@@ -124,24 +123,57 @@
 
 偏好存入 persistence（跨 tab 暂存，与 TODO-1 生命周期一致）。
 
-### 3.3 重复条目——纯展示，不做裁决
+### 3.3 重复 ID 决策（managed + radio）
 
-**原则**：DataSourcePage 仅展示扫描结果。对重复 appid/mixed_id 条目不提供 radio、不提供"确认"按钮、不做任何用户决策。
+**原则**：进来不管，出去必须合法。
 
-**行为**：
-- database.json 中所有重复条目**全部展示**在表格中
-- 重复条目不额外高亮、不标记——DataPage 是客观数据展示，不引入"待决策"语义
-- 重复条目的取舍在**计算准备页**完成（通过 checkbox 可选预选，见 `DESIGN_COMPUTE_PREP_PAGE.md`）
-- 若用户不做任何预选，engine 自行处理重复条目（产生 branching 由 ConflictsPage 裁决）
+**数据模型**：
+- 每个 `game` 条目有 `managed: boolean` 字段
+- 每个 `mod` 条目有 `managed: boolean` 字段
+- 同 `appid` 的 game 条目中，最多一个 `managed: true`
+- 同 `mixed_id` 的 mod 条目中，最多一个 `managed: true`
 
-**库归属匹配**（不变）：
-- Game 条目的"所属库"通过 `basepath` 前缀匹配 `steamlib[].path` 确定
-- Mod 条目的"所属库"通过 `path` 前缀匹配 game 的 `modpath` 确定
+**库归属匹配**：
+- Game 条目的"所属库"通过 `basepath` 前缀匹配 `steamlib[].path` 确定：game 的 basepath 必然以所属 steamlib 的 path 开头
+- Mod 条目的"所属库"通过 `path` 前缀匹配 game 的 `modpath` 确定：mod 的 path 必然以所属 game 的 modpath 开头
 - 匹配失败时回退到 `libraryIndex = 0`
-- **禁止**仅凭 `appid` 或 `mixed_id` 做库归属推断
+- **禁止**仅凭 `appid` 或 `mixed_id` 做库归属推断——同 ID 可跨库出现，必须用路径前缀匹配
 
-**MOD 排列顺序**（不变）：
+**MOD 排列顺序**：
 - MOD 表条目按 `(appid数值, modid数值, modid字符串)` 三级排序
+- 同 APPID 的 MOD 聚集显示；同 mixed_id 的跨库重复条目相邻，便于 radio 对比选择
+
+**加载时（读入）**：
+- 从 `database.json` 读取 `managed` 字段，直接反映到 radio 状态
+- 无重复 appid/mixed_id 的条目在扫描后自动设为 `managed: true`，前端 radio 默认选中
+- 不做合法性校验——允许多个同名的 `managed: true` 并存（前端如实展示）
+- radio 仅展示状态，不做即时写入
+
+**编辑时**：
+- 用户点击 radio 切换 `managed` 状态，仅改变前端本地状态
+- Game 表的 radio 和 Mod 表的 radio **各自独立**，不共用 v-model
+- `managed: false` 的条目仍正常显示，只是 radio 为 unchecked
+- 重复组中任一 radio 被选中时，同组其他 radio 自动变为 unchecked（前端本地互斥）
+
+**离开时（写出）**：
+- 点击"确认并进入规则概览"按钮
+- 收集当前所有条目的 `managed` 状态
+- 调用 `POST /api/database/save`，后端校验：
+  - 同 appid 最多一个 `managed: true`
+  - 同 mixed_id 最多一个 `managed: true`
+- 校验通过 → 写入 `database.json` → 导航到规则概览页
+- 校验失败 → 返回具体错误列表，**逐条平铺展示**（不计数），用户修正后重试
+
+**错误展示**：
+- 错误和警告**逐条平铺**，不显示计数
+- 每条错误/警告包含完整描述，用户可直接定位问题
+
+**重复条目视觉提示（TODO-19）**：
+- 存在重复 appid 或 mixed_id 的表格行，应提供**明显的视觉提示**（如高亮背景色、边框标记），使用户快速定位待决策条目
+- 所有同组重复冲突解决后（每组最多一个 `managed: true`），视觉提示自动消除
+- 视觉提示的颜色/样式应与普通错误/警告区分——它是"待决策"而非"已出错"
+
+**管道消费**：`compute_mapping` 入口处的 `validate_database` 对 appid 唯一性检查遵循 managed 过滤规则——若数据库中存在任何 `managed: true` 条目，则仅对 managed=true 的条目检查唯一性；非 managed 条目的路径字段（basepath、modpath）仍正常校验。
 
 ---
 
