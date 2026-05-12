@@ -13,4 +13,5 @@ __all__ = [
     "forest_visual",
     "bootstrap",
     "orchestrator",
+    "workspace",
 ]

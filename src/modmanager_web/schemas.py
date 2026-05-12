@@ -60,8 +60,8 @@ class GenerateDatabaseRequest(BaseModel):
 class SaveDatabaseRequest(BaseModel):
     """Request body for ``POST /api/database/save``.
 
-    Receives the full database dict with managed fields applied,
-    validates managed constraints, and writes to output_path.
+    Receives the full database dict (without managed fields)
+    and writes to output_path.
     """
 
     database: dict[str, Any]
@@ -79,6 +79,7 @@ class ComputeRequest(BaseModel):
     user_config_path: str
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
+    managed_entries: dict | None = None
 
 
 class BackupRequest(BaseModel):
@@ -109,6 +110,7 @@ class RunRequest(BaseModel):
     backup_dir: str | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
+    managed_entries: dict | None = None
     dry_run: bool = False
 
 
@@ -136,6 +138,18 @@ class RulesReadRequest(BaseModel):
     path: str
 
 
+class RulesAggregateRequest(BaseModel):
+    """Request body for ``POST /api/rules/aggregate``."""
+
+    paths: list[str]
+
+
+class RulesAffectedEntriesRequest(BaseModel):
+    """Request body for ``POST /api/rules/affected-entries``."""
+
+    aggregated_rule_path: str
+
+
 # ── Backups endpoints ─────────────────────────────────────────────────────
 
 
@@ -156,3 +170,37 @@ class RestoreRequest(BaseModel):
 
     backup_dir: str
     target_files: list[str] | None = None
+
+
+# ── Workspace endpoints ───────────────────────────────────────────────────
+
+
+class SaveInputsRequest(BaseModel):
+    """Request body for ``POST /api/workspace/save-inputs``.
+
+    All fields are optional — only provided keys are merged into workspace inputs.
+    """
+
+    database_path: str | None = None
+    rule_paths: list[str] | None = None
+    aggregated_rule_path: str | None = None
+    user_config_path: str | None = None
+    discovery_mode: str | None = None
+    discovery_manual_paths: list[str] | None = None
+
+
+class SaveDecisionsRequest(BaseModel):
+    """Request body for ``POST /api/workspace/save-decisions``."""
+
+    branch_decisions: dict[str, str] | None = None
+
+
+class SaveResultsRequest(BaseModel):
+    """Request body for ``POST /api/workspace/save-results``."""
+
+    trees_count: int | None = None
+    mapping_count: int | None = None
+    warnings: list[str] | None = None
+    errors: list[str] | None = None
+    stats: dict[str, Any] | None = None
+    inputs_hash: str | None = None

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter
 from modmanager.bootstrap import discover_user_config
@@ -27,6 +29,27 @@ async def discover_config(req: DiscoverUserConfigRequest):
         return adapt_error(str(exc))
 
 
+def _normalize_rule_sources(config: dict[str, Any]) -> dict[str, Any]:
+    """Normalize ``rule_sources`` paths in *config*.
+
+    If a rule source path is an existing directory and does not end with ``/``,
+    append ``/``.  This ensures downstream consumers can distinguish directory
+    paths from file paths.
+    """
+    rule_sources = config.get("rule_sources")
+    if not isinstance(rule_sources, list):
+        return config
+
+    normalized: list[Any] = []
+    for item in rule_sources:
+        if isinstance(item, str):
+            if os.path.isdir(item) and not item.endswith("/"):
+                item = item + "/"
+        normalized.append(item)
+    config["rule_sources"] = normalized
+    return config
+
+
 @router.post("/save")
 async def save_config(req: SaveConfigRequest):
     """Save a user_config dict to a file.
@@ -34,8 +57,9 @@ async def save_config(req: SaveConfigRequest):
     Returns an ``ApiResponse`` with the saved path on success.
     """
     try:
+        normalized_config = _normalize_rule_sources(req.config)
         output_path = str(Path(req.output_path).expanduser().resolve())
-        write_json_file(output_path, req.config)
+        write_json_file(output_path, normalized_config)
         return adapt_dict_result({"saved": output_path})
     except Exception as exc:
         return adapt_error(str(exc))

@@ -1,6 +1,6 @@
-"""Rules routes — ``POST /api/rules/scan`` and ``POST /api/rules/read`` (read-only).
+"""Rules routes — scan / read / aggregate / affected-entries / load-aggregated.
 
-Both endpoints operate on the local file system and return simple JSON
+All endpoints operate on the local file system and return simple JSON
 responses wrapped in the standard ``ApiResponse`` envelope.
 """
 
@@ -11,17 +11,24 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
+from modmanager.iojson import load_json_file
 from modmanager.path_resolver import resolve_directory_path, resolve_file_path
+from modmanager.rule_aggregator import aggregate as rule_aggregate
 
 from ..adapters import adapt_dict_result, adapt_error
-from ..schemas import RulesScanRequest, RulesReadRequest
+from ..schemas import (
+    RulesAffectedEntriesRequest,
+    RulesAggregateRequest,
+    RulesReadRequest,
+    RulesScanRequest,
+)
 
 router = APIRouter()
 
 
 @router.post("/scan")
 async def rules_scan(req: RulesScanRequest):
-    """List ``.json`` files in *dir* (non-recursive).
+    """List ``*.kmmrule.json`` files in *dir* (non-recursive).
 
     Returns an ``ApiResponse`` with ``{ files: [{ name, path, size }] }``.
     """
@@ -42,7 +49,7 @@ async def rules_scan(req: RulesScanRequest):
 
     files: list[dict] = []
     for name in sorted(entries):
-        if not name.endswith(".json"):
+        if not name.endswith(".kmmrule.json"):
             continue
         full_path = str(Path(scan_dir) / name)
         try:
@@ -86,3 +93,210 @@ async def rules_read(req: RulesReadRequest):
         })
     except (OSError, UnicodeDecodeError) as exc:
         return adapt_error(f"cannot read file: {file_path}: {exc}")
+
+
+@router.post("/aggregate")
+async def rules_aggregate(req: RulesAggregateRequest):
+    """Aggregate multiple kmm_rule files into a single aggregated_rule_set.
+
+    Accepts ``{ paths: [文件路径列表] }``.  The result is written to the
+    aggregated rule set path (derived from workspace or default) and returned.
+
+    Returns an ``ApiResponse`` with the aggregated rule set dict.
+    """
+    if not req.paths:
+        return adapt_error("paths list is required and must not be empty")
+
+    try:
+        # Try to get aggregated_rule_path from workspace
+        from modmanager.workspace import load_workspace
+        workspace = load_workspace()
+        output_path = workspace.get("inputs", {}).get("aggregated_rule_path", "")
+        if not output_path:
+            # Fallback to a sensible default
+            output_path = "aggregated_rule_set.json"
+    except Exception:
+        output_path = "aggregated_rule_set.json"
+
+    # We need a user_config_path for aggregate() — use the one from workspace or
+    # let the caller provide it inside the rule paths (first rule file's dir).
+    # For simplicity, try workspace first, then fall back to empty string
+    # (which will cause aggregate to fail gracefully).
+    try:
+        user_config_path = workspace.get("inputs", {}).get("user_config_path", "")
+    except Exception:
+        user_config_path = ""
+
+    result, errors, warnings = rule_aggregate(
+        req.paths,
+        user_config_path,
+        output_path=output_path,
+    )
+
+    if errors:
+        return {
+            "ok": False,
+            "data": None,
+            "errors": errors,
+            "warnings": warnings,
+        }
+
+    return {
+        "ok": True,
+        "data": result,
+        "errors": [],
+        "warnings": warnings,
+    }
+
+
+@router.post("/affected-entries")
+async def rules_affected_entries(req: RulesAffectedEntriesRequest):
+    """Query the database for game/mod entries referenced by an aggregated rule set.
+
+    Accepts ``{ aggregated_rule_path }``. Loads the aggregated rule set together
+    with the database, and returns libraries/games/mods entries with
+    ``libraryIndex`` and ``has_duplicate`` markers.
+    """
+    if not req.aggregated_rule_path:
+        return adapt_error("aggregated_rule_path is required")
+
+    try:
+        # Load aggregated rule set
+        agg_rules = load_json_file(req.aggregated_rule_path)
+    except Exception as exc:
+        return adapt_error(f"failed to load aggregated rule set: {exc}")
+
+    # Load database — try workspace path first, then fallback
+    try:
+        from modmanager.workspace import load_workspace
+        workspace = load_workspace()
+        db_path = workspace.get("inputs", {}).get("database_path", "")
+        if db_path:
+            from modmanager.iojson import load_json_file as ljf
+            database = ljf(db_path)
+        else:
+            database = {"steamlib": [], "game": [], "mod": []}
+    except Exception:
+        database = {"steamlib": [], "game": [], "mod": []}
+
+    # Extract referenced mixed_ids from the aggregated rule set
+    referenced_mixed_ids: set[str] = set()
+    for op in agg_rules.get("operation", []):
+        mid = op.get("mixed_id", "")
+        if mid:
+            referenced_mixed_ids.add(mid)
+
+    # Build library index: basepath → steamlib index
+    steamlib_list = database.get("steamlib", []) or []
+    basepath_to_lib_idx: dict[str, int] = {}
+    for idx, lib in enumerate(steamlib_list):
+        bp = lib.get("path", "")
+        if bp:
+            basepath_to_lib_idx[bp] = idx
+
+    # Collect libraries
+    libraries: list[dict] = []
+    lib_indices_used: set[int] = set()
+
+    # Process games
+    games_list = database.get("game", []) or []
+    game_appid_counts: dict[str, int] = {}
+    for g in games_list:
+        appid = str(g.get("appid", ""))
+        if appid:
+            game_appid_counts[appid] = game_appid_counts.get(appid, 0) + 1
+
+    games_out: list[dict] = []
+    for g in games_list:
+        appid = str(g.get("appid", ""))
+        basepath = g.get("basepath", "")
+        lib_idx = basepath_to_lib_idx.get(basepath, -1)
+        if lib_idx >= 0:
+            lib_indices_used.add(lib_idx)
+        games_out.append({
+            "appid": appid,
+            "name": g.get("name", ""),
+            "basepath": basepath,
+            "libraryIndex": lib_idx,
+            "has_duplicate": game_appid_counts.get(appid, 0) > 1,
+        })
+
+    # Process mods
+    mods_list = database.get("mod", []) or []
+    mod_mixed_id_counts: dict[str, int] = {}
+    for m in mods_list:
+        mid = str(m.get("mixed_id", ""))
+        if mid:
+            mod_mixed_id_counts[mid] = mod_mixed_id_counts.get(mid, 0) + 1
+
+    mods_out: list[dict] = []
+    for m in mods_list:
+        mixed_id = str(m.get("mixed_id", ""))
+        # Find the game for this mod to get libraryIndex
+        game_appid = mixed_id.split(":")[0] if ":" in mixed_id else ""
+        game_entry = None
+        for g in database.get("game", []):
+            if str(g.get("appid", "")) == game_appid:
+                game_entry = g
+                break
+        game_idx = -1
+        if game_entry:
+            for idx, g in enumerate(database.get("game", [])):
+                if g is game_entry:
+                    game_idx = idx
+                    break
+        basepath = game_entry.get("basepath", "") if game_entry else ""
+        lib_idx = basepath_to_lib_idx.get(basepath, -1)
+        if lib_idx >= 0:
+            lib_indices_used.add(lib_idx)
+        mods_out.append({
+            "mixed_id": mixed_id,
+            "nickname": m.get("nickname", ""),
+            "path": m.get("path", ""),
+            "libraryIndex": lib_idx,
+            "gameIndex": game_idx,
+            "has_duplicate": mod_mixed_id_counts.get(mixed_id, 0) > 1,
+        })
+
+    # Build library list (only libraries that have referenced entries)
+    for idx, lib in enumerate(steamlib_list):
+        if idx in lib_indices_used:
+            lib_path = lib.get("path", "")
+            game_count = sum(1 for g in games_out if g["libraryIndex"] == idx)
+            mod_count = sum(1 for m in mods_out if m["libraryIndex"] == idx)
+            libraries.append({
+                "index": idx,
+                "path": lib_path,
+                "game_count": game_count,
+                "mod_count": mod_count,
+            })
+
+    return {
+        "ok": True,
+        "data": {
+            "libraries": libraries,
+            "games": games_out,
+            "mods": mods_out,
+        },
+        "errors": [],
+        "warnings": [],
+    }
+
+
+@router.post("/load-aggregated")
+async def rules_load_aggregated(req: RulesReadRequest):
+    """Load and return the raw content of an aggregated_rule_set.json file.
+
+    Accepts ``{ path }`` — returns the full file content for advanced viewing.
+    """
+    if not req.path:
+        return adapt_error("path is required")
+
+    try:
+        file_path = resolve_file_path(req.path, Path(req.path).name)
+        data = load_json_file(file_path)
+        return adapt_dict_result(data)
+    except (FileNotFoundError, IsADirectoryError, ValueError) as exc:
+        return adapt_error(str(exc))
+    except Exception as exc:
+        return adapt_error(f"cannot load aggregated rule set: {exc}")

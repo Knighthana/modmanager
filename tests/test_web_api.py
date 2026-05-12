@@ -165,12 +165,11 @@ class TestGenerateDatabase:
 
         def fake_generate(**kwargs):
             captured_kwargs.update(kwargs)
-            # Return minimal valid database
+            # Return minimal valid database (no managed/warnings/errors)
             return {
                 "steamlib": [{"path": "/manual/steamapps", "contains_libraryfolders_vdf": False, "game": []}],
                 "game": [],
                 "mod": [],
-                "warnings": [],
             }
 
         monkeypatch.setattr(
@@ -208,8 +207,6 @@ class TestGenerateDatabase:
                     },
                 ],
                 "mod": [],
-                "warnings": [],
-                "errors": ["E_DUPLICATE_APPID: appid 270150 found in multiple libraries: /lib1/steamapps/common/RWR and /lib2/steamapps/common/RWR"],
             }
 
         monkeypatch.setattr(
@@ -227,14 +224,6 @@ class TestGenerateDatabase:
         assert len(result_events) == 1
         data = result_events[0]["data"]
         assert data["ok"] is True
-        # Errors in the response should include the duplicate appid error
-        result_errors = data.get("errors", []) or []
-        # Also check if the database data has errors embedded
-        db_errors = data.get("data", {}).get("errors", []) or []
-        all_errors = result_errors + db_errors
-        assert any("E_DUPLICATE_APPID" in w for w in all_errors), (
-            f"Expected E_DUPLICATE_APPID in errors, got {all_errors}"
-        )
 
     def test_generate_database_invalid_mode(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
@@ -317,6 +306,48 @@ class TestComputePipeline:
         assert result_events[0]["data"]["ok"] is True
         assert "trees" in result_events[0]["data"]["data"]
 
+    def test_compute_with_managed_entries(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """managed_entries is passed through to orchestrator compute()."""
+        captured_kwargs: dict = {}
+
+        def fake_compute(**kwargs):
+            captured_kwargs.update(kwargs)
+            if kwargs.get("on_progress"):
+                kwargs["on_progress"]("aggregate", 1, 1, "Done")
+                kwargs["on_progress"]("compute", 1, 1, "Done")
+            return PipelineResult(
+                ok=True,
+                trees=[],
+                final_mapping=[],
+                mapping_result={},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+        )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
+
+        managed_entries = {
+            "game": {"270150": ["/path/a/"]},
+            "mod": {"270150:123": ["/mod/path/"]},
+        }
+
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": {"steamlib": []},
+                "kmm_rule_paths": ["/fake/rules.json"],
+                "user_config_path": "/fake/user_config.json",
+                "managed_entries": managed_entries,
+            },
+        )
+        assert resp.status_code == 200
+        assert captured_kwargs.get("managed_entries") == managed_entries
+
 
 # ── Pipeline /run ─────────────────────────────────────────────────────────
 
@@ -389,6 +420,47 @@ class TestRunPipeline:
         assert stats is not None
         assert stats["backed_up"] == 1
         assert stats["applied"] == 1
+
+    def test_run_with_managed_entries(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """managed_entries is passed through to orchestrator run()."""
+        captured_kwargs: dict = {}
+
+        def fake_run(**kwargs):
+            captured_kwargs.update(kwargs)
+            if kwargs.get("on_progress"):
+                for step in ["aggregate", "compute", "backup", "apply"]:
+                    kwargs["on_progress"](step, 1, 1, "done")
+            return PipelineResult(
+                ok=True, trees=[], final_mapping=[], mapping_result={},
+                backup_result={"ok": True, "backed_up": [], "skipped": []},
+                apply_result={"ok": True, "applied": [], "skipped": []},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_run", fake_run
+        )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
+
+        managed_entries = {
+            "game": {"270150": ["/path/a/"]},
+        }
+
+        resp = client.post(
+            "/api/pipeline/run",
+            json={
+                "database": {"steamlib": []},
+                "kmm_rule_paths": ["/fake/rules.json"],
+                "user_config_path": "/fake/user_config.json",
+                "backup_dir": "/fake/backups",
+                "managed_entries": managed_entries,
+            },
+        )
+        assert resp.status_code == 200
+        assert captured_kwargs.get("managed_entries") == managed_entries
 
 
 # ── Adapter unit tests ────────────────────────────────────────────────────
@@ -530,23 +602,25 @@ class TestSseDisconnect:
 class TestRulesApi:
     """POST /api/rules/scan and POST /api/rules/read."""
 
-    def test_rules_scan_returns_json_files(self, client: TestClient, tmp_path: Path) -> None:
-        """scan lists .json files in a directory."""
-        (tmp_path / "rule_a.json").write_text('{"a": 1}')
-        (tmp_path / "rule_b.json").write_text('{"b": 2}')
+    def test_rules_scan_returns_kmmrule_json_files(self, client: TestClient, tmp_path: Path) -> None:
+        """scan lists .kmmrule.json files in a directory."""
+        (tmp_path / "rule_a.kmmrule.json").write_text('{"a": 1}')
+        (tmp_path / "rule_b.kmmrule.json").write_text('{"b": 2}')
         (tmp_path / "readme.txt").write_text("hello")
+        (tmp_path / "regular.json").write_text('{"c": 3}')
         (tmp_path / "sub").mkdir()
-        (tmp_path / "sub" / "nested.json").write_text("{}")
+        (tmp_path / "sub" / "nested.kmmrule.json").write_text("{}")
 
         resp = client.post("/api/rules/scan", json={"dir": str(tmp_path)})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
         names = [f["name"] for f in body["data"]["files"]]
-        assert "rule_a.json" in names
-        assert "rule_b.json" in names
-        assert "readme.txt" not in names  # not .json
-        assert "nested.json" not in names  # in subdirectory (non-recursive)
+        assert "rule_a.kmmrule.json" in names
+        assert "rule_b.kmmrule.json" in names
+        assert "readme.txt" not in names  # not .kmmrule.json
+        assert "regular.json" not in names  # not .kmmrule.json
+        assert "nested.kmmrule.json" not in names  # in subdirectory (non-recursive)
 
     def test_rules_scan_dir_not_found(self, client: TestClient) -> None:
         """scan returns error for non-existent directory."""
@@ -567,7 +641,7 @@ class TestRulesApi:
         assert body["errors"]
 
     def test_rules_scan_empty_dir(self, client: TestClient, tmp_path: Path) -> None:
-        """scan returns empty list for directory with no .json files."""
+        """scan returns empty list for directory with no .kmmrule.json files."""
         (tmp_path / "readme.txt").write_text("data")
         resp = client.post("/api/rules/scan", json={"dir": str(tmp_path)})
         assert resp.status_code == 200
@@ -601,6 +675,359 @@ class TestRulesApi:
         body = resp.json()
         assert body["ok"] is False
         assert body["errors"]
+
+    def test_rules_aggregate_empty_paths(self, client: TestClient) -> None:
+        """aggregate with empty paths returns error."""
+        resp = client.post("/api/rules/aggregate", json={"paths": []})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert body["errors"]
+
+    def test_rules_load_aggregated_not_found(self, client: TestClient) -> None:
+        """load-aggregated with non-existent path returns error."""
+        resp = client.post("/api/rules/load-aggregated", json={"path": "/nonexistent_agg.json"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert body["errors"]
+
+    def test_rules_affected_entries_empty_path(self, client: TestClient) -> None:
+        """affected-entries with empty path returns error."""
+        resp = client.post("/api/rules/affected-entries", json={"aggregated_rule_path": ""})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert body["errors"]
+
+
+class TestRulesAggregateEndpoint:
+    """POST /api/rules/aggregate"""
+
+    def test_rules_aggregate_calls_aggregate(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """aggregate passes paths to rule_aggregator.aggregate()."""
+        captured: dict = {}
+
+        def fake_aggregate(kmm_rule_paths, user_config_path, *, action_orders=None, sidecar_refs=None, output_path=None):
+            captured["paths"] = kmm_rule_paths
+            captured["output_path"] = output_path
+            return {"schema_namespace": "KMM_RuleSet", "operation": []}, [], []
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.rules.rule_aggregate", fake_aggregate
+        )
+        monkeypatch.setattr(
+            "modmanager.workspace.load_workspace",
+            lambda: {"inputs": {"aggregated_rule_path": "", "user_config_path": ""}},
+        )
+
+        resp = client.post(
+            "/api/rules/aggregate",
+            json={"paths": ["/rule1.json", "/rule2.json"]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert captured.get("paths") == ["/rule1.json", "/rule2.json"]
+
+
+class TestRulesLoadAggregated:
+    """POST /api/rules/load-aggregated"""
+
+    def test_load_aggregated_success(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        """load-aggregated returns the raw content of an aggregated rule set."""
+        agg_file = tmp_path / "aggregated_rule_set.json"
+        agg_data = {"schema_namespace": "KMM_RuleSet", "operation": []}
+        agg_file.write_text(json.dumps(agg_data))
+
+        resp = client.post(
+            "/api/rules/load-aggregated",
+            json={"path": str(agg_file)},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["schema_namespace"] == "KMM_RuleSet"
+
+
+class TestRulesAffectedEntries:
+    """POST /api/rules/affected-entries"""
+
+    def test_affected_entries_with_valid_data(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """affected-entries returns libraries/games/mods with correct structure."""
+        # Create an aggregated rule set
+        agg_file = tmp_path / "agg.json"
+        agg_file.write_text(json.dumps({
+            "schema_namespace": "KMM_RuleSet",
+            "operation": [
+                {"mixed_id": "270150:123", "nickname": "TestMod", "actionlist": []},
+            ],
+        }))
+
+        # Create a database
+        db_file = tmp_path / "database.json"
+        db_file.write_text(json.dumps({
+            "steamlib": [
+                {"path": "/games/steam", "contains_libraryfolders_vdf": False, "game": ["270150"]},
+            ],
+            "game": [
+                {"appid": "270150", "name": "RWR", "basepath": "/games/steam/steamapps/common/RWR", "modpath": "/games/steam/steamapps/workshop/content/270150", "mods_found": []},
+            ],
+            "mod": [
+                {"mixed_id": "270150:123", "nickname": "TestMod", "path": "/mods/test/", "appid": "270150"},
+            ],
+        }))
+
+        # Mock workspace to return the database path
+        monkeypatch.setattr(
+            "modmanager.workspace.load_workspace",
+            lambda: {"inputs": {"database_path": str(db_file)}},
+        )
+
+        resp = client.post(
+            "/api/rules/affected-entries",
+            json={"aggregated_rule_path": str(agg_file)},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        data = body["data"]
+        assert "libraries" in data
+        assert "games" in data
+        assert "mods" in data
+        # Verify structure
+        if data["libraries"]:
+            assert "index" in data["libraries"][0]
+            assert "path" in data["libraries"][0]
+            assert "game_count" in data["libraries"][0]
+            assert "mod_count" in data["libraries"][0]
+        if data["games"]:
+            assert "appid" in data["games"][0]
+            assert "libraryIndex" in data["games"][0]
+            assert "has_duplicate" in data["games"][0]
+        if data["mods"]:
+            assert "mixed_id" in data["mods"][0]
+            assert "libraryIndex" in data["mods"][0]
+            assert "gameIndex" in data["mods"][0]
+            assert "has_duplicate" in data["mods"][0]
+
+
+# ── Workspace API ───────────────────────────────────────────────────────────
+
+
+class TestWorkspaceStatus:
+    """GET /api/workspace/status"""
+
+    def test_workspace_status_returns_workspace(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """status returns the full workspace dict."""
+        fake_workspace = {
+            "session_updated": "2026-01-01T00:00:00Z",
+            "inputs": {
+                "database_path": "/tmp/db.json",
+                "rule_paths": [],
+                "aggregated_rule_path": "",
+                "user_config_path": "",
+                "discovery_mode": "auto",
+                "discovery_manual_paths": [],
+            },
+            "decisions": {"branch_decisions": {}},
+            "results": {
+                "last_compute": {
+                    "trees_count": 0,
+                    "mapping_count": 0,
+                    "warnings": [],
+                    "errors": [],
+                    "stats": {},
+                    "inputs_hash": "",
+                    "timestamp": None,
+                },
+            },
+        }
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.load_workspace",
+            lambda: fake_workspace,
+        )
+
+        resp = client.get("/api/workspace/status")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"] == fake_workspace
+        assert body["errors"] == []
+
+
+class TestWorkspaceSaveInputs:
+    """POST /api/workspace/save-inputs"""
+
+    def test_save_inputs_merges_fields(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save-inputs merges provided fields into workspace inputs."""
+        captured: dict = {}
+
+        def fake_merge_workspace(data, section, path=None):
+            captured["data"] = data
+            captured["section"] = section
+            return {"inputs": data, "decisions": {}, "results": {}}
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
+        )
+
+        resp = client.post(
+            "/api/workspace/save-inputs",
+            json={
+                "database_path": "/new/db.json",
+                "discovery_mode": "manual",
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert captured["section"] == "inputs"
+        assert captured["data"]["database_path"] == "/new/db.json"
+        assert captured["data"]["discovery_mode"] == "manual"
+
+    def test_save_inputs_empty_body(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save-inputs with empty body merges nothing (preserves existing)."""
+        captured: dict = {}
+
+        def fake_merge_workspace(data, section, path=None):
+            captured["data"] = data
+            captured["section"] = section
+            return {"inputs": data, "decisions": {}, "results": {}}
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
+        )
+
+        resp = client.post(
+            "/api/workspace/save-inputs",
+            json={},
+        )
+        assert resp.status_code == 200
+        assert captured["data"] == {}
+
+
+class TestWorkspaceSaveDecisions:
+    """POST /api/workspace/save-decisions"""
+
+    def test_save_decisions_merges_branch_decisions(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save-decisions merges branch_decisions into workspace decisions."""
+        captured: dict = {}
+
+        def fake_merge_workspace(data, section, path=None):
+            captured["data"] = data
+            captured["section"] = section
+            return {"inputs": {}, "decisions": data, "results": {}}
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
+        )
+
+        resp = client.post(
+            "/api/workspace/save-decisions",
+            json={"branch_decisions": {"/tree/a": "/src/a"}},
+        )
+        assert resp.status_code == 200
+        assert captured["section"] == "decisions"
+        assert captured["data"]["branch_decisions"]["/tree/a"] == "/src/a"
+
+    def test_save_decisions_null_branch_decisions(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save-decisions with null branch_decisions merges empty data."""
+        captured: dict = {}
+
+        def fake_merge_workspace(data, section, path=None):
+            captured["data"] = data
+            captured["section"] = section
+            return {"inputs": {}, "decisions": data, "results": {}}
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
+        )
+
+        resp = client.post(
+            "/api/workspace/save-decisions",
+            json={"branch_decisions": None},
+        )
+        assert resp.status_code == 200
+        assert captured["data"] == {}
+
+
+class TestWorkspaceSaveResults:
+    """POST /api/workspace/save-results"""
+
+    def test_save_results_merges_last_compute(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save-results merges fields into results.last_compute."""
+        captured: dict = {}
+
+        def fake_merge_workspace(data, section, path=None):
+            captured["data"] = data
+            captured["section"] = section
+            return {"inputs": {}, "decisions": {}, "results": data}
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
+        )
+
+        resp = client.post(
+            "/api/workspace/save-results",
+            json={
+                "trees_count": 42,
+                "mapping_count": 99,
+                "warnings": ["W_TEST"],
+                "errors": [],
+                "stats": {"elapsed": 1.5},
+                "inputs_hash": "abc123",
+            },
+        )
+        assert resp.status_code == 200
+        assert captured["section"] == "results"
+        assert captured["data"]["last_compute"]["trees_count"] == 42
+        assert captured["data"]["last_compute"]["mapping_count"] == 99
+        assert captured["data"]["last_compute"]["warnings"] == ["W_TEST"]
+        assert captured["data"]["last_compute"]["inputs_hash"] == "abc123"
+
+    def test_save_results_partial(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """save-results with partial fields only merges those fields."""
+        captured: dict = {}
+
+        def fake_merge_workspace(data, section, path=None):
+            captured["data"] = data
+            captured["section"] = section
+            return {"inputs": {}, "decisions": {}, "results": data}
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
+        )
+
+        resp = client.post(
+            "/api/workspace/save-results",
+            json={"trees_count": 7},
+        )
+        assert resp.status_code == 200
+        assert captured["data"]["last_compute"]["trees_count"] == 7
+        # Only provided field should be in the merge data
+        assert "mapping_count" not in captured["data"]["last_compute"]
 
 
 # ── Backups API ─────────────────────────────────────────────────────────────
@@ -847,6 +1274,68 @@ class TestLoadDatabase:
         resp = client.post("/api/database/load", json={"path": "/nonexistent/path"})
         body = resp.json()
         assert body["ok"] is False
+
+
+# ── Database /save ─────────────────────────────────────────────────────────
+
+
+class TestSaveDatabase:
+    """POST /api/database/save"""
+
+    def test_save_database_writes_file(self, client, tmp_path):
+        """save writes the database dict to disk."""
+        output = tmp_path / "saved_db.json"
+        db_data = {"game": [{"appid": "270150"}], "mod": []}
+
+        resp = client.post(
+            "/api/database/save",
+            json={"database": db_data, "output_path": str(output)},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert body["data"]["path"] == str(output)
+        # Verify the file was actually written
+        saved = json.loads(output.read_text(encoding="utf-8"))
+        assert saved["game"][0]["appid"] == "270150"
+
+
+# ── Config /save with rule_sources normalization ────────────────────────────
+
+
+class TestConfigSaveRuleSources:
+    """POST /api/config/save with rule_sources normalization."""
+
+    def test_save_config_normalizes_directory_rule_sources(
+        self, client, tmp_path, monkeypatch
+    ):
+        """rule_sources directory paths get trailing / appended."""
+        # Create a real directory to trigger normalization
+        rules_dir = tmp_path / "my_rules"
+        rules_dir.mkdir()
+
+        output = tmp_path / "saved_config.json"
+        config = {
+            "game": "valheim",
+            "rule_sources": [
+                str(rules_dir),  # directory — should get trailing /
+                "/some/file.json",  # file — should not
+            ],
+        }
+
+        resp = client.post(
+            "/api/config/save",
+            json={"config": config, "output_path": str(output)},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+
+        saved = json.loads(output.read_text(encoding="utf-8"))
+        # The directory path should now end with /
+        assert saved["rule_sources"][0].endswith("/")
+        # The file path should not end with /
+        assert not saved["rule_sources"][1].endswith("/")
 
 
 # ── Tilde expansion tests (TODO-11) ──────────────────────────────────────────

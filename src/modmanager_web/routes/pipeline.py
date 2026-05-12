@@ -53,6 +53,7 @@ async def pipeline_compute(req: ComputeRequest):
             user_config_path=user_cfg,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,
+            managed_entries=req.managed_entries,
             on_progress=on_progress,
         )
 
@@ -222,6 +223,7 @@ async def pipeline_run(req: RunRequest):
             backup_dir=req.backup_dir,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,
+            managed_entries=req.managed_entries,
             dry_run=req.dry_run,
             on_progress=on_progress,
         )

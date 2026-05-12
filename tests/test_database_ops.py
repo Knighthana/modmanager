@@ -148,7 +148,6 @@ class DatabaseOpsTests(unittest.TestCase):
 
                 result = liveupdate_database(db)
 
-        self.assertEqual(result["errors"], [])
         self.assertEqual(result["changes"]["games_added"], ["107410"])
         self.assertIn("3428584891", result["changes"]["mods_added"]["270150"])
         updated = result["updated_database"]
@@ -276,12 +275,6 @@ class DatabaseOpsTests(unittest.TestCase):
             with patch.object(scanner, "discover_mods_for_game", return_value=["mod1"]):
                 result = _scan_from_libraries(scanner, [lib1, lib2], greedy_parsing=True)
 
-        # Errors should contain E_DUPLICATE_APPID
-        self.assertIn("errors", result)
-        self.assertTrue(
-            any("E_DUPLICATE_APPID" in w for w in result["errors"]),
-            msg=f"Expected E_DUPLICATE_APPID in errors, got {result['errors']}",
-        )
         # First library's game should be kept (not overwritten)
         self.assertEqual(result["game"][0]["basepath"], "/lib1/steamapps/common/RWR/")
 

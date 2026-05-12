@@ -62,13 +62,11 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
             seen_mixed_ids.add(mixed_id)
             prev = old_mod.get(mixed_id, {})
             localdate = prev.get("localdate", game.get("localdate", 0))
-            managed = prev.get("managed", False)
             mods.append(
                 {
                     "mixed_id": mixed_id,
                     "localdate": localdate if isinstance(localdate, (int, float)) else 0,
                     "path": f"{normalized_modpath}/{modid_str}/",
-                    "managed": managed,
                     "_lib_index": game.get("_lib_index", 0),
                 }
             )
@@ -131,7 +129,6 @@ def _scan_from_libraries(
 ) -> dict[str, Any]:
     game_map: dict[str, list[dict[str, Any]]] = {}
     steamlibs_out: list[dict[str, Any]] = []
-    warnings: list[str] = []
     errors: list[str] = []
 
     for lib_index, lib in enumerate(libraries):
@@ -166,7 +163,6 @@ def _scan_from_libraries(
                     "basepath": normalize_posix(game_info.basepath) + '/',
                     "modpath": normalize_posix(game_info.modpath) + '/',
                     "mods_found": mods,
-                    "managed": old_games.get(appid, {}).get("managed", False) if old_games else False,
                     "_lib_index": lib_index,
                 })
             else:
@@ -177,7 +173,6 @@ def _scan_from_libraries(
                     "basepath": normalize_posix(game_info.basepath) + '/',
                     "modpath": normalize_posix(game_info.modpath) + '/',
                     "mods_found": mods,
-                    "managed": old_games.get(appid, {}).get("managed", False) if old_games else False,
                     "_lib_index": lib_index,
                 }]
 
@@ -185,17 +180,6 @@ def _scan_from_libraries(
     for entries in game_map.values():
         games_out.extend(entries)
     games_out.sort(key=lambda g: _numeric_sort_key(g['appid']))
-
-    # Auto-managed: 无重复的 appid 默认 managed=true（首次扫描时用）
-    # 如果 old_games 中有用户之前保存的值则保留
-    _appid_counts: dict[str, int] = {}
-    for g in games_out:
-        appid = str(g.get("appid", ""))
-        _appid_counts[appid] = _appid_counts.get(appid, 0) + 1
-    for g in games_out:
-        appid = str(g.get("appid", ""))
-        if _appid_counts.get(appid, 1) == 1 and not g.get("managed"):
-            g["managed"] = True
 
     mods_out = _build_mod_from_games(games_out, errors=errors)
 
@@ -212,8 +196,6 @@ def _scan_from_libraries(
         "steamlib": steamlibs_out,
         "game": games_out,
         "mod": mods_out,
-        "warnings": warnings,
-        "errors": errors,
     }
 
 
@@ -430,7 +412,6 @@ def add_manual_game(
         "basepath": normalize_posix(basepath) + '/',
         "modpath": normalize_posix(modpath) + '/',
         "mods_found": mods,
-        "managed": True,
     }
     database["game"].append(game)
     _add_game_membership(database, appid, game["modpath"])
@@ -469,7 +450,7 @@ def update_manual_game(database: dict[str, Any], *, appid: str, updates: dict[st
     if target is None:
         return False, "game not found"
 
-    allowed = {"name", "localdate", "basepath", "modpath", "mods_found", "managed"}
+    allowed = {"name", "localdate", "basepath", "modpath", "mods_found"}
     for key, value in updates.items():
         if key not in allowed:
             continue
@@ -477,8 +458,6 @@ def update_manual_game(database: dict[str, Any], *, appid: str, updates: dict[st
             target[key] = normalize_posix(value) + '/'
         elif key == "mods_found" and isinstance(value, list):
             target[key] = sorted(set(str(m) for m in value))
-        elif key == "managed" and isinstance(value, bool):
-            target[key] = value
         else:
             target[key] = value
 
@@ -589,8 +568,6 @@ def liveupdate_database(
             "mods_added": mods_added,
             "mods_removed": mods_removed,
         },
-        "warnings": updated.get("warnings", []),
-        "errors": updated.get("errors", []),
     }
 
 
@@ -623,8 +600,6 @@ def regen_database(
             "games_count": len(rebuilt.get("game", [])),
             "mods_count": sum(len(g.get("mods_found", [])) for g in rebuilt.get("game", [])),
         },
-        "errors": rebuilt.get("errors", []),
-        "warnings": rebuilt.get("warnings", []),
     }
 
 
