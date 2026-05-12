@@ -69,7 +69,7 @@ describe('ForestViewer', () => {
       },
     })
 
-    expect(wrapper.find('.forest-svg').exists()).toBe(true)
+    expect(wrapper.find('.forest-container').exists()).toBe(true)
     expect(wrapper.html()).toContain('Hello SVG')
   })
 

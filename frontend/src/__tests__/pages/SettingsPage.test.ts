@@ -119,13 +119,15 @@ describe('SettingsPage', () => {
     // Call save
     await (vm.onSaveConfig as () => Promise<void>)()
 
-    expect(mockedApiPost).toHaveBeenCalledWith('/api/config/save', {
+    // onMounted calls /api/config/discover first, then onSaveConfig calls save
+    expect(mockedApiPost).toHaveBeenLastCalledWith('/api/config/save', {
       output_path: null,
       config: {
         bakprefix: 'testprefix_',
         bakignore: ['*.tmp'],
         database_output_path: '/test/db.json',
         aggregated_ruleset_output_path: '/test/agg.json',
+        user_config_path: null,
         rule_sources: ['/test/rules/'],
       },
     })

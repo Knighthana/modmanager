@@ -186,6 +186,61 @@ describe('DataSourcePage', () => {
     expect(vm.localManagedMods['mod-2']).toBe(false)
   })
 
+  it('confirmAddManualPath adds a path to store.manualPaths', async () => {
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const store = useDataSourceStore()
+    const vm = wrapper.vm as any
+
+    store.manualPaths = ['/existing/path/']
+    vm.newManualPath = '/new/path/'
+    vm.confirmAddManualPath()
+    expect(store.manualPaths).toEqual(['/existing/path/', '/new/path/'])
+    expect(vm.newManualPath).toBe('')
+  })
+
+  it('removeManualPath removes a path from store.manualPaths', async () => {
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const store = useDataSourceStore()
+    const vm = wrapper.vm as any
+
+    store.manualPaths = ['/a/', '/b/', '/c/']
+    vm.removeManualPath(1)
+    expect(store.manualPaths).toEqual(['/a/', '/c/'])
+  })
+
+  it('disables scan button when manual mode has no paths', async () => {
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const store = useDataSourceStore()
+    store.discoveryMode = 'manual'
+    store.manualPaths = []
+    await wrapper.vm.$nextTick()
+
+    const buttons = wrapper.findAll('.el-button-stub')
+    const scanBtn = buttons.find(b => b.text().includes('扫描'))
+    expect(scanBtn?.attributes('disabled')).toBeDefined()
+  })
+
+  it('enables scan button when manual mode has paths', async () => {
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const store = useDataSourceStore()
+    store.discoveryMode = 'manual'
+    store.manualPaths = ['/some/path/']
+    await wrapper.vm.$nextTick()
+
+    const buttons = wrapper.findAll('.el-button-stub')
+    const scanBtn = buttons.find(b => b.text().includes('扫描'))
+    // Should not be disabled
+    expect(scanBtn?.attributes('disabled')).toBeUndefined()
+  })
+
   it('confirm button calls save API and shows errors on failure', async () => {
     const wrapper = mount(DataSourcePage, {
       global: { plugins: [router], stubs: elStubs },

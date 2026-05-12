@@ -1,57 +1,28 @@
 <template>
   <div>
-    <h2>{{ STR.forestPage.title }}</h2>
-
-    <!-- PipelineForm -->
-    <el-card shadow="never" style="margin-bottom: 16px;">
-      <template #header>
-        <span>{{ STR.forestPage.pipelineParams }}</span>
-      </template>
-      <el-form :model="store.pipelineForm" label-width="140px">
-        <el-form-item :label="STR.forestPage.dbJsonLabel">
-          <el-input
-            v-model="store.pipelineForm.databaseJson"
-            type="textarea"
-            :rows="7"
-            :placeholder="STR.forestPage.dbJsonPlaceholder()"
-          />
-        </el-form-item>
-        <el-form-item :label="STR.forestPage.rulesPathsLabel">
-          <el-input v-model="store.pipelineForm.rulesPaths" :placeholder="STR.forestPage.rulesPathsPlaceholder" />
-        </el-form-item>
-        <el-form-item :label="STR.forestPage.userConfigLabel">
-          <el-input v-model="store.pipelineForm.userConfigPath" :placeholder="STR.forestPage.userConfigPlaceholder" />
-        </el-form-item>
-        <el-form-item :label="STR.forestPage.backupDirLabel">
-          <el-input v-model="store.pipelineForm.backupDir" :placeholder="STR.forestPage.backupDirPlaceholder" />
-        </el-form-item>
-        <el-form-item :label="STR.forestPage.dryRunLabel">
-          <el-switch v-model="store.pipelineForm.dryRun" />
-        </el-form-item>
-        <el-form-item>
-          <el-button
-            type="primary"
-            :loading="store.isRunning"
-            :disabled="store.isRunning"
-            @click="onCompute"
-          >
-            {{ store.isRunning ? STR.forestPage.computeBtnRunning : STR.forestPage.computeBtn }}
-          </el-button>
-          <el-button
-            type="success"
-            :loading="store.isRunning"
-            :disabled="store.isRunning"
-            @click="onRun"
-            style="margin-left: 8px;"
-          >
-            {{ STR.forestPage.runBtn }}
-          </el-button>
-          <span style="margin-left: 8px; font-size: 12px; color: #999;">
-            {{ STR.forestPage.hintText }}
-          </span>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <div class="forest-top-bar">
+      <h2 style="margin: 0;">{{ STR.forestPage.title }}</h2>
+      <div class="top-bar-actions">
+        <el-button
+          type="primary"
+          size="small"
+          :loading="store.isRunning"
+          :disabled="store.isRunning"
+          @click="onCompute"
+        >
+          {{ store.isRunning ? STR.forestPage.computeBtnRunning : STR.forestPage.computeBtn }}
+        </el-button>
+        <el-button
+          type="success"
+          size="small"
+          :loading="store.isRunning"
+          :disabled="store.isRunning"
+          @click="onRun"
+        >
+          {{ STR.forestPage.runBtn }}
+        </el-button>
+      </div>
+    </div>
 
     <!-- ResultSummary -->
     <el-row v-if="hasResult" :gutter="16" style="margin-bottom: 16px;">
@@ -142,7 +113,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useForestStore, generateBackupDir } from '../stores/forest'
+import { useForestStore } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 import type { TreeNode } from '../types'
 import { showPopup } from '../utils/notify'
@@ -180,54 +151,15 @@ const emptyMessage = computed(() => {
   return ''
 })
 
-const isDiscoverDisabled = computed(() =>
-  store.pipelineForm.discoveryMode === 'manual' && !store.pipelineForm.manualSteamPath
-)
-
-async function onDiscover() {
-  await store.discoverDatabase()
-
-  // Auto-populate form on success
-  if (store.databaseSummary && !store.errors.length) {
-    store.pipelineForm.databasePath = store.pipelineForm.cachePath
-    store.pipelineForm.backupDir = generateBackupDir()
-
-    // Also discover + save user_config as a separate step
-    await store.loadConfig()
-    if (store.userConfig) {
-      store.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
-    }
-  }
-}
-
 function prepareParams() {
   const rules = store.pipelineForm.rulesPaths
     .split(',')
     .map(s => s.trim())
     .filter(Boolean)
 
-  let database: any
-
-  // 优先级 1: Database JSON 非空 → 以此为输入
-  if (store.pipelineForm.databaseJson.trim()) {
-    try {
-      database = JSON.parse(store.pipelineForm.databaseJson)
-    } catch {
-      database = {}
-    }
-  }
-  // 优先级 2: 自动模式 — storedDatabase 存在（来自自动传入或手动加载）
-  else if (!store.dbManualOverride && store.storedDatabase) {
-    database = store.storedDatabase
-  }
-  // 优先级 3: 手动模式 — 发路径字符串，后端自行 resolve + load
-  else if (store.dbManualOverride && store.pipelineForm.databasePath) {
-    database = store.pipelineForm.databasePath
-  }
-  // 优先级 4: 无可用数据
-  else {
-    database = {}
-  }
+  // Use storedDatabase if available (set by DataSourcePage),
+  // otherwise send empty object
+  const database = store.storedDatabase || {}
 
   return {
     database,
@@ -286,3 +218,17 @@ watch(showBranchingOnly, () => {
   }
 })
 </script>
+
+<style scoped>
+.forest-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.top-bar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+</style>

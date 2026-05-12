@@ -29,12 +29,35 @@
           v-if="store.discoveryMode === 'manual' || store.discoveryMode === 'all'"
           :label="STR.dataSourcePage.manualPathLabel"
         >
-          <el-input
-            v-model="store.manualPath"
-            :placeholder="STR.dataSourcePage.manualPathPlaceholder"
-          />
-          <div style="font-size:12px;color:#999;margin-top:4px;">
-            {{ STR.dataSourcePage.manualPathHint }}
+          <div style="width: 100%;">
+            <div
+              v-if="store.manualPaths.length > 0"
+              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
+            >
+              <div
+                v-for="(item, idx) in store.manualPaths"
+                :key="idx"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;"
+              >
+                <span style="font-family: monospace; font-size: 13px;">{{ item }}</span>
+                <el-button size="small" type="danger" text @click="removeManualPath(idx)">删除</el-button>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <el-input
+                v-model="newManualPath"
+                :placeholder="STR.dataSourcePage.manualPathPlaceholder"
+                size="small"
+                style="width: 300px;"
+                @keyup.enter="confirmAddManualPath"
+              />
+              <el-button size="small" type="primary" style="margin-left: 8px;" @click="confirmAddManualPath">
+                添加
+              </el-button>
+            </div>
+            <div style="font-size:12px;color:#999;margin-top:4px;">
+              {{ STR.dataSourcePage.manualPathHint }}
+            </div>
           </div>
         </el-form-item>
         <el-form-item>
@@ -315,6 +338,9 @@ const store = useDataSourceStore()
 const forestStore = useForestStore()
 const router = useRouter()
 
+// ── manual path add state ──
+const newManualPath = ref('')
+
 // ── local managed state (independent of store, not persisted) ──
 const localManagedGames = reactive<Record<string, boolean>>({})
 const localManagedMods = reactive<Record<string, boolean>>({})
@@ -416,19 +442,19 @@ async function doSave(): Promise<boolean> {
       const savedDb = (resp.data as { path: string; database: Record<string, unknown> })?.database || db
 
       // Pass database to forest store
-      forestStore.storedDatabase = savedDb
-      forestStore.pipelineForm.manualSteamPath = store.manualPath
-      forestStore.pipelineForm.databasePath = ''
-      forestStore.dbManualOverride = false
+      forestStore.storedDatabase = savedDb // TODO-20: decouple - DataSourcePage directly writes forestStore
+      forestStore.pipelineForm.manualSteamPath = store.manualPaths[0] || '' // TODO-20: decouple - DataSourcePage directly writes forestStore.pipelineForm
+      forestStore.pipelineForm.databasePath = '' // TODO-20: decouple - DataSourcePage directly writes forestStore.pipelineForm
+      forestStore.dbManualOverride = false // TODO-20: decouple - DataSourcePage directly writes forestStore
 
       // Update datasource store so managed values are reflected in local state
       store.updateDatabase(savedDb)
 
       if (!forestStore.userConfig) {
-        await forestStore.loadConfig()
+        await forestStore.loadConfig() // TODO-20: decouple - DataSourcePage calls forestStore action
       }
       if (forestStore.userConfig) {
-        forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json'
+        forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json' // TODO-20: decouple - DataSourcePage directly writes forestStore.pipelineForm
       }
       return true
     } else {
@@ -461,7 +487,7 @@ async function onConfirm() {
 
 const isDiscoverDisabled = computed(() => {
   if (store.discoveryMode === 'manual') {
-    return !store.manualPath
+    return store.manualPaths.length === 0
   }
   return false
 })
@@ -470,8 +496,8 @@ const isDiscoverDisabled = computed(() => {
 function loadUiState() {
   const savedDiscoveryMode = pers.load<DiscoverMode>('datasource-discoveryMode')
   if (savedDiscoveryMode) store.discoveryMode = savedDiscoveryMode
-  const savedManualPath = pers.load<string>('datasource-manualPath')
-  if (savedManualPath) store.manualPath = savedManualPath
+  const savedManualPaths = pers.load<string[]>('datasource-manualPaths')
+  if (savedManualPaths) store.manualPaths = savedManualPaths
   const savedWorkingPathstyle = pers.load<string>('datasource-workingPathstyle')
   if (savedWorkingPathstyle) store.workingPathstyle = savedWorkingPathstyle
   const savedGreedyParsing = pers.load<boolean>('datasource-greedyParsing')
@@ -487,7 +513,7 @@ function loadUiState() {
 // 保存 UI 状态（仅表单输入 + 可见性开关）
 function saveUiState() {
   pers.save('datasource-discoveryMode', store.discoveryMode)
-  pers.save('datasource-manualPath', store.manualPath)
+  pers.save('datasource-manualPaths', store.manualPaths)
   pers.save('datasource-workingPathstyle', store.workingPathstyle)
   pers.save('datasource-greedyParsing', store.greedyParsing)
   pers.save('datasource-databaseOutputPath', store.databaseOutputPath)
@@ -506,6 +532,20 @@ onBeforeUnmount(() => {
 async function onScan() {
   saveUiState()
   await store.scan()
+}
+
+// ── manual path management ──
+
+function confirmAddManualPath() {
+  const val = newManualPath.value.trim()
+  if (val) {
+    store.manualPaths.push(val)
+  }
+  newManualPath.value = ''
+}
+
+function removeManualPath(idx: number) {
+  store.manualPaths.splice(idx, 1)
 }
 
 function scrollToLibrary(libraryIndex: number) {

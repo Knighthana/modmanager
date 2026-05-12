@@ -99,7 +99,7 @@ export interface ModRow {
 
 export interface DataSourceState {
   discoveryMode: DiscoverMode
-  manualPath: string
+  manualPaths: string[]
   workingPathstyle: string
   greedyParsing: boolean
   databaseOutputPath: string

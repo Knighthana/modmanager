@@ -3,6 +3,20 @@
     <h2>{{ STR.settingsPage.title }}</h2>
 
     <el-card shadow="never" style="margin-top: 16px;">
+      <!-- 首次使用提示 -->
+      <el-alert
+        v-if="!form.userConfigPath"
+        title="首次使用"
+        type="info"
+        show-icon
+        :closable="false"
+        style="margin-bottom: 16px;"
+      >
+        <template #default>
+          请填写必要的配置信息后保存
+        </template>
+      </el-alert>
+
       <el-form label-width="220px" @submit.prevent>
         <!-- 备份目录前缀 -->
         <el-form-item label="备份目录名前缀">
@@ -54,6 +68,11 @@
         <!-- Aggregated Rules 输出路径 -->
         <el-form-item label="Aggregated Rules 输出路径">
           <el-input v-model="form.aggregatedOutputPath" placeholder="/tmp/aggregated_rule_set.json" />
+        </el-form-item>
+
+        <!-- User Config 路径 -->
+        <el-form-item label="用户配置文件路径">
+          <el-input v-model="form.userConfigPath" placeholder="~/.local/share/kmm/user_config.json" />
         </el-form-item>
 
         <el-divider content-position="left">规则来源</el-divider>
@@ -114,6 +133,7 @@ interface SettingsForm {
   bakignore: string[]
   databaseOutputPath: string
   aggregatedOutputPath: string
+  userConfigPath: string
   ruleSources: string[]
 }
 
@@ -122,6 +142,7 @@ const form = ref<SettingsForm>({
   bakignore: [],
   databaseOutputPath: '',
   aggregatedOutputPath: '',
+  userConfigPath: '',
   ruleSources: [],
 })
 
@@ -144,6 +165,7 @@ onMounted(async () => {
       form.value.databaseOutputPath = (uc.database_output_path as string) || ''
       form.value.aggregatedOutputPath = (uc.aggregated_ruleset_output_path as string) || ''
       form.value.ruleSources = (uc.rule_sources as string[]) || []
+      form.value.userConfigPath = (uc.user_config_path as string) || ''
     }
   } catch {
     // 加载失败忽略
@@ -160,6 +182,7 @@ async function onSaveConfig() {
         bakignore: form.value.bakignore,
         database_output_path: form.value.databaseOutputPath || null,
         aggregated_ruleset_output_path: form.value.aggregatedOutputPath || null,
+        user_config_path: form.value.userConfigPath || null,
         rule_sources: form.value.ruleSources,
       },
     })

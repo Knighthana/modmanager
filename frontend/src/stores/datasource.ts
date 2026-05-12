@@ -12,7 +12,7 @@ import type {
 export const useDataSourceStore = defineStore('datasource', () => {
   // ── state ──────────────────────────────────────────────────────────────
   const discoveryMode = ref<DiscoverMode>('all')
-  const manualPath = ref('')
+  const manualPaths = ref<string[]>([])
   const workingPathstyle = ref('linux')
   const greedyParsing = ref(false)
   const databaseOutputPath = ref('/tmp/modmanager_database_generated.json')
@@ -76,10 +76,10 @@ export const useDataSourceStore = defineStore('datasource', () => {
 
     if (discoveryMode.value === 'manual') {
       apiMode = 'manual'
-      apiPaths = [manualPath.value]
+      apiPaths = manualPaths.value.length > 0 ? [...manualPaths.value] : null
     } else if (discoveryMode.value === 'all') {
       apiMode = 'auto'
-      apiPaths = manualPath.value ? [manualPath.value] : null
+      apiPaths = manualPaths.value.length > 0 ? [...manualPaths.value] : null
     } else {
       // 'auto'
       apiMode = 'auto'
@@ -259,7 +259,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
 
   function _resetState() {
     discoveryMode.value = 'all'
-    manualPath.value = ''
+    manualPaths.value = []
     workingPathstyle.value = 'linux'
     greedyParsing.value = false
     databaseOutputPath.value = '/tmp/modmanager_database_generated.json'
@@ -278,7 +278,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   return {
     // state
     discoveryMode,
-    manualPath,
+    manualPaths,
     workingPathstyle,
     greedyParsing,
     databaseOutputPath,

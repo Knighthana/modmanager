@@ -42,6 +42,11 @@ const routes = [
     name: 'compute-prep',
     component: () => import('../pages/ComputePrepPage.vue'),
   },
+  {
+    path: '/advanced',
+    name: 'advanced',
+    component: () => import('../pages/AdvancedPage.vue'),
+  },
 ]
 
 export const router = createRouter({

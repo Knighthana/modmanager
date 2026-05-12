@@ -190,13 +190,15 @@ function onMinimapClick(e: MouseEvent) {
   const mx = e.clientX - rect.left
   const my = e.clientY - rect.top
 
+  // 将点击位置映射到 SVG 坐标系
   const svgX = (mx / minimapSize.value.w) * svgViewBox.w
   const svgY = (my / minimapSize.value.h) * svgViewBox.h
 
-  const sizes = panZoomInstance.getSizes()
+  // 计算 pan 值，使点击位置成为视口几何中心
+  // centerX = svgViewBox.w/2 - pan.x/zoom  →  pan.x = (svgViewBox.w/2 - svgX) * zoom
   const zoom = panZoomInstance.getZoom()
-  const targetPanX = -(svgX - svgViewBox.w / 2) * zoom + sizes.width / 2
-  const targetPanY = -(svgY - svgViewBox.h / 2) * zoom + sizes.height / 2
+  const targetPanX = (svgViewBox.w / 2 - svgX) * zoom
+  const targetPanY = (svgViewBox.h / 2 - svgY) * zoom
 
   panZoomInstance.pan({ x: targetPanX, y: targetPanY })
 }
