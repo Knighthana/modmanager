@@ -25,8 +25,8 @@
 - [x] TODO-29: ✅ Settings 保存按钮（Phase 3.2 重写自然修复）
 - [x] TODO-31: ✅ Forest 小地图几何中心定位（Phase 4a）
 
+- [x] TODO-19: ✅ 重复条目视觉提示——计算准备页 has_duplicate 柔和高亮（radio 已被 checkbox 取代）
 - [ ] （挂起）TODO-10: 空输入校验
-- [ ] （挂起）TODO-19: 重复 radio 视觉提示——当前计算准备页已有柔和高亮，待用户反馈
 
 ## 测试状态
 
