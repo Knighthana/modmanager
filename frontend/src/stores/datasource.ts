@@ -1,18 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { streamSse } from '../api/sse'
-import { createPersistence } from '../utils/persistence'
 import type { SseProgress } from '../api/sse'
 import type {
   DiscoverMode,
   LibraryRow,
   GameRow,
   ModRow,
-  DataSourceState,
 } from '../types'
-
-const DS_KEY = 'datasource'
-const pers = createPersistence()
 
 export const useDataSourceStore = defineStore('datasource', () => {
   // ── state ──────────────────────────────────────────────────────────────
@@ -34,26 +29,6 @@ export const useDataSourceStore = defineStore('datasource', () => {
 
   const isScanning = ref(false)
   const lastResult = ref<Record<string, unknown> | null>(null)
-
-  // 恢复持久化的 database 副本（§8.5.1）
-  try {
-    const savedDb = pers.load<{
-      libraries: LibraryRow[]
-      games: GameRow[]
-      mods: ModRow[]
-      warnings: string[]
-      errors: string[]
-      lastResult: Record<string, unknown> | null
-    }>('datasource-db')
-    if (savedDb) {
-      libraries.value = savedDb.libraries || []
-      games.value = savedDb.games || []
-      mods.value = savedDb.mods || []
-      warnings.value = savedDb.warnings || []
-      errors.value = savedDb.errors || []
-      lastResult.value = savedDb.lastResult || null
-    }
-  } catch { /* 忽略 */ }
 
   // ── getters ────────────────────────────────────────────────────────────
   const filteredGames = computed(() =>
@@ -147,52 +122,6 @@ export const useDataSourceStore = defineStore('datasource', () => {
         isScanning.value = false
       },
     })
-  }
-
-  function loadFromCache() {
-    const saved = pers.load<Partial<DataSourceState>>(DS_KEY)
-    if (!saved) return
-
-    if (saved.discoveryMode) discoveryMode.value = saved.discoveryMode
-    if (saved.manualPath) manualPath.value = saved.manualPath
-    if (saved.workingPathstyle) workingPathstyle.value = saved.workingPathstyle
-    if (saved.greedyParsing !== undefined) greedyParsing.value = saved.greedyParsing
-    if (saved.databaseOutputPath) databaseOutputPath.value = saved.databaseOutputPath
-    if (saved.libraries) libraries.value = saved.libraries
-    if (saved.games) games.value = saved.games
-    if (saved.mods) mods.value = saved.mods
-    if (saved.warnings) warnings.value = saved.warnings
-    if (saved.errors) errors.value = saved.errors
-    if (saved.libraryVisibility) libraryVisibility.value = saved.libraryVisibility
-    if (saved.gameVisibility) gameVisibility.value = saved.gameVisibility
-    if (saved.duplicateResolutions) duplicateResolutions.value = saved.duplicateResolutions
-    if (saved.lastResult) lastResult.value = saved.lastResult
-  }
-
-  function saveToCache() {
-    const state: DataSourceState = {
-      discoveryMode: discoveryMode.value,
-      manualPath: manualPath.value,
-      workingPathstyle: workingPathstyle.value,
-      greedyParsing: greedyParsing.value,
-      databaseOutputPath: databaseOutputPath.value,
-      libraries: libraries.value,
-      games: games.value,
-      mods: mods.value,
-      warnings: warnings.value,
-      errors: errors.value,
-      libraryVisibility: libraryVisibility.value,
-      gameVisibility: gameVisibility.value,
-      duplicateResolutions: duplicateResolutions.value,
-      isScanning: isScanning.value,
-      lastResult: lastResult.value,
-    }
-    pers.save(DS_KEY, state)
-  }
-
-  function clearCache() {
-    pers.clear(DS_KEY)
-    _resetState()
   }
 
   function setLibraryVisibility(index: number, visible: boolean) {
@@ -321,17 +250,6 @@ export const useDataSourceStore = defineStore('datasource', () => {
     }
     gameVisibility.value = newGameVis
 
-    // 持久化到 localStorage（§8.5.1 前端 Database 副本生命周期）
-    try {
-      pers.save('datasource-db', {
-        libraries: libraries.value,
-        games: games.value,
-        mods: mods.value,
-        warnings: warnings.value,
-        errors: errors.value,
-        lastResult: lastResult.value,
-      })
-    } catch { /* localStorage 不可用时静默忽略 */ }
   }
 
   function updateDatabase(db: Record<string, unknown>) {
@@ -382,9 +300,6 @@ export const useDataSourceStore = defineStore('datasource', () => {
     // actions
     scan,
     updateDatabase,
-    loadFromCache,
-    saveToCache,
-    clearCache,
     setLibraryVisibility,
     setGameVisibility,
     setDuplicateResolution,

@@ -4,6 +4,14 @@
       <h2>{{ STR.conflictsPage.title }}</h2>
       <div style="display: flex; gap: 8px;">
         <el-button @click="onClearDecisions">{{ STR.conflictsPage.resetDecisions }}</el-button>
+        <el-button
+          type="success"
+          :disabled="Object.keys(store.branchDecisions).length === 0 || isSaving"
+          :loading="isSaving"
+          @click="onConfirmDecisions"
+        >
+          {{ STR.conflictsPage.confirmDecision }}
+        </el-button>
         <el-tooltip
           v-if="!store.lastSuccessfulParams"
           :content="STR.conflictsPage.tooltipText"
@@ -62,12 +70,15 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
+import { apiPost } from '../api/client'
 import type { ConflictItem } from '../types'
 import { STR } from '../locales/zh-CN'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const store = useForestStore()
 const tableRef = ref()
+const isSaving = ref(false)
 
 function formatCandidate(candidate: string): string {
   if (candidate === '!') return STR.conflictsPage.deleteFile
@@ -77,6 +88,24 @@ function formatCandidate(candidate: string): string {
 
 function onClearDecisions() {
   store.clearDecisions()
+}
+
+async function onConfirmDecisions() {
+  isSaving.value = true
+  try {
+    const resp = await apiPost('/workspace/save-decisions', {
+      branch_decisions: { ...store.branchDecisions },
+    })
+    if (resp.ok) {
+      ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
+    } else {
+      ElMessage.error(resp.errors?.[0] || STR.conflictsPage.saveDecisionFailed)
+    }
+  } catch {
+    ElMessage.error(STR.conflictsPage.saveDecisionFailed)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 async function onRecalculate() {

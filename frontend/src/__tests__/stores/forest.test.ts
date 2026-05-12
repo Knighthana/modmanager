@@ -241,8 +241,10 @@ describe('useForestStore', () => {
     expect(store.databaseSummary).not.toBeNull()
     // But userConfig should NOT be set (loadConfig was not called)
     expect(store.userConfig).toBeNull()
-    // Only 1 fetch call (database/generate, no config calls)
-    expect(mockFetch.mock.calls.length).toBe(1)
+    // 2 fetch calls: 1 for initFromWorkspace (/workspace/status), 1 for discoverDatabase (/database/generate)
+    expect(mockFetch.mock.calls.length).toBe(2)
+    // Second call should be database/generate
+    expect(mockFetch.mock.calls[1][0]).toContain('/database/generate')
   })
 
   it('loadConfig fetches and saves user_config', async () => {
@@ -315,8 +317,9 @@ describe('useForestStore', () => {
     await store.discoverDatabase()
 
     // Verify that fetch was called with mode='auto' and paths=null
-    const callUrl = mockFetch.mock.calls[0][0]
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    // First call is initFromWorkspace (/workspace/status), second is discoverDatabase (/database/generate)
+    const callUrl = mockFetch.mock.calls[1][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect(callUrl).toContain('/database/generate')
     expect(callBody.mode).toBe('auto')
     expect(callBody.paths).toBeNull()
@@ -355,8 +358,8 @@ describe('useForestStore', () => {
     store.pipelineForm.cachePath = '/tmp/db.json'
     await store.discoverDatabase()
 
-    const callUrl = mockFetch.mock.calls[0][0]
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const callUrl = mockFetch.mock.calls[1][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect(callUrl).toContain('/database/generate')
     expect(callBody.mode).toBe('manual')
     expect(callBody.paths).toEqual(['/tmp/fixture/steamapps'])

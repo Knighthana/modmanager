@@ -3,7 +3,6 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { streamSse } from '../api/sse'
 import { apiPost } from '../api/client'
-import { createPersistence } from '../utils/persistence'
 import type { SseProgress } from '../api/sse'
 import type { TreeNode, Changerequest, ConflictItem, PipelineParams, DiscoverParams } from '../types'
 
@@ -33,9 +32,6 @@ export interface DatabaseSummary {
   games: number
   mods: number
 }
-
-const pers = createPersistence()
-const PERSIST_KEY = 'forest-store'
 
 export function generateBackupDir(): string {
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -266,7 +262,7 @@ export const useForestStore = defineStore('forest', () => {
     // ── 输出字段：每次新计算时清空 ──
     trees.value = []
     finalMapping.value = []
-    // branchDecisions — 保留（用户决策跨刷新/切换页面持久化，与 lastSuccessfulParams 同级）
+    // branchDecisions — 保留（用户决策跨刷新/切换页面持久化，通过后端 workspace API）
     errors.value = []
     warnings.value = []
     svgContent.value = ''
@@ -276,47 +272,51 @@ export const useForestStore = defineStore('forest', () => {
 
     // ── 输入字段：保留用户/数据源配置 ──
     // storedDatabase — 保留（从 DataSource 传入）
-    // pipelineForm — 保留（用户填的参数）
+    // pipelineForm — 保留（用户填的参数，通过 workspace API 恢复）
     // dbManualOverride — 保留（锁定状态）
     // userConfig — 保留
     // databaseSummary — 保留
   }
 
-  // ── persistence ──
-  function savePersistentState() {
-    pers.save(PERSIST_KEY, {
-      storedDatabase: storedDatabase.value,
-      pipelineForm: pipelineForm.value,
-      dbManualOverride: dbManualOverride.value,
-      databaseSummary: databaseSummary.value,
-      userConfig: userConfig.value,
-    })
-  }
-
-  function loadPersistentState() {
-    const saved = pers.load<{
-      storedDatabase: Record<string, unknown> | null;
-      pipelineForm: typeof pipelineForm.value;
-      dbManualOverride: boolean;
-      databaseSummary: any;
-      userConfig: Record<string, unknown> | null;
-    }>(PERSIST_KEY)
-    if (saved) {
-      if (saved.storedDatabase) storedDatabase.value = saved.storedDatabase
-      if (saved.pipelineForm) pipelineForm.value = saved.pipelineForm
-      if (saved.dbManualOverride !== undefined) dbManualOverride.value = saved.dbManualOverride
-      if (saved.databaseSummary) databaseSummary.value = saved.databaseSummary
-      if (saved.userConfig) userConfig.value = saved.userConfig
+  // ── workspace state sync ──
+  async function initFromWorkspace() {
+    try {
+      const resp = await apiPost('/workspace/status', {})
+      if (resp.ok && resp.data) {
+        const ws = resp.data as Record<string, any>
+        if (ws.inputs) {
+          pipelineForm.value.databasePath = ws.inputs.database_path ?? ''
+          pipelineForm.value.rulesPaths = (ws.inputs.rule_paths ?? []).join('\n')
+          pipelineForm.value.userConfigPath = ws.inputs.user_config_path ?? ''
+          pipelineForm.value.discoveryMode = ws.inputs.discovery_mode ?? 'auto'
+          if (ws.inputs.discovery_manual_paths?.length) {
+            pipelineForm.value.manualSteamPath = ws.inputs.discovery_manual_paths[0]
+          }
+        }
+        if (ws.decisions?.branch_decisions) {
+          branchDecisions.value = ws.decisions.branch_decisions
+        }
+      }
+    } catch {
+      // Workspace not available yet — start fresh
     }
   }
 
-  // Restore persisted state on store creation
-  loadPersistentState()
+  // 恢复 workspace 状态（store 初始化时调用）
+  initFromWorkspace()
 
-  // Auto-persist when key state fields change
+  // watch: pipelineForm 变更 → 同步到后端 workspace inputs
   watch(
-    [storedDatabase, pipelineForm, dbManualOverride, databaseSummary, userConfig],
-    () => savePersistentState(),
+    () => ({
+      database_path: pipelineForm.value.databasePath,
+      rule_paths: pipelineForm.value.rulesPaths ? pipelineForm.value.rulesPaths.split('\n').filter(Boolean) : [],
+      user_config_path: pipelineForm.value.userConfigPath,
+      discovery_mode: pipelineForm.value.discoveryMode,
+      discovery_manual_paths: pipelineForm.value.manualSteamPath ? [pipelineForm.value.manualSteamPath] : [],
+    }),
+    (inputs) => {
+      apiPost('/workspace/save-inputs', inputs).catch(() => {})
+    },
     { deep: true },
   )
 
@@ -347,5 +347,6 @@ export const useForestStore = defineStore('forest', () => {
     setDecision,
     clearDecisions,
     reset,
+    initFromWorkspace,
   }
 })

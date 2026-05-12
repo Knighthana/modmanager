@@ -138,4 +138,50 @@ describe('ConflictsPage', () => {
     await resetBtn!.trigger('click')
     expect(clearSpy).toHaveBeenCalled()
   })
+
+  it('confirm decision button calls POST /api/workspace/save-decisions', async () => {
+    const wrapper = mount(ConflictsPage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const store = useForestStore()
+
+    // Set some decisions so the button is enabled
+    store.setDecision('/a.png', '/m1/a.png')
+    await wrapper.vm.$nextTick()
+
+    // Mock fetch
+    const mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, data: null, errors: [], warnings: [] }),
+    })
+
+    const buttons = wrapper.findAll('.el-button-stub')
+    const confirmBtn = buttons.find(b => b.text().includes('确认决策'))
+    expect(confirmBtn).toBeTruthy()
+    // Button should be enabled since there are decisions
+    expect(confirmBtn!.attributes('disabled')).toBeUndefined()
+
+    await confirmBtn!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // Verify fetch was called with correct API
+    expect(mockFetch).toHaveBeenCalled()
+    const callUrl = mockFetch.mock.calls[0][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(callUrl).toContain('/api/workspace/save-decisions')
+    expect(callBody.branch_decisions).toEqual({ '/a.png': '/m1/a.png' })
+  })
+
+  it('confirm decision button is disabled when no decisions made', () => {
+    const wrapper = mount(ConflictsPage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+    const buttons = wrapper.findAll('.el-button-stub')
+    const confirmBtn = buttons.find(b => b.text().includes('确认决策'))
+    expect(confirmBtn).toBeTruthy()
+    // Button should be disabled since branchDecisions is empty
+    expect(confirmBtn!.attributes('disabled')).toBeDefined()
+  })
 })

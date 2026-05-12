@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useDataSourceStore } from '../../stores/datasource'
-import type { DataSourceState } from '../../types'
 
 // Helper to build a minimal valid database result
 function makeMinimalDatabase(): Record<string, unknown> {
@@ -173,44 +172,6 @@ describe('useDataSourceStore', () => {
     ]
 
     expect(store.duplicateAppids).toEqual(['270150'])
-  })
-
-  it('saveToCache / loadFromCache round-trips state', () => {
-    const store = useDataSourceStore()
-
-    // Set some state
-    store.discoveryMode = 'manual'
-    store.manualPath = '/tmp/test'
-    store.libraries = [{ index: 0, path: '/test', gameCount: 1, modCount: 1 }]
-    store.games = [{ index: 0, appid: '99999', name: 'Test', basepath: '', modpath: '', modCount: 0, libraryIndex: 0, managed: false }]
-    store.libraryVisibility = { 0: true }
-    store.warnings = ['W_DUPLICATE_APPID: appid 99999']
-
-    // Save
-    store.saveToCache()
-
-    // Create a new store instance (simulating page reload)
-    const store2 = useDataSourceStore()
-    store2.loadFromCache()
-
-    expect(store2.discoveryMode).toBe('manual')
-    expect(store2.manualPath).toBe('/tmp/test')
-    expect(store2.libraries.length).toBe(1)
-    expect(store2.games.length).toBe(1)
-    expect(store2.games[0].appid).toBe('99999')
-    expect(store2.warnings.length).toBe(1)
-  })
-
-  it('clearCache resets state and removes from localStorage', () => {
-    const store = useDataSourceStore()
-    store.discoveryMode = 'manual'
-    store.manualPath = '/tmp/test'
-    store.saveToCache()
-
-    store.clearCache()
-    expect(store.discoveryMode).toBe('all')
-    expect(store.manualPath).toBe('')
-    expect(localStorage.getItem('modmanager:datasource')).toBeNull()
   })
 
   it('setLibraryVisibility toggles visibility', () => {

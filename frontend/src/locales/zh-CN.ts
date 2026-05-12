@@ -60,6 +60,9 @@ export const STR = {
     deleteFile: '删除此文件',
     keepFile: '保留此文件（跳过）',
     replaceWith: (candidate: string) => `替换为 ${candidate}`,
+    confirmDecision: '确认决策',
+    saveDecisionSuccess: '决策已保存',
+    saveDecisionFailed: '决策保存失败',
   },
 
   // ── RulesPage ─────────────────────────────────────────────────────────
