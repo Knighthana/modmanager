@@ -30,6 +30,7 @@ const elStubs = {
   'el-table-column': { template: '<div class="el-table-column-stub"><slot /></div>' },
   'el-alert': { template: '<div class="el-alert-stub"><slot name="default" /></div>' },
   'el-tag': { template: '<span class="el-tag-stub"><slot /></span>' },
+  'el-popconfirm': { template: '<div class="el-popconfirm-stub"><slot name="reference" /></div>' },
   'router-link': { template: '<a class="router-link-stub"><slot /></a>' },
 }
 
@@ -53,25 +54,18 @@ describe('DataSourcePage', () => {
     expect(texts.some(t => t.includes('仅手动'))).toBe(true)
   })
 
-  it('shows manual path input when mode is manual or all', async () => {
+  it('shows manual path area when mode is manual or all', async () => {
     const wrapper = mount(DataSourcePage, {
       global: { plugins: [router], stubs: elStubs },
     })
     const store = useDataSourceStore()
 
-    // Default is 'all', so manual path should be visible
-    const manualInputs = wrapper.findAll('[placeholder="/tmp/fixture/steamapps"]')
-    expect(manualInputs.length).toBeGreaterThanOrEqual(1)
+    // Default is 'all', so manual path add trigger should be visible
+    expect(wrapper.text()).toContain('➕ 添加路径')
 
-    // Switch to 'auto' mode
+    // Switch to 'auto' mode — entire form-item is hidden
     store.discoveryMode = 'auto'
     await wrapper.vm.$nextTick()
-    // In 'auto' mode, manual path should NOT be visible
-    const inputsAfter = wrapper.findAll('[placeholder="/tmp/fixture/steamapps"]')
-    // The store change should reflect — but the template depends on store directly
-    // We need to check the conditionally rendered element
-    const formItems = wrapper.findAll('.el-form-item-stub')
-    // We can just verify the store was updated
     expect(store.discoveryMode).toBe('auto')
   })
 

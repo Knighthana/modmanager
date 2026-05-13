@@ -31,29 +31,66 @@
         >
           <div style="width: 100%;">
             <div
-              v-if="store.manualPaths.length > 0"
+              v-if="store.manualPaths.length > 0 || isAddingManualPath"
               style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
             >
               <div
                 v-for="(item, idx) in store.manualPaths"
                 :key="idx"
-                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; min-height: 24px;"
+                style="display: flex; align-items: center; min-height: 32px; margin-bottom: 4px;"
               >
-                <code style="font-size: 13px; line-height: 24px;">{{ item }}</code>
-                <el-button size="small" type="danger" text @click="removeManualPath(idx)">删除</el-button>
+                <!-- 显示态 -->
+                <template v-if="editingManualPathIdx !== idx">
+                  <code
+                    style="flex: 1; font-size: 13px; cursor: pointer;"
+                    @click="startEditManualPath(idx, item)"
+                  >{{ item }}</code>
+                  <el-popconfirm title="确认删除？" @confirm="removeManualPath(idx)">
+                    <template #reference>
+                      <el-button size="small" type="danger" text>删除</el-button>
+                    </template>
+                  </el-popconfirm>
+                </template>
+                <!-- 编辑态 -->
+                <template v-else>
+                  <el-input
+                    v-model="editingManualPathVal"
+                    size="small"
+                    style="flex: 1; margin-right: 4px;"
+                    @keyup.enter="confirmEditManualPath(idx)"
+                    @keyup.esc="cancelEditManualPath"
+                  />
+                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmEditManualPath(idx)">确定</el-button>
+                  <el-button size="small" @click="cancelEditManualPath">取消</el-button>
+                </template>
+              </div>
+              <!-- 添加行 -->
+              <div style="display: flex; align-items: center; min-height: 32px;">
+                <template v-if="!isAddingManualPath">
+                  <span
+                    style="cursor: pointer; font-size: 13px; color: #409eff;"
+                    @click="isAddingManualPath = true"
+                  >➕ 添加路径</span>
+                </template>
+                <template v-else>
+                  <el-input
+                    v-model="newManualPath"
+                    :placeholder="STR.dataSourcePage.manualPathPlaceholder"
+                    size="small"
+                    style="flex: 1; margin-right: 4px;"
+                    @keyup.enter="confirmAddManualPath"
+                    @keyup.esc="cancelAddManualPath"
+                  />
+                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddManualPath">确定</el-button>
+                  <el-button size="small" @click="cancelAddManualPath">取消</el-button>
+                </template>
               </div>
             </div>
-            <div style="display: flex; align-items: center;">
-              <el-input
-                v-model="newManualPath"
-                :placeholder="STR.dataSourcePage.manualPathPlaceholder"
-                size="small"
-                style="width: 300px;"
-                @keyup.enter="confirmAddManualPath"
-              />
-              <el-button size="small" type="primary" style="margin-left: 8px;" @click="confirmAddManualPath">
-                添加
-              </el-button>
+            <div v-else>
+              <span
+                style="cursor: pointer; font-size: 13px; color: #409eff;"
+                @click="isAddingManualPath = true"
+              >➕ 添加路径</span>
             </div>
             <div style="font-size:12px;color:#999;margin-top:4px;">
               {{ STR.dataSourcePage.manualPathHint }}
@@ -294,7 +331,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
@@ -316,6 +353,11 @@ const router = useRouter()
 
 // ── manual path add state ──
 const newManualPath = ref('')
+
+// ── manual path inline edit state ──
+const editingManualPathIdx = ref(-1)
+const editingManualPathVal = ref('')
+const isAddingManualPath = ref(false)
 
 // ── local managed state (independent of store, not persisted) ──
 const localManagedGames = reactive<Record<string, boolean>>({})
@@ -518,6 +560,35 @@ function confirmAddManualPath() {
     store.manualPaths.push(val)
   }
   newManualPath.value = ''
+  isAddingManualPath.value = false
+}
+
+function cancelAddManualPath() {
+  isAddingManualPath.value = false
+  newManualPath.value = ''
+}
+
+// ── manual path inline edit ──
+
+function startEditManualPath(idx: number, val: string) {
+  if (editingManualPathIdx.value !== -1) cancelEditManualPath()
+  if (isAddingManualPath.value) cancelAddManualPath()
+  editingManualPathIdx.value = idx
+  editingManualPathVal.value = val
+}
+
+function confirmEditManualPath(idx: number) {
+  const val = editingManualPathVal.value.trim()
+  if (val) {
+    store.manualPaths[idx] = val
+  }
+  editingManualPathIdx.value = -1
+  editingManualPathVal.value = ''
+}
+
+function cancelEditManualPath() {
+  editingManualPathIdx.value = -1
+  editingManualPathVal.value = ''
 }
 
 function removeManualPath(idx: number) {

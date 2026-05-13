@@ -27,36 +27,67 @@
         <!-- 备份忽略模式 -->
         <el-form-item label="备份忽略模式">
           <div style="width: 100%;">
-            <div style="margin-bottom: 8px;">
-              <el-button size="small" @click="onAddBakignore">+ 添加模式</el-button>
-              <template v-if="addingBakignore">
-                <el-input
-                  v-model="newBakignore"
-                  placeholder="输入忽略模式"
-                  size="small"
-                  style="width: 200px; margin-left: 8px;"
-                  @keyup.enter="confirmAddBakignore"
-                />
-                <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddBakignore">
-                  确定
-                </el-button>
-                <el-button size="small" @click="cancelAddBakignore">
-                  取消
-                </el-button>
-              </template>
-            </div>
             <div
-              v-if="form.bakignore.length > 0"
-              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px;"
+              v-if="form.bakignore.length > 0 || addingBakignore"
+              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
             >
               <div
                 v-for="(item, idx) in form.bakignore"
                 :key="idx"
-                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;"
+                style="display: flex; align-items: center; min-height: 32px; margin-bottom: 4px;"
               >
-                <span style="font-family: monospace; font-size: 13px;">{{ item }}</span>
-                <el-button size="small" type="danger" text @click="removeBakignore(idx)">删除</el-button>
+                <!-- 显示态 -->
+                <template v-if="editingBakignoreIdx !== idx">
+                  <code
+                    style="flex: 1; font-size: 13px; cursor: pointer;"
+                    @click="startEditBakignore(idx, item)"
+                  >{{ item }}</code>
+                  <el-popconfirm title="确认删除？" @confirm="removeBakignore(idx)">
+                    <template #reference>
+                      <el-button size="small" type="danger" text>删除</el-button>
+                    </template>
+                  </el-popconfirm>
+                </template>
+                <!-- 编辑态 -->
+                <template v-else>
+                  <el-input
+                    v-model="editingBakignoreVal"
+                    size="small"
+                    style="flex: 1; margin-right: 4px;"
+                    @keyup.enter="confirmEditBakignore(idx)"
+                    @keyup.esc="cancelEditBakignore"
+                  />
+                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmEditBakignore(idx)">确定</el-button>
+                  <el-button size="small" @click="cancelEditBakignore">取消</el-button>
+                </template>
               </div>
+              <!-- 添加行 -->
+              <div style="display: flex; align-items: center; min-height: 32px;">
+                <template v-if="!addingBakignore">
+                  <span
+                    style="cursor: pointer; font-size: 13px; color: #409eff;"
+                    @click="onAddBakignore"
+                  >➕ 添加模式</span>
+                </template>
+                <template v-else>
+                  <el-input
+                    v-model="newBakignore"
+                    placeholder="输入忽略模式"
+                    size="small"
+                    style="flex: 1; margin-right: 4px;"
+                    @keyup.enter="confirmAddBakignore"
+                    @keyup.esc="cancelAddBakignore"
+                  />
+                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddBakignore">确定</el-button>
+                  <el-button size="small" @click="cancelAddBakignore">取消</el-button>
+                </template>
+              </div>
+            </div>
+            <div v-else>
+              <span
+                style="cursor: pointer; font-size: 13px; color: #409eff;"
+                @click="onAddBakignore"
+              >➕ 添加模式</span>
             </div>
           </div>
         </el-form-item>
@@ -85,29 +116,66 @@
               填写目录：自动扫描目录中 <code>.kmmrule.json</code> 文件；填写文件名：单独登记该文件
             </div>
             <div
-              v-if="form.ruleSources.length > 0"
+              v-if="form.ruleSources.length > 0 || isAddingRuleSource"
               style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
             >
               <div
                 v-for="(item, idx) in form.ruleSources"
                 :key="idx"
-                style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;"
+                style="display: flex; align-items: center; min-height: 32px; margin-bottom: 4px;"
               >
-                <span style="font-family: monospace; font-size: 13px;">{{ item }}</span>
-                <el-button size="small" type="danger" text @click="removeRuleSource(idx)">删除</el-button>
+                <!-- 显示态 -->
+                <template v-if="editingRuleSourceIdx !== idx">
+                  <code
+                    style="flex: 1; font-size: 13px; cursor: pointer;"
+                    @click="startEditRuleSource(idx, item)"
+                  >{{ item }}</code>
+                  <el-popconfirm title="确认删除？" @confirm="removeRuleSource(idx)">
+                    <template #reference>
+                      <el-button size="small" type="danger" text>删除</el-button>
+                    </template>
+                  </el-popconfirm>
+                </template>
+                <!-- 编辑态 -->
+                <template v-else>
+                  <el-input
+                    v-model="editingRuleSourceVal"
+                    size="small"
+                    style="flex: 1; margin-right: 4px;"
+                    @keyup.enter="confirmEditRuleSource(idx)"
+                    @keyup.esc="cancelEditRuleSource"
+                  />
+                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmEditRuleSource(idx)">确定</el-button>
+                  <el-button size="small" @click="cancelEditRuleSource">取消</el-button>
+                </template>
+              </div>
+              <!-- 添加行 -->
+              <div style="display: flex; align-items: center; min-height: 32px;">
+                <template v-if="!isAddingRuleSource">
+                  <span
+                    style="cursor: pointer; font-size: 13px; color: #409eff;"
+                    @click="isAddingRuleSource = true"
+                  >➕ 添加来源</span>
+                </template>
+                <template v-else>
+                  <el-input
+                    v-model="newRuleSource"
+                    placeholder="添加来源"
+                    size="small"
+                    style="flex: 1; margin-right: 4px;"
+                    @keyup.enter="confirmAddRuleSource"
+                    @keyup.esc="cancelAddRuleSource"
+                  />
+                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddRuleSource">确定</el-button>
+                  <el-button size="small" @click="cancelAddRuleSource">取消</el-button>
+                </template>
               </div>
             </div>
-            <div style="display: flex; align-items: center;">
-              <el-input
-                v-model="newRuleSource"
-                placeholder="添加来源"
-                size="small"
-                style="width: 300px;"
-                @keyup.enter="confirmAddRuleSource"
-              />
-              <el-button size="small" type="primary" style="margin-left: 8px;" @click="confirmAddRuleSource">
-                添加
-              </el-button>
+            <div v-else>
+              <span
+                style="cursor: pointer; font-size: 13px; color: #409eff;"
+                @click="isAddingRuleSource = true"
+              >➕ 添加来源</span>
             </div>
           </div>
         </el-form-item>
@@ -124,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
 import { STR } from '../locales/zh-CN'
@@ -155,6 +223,15 @@ const newBakignore = ref('')
 
 // rule source add state
 const newRuleSource = ref('')
+
+// rule sources inline edit state
+const editingRuleSourceIdx = ref(-1)
+const editingRuleSourceVal = ref('')
+const isAddingRuleSource = ref(false)
+
+// bakignore inline edit state
+const editingBakignoreIdx = ref(-1)
+const editingBakignoreVal = ref('')
 
 onMounted(async () => {
   try {
@@ -232,6 +309,58 @@ function confirmAddRuleSource() {
     form.value.ruleSources.push(val)
   }
   newRuleSource.value = ''
+  isAddingRuleSource.value = false
+}
+
+function cancelAddRuleSource() {
+  isAddingRuleSource.value = false
+  newRuleSource.value = ''
+}
+
+// ── rule sources inline edit ──
+
+function startEditRuleSource(idx: number, val: string) {
+  if (editingRuleSourceIdx.value !== -1) cancelEditRuleSource()
+  if (isAddingRuleSource.value) cancelAddRuleSource()
+  editingRuleSourceIdx.value = idx
+  editingRuleSourceVal.value = val
+}
+
+function confirmEditRuleSource(idx: number) {
+  const val = editingRuleSourceVal.value.trim()
+  if (val) {
+    form.value.ruleSources[idx] = val
+  }
+  editingRuleSourceIdx.value = -1
+  editingRuleSourceVal.value = ''
+}
+
+function cancelEditRuleSource() {
+  editingRuleSourceIdx.value = -1
+  editingRuleSourceVal.value = ''
+}
+
+// ── bakignore inline edit ──
+
+function startEditBakignore(idx: number, val: string) {
+  if (editingBakignoreIdx.value !== -1) cancelEditBakignore()
+  if (addingBakignore.value) cancelAddBakignore()
+  editingBakignoreIdx.value = idx
+  editingBakignoreVal.value = val
+}
+
+function confirmEditBakignore(idx: number) {
+  const val = editingBakignoreVal.value.trim()
+  if (val) {
+    form.value.bakignore[idx] = val
+  }
+  editingBakignoreIdx.value = -1
+  editingBakignoreVal.value = ''
+}
+
+function cancelEditBakignore() {
+  editingBakignoreIdx.value = -1
+  editingBakignoreVal.value = ''
 }
 
 function removeRuleSource(idx: number) {

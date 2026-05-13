@@ -27,6 +27,7 @@ const elStubs = {
   'el-button': { template: '<button class="el-btn-stub" :disabled="$attrs.disabled"><slot /></button>' },
   'el-divider': { template: '<div class="el-divider-stub"><slot /></div>' },
   'el-tag': { template: '<span class="el-tag-stub"><slot /></span>' },
+  'el-popconfirm': { template: '<div class="el-popconfirm-stub"><slot name="reference" /></div>' },
 }
 
 const mockedApiPost = vi.mocked(apiPost)
