@@ -37,6 +37,9 @@ def _load_user_config(user_config_path: str) -> tuple[dict[str, Any] | None, lis
     Returns ``(config_dict, errors)``.  On failure ``config_dict`` is ``None``.
     """
     errors: list[str] = []
+    if not user_config_path:
+        errors.append("E_NO_USER_CONFIG: user_config_path is empty")
+        return None, errors
     try:
         config = load_json_file(user_config_path)
     except Exception as exc:

@@ -75,8 +75,9 @@ class ComputeRequest(BaseModel):
     """Request body for ``POST /api/pipeline/compute``."""
 
     database: Any  # dict[str, Any] | str（database.json 路径，后端自行解析）
-    kmm_rule_paths: list[str]
-    user_config_path: str
+    kmm_rule_paths: list[str] = []
+    user_config_path: str = ""
+    aggregated_rule_path: str | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
     managed_entries: dict | None = None
@@ -105,8 +106,9 @@ class RunRequest(BaseModel):
     """Request body for ``POST /api/pipeline/run``."""
 
     database: Any  # dict[str, Any] | str（database.json 路径，后端自行解析）
-    kmm_rule_paths: list[str]
-    user_config_path: str
+    kmm_rule_paths: list[str] = []
+    user_config_path: str = ""
+    aggregated_rule_path: str | None = None
     backup_dir: str | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None

@@ -192,7 +192,7 @@ web = [
 | `POST` | `/api/database/generate` | 扫描 Steam 库生成 database.json（纯数据，无 managed） | SSE |
 | `POST` | `/api/database/load` | 从路径加载 database.json | JSON |
 | `POST` | `/api/database/save` | 保存 database（移除 managed 校验；用于高级页编辑） | JSON |
-| `POST` | `/api/pipeline/compute` | 聚合 + 计算映射；接收可选 managed_entries | SSE |
+| `POST` | `/api/pipeline/compute` | 计算映射；优先读 aggregated_rule_path（跳过聚合），回退 kmm_rule_paths；接受可选 managed_entries | SSE |
 | `POST` | `/api/pipeline/backup` | 差异备份 | SSE |
 | `POST` | `/api/pipeline/apply` | 应用替换 | SSE |
 | `POST` | `/api/pipeline/run` | 全流水线（聚合→计算→备份→应用） | SSE |

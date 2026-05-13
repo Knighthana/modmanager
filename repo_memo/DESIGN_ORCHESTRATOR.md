@@ -78,9 +78,10 @@ class PipelineResult:
 ```python
 def compute(
     database: dict,
-    kmm_rule_paths: list[str],
-    user_config_path: str,
+    kmm_rule_paths: list[str] | None = None,
+    user_config_path: str = "",
     *,
+    aggregated_rule_path: str | None = None,  # 新流程：跳过聚合，直接加载
     action_orders: dict[str, int] | None = None,
     branch_decisions: dict[str, str] | None = None,
     on_progress: ProgressCallback | None = None,

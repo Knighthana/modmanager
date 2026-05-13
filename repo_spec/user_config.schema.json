@@ -39,6 +39,14 @@
             "type": ["string", "null"],
             "default": null
         },
+        "rule_sources": {
+            "description": "规则文件来源列表。目录以 / 结尾（自动扫描 *.kmmrule.json），或以 .kmmrule.json 结尾的文件直接加载。后端保存时自动归一化：检测目录路径缺 / 则补齐。",
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "string"
+            }
+        },
         "path_alias": {
             "description": "路径别名列表。当前无消费者，保留供未来扩展。",
             "type": "array",

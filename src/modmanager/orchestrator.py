@@ -18,6 +18,7 @@ from typing import Any, Protocol
 from .backup_dir_builder import build_backup_dir
 from .backup_ops import apply_final_mapping, run_differential_backup
 from .engine import compute_mapping
+from .iojson import load_json_file
 from .rule_aggregator import aggregate
 
 __all__ = [
@@ -142,9 +143,10 @@ class PipelineResult:
 
 def compute(
     database: dict,
-    kmm_rule_paths: list[str],
-    user_config_path: str,
+    kmm_rule_paths: list[str] | None = None,
+    user_config_path: str = "",
     *,
+    aggregated_rule_path: str | None = None,
     action_orders: dict[str, int] | None = None,
     branch_decisions: dict[str, str] | None = None,
     managed_entries: dict | None = None,
@@ -152,14 +154,16 @@ def compute(
 ) -> PipelineResult:
     """Aggregate rules and compute the file mapping.
 
-    This is a combined step that first calls ``rule_aggregator.aggregate()``
-    to merge all kmm_rule files, then calls ``engine.compute_mapping()`` to
-    produce the final mapping.
+    This is a combined step that either loads a pre-aggregated rule set
+    directly (when ``aggregated_rule_path`` is given) or calls
+    ``rule_aggregator.aggregate()`` to merge all kmm_rule files first,
+    then calls ``engine.compute_mapping()`` to produce the final mapping.
 
     Args:
         database: Game database dict.
-        kmm_rule_paths: List of paths to kmm_rule_*.json files.
-        user_config_path: Path to user_config.json.
+        kmm_rule_paths: List of paths to kmm_rule_*.json files (old flow).
+        user_config_path: Path to user_config.json (old flow).
+        aggregated_rule_path: Path to a pre-aggregated rule set file (new flow).
         action_orders: Optional ``{mixed_id: int}`` overrides.
         branch_decisions: Optional explicit branch decisions.
         managed_entries: Optional dict to filter database entries before
@@ -170,24 +174,46 @@ def compute(
         A ``PipelineResult``.  ``backup_result`` and ``apply_result`` are
         always ``None`` from this function.
     """
-    # ── Aggregation phase ─────────────────────────────────────────────────
-    if on_progress is not None:
-        on_progress("aggregate", 0, 1, "Aggregating rules...")
+    # ── Determine rule source (priority: aggregated_rule_path > kmm_rule_paths) ──
+    if aggregated_rule_path:
+        # New flow: directly load pre-aggregated rule set
+        if on_progress is not None:
+            on_progress("aggregate", 0, 1, "Loading aggregated rule set...")
+        try:
+            aggregated = load_json_file(aggregated_rule_path)
+        except Exception as exc:
+            return PipelineResult(
+                ok=False,
+                errors=[f"E_AGGREGATED_RULE_LOAD_FAILED: {aggregated_rule_path}: {exc}"],
+            )
+        agg_errors: list[str] = []
+        agg_warnings: list[str] = []
+        if on_progress is not None:
+            on_progress("aggregate", 1, 1, "Aggregated rule set loaded")
+    elif kmm_rule_paths:
+        # Old flow: aggregate kmm_rule files first
+        if on_progress is not None:
+            on_progress("aggregate", 0, 1, "Aggregating rules...")
 
-    aggregated, agg_errors, agg_warnings = aggregate(
-        kmm_rule_paths,
-        user_config_path,
-        action_orders=action_orders,
-    )
+        aggregated, agg_errors, agg_warnings = aggregate(
+            kmm_rule_paths,
+            user_config_path,
+            action_orders=action_orders,
+        )
 
-    if on_progress is not None:
-        on_progress("aggregate", 1, 1, "Rule aggregation complete")
+        if on_progress is not None:
+            on_progress("aggregate", 1, 1, "Rule aggregation complete")
 
-    if aggregated is None or agg_errors:
+        if aggregated is None or agg_errors:
+            return PipelineResult(
+                ok=False,
+                errors=agg_errors,
+                warnings=agg_warnings,
+            )
+    else:
         return PipelineResult(
             ok=False,
-            errors=agg_errors,
-            warnings=agg_warnings,
+            errors=["E_NO_RULE_INPUT: 未提供 aggregated_rule_path 或 kmm_rule_paths"],
         )
 
     # ── Apply managed filter before computation ───────────────────────────
@@ -285,10 +311,11 @@ def apply(
 
 def run(
     database: dict,
-    kmm_rule_paths: list[str],
-    user_config_path: str,
+    kmm_rule_paths: list[str] | None = None,
+    user_config_path: str = "",
     backup_dir: str | None = None,
     *,
+    aggregated_rule_path: str | None = None,
     user_config: dict[str, Any] | None = None,
     action_orders: dict[str, int] | None = None,
     branch_decisions: dict[str, str] | None = None,
@@ -304,8 +331,9 @@ def run(
 
     Args:
         database: Game database dict.
-        kmm_rule_paths: List of paths to kmm_rule_*.json files.
-        user_config_path: Path to user_config.json.
+        kmm_rule_paths: List of paths to kmm_rule_*.json files (old flow).
+        user_config_path: Path to user_config.json (old flow).
+        aggregated_rule_path: Path to a pre-aggregated rule set file (new flow).
         backup_dir: Target backup directory.  When ``None`` (default) the
             path is automatically derived via ``build_backup_dir()``.
         user_config: User configuration dict (for auto-derivation fallback).
@@ -325,6 +353,7 @@ def run(
         database,
         kmm_rule_paths,
         user_config_path,
+        aggregated_rule_path=aggregated_rule_path,
         action_orders=action_orders,
         branch_decisions=branch_decisions,
         managed_entries=managed_entries,

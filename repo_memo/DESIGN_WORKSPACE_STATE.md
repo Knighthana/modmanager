@@ -252,8 +252,11 @@ orchestrator 行为：
 ### compute 流程
 
 ```
-POST /api/pipeline/compute { database_path, rule_paths, branch_decisions, managed_entries? }
+POST /api/pipeline/compute { aggregated_rule_path?, database_path?, rule_paths?, branch_decisions?, managed_entries? }
   → orchestrator 读 database.json
+  → 若 aggregated_rule_path → 直接加载（跳过聚合）
+  → 若 kmm_rule_paths → 旧流程：先聚合（向后兼容）
+  → 若两者都为空 → 返回 E_NO_RULE_INPUT 错误
   → 若 managed_entries 存在 → 过滤 database
   → 读取 workspace.json.decisions.branch_decisions（若请求中未传）
   → engine.compute_mapping(filtered_database, aggregated_rule_set, branch_decisions)

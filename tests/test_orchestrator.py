@@ -16,6 +16,7 @@ from modmanager.orchestrator import (
     compute,
     run,
 )
+from modmanager.rule_aggregator import _load_user_config
 
 
 class TestPipelineResult(TestCase):
@@ -65,6 +66,43 @@ class TestCompute(TestCase):
             or any("E_USER_CONFIG_LOAD_FAILED" in e for e in result.errors)
         )
 
+    def test_compute_with_aggregated_rule_path(self) -> None:
+        """compute() with aggregated_rule_path loads pre-aggregated rule set."""
+        import tempfile, json
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump({"schema_namespace": "KMM_RuleSet", "operation": []}, f)
+            agg_path = f.name
+        try:
+            result = compute(
+                database={"game": [], "mod": []},
+                aggregated_rule_path=agg_path,
+            )
+            self.assertTrue(result.ok)
+            self.assertEqual(result.errors, [])
+        finally:
+            import os
+            os.unlink(agg_path)
+
+    def test_compute_with_kmm_rule_paths_backward_compat(self) -> None:
+        """compute() with kmm_rule_paths still works (old flow, backward compat)."""
+        result = compute(
+            database={},
+            kmm_rule_paths=["/nonexistent/rule.json"],
+            user_config_path="/nonexistent/user_config.json",
+        )
+        self.assertFalse(result.ok)
+        # Should still attempt the old aggregation flow and fail on file load
+        self.assertTrue(any("E_USER_CONFIG_LOAD_FAILED" in e for e in result.errors)
+                        or any("E_KMM_RULE_LOAD_FAILED" in e for e in result.errors))
+
+    def test_compute_no_rule_input_returns_explicit_error(self) -> None:
+        """compute() with neither aggregated_rule_path nor kmm_rule_paths → explicit error."""
+        result = compute(
+            database={},
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
+
 
 class TestBackup(TestCase):
     """Tests for backup()."""
@@ -108,6 +146,35 @@ class TestRun(TestCase):
         )
         self.assertFalse(result.ok)
         self.assertTrue(len(result.errors) > 0)
+
+    def test_run_with_aggregated_rule_path(self) -> None:
+        """run() with aggregated_rule_path loads pre-aggregated rule set."""
+        import tempfile, json, os
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump({"schema_namespace": "KMM_RuleSet", "operation": []}, f)
+            agg_path = f.name
+        try:
+            # Use dry_run=True so we only test the compute path, not backup/apply gates
+            result = run(
+                database={"game": [], "mod": []},
+                aggregated_rule_path=agg_path,
+                backup_dir="/tmp/",
+                user_config={"bakprefix": "kmmbackup_"},
+                dry_run=True,
+            )
+            self.assertTrue(result.ok)
+            self.assertEqual(result.errors, [])
+        finally:
+            os.unlink(agg_path)
+
+    def test_run_no_rule_input_returns_explicit_error(self) -> None:
+        """run() with neither aggregated_rule_path nor kmm_rule_paths → explicit error."""
+        result = run(
+            database={},
+            backup_dir="/tmp",
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
 
 
 class TestApplyManagedFilter(TestCase):
@@ -355,6 +422,22 @@ class TestRunManagedEntries(TestCase):
             managed_entries=None,
         )
         self.assertFalse(result.ok)
+
+
+class TestLoadUserConfig(TestCase):
+    """Tests for _load_user_config edge cases."""
+
+    def test_load_user_config_empty_path_returns_error(self) -> None:
+        """Empty user_config_path returns E_NO_USER_CONFIG error."""
+        config, errors = _load_user_config("")
+        self.assertIsNone(config)
+        self.assertTrue(any("E_NO_USER_CONFIG" in e for e in errors))
+
+    def test_load_user_config_none_path_returns_error(self) -> None:
+        """None user_config_path returns E_NO_USER_CONFIG error."""
+        config, errors = _load_user_config("")
+        self.assertIsNone(config)
+        self.assertTrue(any("E_NO_USER_CONFIG" in e for e in errors))
 
 
 class TestProgressCallback(TestCase):

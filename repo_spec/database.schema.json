@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://knighthana.github.io/modmanager/schemas/database.schema.json",
     "title": "Database",
-    "description": "Steam 库发现结果与 mod 清单。由 Steam 扫描器生成，经数据源页面去重后进入流水线。",
+    "description": "Steam 库扫描的纯客观结果。不含用户决策(managed)或扫描产物(warnings/errors)。重复条目全部保留，由 orchestrator 通过 compute 参数中的 managed_entries 按需过滤。",
     "type": "object",
     "required": ["steamlib", "game", "mod"],
     "additionalProperties": false,
@@ -18,24 +18,17 @@
             }
         },
         "game": {
-            "description": "各 Steam 库中发现的已安装游戏列表。同名 appid 可在不同库中出现多次；同一 appid 最多一个条目的 managed 为 true。",
+            "description": "各 Steam 库中发现的已安装游戏列表。同名 appid 可在不同库中出现多次。",
             "type": "array",
             "items": {
                 "$ref": "#/$defs/Game"
             }
         },
         "mod": {
-            "description": "发现的 workshop mod 与本地 mod 列表。同 mixed_id 可在不同路径出现多次；同一 mixed_id 最多一个条目的 managed 为 true。",
+            "description": "发现的 workshop mod 与本地 mod 列表。同 mixed_id 可在不同路径出现多次。",
             "type": "array",
             "items": {
                 "$ref": "#/$defs/Mod"
-            }
-        },
-        "warnings": {
-            "description": "扫描过程中产生的警告信息。",
-            "type": "array",
-            "items": {
-                "type": "string"
             }
         },
         "history": {
@@ -83,7 +76,7 @@
         "Game": {
             "description": "Steam 库中已安装的游戏条目。",
             "type": "object",
-            "required": ["appid", "name", "basepath", "modpath", "managed"],
+            "required": ["appid", "name", "basepath", "modpath"],
             "additionalProperties": false,
             "properties": {
                 "appid": {
@@ -114,17 +107,13 @@
                     "items": {
                         "type": "string"
                     }
-                },
-                "managed": {
-                    "description": "是否接受此条目进入流水线。同名 appid 最多一个为 true。",
-                    "type": "boolean"
                 }
             }
         },
         "Mod": {
             "description": "已发现的 workshop mod 或本地 mod 条目。",
             "type": "object",
-            "required": ["mixed_id", "path", "managed"],
+            "required": ["mixed_id", "path"],
             "additionalProperties": false,
             "properties": {
                 "mixed_id": {
@@ -140,10 +129,6 @@
                     "description": "mod 文件系统根路径（目录，必须以 / 结尾）。",
                     "type": "string",
                     "pattern": "/$"
-                },
-                "managed": {
-                    "description": "是否接受此条目进入流水线。同名 mixed_id 最多一个为 true。",
-                    "type": "boolean"
                 }
             }
         }

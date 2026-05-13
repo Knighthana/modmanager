@@ -37,20 +37,36 @@ async def pipeline_compute(req: ComputeRequest):
       - ``error``    — exception information
     """
 
+    # ── Pre-check: at least one rule input must be provided ──────────────
+    if not req.aggregated_rule_path and not req.kmm_rule_paths:
+        return adapt_error("E_NO_RULE_INPUT: 未提供 aggregated_rule_path 或 kmm_rule_paths")
+
     def do_work(*, on_progress):
         from modmanager.path_resolver import resolve_file_path
-        rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
-        user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else req.user_config_path
 
         db = req.database
         if isinstance(db, str):
             from modmanager.iojson import load_json_file
             resolved = resolve_file_path(db, 'database.json')
             db = load_json_file(resolved)
+
+        # Resolve aggregated_rule_path if provided
+        resolved_agg_path = None
+        if req.aggregated_rule_path:
+            resolved_agg_path = resolve_file_path(req.aggregated_rule_path, Path(req.aggregated_rule_path).name)
+
+        # Resolve kmm_rule_paths if provided
+        rule_paths = None
+        user_cfg = ""
+        if req.kmm_rule_paths:
+            rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
+            user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else ""
+
         return orch_compute(
             database=db,
             kmm_rule_paths=rule_paths,
             user_config_path=user_cfg,
+            aggregated_rule_path=resolved_agg_path,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,
             managed_entries=req.managed_entries,
@@ -206,20 +222,36 @@ async def pipeline_run(req: RunRequest):
       - ``error``    — exception information
     """
 
+    # ── Pre-check: at least one rule input must be provided ──────────────
+    if not req.aggregated_rule_path and not req.kmm_rule_paths:
+        return adapt_error("E_NO_RULE_INPUT: 未提供 aggregated_rule_path 或 kmm_rule_paths")
+
     def do_work(*, on_progress):
         from modmanager.path_resolver import resolve_file_path
-        rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
-        user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else req.user_config_path
 
         db = req.database
         if isinstance(db, str):
             from modmanager.iojson import load_json_file
             resolved = resolve_file_path(db, 'database.json')
             db = load_json_file(resolved)
+
+        # Resolve aggregated_rule_path if provided
+        resolved_agg_path = None
+        if req.aggregated_rule_path:
+            resolved_agg_path = resolve_file_path(req.aggregated_rule_path, Path(req.aggregated_rule_path).name)
+
+        # Resolve kmm_rule_paths if provided
+        rule_paths = None
+        user_cfg = ""
+        if req.kmm_rule_paths:
+            rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
+            user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else ""
+
         return orch_run(
             database=db,
             kmm_rule_paths=rule_paths,
             user_config_path=user_cfg,
+            aggregated_rule_path=resolved_agg_path,
             backup_dir=req.backup_dir,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,

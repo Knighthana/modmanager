@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "KMM_Rule",
-  "description": "Schema for raw kmm_rule_*.json files — pre-aggregation rule definitions that include rule_meta_tag, game scopes, and inheritable action defaults.",
+  "description": "Schema for raw kmm rule files — pre-aggregation rule definitions that include rule_meta_tag, game scopes, and inheritable action defaults. Recommended file naming: `*.kmmrule.json` (e.g. `my_mods.kmmrule.json`).",
   "type": "object",
   "required": [
     "schema_namespace",

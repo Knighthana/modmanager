@@ -348,6 +348,96 @@ class TestComputePipeline:
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
 
+    def test_compute_with_aggregated_rule_path(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """aggregated_rule_path is passed through to orchestrator compute()."""
+        captured_kwargs: dict = {}
+
+        def fake_compute(**kwargs):
+            captured_kwargs.update(kwargs)
+            if kwargs.get("on_progress"):
+                kwargs["on_progress"]("aggregate", 1, 1, "done")
+                kwargs["on_progress"]("compute", 1, 1, "done")
+            return PipelineResult(
+                ok=True,
+                trees=[],
+                final_mapping=[],
+                mapping_result={},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+        )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
+
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": {"steamlib": []},
+                "aggregated_rule_path": "/fake/aggregated.json",
+            },
+        )
+        assert resp.status_code == 200
+        # Verify aggregated_rule_path was passed to orchestrator
+        assert captured_kwargs.get("aggregated_rule_path") == "/fake/aggregated.json"
+        # kmm_rule_paths should be None (not passed)
+        assert captured_kwargs.get("kmm_rule_paths") is None
+
+    def test_compute_no_rule_input_returns_error(
+        self, client: TestClient
+    ) -> None:
+        """Both aggregated_rule_path and kmm_rule_paths empty → explicit error."""
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": {"steamlib": []},
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("E_NO_RULE_INPUT" in e for e in body["errors"])
+
+    def test_compute_with_kmm_rule_paths_backward_compat(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """kmm_rule_paths (old flow) still works."""
+        captured_kwargs: dict = {}
+
+        def fake_compute(**kwargs):
+            captured_kwargs.update(kwargs)
+            if kwargs.get("on_progress"):
+                kwargs["on_progress"]("aggregate", 1, 1, "done")
+                kwargs["on_progress"]("compute", 1, 1, "done")
+            return PipelineResult(
+                ok=True,
+                trees=[],
+                final_mapping=[],
+                mapping_result={},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+        )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
+
+        resp = client.post(
+            "/api/pipeline/compute",
+            json={
+                "database": {"steamlib": []},
+                "kmm_rule_paths": ["/fake/rules.json"],
+                "user_config_path": "/fake/user_config.json",
+            },
+        )
+        assert resp.status_code == 200
+        assert captured_kwargs.get("kmm_rule_paths") == ["/fake/rules.json"]
+        assert captured_kwargs.get("aggregated_rule_path") is None
+
 
 # ── Pipeline /run ─────────────────────────────────────────────────────────
 
@@ -461,6 +551,58 @@ class TestRunPipeline:
         )
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
+
+    def test_run_with_aggregated_rule_path(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """aggregated_rule_path is passed through to orchestrator run()."""
+        captured_kwargs: dict = {}
+
+        def fake_run(**kwargs):
+            captured_kwargs.update(kwargs)
+            if kwargs.get("on_progress"):
+                for step in ["aggregate", "compute", "backup", "apply"]:
+                    kwargs["on_progress"](step, 1, 1, "done")
+            return PipelineResult(
+                ok=True, trees=[], final_mapping=[], mapping_result={},
+                backup_result={"ok": True, "backed_up": [], "skipped": []},
+                apply_result={"ok": True, "applied": [], "skipped": []},
+            )
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_run", fake_run
+        )
+        monkeypatch.setattr(
+            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+        )
+
+        resp = client.post(
+            "/api/pipeline/run",
+            json={
+                "database": {"steamlib": []},
+                "aggregated_rule_path": "/fake/aggregated.json",
+                "backup_dir": "/fake/backups",
+            },
+        )
+        assert resp.status_code == 200
+        assert captured_kwargs.get("aggregated_rule_path") == "/fake/aggregated.json"
+        assert captured_kwargs.get("kmm_rule_paths") is None
+
+    def test_run_no_rule_input_returns_error(
+        self, client: TestClient
+    ) -> None:
+        """Both aggregated_rule_path and kmm_rule_paths empty → explicit error."""
+        resp = client.post(
+            "/api/pipeline/run",
+            json={
+                "database": {"steamlib": []},
+                "backup_dir": "/fake/backups",
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is False
+        assert any("E_NO_RULE_INPUT" in e for e in body["errors"])
 
 
 # ── Adapter unit tests ────────────────────────────────────────────────────
