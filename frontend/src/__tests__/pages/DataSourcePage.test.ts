@@ -26,7 +26,7 @@ const elStubs = {
   'el-switch': { template: '<div class="el-switch-stub"><slot /></div>' },
   'el-input': { template: '<div class="el-input-stub"><slot /></div><input v-if="$attrs.placeholder" :placeholder="$attrs.placeholder" />' },
   'el-button': { template: '<button class="el-button-stub" :disabled="$attrs.disabled" @click="$attrs.onClick || (() => {})"><slot /></button>' },
-  'el-table': { template: '<div class="el-table-stub"><slot /></div>' },
+  'el-table': { template: '<div class="el-table-stub"><slot /><slot name="append" /></div>' },
   'el-table-column': { template: '<div class="el-table-column-stub"><slot /></div>' },
   'el-alert': { template: '<div class="el-alert-stub"><slot name="default" /></div>' },
   'el-tag': { template: '<span class="el-tag-stub"><slot /></span>' },

@@ -27,68 +27,62 @@
         <!-- 备份忽略模式 -->
         <el-form-item label="备份忽略模式">
           <div style="width: 100%;">
-            <div
-              v-if="form.bakignore.length > 0 || addingBakignore"
-              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
-            >
-              <div
-                v-for="(item, idx) in form.bakignore"
-                :key="idx"
-                style="display: flex; align-items: center; min-height: 32px; margin-bottom: 4px;"
-              >
-                <!-- 显示态 -->
-                <template v-if="editingBakignoreIdx !== idx">
-                  <code
-                    style="flex: 1; font-size: 13px; cursor: pointer;"
-                    @click="startEditBakignore(idx, item)"
-                  >{{ item }}</code>
-                  <el-popconfirm title="确认删除？" @confirm="removeBakignore(idx)">
+            <el-table :data="form.bakignore" border stripe size="small" style="width: 100%;">
+              <el-table-column label="路径">
+                <template #default="{ row, $index }">
+                  <template v-if="editingBakignoreIdx !== $index">
+                    <code
+                      style="cursor: pointer; font-size: 13px;"
+                      @click="startEditBakignore($index, row)"
+                    >{{ row }}</code>
+                  </template>
+                  <template v-else>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <el-input
+                        v-model="editingBakignoreVal"
+                        size="small"
+                        @keyup.enter="confirmEditBakignore($index)"
+                        @keyup.esc="cancelEditBakignore"
+                      />
+                      <el-button size="small" type="primary" @click="confirmEditBakignore($index)">确定</el-button>
+                      <el-button size="small" @click="cancelEditBakignore">取消</el-button>
+                    </div>
+                  </template>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80">
+                <template #default="{ $index }">
+                  <el-popconfirm title="确认删除？" @confirm="removeBakignore($index)">
                     <template #reference>
                       <el-button size="small" type="danger" text>删除</el-button>
                     </template>
                   </el-popconfirm>
                 </template>
-                <!-- 编辑态 -->
-                <template v-else>
-                  <el-input
-                    v-model="editingBakignoreVal"
-                    size="small"
-                    style="flex: 1; margin-right: 4px;"
-                    @keyup.enter="confirmEditBakignore(idx)"
-                    @keyup.esc="cancelEditBakignore"
-                  />
-                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmEditBakignore(idx)">确定</el-button>
-                  <el-button size="small" @click="cancelEditBakignore">取消</el-button>
-                </template>
-              </div>
-              <!-- 添加行 -->
-              <div style="display: flex; align-items: center; min-height: 32px;">
-                <template v-if="!addingBakignore">
-                  <span
-                    style="cursor: pointer; font-size: 13px; color: #409eff;"
-                    @click="onAddBakignore"
-                  >➕ 添加模式</span>
-                </template>
-                <template v-else>
-                  <el-input
-                    v-model="newBakignore"
-                    placeholder="输入忽略模式"
-                    size="small"
-                    style="flex: 1; margin-right: 4px;"
-                    @keyup.enter="confirmAddBakignore"
-                    @keyup.esc="cancelAddBakignore"
-                  />
-                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddBakignore">确定</el-button>
-                  <el-button size="small" @click="cancelAddBakignore">取消</el-button>
-                </template>
-              </div>
-            </div>
-            <div v-else>
-              <span
-                style="cursor: pointer; font-size: 13px; color: #409eff;"
-                @click="onAddBakignore"
-              >➕ 添加模式</span>
-            </div>
+              </el-table-column>
+              <template #append>
+                <div style="padding: 4px 0;">
+                  <template v-if="!addingBakignore">
+                    <span
+                      style="cursor: pointer; font-size: 13px; color: #409eff;"
+                      @click="onAddBakignore"
+                    >➕ 添加模式</span>
+                  </template>
+                  <template v-else>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <el-input
+                        v-model="newBakignore"
+                        placeholder="输入忽略模式"
+                        size="small"
+                        @keyup.enter="confirmAddBakignore"
+                        @keyup.esc="cancelAddBakignore"
+                      />
+                      <el-button size="small" type="primary" @click="confirmAddBakignore">确定</el-button>
+                      <el-button size="small" @click="cancelAddBakignore">取消</el-button>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </el-table>
           </div>
         </el-form-item>
 
@@ -115,68 +109,62 @@
             <div style="margin-bottom: 8px; font-size: 13px; color: #888;">
               填写目录：自动扫描目录中 <code>.kmmrule.json</code> 文件；填写文件名：单独登记该文件
             </div>
-            <div
-              v-if="form.ruleSources.length > 0 || isAddingRuleSource"
-              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
-            >
-              <div
-                v-for="(item, idx) in form.ruleSources"
-                :key="idx"
-                style="display: flex; align-items: center; min-height: 32px; margin-bottom: 4px;"
-              >
-                <!-- 显示态 -->
-                <template v-if="editingRuleSourceIdx !== idx">
-                  <code
-                    style="flex: 1; font-size: 13px; cursor: pointer;"
-                    @click="startEditRuleSource(idx, item)"
-                  >{{ item }}</code>
-                  <el-popconfirm title="确认删除？" @confirm="removeRuleSource(idx)">
+            <el-table :data="form.ruleSources" border stripe size="small" style="width: 100%;">
+              <el-table-column label="路径">
+                <template #default="{ row, $index }">
+                  <template v-if="editingRuleSourceIdx !== $index">
+                    <code
+                      style="cursor: pointer; font-size: 13px;"
+                      @click="startEditRuleSource($index, row)"
+                    >{{ row }}</code>
+                  </template>
+                  <template v-else>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <el-input
+                        v-model="editingRuleSourceVal"
+                        size="small"
+                        @keyup.enter="confirmEditRuleSource($index)"
+                        @keyup.esc="cancelEditRuleSource"
+                      />
+                      <el-button size="small" type="primary" @click="confirmEditRuleSource($index)">确定</el-button>
+                      <el-button size="small" @click="cancelEditRuleSource">取消</el-button>
+                    </div>
+                  </template>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80">
+                <template #default="{ $index }">
+                  <el-popconfirm title="确认删除？" @confirm="removeRuleSource($index)">
                     <template #reference>
                       <el-button size="small" type="danger" text>删除</el-button>
                     </template>
                   </el-popconfirm>
                 </template>
-                <!-- 编辑态 -->
-                <template v-else>
-                  <el-input
-                    v-model="editingRuleSourceVal"
-                    size="small"
-                    style="flex: 1; margin-right: 4px;"
-                    @keyup.enter="confirmEditRuleSource(idx)"
-                    @keyup.esc="cancelEditRuleSource"
-                  />
-                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmEditRuleSource(idx)">确定</el-button>
-                  <el-button size="small" @click="cancelEditRuleSource">取消</el-button>
-                </template>
-              </div>
-              <!-- 添加行 -->
-              <div style="display: flex; align-items: center; min-height: 32px;">
-                <template v-if="!isAddingRuleSource">
-                  <span
-                    style="cursor: pointer; font-size: 13px; color: #409eff;"
-                    @click="isAddingRuleSource = true"
-                  >➕ 添加来源</span>
-                </template>
-                <template v-else>
-                  <el-input
-                    v-model="newRuleSource"
-                    placeholder="添加来源"
-                    size="small"
-                    style="flex: 1; margin-right: 4px;"
-                    @keyup.enter="confirmAddRuleSource"
-                    @keyup.esc="cancelAddRuleSource"
-                  />
-                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddRuleSource">确定</el-button>
-                  <el-button size="small" @click="cancelAddRuleSource">取消</el-button>
-                </template>
-              </div>
-            </div>
-            <div v-else>
-              <span
-                style="cursor: pointer; font-size: 13px; color: #409eff;"
-                @click="isAddingRuleSource = true"
-              >➕ 添加来源</span>
-            </div>
+              </el-table-column>
+              <template #append>
+                <div style="padding: 4px 0;">
+                  <template v-if="!isAddingRuleSource">
+                    <span
+                      style="cursor: pointer; font-size: 13px; color: #409eff;"
+                      @click="isAddingRuleSource = true"
+                    >➕ 添加来源</span>
+                  </template>
+                  <template v-else>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <el-input
+                        v-model="newRuleSource"
+                        placeholder="添加来源"
+                        size="small"
+                        @keyup.enter="confirmAddRuleSource"
+                        @keyup.esc="cancelAddRuleSource"
+                      />
+                      <el-button size="small" type="primary" @click="confirmAddRuleSource">确定</el-button>
+                      <el-button size="small" @click="cancelAddRuleSource">取消</el-button>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </el-table>
           </div>
         </el-form-item>
 

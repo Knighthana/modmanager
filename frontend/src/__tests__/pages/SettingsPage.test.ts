@@ -28,6 +28,8 @@ const elStubs = {
   'el-divider': { template: '<div class="el-divider-stub"><slot /></div>' },
   'el-tag': { template: '<span class="el-tag-stub"><slot /></span>' },
   'el-popconfirm': { template: '<div class="el-popconfirm-stub"><slot name="reference" /></div>' },
+  'el-table': { template: '<div class="el-table-stub"><slot /><slot name="append" /></div>' },
+  'el-table-column': { template: '<div class="el-table-column-stub"><slot /></div>' },
 }
 
 const mockedApiPost = vi.mocked(apiPost)

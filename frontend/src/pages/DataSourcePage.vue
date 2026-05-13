@@ -30,68 +30,62 @@
           :label="STR.dataSourcePage.manualPathLabel"
         >
           <div style="width: 100%;">
-            <div
-              v-if="store.manualPaths.length > 0 || isAddingManualPath"
-              style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 8px; margin-bottom: 8px;"
-            >
-              <div
-                v-for="(item, idx) in store.manualPaths"
-                :key="idx"
-                style="display: flex; align-items: center; min-height: 32px; margin-bottom: 4px;"
-              >
-                <!-- 显示态 -->
-                <template v-if="editingManualPathIdx !== idx">
-                  <code
-                    style="flex: 1; font-size: 13px; cursor: pointer;"
-                    @click="startEditManualPath(idx, item)"
-                  >{{ item }}</code>
-                  <el-popconfirm title="确认删除？" @confirm="removeManualPath(idx)">
+            <el-table :data="store.manualPaths" border stripe size="small" style="width: 100%;">
+              <el-table-column label="路径">
+                <template #default="{ row, $index }">
+                  <template v-if="editingManualPathIdx !== $index">
+                    <code
+                      style="cursor: pointer; font-size: 13px;"
+                      @click="startEditManualPath($index, row)"
+                    >{{ row }}</code>
+                  </template>
+                  <template v-else>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <el-input
+                        v-model="editingManualPathVal"
+                        size="small"
+                        @keyup.enter="confirmEditManualPath($index)"
+                        @keyup.esc="cancelEditManualPath"
+                      />
+                      <el-button size="small" type="primary" @click="confirmEditManualPath($index)">确定</el-button>
+                      <el-button size="small" @click="cancelEditManualPath">取消</el-button>
+                    </div>
+                  </template>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80">
+                <template #default="{ $index }">
+                  <el-popconfirm title="确认删除？" @confirm="removeManualPath($index)">
                     <template #reference>
                       <el-button size="small" type="danger" text>删除</el-button>
                     </template>
                   </el-popconfirm>
                 </template>
-                <!-- 编辑态 -->
-                <template v-else>
-                  <el-input
-                    v-model="editingManualPathVal"
-                    size="small"
-                    style="flex: 1; margin-right: 4px;"
-                    @keyup.enter="confirmEditManualPath(idx)"
-                    @keyup.esc="cancelEditManualPath"
-                  />
-                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmEditManualPath(idx)">确定</el-button>
-                  <el-button size="small" @click="cancelEditManualPath">取消</el-button>
-                </template>
-              </div>
-              <!-- 添加行 -->
-              <div style="display: flex; align-items: center; min-height: 32px;">
-                <template v-if="!isAddingManualPath">
-                  <span
-                    style="cursor: pointer; font-size: 13px; color: #409eff;"
-                    @click="isAddingManualPath = true"
-                  >➕ 添加路径</span>
-                </template>
-                <template v-else>
-                  <el-input
-                    v-model="newManualPath"
-                    :placeholder="STR.dataSourcePage.manualPathPlaceholder"
-                    size="small"
-                    style="flex: 1; margin-right: 4px;"
-                    @keyup.enter="confirmAddManualPath"
-                    @keyup.esc="cancelAddManualPath"
-                  />
-                  <el-button size="small" type="primary" style="margin-left: 4px;" @click="confirmAddManualPath">确定</el-button>
-                  <el-button size="small" @click="cancelAddManualPath">取消</el-button>
-                </template>
-              </div>
-            </div>
-            <div v-else>
-              <span
-                style="cursor: pointer; font-size: 13px; color: #409eff;"
-                @click="isAddingManualPath = true"
-              >➕ 添加路径</span>
-            </div>
+              </el-table-column>
+              <template #append>
+                <div style="padding: 4px 0;">
+                  <template v-if="!isAddingManualPath">
+                    <span
+                      style="cursor: pointer; font-size: 13px; color: #409eff;"
+                      @click="isAddingManualPath = true"
+                    >➕ 添加路径</span>
+                  </template>
+                  <template v-else>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <el-input
+                        v-model="newManualPath"
+                        :placeholder="STR.dataSourcePage.manualPathPlaceholder"
+                        size="small"
+                        @keyup.enter="confirmAddManualPath"
+                        @keyup.esc="cancelAddManualPath"
+                      />
+                      <el-button size="small" type="primary" @click="confirmAddManualPath">确定</el-button>
+                      <el-button size="small" @click="cancelAddManualPath">取消</el-button>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </el-table>
             <div style="font-size:12px;color:#999;margin-top:4px;">
               {{ STR.dataSourcePage.manualPathHint }}
             </div>
