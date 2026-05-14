@@ -180,8 +180,6 @@ database 扫描可能发现同一个 appid 出现在多个 Steam 库中（重复
 
 ### 5.1 定位
 
-workspace.json 已撤销。用户决策（decisions）和计算结果（results）不再由后端文件管理。
-
 decisions 和 results 存储在前端 localStorage 中，使用 `modmanager:` 命名空间前缀。compute 时作为参数传入后端，compute 后前端从响应提取摘要写回 localStorage。
 
 **完整设计见 `DESIGN_GUI_WORKSPACE.md`**。本文档仅记录其与存储体系的交叉点。

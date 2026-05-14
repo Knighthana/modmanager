@@ -3,7 +3,7 @@
 > Status: stable
 > Authority: authoritative
 > Read-Tier: always
-> Purpose: 冻结关键字段名、输出结构与已废弃字段，作为命名与契约修改的门禁
+> Purpose: 冻结关键字段名与输出结构，作为命名与契约修改的门禁
 
 ## 当前冻结字段
 - `contains_libraryfolders_vdf`

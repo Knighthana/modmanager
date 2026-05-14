@@ -9,7 +9,7 @@
 - 术语：主 VDF 发现点
 - 定义：某个 `steamapps` 路径下存在 `libraryfolders.vdf`，可用于扩展发现全部 Steam 库。
 - 主字段：`contains_libraryfolders_vdf`（boolean）
-- 废弃别名：`islbfdvdflocate`、`islbfvdflocate`
+- 历史别名：`islbfdvdflocate`、`islbfvdflocate`
 
 ## 2. 路径风格
 - `workingpathstyle`：当前运行环境路径风格（linux/windows）
@@ -29,7 +29,7 @@
 - 术语：组合标识
 - 主字段：`mixed_id`
 - 格式：`appid:modid`
-- 废弃别名：`appitemid`
+- 历史别名：`appitemid`
 
 ## 6. 命名原则
 - 每个概念只有一个主名

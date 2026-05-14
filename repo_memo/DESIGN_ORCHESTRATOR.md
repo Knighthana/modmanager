@@ -69,7 +69,7 @@ class PipelineResult:
     ok: bool
     errors: list[str]
     warnings: list[str]
-    trees: list[dict[str, Any]]           # 映射森林（P0 后 forest → trees）
+    trees: list[dict[str, Any]]           # 映射树数组
     final_mapping: list[dict[str, Any]]    # 最终映射
     mapping_result: dict[str, Any]          # compute_mapping 原始输出
     backup_result: dict[str, Any] | None    # 来自 run_differential_backup

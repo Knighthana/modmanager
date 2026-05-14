@@ -3,7 +3,7 @@
 > Status: active
 > Authority: authoritative
 > Read-Tier: task-scoped
-> Purpose: 定义前端 workspace 逻辑——用户决策（decisions）和计算结果摘要（results）存储在前端 localStorage 中，不再有后端 workspace.json 文件或 REST API。
+> Purpose: 定义前端 workspace 逻辑——用户决策（decisions）和计算结果摘要（results）存储在前端 localStorage 中。
 > 创建：2026-05-14（原 DESIGN_WORKSPACE_STATE.md 归档重写）
 > 更新：2026-05-14（§十二补充裁定：聚合为单一 `modmanager:workspace` key）
 
@@ -11,7 +11,7 @@
 
 ## 一、定位
 
-Workspace 逻辑已迁移到前端。不再有后端 workspace.json 文件或 workspace REST API 端点。
+Workspace 逻辑由前端 localStorage 承载，不使用后端 workspace 文件或 workspace REST API 端点。
 
 用户决策（decisions）和计算结果摘要（results）通过 `localStorage` 在前端持久化，使用 `modmanager:` 命名空间前缀。
 
@@ -165,4 +165,4 @@ database 下拉组件是前端通用组件，出现在多个页面：
 
 ## 七、历史说明
 
-原 `DESIGN_WORKSPACE_STATE.md`（已归档至 `archive/DESIGN_WORKSPACE_STATE_2026-05-14.md`）定义了后端 `workspace.json` 的结构与 REST API，该方案在方案 B 中已被撤销。
+本文件仅描述当前前端 workspace 结构与行为；历史实现与撤销过程保留在归档文档中。

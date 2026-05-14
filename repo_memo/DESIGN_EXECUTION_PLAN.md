@@ -135,7 +135,7 @@ POST /api/config/discover          → 返回 user_config
 2. **不可回退边界**：Phase 1/2 完成后，database.json 不再含 managed；localStorage 不再含业务数据。任何试图恢复旧行为的代码视为违规
 3. **文档先行**：Phase 1.1 开工前，Phase 0 设计文档必须全部就位
 4. **归档不删**：修改已有设计文档时，旧版移入 `repo_memo/archive/`
-5. **workspace 迁移**：workspace.json 已撤销。decisions/results 存前端 localStorage，多 database 各自独立
+5. **workspace 状态**：decisions/results 存前端 localStorage，多 database 各自独立
 
 ---
 
