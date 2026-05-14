@@ -41,6 +41,7 @@
 | `DESIGN_REST_API.md` | Web API、SSE、Web 安全约定 |
 | `DESIGN_GUI.md` | GUI 总体设计 |
 | `DESIGN_GUI_DATASOURCE_TAB.md` | GUI 数据源页 |
+| `DESIGN_GUI_EXECUTION_PROTOCOL.md` | GUI 任务流验收、切片交付、字段归属决策卡 |
 | `DESIGN_GUI_GAP_CLOSURE.md` | GUI 缺口补齐与后续收敛 |
 
 ### 非默认输入
