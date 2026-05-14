@@ -336,7 +336,7 @@ async function saveSelection() {
 
   try {
     // 1. Aggregate rules
-    const aggResp = await apiPost<{ rule_count: number }>('/rules/aggregate', {
+    const aggResp = await apiPost<Record<string, unknown>>('/rules/aggregate', {
       paths: selectedPaths,
     })
 
@@ -346,9 +346,31 @@ async function saveSelection() {
       return
     }
 
-    // Store aggregated result in Pinia store for downstream pages (ComputePrepPage)
+    // Store aggregated rule set in memory for downstream pages.
+    // Persist only metadata in workspace to keep local payload small.
     if (aggResp.data) {
-      forestStore.aggregatedRuleSet = aggResp.data as Record<string, unknown>
+      const payload = aggResp.data as Record<string, unknown>
+      const {
+        output_path,
+        aggregated_hash,
+        aggregated_at,
+        rule_count: _ruleCount,
+        ...ruleSet
+      } = payload
+
+      // Keep only rule-set shape in memory (without metadata fields)
+      forestStore.aggregatedRuleSet = ruleSet
+
+      const ws = loadWorkspace()
+      ws.aggregatedRuleSet = null
+      ws.aggregatedRuleMeta = {
+        output_path: typeof output_path === 'string' ? output_path : '',
+        aggregated_hash: typeof aggregated_hash === 'string' ? aggregated_hash : simpleHash(ruleSet),
+        aggregated_at: typeof aggregated_at === 'string' ? aggregated_at : new Date().toISOString(),
+        selected_rule_paths: selectedPaths,
+      }
+      ws.aggregatedRuleHash = ws.aggregatedRuleMeta.aggregated_hash
+      saveWorkspace(ws)
     }
 
     // 3. Show success

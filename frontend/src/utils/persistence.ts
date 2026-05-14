@@ -73,6 +73,7 @@ function defaultWorkspace(): WorkspaceData {
     perDatabase: {},
     aggregatedRuleSet: null,
     aggregatedRuleHash: '',
+    aggregatedRuleMeta: null,
   }
 }
 

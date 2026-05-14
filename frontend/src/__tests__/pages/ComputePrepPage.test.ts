@@ -212,6 +212,63 @@ describe('ComputePrepPage', () => {
     expect(wrapper.text()).toContain('请先在规则概览选择规则')
   })
 
+  it('restores aggregated ruleset from backend when in-memory cache is missing', async () => {
+    const mockFetch = vi.mocked(fetch)
+    mockFetch.mockResolvedValue(new Response(JSON.stringify(statusWithRules), { status: 200 }))
+
+    // Keep forestStore.aggregatedRuleSet null and provide workspace metadata path
+    const wsWithMeta = {
+      lastDatabase: 'default',
+      perDatabase: {
+        default: {
+          selectedRulePaths: [],
+          managedEntries: { game: {}, mod: {} },
+          branchDecisions: {},
+          results: null,
+        },
+      },
+      aggregatedRuleSet: null,
+      aggregatedRuleHash: '',
+      aggregatedRuleMeta: {
+        output_path: '/tmp/fixture/aggregated_rule_set.json',
+        aggregated_hash: 'abc123',
+        aggregated_at: '2026-05-15T00:00:00Z',
+        selected_rule_paths: ['/tmp/fixture/r1.kmmrule.json'],
+      },
+      uiState: {},
+    }
+    localStorage.setItem('modmanager:workspace', JSON.stringify(wsWithMeta))
+
+    mockedApiPost.mockImplementation(async (path: string) => {
+      if (path === '/rules/load-aggregated') {
+        return {
+          ok: true,
+          data: { schema_namespace: 'KMM_RuleSet', operation: [] },
+          errors: [],
+          warnings: [],
+        }
+      }
+      if (path === '/rules/affected-entries') {
+        return mockAffectedEntries
+      }
+      return { ok: true, data: null, errors: [], warnings: [] }
+    })
+
+    const wrapper = mount(ComputePrepPage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+
+    await new Promise(process.nextTick)
+    await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
+    await wrapper.vm.$nextTick()
+
+    const apiPaths = mockedApiPost.mock.calls.map((c) => c[0])
+    expect(apiPaths).toContain('/rules/load-aggregated')
+    expect(apiPaths).toContain('/rules/affected-entries')
+    expect(wrapper.text()).not.toContain('请先在规则概览选择规则')
+  })
+
   // ── Happy path: load and display ────────────────────────────────────
 
   it('loads affected entries and populates libraries, games, mods', async () => {

@@ -128,6 +128,13 @@ export interface WorkspaceData {
     decisions: { managed_entries?: Record<string, unknown>; branch_decisions?: Record<string, string> }
     results: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
   }>
-  aggregatedRuleSet: Record<string, unknown> | null
-  aggregatedRuleHash: string
+  // Legacy fields kept for compatibility with older persisted payloads.
+  aggregatedRuleSet?: Record<string, unknown> | null
+  aggregatedRuleHash?: string
+  aggregatedRuleMeta?: {
+    output_path: string
+    aggregated_hash: string
+    aggregated_at: string
+    selected_rule_paths: string[]
+  } | null
 }

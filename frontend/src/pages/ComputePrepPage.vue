@@ -282,6 +282,23 @@ onMounted(async () => {
   await loadData()
 })
 
+async function tryRestoreAggregatedRuleSetFromBackend(): Promise<Record<string, unknown> | null> {
+  const ws = loadWorkspace()
+  const outputPath = ws.aggregatedRuleMeta?.output_path
+  if (!outputPath) return null
+
+  const resp = await apiPost<Record<string, unknown>>('/rules/load-aggregated', {
+    path: outputPath,
+  })
+  if (!resp.ok || !resp.data || typeof resp.data !== 'object') {
+    return null
+  }
+
+  const forestStore = useForestStore()
+  forestStore.aggregatedRuleSet = resp.data
+  return resp.data
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────
 
 async function loadData() {
@@ -289,29 +306,41 @@ async function loadData() {
   const forestStore = useForestStore()
   let aggregatedRuleSet: Record<string, unknown> | null = forestStore.aggregatedRuleSet
 
-  // 2. Fallback: show error if not available (user must go back to RulesOverviewPage to select rules)
+  // 2. Fallback: try to restore from backend aggregated output path metadata
+  if (!aggregatedRuleSet) {
+    try {
+      aggregatedRuleSet = await tryRestoreAggregatedRuleSetFromBackend()
+    } catch {
+      // Keep null and fall through to user-facing message below
+    }
+  }
+
+  // 3. Fallback: show error if not available
   if (!aggregatedRuleSet) {
     noRulesSelected.value = true
-    loadingErrorMessage.value = '页面刷新后需要重新选择规则。请返回规则概览页。'
+    loadingErrorMessage.value = '未找到可用聚合规则，且无法自动恢复。请返回规则概览页重新聚合。'
     loadingFailed.value = true
     return
   }
 
-  // 3. Hash validation: check if rule set has changed since last compute
+  // 4. Hash validation: check if rule set has changed since last compute
   const currentRulesHash = hashRuleSet(aggregatedRuleSet)
   const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
   const ws = loadWorkspace()
   const lastSummary = ws.perDatabase?.[selectedDb]?.results
   const lastRulesHash = lastSummary?.inputs_hash
+  const cachedRulesHash = ws.aggregatedRuleMeta?.aggregated_hash || ws.aggregatedRuleHash
 
   if (lastRulesHash && currentRulesHash !== lastRulesHash) {
     ElMessage.warning('规则集已变更，建议重新计算以获取最新结果')
+  } else if (cachedRulesHash && currentRulesHash !== cachedRulesHash) {
+    ElMessage.warning('检测到聚合规则缓存已变化，建议重新聚合后再计算')
   }
 
   // Restore decisions from workspace if available
   const savedDecisions = ws.perDatabase?.[selectedDb]?.decisions
 
-  // 4. Fetch affected entries
+  // 5. Fetch affected entries
   try {
     const entriesResp = await apiPost<AffectedEntriesData>('/rules/affected-entries', {
       aggregated_rule_set: aggregatedRuleSet || undefined,
@@ -475,9 +504,25 @@ async function startCompute() {
   computeMessage.value = ''
   computeSuccess.value = false
 
+  const forestStore = useForestStore()
   const managedEntries = buildManagedEntries()
   const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
-  const ruleSet = loadWorkspace().aggregatedRuleSet
+  let ruleSet = forestStore.aggregatedRuleSet
+
+  if (!ruleSet) {
+    try {
+      ruleSet = await tryRestoreAggregatedRuleSetFromBackend()
+    } catch {
+      ruleSet = null
+    }
+  }
+
+  if (!ruleSet) {
+    computeMessage.value = '缺少聚合规则，请返回规则概览页重新聚合后再计算'
+    computeSuccess.value = false
+    computing.value = false
+    return
+  }
 
   try {
     await streamSse('/pipeline/compute', {
@@ -515,6 +560,10 @@ async function startCompute() {
             stats: result.data.stats ?? {},
             inputs_hash: hashRuleSet(ruleSet),
             timestamp: new Date().toISOString(),
+          }
+          if (w1.aggregatedRuleMeta) {
+            w1.aggregatedRuleMeta.aggregated_hash = hashRuleSet(ruleSet)
+            w1.aggregatedRuleHash = w1.aggregatedRuleMeta.aggregated_hash
           }
           saveWorkspace(w1)
         }
