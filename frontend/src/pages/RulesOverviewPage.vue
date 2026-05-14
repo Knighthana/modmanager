@@ -1,5 +1,5 @@
 <template>
-  <div class="rules-overview-page">
+  <div class="rules-overview-page gui-page">
     <h2>规则概览</h2>
 
     <!-- 规则来源 -->

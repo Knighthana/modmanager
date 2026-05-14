@@ -1,0 +1,36 @@
+:root {
+  --gui-title-size: 24px;
+  --gui-title-weight: 650;
+  --gui-title-margin: 0 0 18px 0;
+  --gui-card-gap: 16px;
+  --gui-button-radius: 8px;
+}
+
+.gui-page h2 {
+  margin: var(--gui-title-margin);
+  font-size: var(--gui-title-size);
+  font-weight: var(--gui-title-weight);
+  letter-spacing: 0.2px;
+}
+
+.gui-page .el-card {
+  border-radius: 10px;
+}
+
+.gui-page .el-card + .el-card {
+  margin-top: var(--gui-card-gap);
+}
+
+.gui-page .el-button--large {
+  min-height: 38px;
+  border-radius: var(--gui-button-radius);
+  font-weight: 600;
+}
+
+.gui-page .el-button--small {
+  border-radius: 6px;
+}
+
+.gui-page .el-table {
+  --el-table-row-height: 40px;
+}

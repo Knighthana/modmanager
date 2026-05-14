@@ -1,5 +1,5 @@
 <template>
-  <div class="compute-prep-page">
+  <div class="compute-prep-page gui-page">
     <h2>计算准备</h2>
     <!-- ── Empty state: no rules selected ────────────────────────────── -->
     <template v-if="noRulesSelected">

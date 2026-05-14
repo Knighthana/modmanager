@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="gui-page">
     <h2>高级 — 数据文件 JSON 查看</h2>
 
     <div style="margin-bottom: 16px;">

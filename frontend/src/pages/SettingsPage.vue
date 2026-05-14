@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="gui-page">
     <h2>{{ STR.settingsPage.title }}</h2>
 
     <el-card shadow="never" style="margin-top: 16px;">

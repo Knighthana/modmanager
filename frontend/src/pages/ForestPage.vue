@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="gui-page">
     <div class="forest-top-bar">
       <h2 style="margin: 0;">{{ STR.forestPage.title }}</h2>
     </div>

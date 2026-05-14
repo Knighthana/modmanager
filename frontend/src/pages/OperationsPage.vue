@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="gui-page">
     <h2>{{ STR.operationsPage.title }}</h2>
 
     <!-- DatabaseSelector -->

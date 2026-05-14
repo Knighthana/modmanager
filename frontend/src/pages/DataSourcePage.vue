@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="gui-page">
     <h2>{{ STR.dataSourcePage.title }}</h2>
 
     <!-- Mode + Settings -->
