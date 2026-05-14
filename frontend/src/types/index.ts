@@ -40,21 +40,19 @@ export interface ConflictItem {
 }
 
 export interface PipelineParams {
-  database: any  // dict（数据库内容）| str（路径，后端自行解析）
+  database_name: string
   kmm_rule_paths: string[]
-  user_config_path: string
-  backup_dir: string | null
-  dry_run: boolean
-  action_orders?: Record<string, number>
+  managed_entries?: Record<string, unknown>
   branch_decisions?: Record<string, string>
+  dry_run?: boolean
+  action_orders?: Record<string, number>
 }
 
 export interface DiscoverParams {
   mode: string
   paths: string[] | null
-  workingPathstyle: string
   greedyParsing: boolean
-  cache_path: string | null
+  database_name: string
 }
 
 export interface SseProgress {
@@ -102,7 +100,6 @@ export interface DataSourceState {
   manualPaths: string[]
   workingPathstyle: string
   greedyParsing: boolean
-  databaseOutputPath: string
   libraries: LibraryRow[]
   games: GameRow[]
   mods: ModRow[]
@@ -113,4 +110,24 @@ export interface DataSourceState {
   duplicateResolutions: Record<string, number>
   isScanning: boolean
   lastResult: Record<string, unknown> | null
+}
+
+// ── Workspace persistence types ─────────────────────────────────────────────
+
+/**
+ * Aggregated workspace data stored under a single ``modmanager:workspace`` key.
+ *
+ * Replaces the previous scattered keys: lastDatabase, decisions:*, results:*,
+ * aggregatedRuleSet.
+ *
+ * @see DESIGN_GUI_WORKSPACE.md
+ */
+export interface WorkspaceData {
+  lastDatabase: string
+  perDatabase: Record<string, {
+    decisions: { managed_entries?: Record<string, unknown>; branch_decisions?: Record<string, string> }
+    results: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
+  }>
+  aggregatedRuleSet: Record<string, unknown> | null
+  aggregatedRuleHash: string
 }

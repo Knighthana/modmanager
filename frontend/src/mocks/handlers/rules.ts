@@ -198,6 +198,16 @@ export const rulesHandlers = [
     })
   }),
 
+  // POST /api/rules/load-aggregated — 加载聚合规则集
+  http.post('/api/rules/load-aggregated', async ({ request }) => {
+    return HttpResponse.json({
+      ok: true,
+      data: {},
+      errors: [],
+      warnings: [],
+    })
+  }),
+
   // POST /api/rules/affected-entries — 查询受选定规则影响的库/游戏/MOD
   http.post('/api/rules/affected-entries', async ({ request }) => {
     const body = (await request.json()) as { aggregated_rule_path?: string }

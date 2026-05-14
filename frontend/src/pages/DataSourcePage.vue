@@ -15,13 +15,6 @@
             <el-radio value="manual">{{ STR.dataSourcePage.modeManual }}</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item :label="STR.dataSourcePage.workingPathstyle">
-          <el-select v-model="store.workingPathstyle" style="width: 200px;">
-            <el-option label="auto" value="auto" />
-            <el-option label="linux" value="linux" />
-            <el-option label="windows" value="windows" />
-          </el-select>
-        </el-form-item>
         <el-form-item :label="STR.dataSourcePage.greedyParsing">
           <el-switch v-model="store.greedyParsing" />
         </el-form-item>
@@ -90,6 +83,9 @@
               {{ STR.dataSourcePage.manualPathHint }}
             </div>
           </div>
+        </el-form-item>
+        <el-form-item label="目标 Database">
+          <DatabaseSelector ref="databaseSelectorRef" />
         </el-form-item>
         <el-form-item>
           <el-button
@@ -330,7 +326,7 @@ import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { apiPost } from '../api/client'
-import { createPersistence } from '../utils/persistence'
+import { createPersistence, loadWorkspace, saveWorkspace } from '../utils/persistence'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
@@ -338,12 +334,15 @@ import type { DiscoverMode, LibraryRow, GameRow, ModRow } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription, extractCode } from '../utils/errorCodes'
 import { ElMessage } from 'element-plus'
+import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 const pers = createPersistence()
 
 const store = useDataSourceStore()
 const forestStore = useForestStore()
 const router = useRouter()
+
+const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 
 // ── manual path add state ──
 const newManualPath = ref('')
@@ -440,33 +439,29 @@ async function doSave(): Promise<boolean> {
     }
   }
 
-  // Default output path
-  const outputPath = store.databaseOutputPath || '/tmp/modmanager_database_generated.json'
+  // Get selected database name
+  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
 
   try {
     const resp = await apiPost('/database/save', {
       database: db,
-      output_path: outputPath,
+      database_name: selectedDb,
     })
 
     if (resp.ok) {
       // Use the cleaned database returned by the backend
-      const savedDb = (resp.data as { path: string; database: Record<string, unknown> })?.database || db
-
-      // Pass database to forest store
-      forestStore.storedDatabase = savedDb // TODO-20: decouple - DataSourcePage directly writes forestStore
-      forestStore.pipelineForm.manualSteamPath = store.manualPaths[0] || '' // TODO-20: decouple - DataSourcePage directly writes forestStore.pipelineForm
-      forestStore.pipelineForm.databasePath = '' // TODO-20: decouple - DataSourcePage directly writes forestStore.pipelineForm
-      forestStore.dbManualOverride = false // TODO-20: decouple - DataSourcePage directly writes forestStore
+      const savedDb = (resp.data as { database: Record<string, unknown> })?.database || db
 
       // Update datasource store so managed values are reflected in local state
       store.updateDatabase(savedDb)
 
+      // Persist selected database
+      const ws = loadWorkspace()
+      ws.lastDatabase = selectedDb
+      saveWorkspace(ws)
+
       if (!forestStore.userConfig) {
-        await forestStore.loadConfig() // TODO-20: decouple - DataSourcePage calls forestStore action
-      }
-      if (forestStore.userConfig) {
-        forestStore.pipelineForm.userConfigPath = '/tmp/modmanager_userconfig_generated.json' // TODO-20: decouple - DataSourcePage directly writes forestStore.pipelineForm
+        await forestStore.loadConfig()
       }
       return true
     } else {
@@ -510,12 +505,8 @@ function loadUiState() {
   if (savedDiscoveryMode) store.discoveryMode = savedDiscoveryMode
   const savedManualPaths = pers.load<string[]>('datasource-manualPaths')
   if (savedManualPaths) store.manualPaths = savedManualPaths
-  const savedWorkingPathstyle = pers.load<string>('datasource-workingPathstyle')
-  if (savedWorkingPathstyle) store.workingPathstyle = savedWorkingPathstyle
   const savedGreedyParsing = pers.load<boolean>('datasource-greedyParsing')
   if (savedGreedyParsing !== null) store.greedyParsing = savedGreedyParsing
-  const savedDatabaseOutputPath = pers.load<string>('datasource-databaseOutputPath')
-  if (savedDatabaseOutputPath) store.databaseOutputPath = savedDatabaseOutputPath
   const savedLibVisibility = pers.load<Record<number, boolean>>('datasource-libraryVisibility')
   if (savedLibVisibility) store.libraryVisibility = savedLibVisibility
   const savedGameVisibility = pers.load<Record<number, boolean>>('datasource-gameVisibility')
@@ -526,15 +517,29 @@ function loadUiState() {
 function saveUiState() {
   pers.save('datasource-discoveryMode', store.discoveryMode)
   pers.save('datasource-manualPaths', store.manualPaths)
-  pers.save('datasource-workingPathstyle', store.workingPathstyle)
   pers.save('datasource-greedyParsing', store.greedyParsing)
-  pers.save('datasource-databaseOutputPath', store.databaseOutputPath)
   pers.save('datasource-libraryVisibility', store.libraryVisibility)
   pers.save('datasource-gameVisibility', store.gameVisibility)
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadUiState()
+
+  // Auto-load last database from localStorage
+  const lastDb = loadWorkspace().lastDatabase
+  if (lastDb) {
+    try {
+      const resp = await apiPost<{ database: Record<string, unknown> }>(
+        '/database/read',
+        { database_name: lastDb },
+      )
+      if (resp.ok && resp.data) {
+          store.updateDatabase(resp.data as Record<string, unknown>)
+      }
+    } catch {
+      // 静默失败——用户可以手动扫描
+    }
+  }
 })
 
 onBeforeUnmount(() => {
@@ -543,7 +548,8 @@ onBeforeUnmount(() => {
 
 async function onScan() {
   saveUiState()
-  await store.scan()
+  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+  await store.scan(selectedDb)
 }
 
 // ── manual path management ──

@@ -24,6 +24,22 @@
       </div>
     </div>
 
+    <!-- DatabaseSelector -->
+    <div style="margin-bottom: 16px;">
+      <DatabaseSelector ref="databaseSelectorRef" />
+    </div>
+
+    <!-- 上次计算结果恢复提示 -->
+    <el-card
+      v-if="lastResultSummary && !hasResult"
+      shadow="never"
+      style="margin-bottom: 16px;"
+    >
+      <span style="font-size: 13px; color: var(--el-text-color-secondary);">
+        上次计算结果：{{ lastResultSummary.treesCount }} 棵树，{{ lastResultSummary.mappingCount }} 个映射
+      </span>
+    </el-card>
+
     <!-- ResultSummary -->
     <el-row v-if="hasResult" :gutter="16" style="margin-bottom: 16px;">
       <el-col :span="6">
@@ -112,15 +128,48 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useForestStore } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
+import DatabaseSelector from '../components/DatabaseSelector.vue'
 import type { TreeNode } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription } from '../utils/errorCodes'
+import { loadWorkspace } from '../utils/persistence'
 import { STR } from '../locales/zh-CN'
 
 const store = useForestStore()
+
+const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
+
+// Last result summary restored from localStorage
+const lastResultSummary = ref<{ treesCount: number; mappingCount: number } | null>(null)
+
+onMounted(() => {
+  const ws = loadWorkspace()
+  if (ws.lastDatabase) {
+    const perDb = ws.perDatabase[ws.lastDatabase]
+    if (perDb?.results) {
+      lastResultSummary.value = {
+        treesCount: perDb.results.trees_count,
+        mappingCount: perDb.results.mapping_count,
+      }
+
+      // Check result staleness (older than 24 hours)
+      const resultTimestamp = perDb.results.timestamp
+      if (resultTimestamp) {
+        const resultAge = Date.now() - new Date(resultTimestamp).getTime()
+        const isStale = resultAge > 24 * 60 * 60 * 1000 // 24 hours
+
+        if (isStale) {
+          const hoursOld = Math.floor(resultAge / (60 * 60 * 1000))
+          ElMessage.warning(`计算结果已 ${hoursOld} 小时未更新，建议重新计算以确保结果最新`)
+        }
+      }
+    }
+  }
+})
 
 const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
 
@@ -157,15 +206,17 @@ function prepareParams() {
     .map(s => s.trim())
     .filter(Boolean)
 
-  // Use storedDatabase if available (set by DataSourcePage),
-  // otherwise send empty object
-  const database = store.storedDatabase || {}
+  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+
+  // Load decisions from workspace
+  const ws = loadWorkspace()
+  const decisions = ws.perDatabase?.[selectedDb]?.decisions
 
   return {
-    database,
+    database_name: selectedDb,
     kmm_rule_paths: rules,
-    user_config_path: store.pipelineForm.userConfigPath || '',
-    backup_dir: store.pipelineForm.backupDir || null,
+    managed_entries: decisions?.managed_entries,
+    branch_decisions: decisions?.branch_decisions,
   }
 }
 

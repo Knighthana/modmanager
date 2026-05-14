@@ -2,14 +2,14 @@
   <div>
     <h2>{{ STR.operationsPage.title }}</h2>
 
-    <!-- Loading state -->
-    <div v-if="loading" style="text-align: center; padding: 40px;">
-      <p style="color: var(--el-text-color-secondary);">加载中...</p>
+    <!-- DatabaseSelector -->
+    <div style="margin-bottom: 16px;">
+      <DatabaseSelector ref="databaseSelectorRef" />
     </div>
 
     <!-- Empty state: 无计算结果 -->
     <el-empty
-      v-else-if="!hasResults"
+      v-if="!hasResults"
       :description="STR.operationsPage.emptyState"
     />
 
@@ -22,10 +22,10 @@
         </template>
         <el-descriptions :column="4" border>
           <el-descriptions-item :label="STR.operationsPage.treesCount">
-            {{ wsResults.trees_count }}
+            {{ localResults.trees_count }}
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.mappingCount">
-            {{ wsResults.mapping_count }}
+            {{ localResults.mapping_count }}
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.statAdded">
             {{ getStat('added') }}
@@ -37,13 +37,13 @@
             {{ getStat('deleted') }}
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.warnings">
-            <el-badge :value="wsResults.warnings.length" type="warning">
-              <span style="padding: 0 4px;">{{ wsResults.warnings.length }}</span>
+            <el-badge :value="localResults.warnings.length" type="warning">
+              <span style="padding: 0 4px;">{{ localResults.warnings.length }}</span>
             </el-badge>
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.errors">
-            <el-badge :value="wsResults.errors.length" type="danger">
-              <span style="padding: 0 4px;">{{ wsResults.errors.length }}</span>
+            <el-badge :value="localResults.errors.length" type="danger">
+              <span style="padding: 0 4px;">{{ localResults.errors.length }}</span>
             </el-badge>
           </el-descriptions-item>
         </el-descriptions>
@@ -104,79 +104,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { streamSse, type SseProgress } from '../api/sse'
 import { useForestStore } from '../stores/forest'
 import { generateBackupDir } from '../stores/forest'
+import { loadWorkspace } from '../utils/persistence'
+import DatabaseSelector from '../components/DatabaseSelector.vue'
 import { STR } from '../locales/zh-CN'
 
 // ── types ──────────────────────────────────────────────────────────────
 
-interface WorkspaceStatus {
-  results: {
-    last_compute: {
-      trees_count: number
-      mapping_count: number
-      warnings: string[]
-      errors: string[]
-      stats: Record<string, number>
-      inputs_hash: string
-      timestamp: string | null
-    } | null
-  }
-  inputs: {
-    database_path: string
-    rule_paths: string[]
-    aggregated_rule_path: string
-    user_config_path: string
-    discovery_mode: string
-    discovery_manual_paths: string[]
-  }
+interface LocalResults {
+  trees_count: number
+  mapping_count: number
+  warnings: string[]
+  errors: string[]
+  stats: Record<string, unknown>
+  inputs_hash?: string
+  timestamp?: string
 }
 
 // ── state ──────────────────────────────────────────────────────────────
 
 const store = useForestStore()
 
-const loading = ref(true)
-const wsStatus = ref<WorkspaceStatus | null>(null)
+const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 const dryRun = ref(true)
 const operating = ref<string | null>(null) // 'backup' | 'apply' | 'restore'
 const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '' })
 
 // ── computed ───────────────────────────────────────────────────────────
 
+const selectedDb = computed(() => databaseSelectorRef.value?.selectedDatabase ?? 'default')
+
 /** 是否有有效的计算结果 */
-const hasResults = computed(() => {
-  const rc = wsStatus.value?.results?.last_compute
-  return rc != null && rc.trees_count > 0
+const localResults = computed<LocalResults>(() => {
+  const ws = loadWorkspace()
+  const data = ws.perDatabase?.[selectedDb.value]?.results
+  return data ?? { trees_count: 0, mapping_count: 0, warnings: [], errors: [], stats: {} }
 })
 
-/** workspace results 快捷引用 */
-const wsResults = computed(() => {
-  return wsStatus.value?.results?.last_compute ?? {
-    trees_count: 0,
-    mapping_count: 0,
-    warnings: [],
-    errors: [],
-    stats: {},
-    inputs_hash: '',
-    timestamp: null,
-  }
-})
-
-/** workspace inputs 快捷引用 */
-const wsInputs = computed(() => {
-  return wsStatus.value?.inputs ?? {
-    database_path: '',
-    rule_paths: [],
-    aggregated_rule_path: '',
-    user_config_path: '',
-    discovery_mode: 'auto',
-    discovery_manual_paths: [],
-  }
-})
+const hasResults = computed(() => localResults.value.trees_count > 0)
 
 /** 进度百分比 */
 const progressPct = computed(() => {
@@ -198,24 +167,8 @@ function operationLabel(op: string): string {
 // ── helpers ────────────────────────────────────────────────────────────
 
 function getStat(key: string): number {
-  return wsResults.value.stats?.[key] ?? 0
+  return (localResults.value.stats?.[key] as number) ?? 0
 }
-
-// ── onMounted: 加载 workspace 状态 ──────────────────────────────────────
-
-onMounted(async () => {
-  try {
-    const res = await fetch('/api/workspace/status')
-    const json = await res.json()
-    if (json.ok && json.data) {
-      wsStatus.value = json.data as WorkspaceStatus
-    }
-  } catch {
-    // workspace not available — empty state will be shown
-  } finally {
-    loading.value = false
-  }
-})
 
 // ── 操作确认 & 执行 ────────────────────────────────────────────────────
 
@@ -268,8 +221,7 @@ async function doBackup() {
   await streamSse('/pipeline/backup', {
     mapping_result: store.storedMappingResult,
     backup_dir: backupDir,
-    database: wsInputs.value.database_path,
-    user_config_path: wsInputs.value.user_config_path,
+    database_name: selectedDb.value,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p
@@ -296,6 +248,7 @@ async function doApply() {
     final_mapping: store.finalMapping,
     backup_dir: backupDir,
     dry_run: dryRun.value,
+    database_name: selectedDb.value,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p

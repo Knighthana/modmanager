@@ -1,12 +1,15 @@
 # REST API 设计
 
-> Status: stable
+> Status: partially-stable
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 约束 Web API 的接口形态、SSE 通信方式与 Web 层行为边界
-
-> **维护说明（2026-05-06）**：本文档仍作为 Web 层的现行规范使用。
-> 其中早期设计中的 `"forest"` key 在 P0 后已统一改为 `"trees"`，`PipelineResult.forest` 已改为 `PipelineResult.trees`。
+>
+> **冻结状态（2026-05-14）**：
+> - `POST /api/database/*`, `/api/config/*`, `/api/rules/*` (除 compute-scoped)，`/api/backups/*` → **STABLE**（不依赖 GUI 流程）
+> - `POST /api/pipeline/compute`, `/pipeline/backup`, `/pipeline/apply`, `/pipeline/run` → **EVOLVING**（参数与 GUI 决策流程耦合，等 DESIGN_GUI.md 稳定后重新冻结）
+> - SSE 协议、ApiResponse 格式、错误码 → **STABLE**（基础通信层）
+>
 > 涉及映射输出结构时，以 `repo_memo/DESIGN_FOREST_MODEL.md` 定义的现行输出契约为准；其余 Web API 行为约束以本文档为准。
 
 创建：2026-04-30
@@ -190,23 +193,19 @@ web = [
 | `POST` | `/api/config/discover` | 加载 user_config.json | JSON |
 | `POST` | `/api/config/save` | 保存 user_config（含 rule_sources 路径归一化） | JSON |
 | `POST` | `/api/database/generate` | 扫描 Steam 库生成 database.json（纯数据，无 managed） | SSE |
-| `POST` | `/api/database/load` | 从路径加载 database.json | JSON |
-| `POST` | `/api/database/save` | 保存 database（移除 managed 校验；用于高级页编辑） | JSON |
-| `POST` | `/api/pipeline/compute` | 计算映射；优先读 aggregated_rule_path（跳过聚合），回退 kmm_rule_paths；接受可选 managed_entries | SSE |
+| `POST` | `/api/database/read` | 获取指定 database 的内容（由 database_name? 指定，不传则用默认） | JSON |
+| `POST` | `/api/database/save` | 保存 database（用于高级页编辑） | JSON |
+| `POST` | `/api/pipeline/compute` | 计算映射；接受 managed_entries? + branch_decisions? 参数；database 由 orchestrator 内部加载 | SSE |
 | `POST` | `/api/pipeline/backup` | 差异备份 | SSE |
 | `POST` | `/api/pipeline/apply` | 应用替换 | SSE |
-| `POST` | `/api/pipeline/run` | 全流水线（聚合→计算→备份→应用） | SSE |
+| `POST` | `/api/pipeline/run` | 全流水线（聚合→计算→备份→应用）；database 由 orchestrator 内部加载 | SSE |
 | `POST` | `/api/pipeline/restore` | 从备份恢复文件 | SSE |
 | `POST` | `/api/pipeline/visualize` | Forest JSON → SVG 可视化 | JSON |
 | `POST` | `/api/rules/scan` | 扫描目录列出 `*.kmmrule.json` 文件 | JSON |
 | `POST` | `/api/rules/read` | 读取单个 kmmrule 文件内容 | JSON |
-| `POST` | `/api/rules/aggregate` | 【新】聚合选定规则文件 → aggregated_rule_set.json | SSE |
-| `POST` | `/api/rules/affected-entries` | 【新】查询聚合规则影响的 game/mod（供计算准备页） | JSON |
-| `POST` | `/api/rules/load-aggregated` | 【新】加载 aggregated_rule_set.json 原文（供高级页） | JSON |
-| `GET` | `/api/workspace/status` | 【新】获取 workspace.json 全部内容 | JSON |
-| `POST` | `/api/workspace/save-inputs` | 【新】更新 workspace inputs | JSON |
-| `POST` | `/api/workspace/save-decisions` | 【新】保存 branch_decisions | JSON |
-| `POST` | `/api/workspace/save-results` | 【新】保存 compute 结果摘要 + inputs_hash | JSON |
+| `POST` | `/api/rules/aggregate` | 聚合选定规则文件 → aggregated_rule_set.json | SSE |
+| `POST` | `/api/rules/affected-entries` | 查询聚合规则影响的 game/mod（供计算准备页） | JSON |
+| `POST` | `/api/rules/load-aggregated` | 加载 aggregated_rule_set.json 原文（供高级页） | JSON |
 | `POST` | `/api/backups/list` | 列出备份目录摘要 | JSON |
 | `POST` | `/api/backups/inspect` | 查看备份详情 | JSON |
 
@@ -258,7 +257,7 @@ web = [
   "paths": null,              // string[] | null (manual 模式必填)
   "working_pathstyle": "linux",
   "greedy_parsing": false,
-  "cache_path": null          // string | null
+  "database_name": null       // string | null，不传则用 user_config.databases 第一个 key
 }
 
 // → SSE stream
@@ -272,58 +271,60 @@ event: result
 data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
 ```
 
-#### `POST /api/database/save`
+#### `POST /api/database/read`
 
-校验 managed 约束后写入 database.json。请求体包含完整 database 字典和目标输出路径。
+读取指定 database 的内容。`database_name` 不传则用 `user_config.databases` 第一个 key。
 
 ```json
 // ← Request
 {
-  "database": { /* database dict，含 game[].managed 和 mod[].managed */ },
-  "output_path": "/tmp/modmanager_database_generated.json"
+  "database_name": null    // string | null
+}
+
+// → 200 (成功)
+{
+  "ok": true,
+  "data": { /* database dict */ },
+  "errors": [],
+  "warnings": []
+}
+```
+
+#### `POST /api/database/save`
+
+保存 database。请求体包含完整 database 字典 + 目标 database name。
+
+```json
+// ← Request
+{
+  "database": { /* database dict */ },
+  "database_name": null   // string | null，不传则用默认
 }
 
 // → 200 (成功)
 {
   "ok": true,
   "data": {
-    "path": "/tmp/modmanager_database_generated.json",
-    "database": { /* 清洗后的 database dict——E_DUPLICATE 错误在对应冲突组全部解决后被移除 */ }
+    "path": "/path/to/database.json",
+    "database": { /* database dict */ }
   },
   "errors": [],
   "warnings": []
 }
-
-// → 200 (校验失败)
-{
-  "ok": false,
-  "data": null,
-  "errors": [
-    "E_DUPLICATE_APPID: game[3] appid=270150 的 managed=true 与 game[5] 冲突，同一 appid 最多一个 managed=true"
-  ],
-  "warnings": []
-}
 ```
 
-**校验规则**：
-- 同一 `appid` 的 game 条目中，最多一个 `managed: true`
-- 同一 `mixed_id` 的 mod 条目中，最多一个 `managed: true`
-- 校验通过后，条件清除已解决的 `E_DUPLICATE_APPID` / `E_DUPLICATE_MIXED_ID` 错误：
-  - 仅当**该类型所有重复组**都恰好有一个 `managed: true` 时才清除对应错误
-  - 未解决的重复组错误保留
-
-**同步语义**：前端在成功响应中获取 `data.database` 覆盖本地 store（见 DESIGN_STORAGE.md §8.5.1）；不应使用请求中的原始 database 更新本地状态。
-
 #### `POST /api/pipeline/compute`
+
+database 由 orchestrator 内部通过 bootstrap 获取。调用方传入 managed_entries 和 branch_decisions（来自前端 localStorage）。
 
 ```json
 // ← Request
 {
-  "database": { /* database dict */ },
-  "kmm_rule_paths": ["/path/to/rule1.json", "/path/to/rule2.json"],
-  "user_config_path": "/path/to/user_config.json",
-  "action_orders": null,        // dict | null
-  "branch_decisions": null      // dict | null
+  "database_name": null,            // string | null，不传则用默认
+  "aggregated_rule_set": {},        // dict，聚合后的规则集（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
+  "managed_entries": null,          // dict | null，来自前端 localStorage
+  "branch_decisions": null,         // dict | null，来自前端 localStorage
+  "action_orders": null             // dict | null
 }
 
 // → SSE stream  → event: progress ... → event: result
@@ -331,16 +332,18 @@ data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
 
 #### `POST /api/pipeline/run`
 
+database 和 user_config 由 orchestrator 内部通过 bootstrap 获取。调用方不传入。
+
 ```json
 // ← Request
 {
-  "database": { /* ... */ },
-  "kmm_rule_paths": ["/path/to/rule1.json"],
-  "user_config_path": "/path/to/user_config.json",
+  "database_name": null,            // string | null，不传则用默认
+  "aggregated_rule_set": {},        // dict，聚合后的规则集（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
   "backup_dir": "/path/to/backup_dir",
   "action_orders": null,
-  "branch_decisions": null,
-  "dry_run": false          // true → 仅聚合+计算，跳过 backup 和 apply（不碰磁盘）
+  "branch_decisions": null,         // 来自前端 localStorage
+  "managed_entries": null,          // 来自前端 localStorage
+  "dry_run": false             // true → 仅聚合+计算，跳过 backup 和 apply（不碰磁盘）
 }
 ```
 
@@ -465,12 +468,12 @@ router = APIRouter()
 async def pipeline_run(req: RunRequest):
     def do_work(on_progress):
         return orch_run(
-            database=req.database,
-            kmm_rule_paths=req.kmm_rule_paths,
-            user_config_path=req.user_config_path,
+            database_name=req.database_name,
+            aggregated_rule_set=req.aggregated_rule_set,
             backup_dir=req.backup_dir,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,
+            managed_entries=req.managed_entries,
             dry_run=req.dry_run,
             on_progress=on_progress,
         )
@@ -512,32 +515,39 @@ class GenerateDatabaseRequest(BaseModel):
     paths: list[str] | None = None
     working_pathstyle: str = "linux"
     greedy_parsing: bool = False
-    cache_path: str | None = None
+    database_name: str | None = None      # 不传则用 user_config.databases 第一个 key
+
+class ReadDatabaseRequest(BaseModel):
+    database_name: str | None = None      # 不传则用默认
+
+class SaveDatabaseRequest(BaseModel):
+    database: dict[str, Any]              # database dict
+    database_name: str | None = None      # 不传则用默认
 
 # ── pipeline ──
 class ComputeRequest(BaseModel):
-    database: Any              # dict（数据库内容）| str（database.json 路径，后端自行解析）
-    kmm_rule_paths: list[str]
-    user_config_path: str
-    action_orders: dict[str, int] | None = None
+    database_name: str | None = None
+    aggregated_rule_set: dict[str, Any]        # 聚合后的规则集 dict（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
+    managed_entries: dict[str, dict[str, list[str]]] | None = None
     branch_decisions: dict[str, str] | None = None
+    action_orders: dict[str, int] | None = None
 
 class BackupRequest(BaseModel):
     mapping_result: dict[str, Any]        # compute_mapping 的原始输出
-    backup_dir: str
+    backup_dir: str | None = None         # 为空时 orchestrator 从 user_config 和 database 推导
 
 class ApplyRequest(BaseModel):
     final_mapping: list[dict[str, Any]]
-    backup_dir: str
+    backup_dir: str | None = None
     dry_run: bool = False
 
 class RunRequest(BaseModel):
-    database: Any              # dict（数据库内容）| str（database.json 路径，后端自行解析）
-    kmm_rule_paths: list[str]
-    user_config_path: str
-    backup_dir: str
-    action_orders: dict[str, int] | None = None
+    database_name: str | None = None
+    aggregated_rule_set: dict[str, Any]        # 聚合后的规则集 dict（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
+    backup_dir: str | None = None
+    managed_entries: dict[str, dict[str, list[str]]] | None = None
     branch_decisions: dict[str, str] | None = None
+    action_orders: dict[str, int] | None = None
     dry_run: bool = False
 ```
 
@@ -614,7 +624,7 @@ def adapt_error(message: str) -> dict:
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import config, database, pipeline
+from .routes import config, database, pipeline, rules
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -785,8 +795,7 @@ CORS 配置的目的仅为阻断此类场景，不是访问控制手段。
 | `routes/rules.py` `/read` | `req.path` | `resolve_file_path` |
 | `routes/rules.py` `/scan` | `req.dir` | `resolve_directory_path` |
 | `routes/backups.py` `/list` | `req.dir` | `resolve_directory_path` |
-| `routes/pipeline.py` `/compute` `/run` | `req.kmm_rule_paths[]` | `resolve_file_path`（每项） |
-| `routes/pipeline.py` `/compute` `/run` | `req.user_config_path` | `resolve_file_path` |
+| `routes/pipeline.py` `/compute` `/run` | — | 不再接收文件路径参数；compute 只接受 `aggregated_rule_set` dict |
 
 写类入口（目标不一定存在，不走 `path_resolver`）：
 

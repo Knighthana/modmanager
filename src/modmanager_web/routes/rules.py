@@ -11,8 +11,9 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
+from modmanager.bootstrap import discover_user_config
 from modmanager.iojson import load_json_file
-from modmanager.path_resolver import resolve_directory_path, resolve_file_path
+from modmanager.path_resolver import expand_path, resolve_directory_path, resolve_file_path
 from modmanager.rule_aggregator import aggregate as rule_aggregate
 
 from ..adapters import adapt_dict_result, adapt_error
@@ -100,7 +101,7 @@ async def rules_aggregate(req: RulesAggregateRequest):
     """Aggregate multiple kmm_rule files into a single aggregated_rule_set.
 
     Accepts ``{ paths: [文件路径列表] }``.  The result is written to the
-    aggregated rule set path (derived from workspace or default) and returned.
+    aggregated rule set path (derived from user_config or default) and returned.
 
     Returns an ``ApiResponse`` with the aggregated rule set dict.
     """
@@ -108,28 +109,19 @@ async def rules_aggregate(req: RulesAggregateRequest):
         return adapt_error("paths list is required and must not be empty")
 
     try:
-        # Try to get aggregated_rule_path from workspace
-        from modmanager.workspace import load_workspace
-        workspace = load_workspace()
-        output_path = workspace.get("inputs", {}).get("aggregated_rule_path", "")
-        if not output_path:
-            # Fallback to a sensible default
-            output_path = "aggregated_rule_set.json"
+        # Try to get aggregated_ruleset_output_path from user_config
+        user_config = discover_user_config()
+        output_path = user_config.get("aggregated_ruleset_output_path", "")
+        # Expand ~ and only write if user explicitly configured a path
+        if output_path:
+            output_path = expand_path(output_path)
+        else:
+            output_path = None
     except Exception:
         output_path = "aggregated_rule_set.json"
 
-    # We need a user_config_path for aggregate() — use the one from workspace or
-    # let the caller provide it inside the rule paths (first rule file's dir).
-    # For simplicity, try workspace first, then fall back to empty string
-    # (which will cause aggregate to fail gracefully).
-    try:
-        user_config_path = workspace.get("inputs", {}).get("user_config_path", "")
-    except Exception:
-        user_config_path = ""
-
     result, errors, warnings = rule_aggregate(
-        req.paths,
-        user_config_path,
+        [expand_path(p) for p in req.paths],
         output_path=output_path,
     )
 
@@ -153,25 +145,29 @@ async def rules_aggregate(req: RulesAggregateRequest):
 async def rules_affected_entries(req: RulesAffectedEntriesRequest):
     """Query the database for game/mod entries referenced by an aggregated rule set.
 
-    Accepts ``{ aggregated_rule_path }``. Loads the aggregated rule set together
-    with the database, and returns libraries/games/mods entries with
-    ``libraryIndex`` and ``has_duplicate`` markers.
+    Accepts ``{ aggregated_rule_path, database_name }``.  Loads the aggregated
+    rule set together with the database (resolved via database_name from
+    user_config), and returns libraries/games/mods entries with ``libraryIndex``
+    and ``has_duplicate`` markers.
     """
-    if not req.aggregated_rule_path:
-        return adapt_error("aggregated_rule_path is required")
+    if not req.aggregated_rule_path and not req.aggregated_rule_set:
+        return adapt_error("aggregated_rule_path or aggregated_rule_set is required")
 
     try:
-        # Load aggregated rule set
-        agg_rules = load_json_file(req.aggregated_rule_path)
+        # Load aggregated rule set — prefer dict if provided, else load from file
+        if req.aggregated_rule_set:
+            agg_rules = req.aggregated_rule_set
+        else:
+            agg_rules = load_json_file(expand_path(req.aggregated_rule_path))
     except Exception as exc:
         return adapt_error(f"failed to load aggregated rule set: {exc}")
 
-    # Load database — try workspace path first, then fallback
+    # Load database from user_config via database_name
     try:
-        from modmanager.workspace import load_workspace
-        workspace = load_workspace()
-        db_path = workspace.get("inputs", {}).get("database_path", "")
-        if db_path:
+        user_config = discover_user_config()
+        db_entry = user_config.get("databases", {}).get(req.database_name)
+        if db_entry:
+            db_path = db_entry["path"]
             from modmanager.iojson import load_json_file as ljf
             database = ljf(db_path)
         else:

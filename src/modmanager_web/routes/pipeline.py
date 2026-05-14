@@ -5,13 +5,12 @@ All endpoints return SSE streams with progress updates.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from modmanager.backup_dir_builder import build_backup_dir
 from modmanager.backup_ops import restore_from_backup
+from modmanager.bootstrap import discover_user_config
 from modmanager.iojson import load_json_file
 from modmanager.orchestrator import (
     compute as orch_compute,
@@ -23,50 +22,34 @@ from modmanager.orchestrator import (
 from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_restore_result, adapt_dict_result, adapt_error
 from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest, RestoreRequest
 from ..sse import stream_with_progress
+from .database import _resolve_database_path
 
 router = APIRouter()
 
 
 @router.post("/compute")
 async def pipeline_compute(req: ComputeRequest):
-    """Aggregate rules and compute file mapping.
+    """Compute file mapping from a pre-aggregated rule set dict.
 
     SSE events:
-      - ``progress`` — aggregate/compute phase updates
-      - ``result``   — ``PipelineResult`` in ``ApiResponse`` format
-      - ``error``    — exception information
+      - ``progress`` — compute phase updates
+      - ``result``   -- ``PipelineResult`` in ``ApiResponse`` format
+      - ``error``    -- exception information
     """
 
-    # ── Pre-check: at least one rule input must be provided ──────────────
-    if not req.aggregated_rule_path and not req.kmm_rule_paths:
-        return adapt_error("E_NO_RULE_INPUT: 未提供 aggregated_rule_path 或 kmm_rule_paths")
+    # ── Pre-check: aggregated_rule_set is required ─────────────────────
+    if not req.aggregated_rule_set:
+        return adapt_error("E_NO_RULE_INPUT: aggregated_rule_set is required")
 
     def do_work(*, on_progress):
-        from modmanager.path_resolver import resolve_file_path
-
-        db = req.database
-        if isinstance(db, str):
-            from modmanager.iojson import load_json_file
-            resolved = resolve_file_path(db, 'database.json')
-            db = load_json_file(resolved)
-
-        # Resolve aggregated_rule_path if provided
-        resolved_agg_path = None
-        if req.aggregated_rule_path:
-            resolved_agg_path = resolve_file_path(req.aggregated_rule_path, Path(req.aggregated_rule_path).name)
-
-        # Resolve kmm_rule_paths if provided
-        rule_paths = None
-        user_cfg = ""
-        if req.kmm_rule_paths:
-            rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
-            user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else ""
+        # Resolve database from database_name
+        user_config = discover_user_config()
+        db_path = _resolve_database_path(req.database_name, user_config)
+        db = load_json_file(db_path)
 
         return orch_compute(
             database=db,
-            kmm_rule_paths=rule_paths,
-            user_config_path=user_cfg,
-            aggregated_rule_path=resolved_agg_path,
+            aggregated_rule_set=req.aggregated_rule_set,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,
             managed_entries=req.managed_entries,
@@ -90,19 +73,18 @@ async def pipeline_backup(req: BackupRequest):
       - ``error``    — exception information
     """
 
+    # Resolve database and user_config from database_name
+    user_config = discover_user_config()
+    db_path = _resolve_database_path(req.database_name, user_config)
+    database = load_json_file(db_path)
+
     resolved_backup_dir = req.backup_dir
     if resolved_backup_dir is None:
-        if not req.database or not req.user_config_path:
-            return adapt_error("backup_dir is required when database/user_config_path are not provided")
-        try:
-            user_config = load_json_file(req.user_config_path)
-        except Exception as exc:
-            return adapt_error(f"failed to load user_config: {exc}")
         final_mapping = req.mapping_result.get("final_mapping", [])
         if not final_mapping:
             return adapt_error("final_mapping is empty; cannot derive backup_dir")
         try:
-            resolved_backup_dir = build_backup_dir(final_mapping, req.database, user_config)
+            resolved_backup_dir = build_backup_dir(final_mapping, database, user_config)
         except ValueError as exc:
             return adapt_error(str(exc))
 
@@ -155,18 +137,17 @@ async def pipeline_apply(req: ApplyRequest):
       - ``error``    — exception information
     """
 
+    # Resolve database and user_config from database_name
+    user_config = discover_user_config()
+    db_path = _resolve_database_path(req.database_name, user_config)
+    database = load_json_file(db_path)
+
     resolved_backup_dir = req.backup_dir
     if resolved_backup_dir is None:
-        if not req.database or not req.user_config_path:
-            return adapt_error("backup_dir is required when database/user_config_path are not provided")
-        try:
-            user_config = load_json_file(req.user_config_path)
-        except Exception as exc:
-            return adapt_error(f"failed to load user_config: {exc}")
         if not req.final_mapping:
             return adapt_error("final_mapping is empty; cannot derive backup_dir")
         try:
-            resolved_backup_dir = build_backup_dir(req.final_mapping, req.database, user_config)
+            resolved_backup_dir = build_backup_dir(req.final_mapping, database, user_config)
         except ValueError as exc:
             return adapt_error(str(exc))
 
@@ -214,7 +195,7 @@ async def pipeline_restore(req: RestoreRequest):
 
 @router.post("/run")
 async def pipeline_run(req: RunRequest):
-    """Execute the full pipeline: aggregate → compute → backup → apply.
+    """Execute the full pipeline: compute → backup → apply.
 
     SSE events:
       - ``progress`` — phase updates for all four stages
@@ -222,36 +203,19 @@ async def pipeline_run(req: RunRequest):
       - ``error``    — exception information
     """
 
-    # ── Pre-check: at least one rule input must be provided ──────────────
-    if not req.aggregated_rule_path and not req.kmm_rule_paths:
-        return adapt_error("E_NO_RULE_INPUT: 未提供 aggregated_rule_path 或 kmm_rule_paths")
+    # ── Pre-check: aggregated_rule_set is required ─────────────────────
+    if not req.aggregated_rule_set:
+        return adapt_error("E_NO_RULE_INPUT: aggregated_rule_set is required")
 
     def do_work(*, on_progress):
-        from modmanager.path_resolver import resolve_file_path
-
-        db = req.database
-        if isinstance(db, str):
-            from modmanager.iojson import load_json_file
-            resolved = resolve_file_path(db, 'database.json')
-            db = load_json_file(resolved)
-
-        # Resolve aggregated_rule_path if provided
-        resolved_agg_path = None
-        if req.aggregated_rule_path:
-            resolved_agg_path = resolve_file_path(req.aggregated_rule_path, Path(req.aggregated_rule_path).name)
-
-        # Resolve kmm_rule_paths if provided
-        rule_paths = None
-        user_cfg = ""
-        if req.kmm_rule_paths:
-            rule_paths = [resolve_file_path(p, Path(p).name) for p in req.kmm_rule_paths]
-            user_cfg = resolve_file_path(req.user_config_path, "user_config.json") if req.user_config_path else ""
+        # Resolve database from database_name
+        user_config = discover_user_config()
+        db_path = _resolve_database_path(req.database_name, user_config)
+        db = load_json_file(db_path)
 
         return orch_run(
             database=db,
-            kmm_rule_paths=rule_paths,
-            user_config_path=user_cfg,
-            aggregated_rule_path=resolved_agg_path,
+            aggregated_rule_set=req.aggregated_rule_set,
             backup_dir=req.backup_dir,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,

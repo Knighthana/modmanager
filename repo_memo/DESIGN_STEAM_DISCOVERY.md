@@ -25,8 +25,9 @@
 - `appworkshop_*.acf`
 
 ## 输出落位
-- `OS.steamlibpathstyle`
-- `steamlib[].path`
+- `OS.workingpathstyle` — 工具运行环境的路径风格（`"linux"` | `"windows"`）。影响所有输出路径的格式。
+- `OS.steamlibpathstyle` — 来源 VDF 文件所属 Steam 的路径风格（`"linux"` | `"windows"`）。仅从 VDF 文件自身声明获取；不猜测。
+- `steamlib[].path` — 已转换为 `workingpathstyle` 的归一化路径
 - `steamlib[].contains_libraryfolders_vdf`
 - `steamlib[].game`
 - `game[].appid`

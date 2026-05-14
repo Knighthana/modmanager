@@ -29,11 +29,6 @@
                 "type": "string"
             }
         },
-        "database_output_path": {
-            "description": "database.json 的输出路径。为 null 时使用平台默认位置（Linux: ~/.local/share/kmm/，Windows: exe 所在目录）。",
-            "type": ["string", "null"],
-            "default": null
-        },
         "aggregated_ruleset_output_path": {
             "description": "aggregated_rule_set.json 的输出路径。为 null 时使用平台默认位置。",
             "type": ["string", "null"],
@@ -66,6 +61,22 @@
                     },
                     "path_target": {
                         "description": "别名对应的本地文件系统路径。",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "databases": {
+            "description": "database 名称→路径映射。对象天然防重，每个 entry 是对象为未来扩展留空间。key 为 database 名称，value 包含 path 属性。",
+            "type": "object",
+            "default": {},
+            "additionalProperties": {
+                "type": "object",
+                "required": ["path"],
+                "additionalProperties": false,
+                "properties": {
+                    "path": {
+                        "description": "database 文件的本地路径。",
                         "type": "string"
                     }
                 }

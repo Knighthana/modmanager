@@ -238,7 +238,7 @@ const saved = pers.load<DataSourceState>('datasource');
 | # | 决策 | 结论 |
 |---|------|------|
 | D1 | 持久化方案 | 自写抽象层 `persistence.ts`，当前 localStorage，预留 Tauri |
-| D2 | 重复 ID 处理 | 交互式 radio group，同一 ID 的多行共享 |
+| D2 | 重复 ID 处理 | 重复条目 DataSourcePage 纯展示，裁决移入 ComputePrepPage |
 | D3 | 表格布局 | 统一大表（库→游戏→MOD，依次纵向排列），库摘要在最顶 |
 | D4 | 库标识 | 序号 "库#1" / "库#2" |
 | D5 | 跳转 | `scrollintotabitem()` 封装，当前 `scrollIntoView` |

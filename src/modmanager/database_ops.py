@@ -50,7 +50,7 @@ def _build_mod_from_games(games: list[dict[str, Any]], old_mod: dict[str, dict[s
         mods_found = game.get("mods_found", [])
         if not appid or not isinstance(modpath, str):
             continue
-        normalized_modpath = normalize_posix(modpath)
+        normalized_modpath = normalize_posix(modpath).rstrip("/")
         for modid in mods_found if isinstance(mods_found, list) else []:
             modid_str = str(modid)
             mixed_id = f"{appid}:{modid_str}"
@@ -484,7 +484,7 @@ def verify_database_integrity(database: dict[str, Any]) -> list[str]:
         modpath = game.get("modpath")
         if not isinstance(modpath, str):
             continue
-        normalized_modpath = normalize_posix(modpath)
+        normalized_modpath = normalize_posix(modpath).rstrip("/")
         for modid in mods:
             mixed_id = f"{appid}:{modid}"
             expected_path = f"{normalized_modpath}/{modid}"

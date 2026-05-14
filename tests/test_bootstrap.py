@@ -15,6 +15,7 @@ from modmanager.bootstrap import (
     generate_database,
 )
 from modmanager import bootstrap as bootstrap_module
+from modmanager.iojson import write_json_file
 
 
 class TestDetectSoftwareDir(TestCase):
@@ -34,138 +35,113 @@ class TestDetectSoftwareDir(TestCase):
 class TestDiscoverUserConfig(TestCase):
     """Tests for discover_user_config()."""
 
-    def test_discover_user_config_no_files_raises(self) -> None:
-        """Pass a non-existent home_dir — should raise FileNotFoundError."""
+    def test_discover_user_config_first_use_creates_default(self) -> None:
+        """No existing config → default is created with first_use=true."""
         with tempfile.TemporaryDirectory() as td:
-            fake_home = Path(td) / "nonexistent_home"
-            with self.assertRaises(FileNotFoundError):
-                discover_user_config(home_dir=str(fake_home))
+            home_dir = str(td)
+            result = discover_user_config(home_dir=home_dir)
 
-    def test_discover_user_config_single_level(self) -> None:
-        """Single user_config.json at ~/.config/kmm/ should be found."""
+            self.assertIn("databases", result)
+            self.assertIn("default", result["databases"])
+            self.assertIn("path", result["databases"]["default"])
+            self.assertTrue(result["databases"]["default"]["path"].endswith("database.json"))
+            self.assertIn("source_path", result)
+            self.assertTrue(result["source_path"].endswith("user_config.json"))
+            self.assertTrue(result["first_use"])
+
+            # Verify the file was actually written
+            config_path = Path(td) / ".config" / "kmm" / "user_config.json"
+            self.assertTrue(config_path.exists())
+
+    def test_discover_user_config_existing_file(self) -> None:
+        """Existing user_config.json is loaded with first_use=false."""
         with tempfile.TemporaryDirectory() as td:
             home_dir = str(td)
             config_dir = Path(td) / ".config" / "kmm"
             config_dir.mkdir(parents=True)
             config_file = config_dir / "user_config.json"
-            data = {"key1": "value1", "path_alias": []}
+            data = {"key1": "value1", "databases": {"default": {"path": "/custom/path.json"}}}
             config_file.write_text(json.dumps(data), encoding="utf-8")
 
             result = discover_user_config(home_dir=home_dir)
             self.assertEqual(result.get("key1"), "value1")
-            self.assertEqual(result.get("path_alias"), [])
+            self.assertEqual(result["databases"]["default"]["path"], "/custom/path.json")
+            self.assertFalse(result["first_use"])
+            self.assertEqual(result["source_path"], str(config_file))
 
-    def test_discover_user_config_multi_level_merge(self) -> None:
-        """Three tiers merged; higher priority overrides lower."""
+    def test_discover_user_config_invalid_json_recreated(self) -> None:
+        """Invalid JSON content → file is recreated with defaults."""
         with tempfile.TemporaryDirectory() as td:
             home_dir = str(td)
+            config_dir = Path(td) / ".config" / "kmm"
+            config_dir.mkdir(parents=True)
+            config_file = config_dir / "user_config.json"
+            config_file.write_text("this is not valid json {{{", encoding="utf-8")
 
-            # Tier 1: ~/.config/kmm/user_config.json
-            tier1_dir = Path(td) / ".config" / "kmm"
-            tier1_dir.mkdir(parents=True)
-            (tier1_dir / "user_config.json").write_text(
-                json.dumps({"shared_key": "from_tier1", "tier1_only": "yes", "override_me": "tier1"}),
-                encoding="utf-8",
-            )
-
-            # Tier 2: software dir (simulate with PWD-like placement inside td)
-            tier2_dir = Path(td) / "software_root"
-            tier2_dir.mkdir(parents=True)
-
-            # Tier 3: PWD (current working directory)
-            tier3_dir = Path(td) / "cwd"
-            tier3_dir.mkdir(parents=True)
-            (tier3_dir / "user_config.json").write_text(
-                json.dumps({"shared_key": "from_tier3", "tier3_only": "yes", "override_me": "tier3"}),
-                encoding="utf-8",
-            )
-
-            # Simulate _detect_software_dir pointing to tier2
-            with patch("modmanager.bootstrap._detect_software_dir", return_value=str(tier2_dir)):
-                (tier2_dir / "user_config.json").write_text(
-                    json.dumps({"tier2_only": "yes", "override_me": "tier2"}),
-                    encoding="utf-8",
-                )
-
-                # Change cwd to tier3
-                original_cwd = os.getcwd()
-                try:
-                    os.chdir(str(tier3_dir))
-                    result = discover_user_config(home_dir=home_dir)
-                finally:
-                    os.chdir(original_cwd)
-
-            # Tier3 overrides tier2 which overrides tier1
-            self.assertEqual(result.get("shared_key"), "from_tier3")
-            self.assertEqual(result.get("override_me"), "tier3")
-            self.assertEqual(result.get("tier1_only"), "yes")
-            self.assertEqual(result.get("tier2_only"), "yes")
-            self.assertEqual(result.get("tier3_only"), "yes")
-
-    def test_discover_user_config_invalid_json_skipped(self) -> None:
-        """A tier with invalid JSON content is skipped; other tiers still work."""
-        with tempfile.TemporaryDirectory() as td:
-            home_dir = str(td)
-
-            # Tier 1: valid
-            tier1_dir = Path(td) / ".config" / "kmm"
-            tier1_dir.mkdir(parents=True)
-            (tier1_dir / "user_config.json").write_text(
-                json.dumps({"key": "from_tier1"}),
-                encoding="utf-8",
-            )
-
-            # Simulate software_dir for tier2 with INVALID JSON
-            tier2_dir = Path(td) / "software_root"
-            tier2_dir.mkdir(parents=True)
-
-            with patch("modmanager.bootstrap._detect_software_dir", return_value=str(tier2_dir)):
-                (tier2_dir / "user_config.json").write_text(
-                    "this is not valid json {{{",
-                    encoding="utf-8",
-                )
-
-                # Tier 3: valid (PWD override)
-                tier3_dir = Path(td) / "cwd_valid"
-                tier3_dir.mkdir(parents=True)
-                (tier3_dir / "user_config.json").write_text(
-                    json.dumps({"key": "from_tier3"}),
-                    encoding="utf-8",
-                )
-
-                original_cwd = os.getcwd()
-                try:
-                    os.chdir(str(tier3_dir))
-                    result = discover_user_config(home_dir=home_dir)
-                finally:
-                    os.chdir(original_cwd)
-
-            # Tier3 should override tier1, tier2 (invalid) skipped
-            self.assertEqual(result.get("key"), "from_tier3")
+            result = discover_user_config(home_dir=home_dir)
+            self.assertIn("databases", result)
+            self.assertTrue(result["first_use"])
+            # File should have been overwritten with valid JSON
+            import json as json_mod
+            reloaded = json_mod.loads(config_file.read_text(encoding="utf-8"))
+            self.assertIn("databases", reloaded)
 
 
 class TestGenerateDatabase(TestCase):
     """Tests for generate_database()."""
 
+    def _make_user_config_override(self, td: str, db_path: str) -> dict:
+        """Build a fake user_config dict for mocking discover_user_config."""
+        return {
+            "databases": {
+                "default": {"path": db_path},
+                "custom": {"path": db_path},
+            },
+            "source_path": str(Path(td) / "fake_user_config.json"),
+            "first_use": False,
+        }
+
     def test_generate_database_invalid_mode(self) -> None:
         """Passing an invalid mode raises ValueError."""
-        with self.assertRaises(ValueError):
-            generate_database("invalid")
+        with tempfile.TemporaryDirectory() as td:
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                with self.assertRaises(ValueError):
+                    generate_database("invalid")
 
     def test_generate_database_manual_empty_paths(self) -> None:
         """Manual mode with empty paths raises ValueError."""
-        with self.assertRaises(ValueError):
-            generate_database("manual", paths=[])
+        with tempfile.TemporaryDirectory() as td:
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                with self.assertRaises(ValueError):
+                    generate_database("manual", paths=[])
 
     def test_generate_database_manual_none_paths(self) -> None:
         """Manual mode with None paths raises ValueError."""
-        with self.assertRaises(ValueError):
-            generate_database("manual", paths=None)
+        with tempfile.TemporaryDirectory() as td:
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                with self.assertRaises(ValueError):
+                    generate_database("manual", paths=None)
+
+    def test_generate_database_missing_db_name(self) -> None:
+        """Unknown database_name raises ValueError."""
+        with tempfile.TemporaryDirectory() as td:
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                with self.assertRaises(ValueError):
+                    generate_database("auto", database_name="nonexistent")
 
     def test_generate_database_cache_hit(self) -> None:
         """A valid cache file is loaded instead of scanning."""
         with tempfile.TemporaryDirectory() as td:
-            cache_path = str(Path(td) / "cache.json")
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
             cache_data = {
                 "steamlib": [
                     {
@@ -177,38 +153,43 @@ class TestGenerateDatabase(TestCase):
                 "game": [],
                 "mod": [],
             }
-            Path(cache_path).write_text(json.dumps(cache_data), encoding="utf-8")
+            Path(db_path).write_text(json.dumps(cache_data), encoding="utf-8")
 
-            result = generate_database("auto", cache_path=cache_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                result = generate_database("auto")
             self.assertEqual(result, cache_data)
 
     def test_generate_database_cache_empty_file(self) -> None:
         """An empty cache file should be ignored (fall through to scan)."""
         with tempfile.TemporaryDirectory() as td:
-            cache_path = str(Path(td) / "cache.json")
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
             # Create an empty file
-            Path(cache_path).write_text("", encoding="utf-8")
+            Path(db_path).write_text("", encoding="utf-8")
 
             # Patch discover_with_fallback to raise so we can detect fall-through
-            with patch.object(
-                bootstrap_module, "discover_with_fallback",
-                side_effect=ValueError("mocked: no Steam"),
-            ):
-                with self.assertRaises(ValueError):
-                    generate_database("auto", cache_path=cache_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                with patch.object(
+                    bootstrap_module, "discover_with_fallback",
+                    side_effect=ValueError("mocked: no Steam"),
+                ):
+                    with self.assertRaises(ValueError):
+                        generate_database("auto")
 
     def test_generate_database_cache_invalid_structure(self) -> None:
         """A cache file without 'steamlib' list is ignored (fall through to scan)."""
         with tempfile.TemporaryDirectory() as td:
-            cache_path = str(Path(td) / "cache.json")
-            Path(cache_path).write_text(
+            db_path = str(Path(td) / "db.json")
+            fake_config = self._make_user_config_override(td, db_path)
+            Path(db_path).write_text(
                 json.dumps({"some_other_key": "value"}), encoding="utf-8"
             )
 
             # Patch discover_with_fallback to raise so we can detect fall-through
-            with patch.object(
-                bootstrap_module, "discover_with_fallback",
-                side_effect=ValueError("mocked: no Steam"),
-            ):
-                with self.assertRaises(ValueError):
-                    generate_database("auto", cache_path=cache_path)
+            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
+                with patch.object(
+                    bootstrap_module, "discover_with_fallback",
+                    side_effect=ValueError("mocked: no Steam"),
+                ):
+                    with self.assertRaises(ValueError):
+                        generate_database("auto")

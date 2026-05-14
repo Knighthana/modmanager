@@ -4,9 +4,7 @@
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 冻结项目所有持久化存储的分类、默认位置、搜索策略与生命周期。作为跨模块存储行为的唯一权威来源。
-> 创建：2026-05-09
-> 更新：2026-05-13 — 【重大改版】新增 §5 workspace.json 作为用户决策与计算结果的独立存储载体；database.json 移除 managed / warnings / errors 字段；§8 前端持久化缩减为仅 UI 状态
-> Supersedes: 替代 `DESIGN_RULE_AGGREGATOR.md` §2.2 中过时的三级搜索链描述
+
 
 ---
 
@@ -18,7 +16,7 @@
 |------|------|------|
 | **用户配置** | 控制工具行为的首选项，用户可编辑 | `user_config.json` |
 | **磁盘扫描数据** | 工具扫描磁盘产生的客观数据 | `database.json` |
-| **用户决策与结果** | 用户的主观选择 + 上次计算结果 | `workspace.json` |
+| **用户决策与结果** | 用户的主观选择 + 上次计算结果 | 前端 localStorage（`modmanager:workspace`） |
 | **运行产出** | 流水线运行的中间文件 | `aggregated_rule_set.json` |
 | **备份产物** | 文件替换前的安全副本，不可自动丢弃 | `kmmbackup_*` 目录 |
 
@@ -99,10 +97,23 @@
 |------|------|:--:|------|
 | `bakprefix` | `string` | 否 | 备份目录名前缀，默认 `"kmmbackup_"` |
 | `bakignore` | `string[]` | 否 | 备份扫描忽略模式列表 |
-| `database_output_path` | `string \| null` | 否 | `database.json` 输出路径。`null` 时使用默认位置 |
 | `aggregated_ruleset_output_path` | `string \| null` | 否 | `aggregated_rule_set.json` 输出路径。`null` 时使用默认位置 |
 | `rule_sources` | `string[]` | 否 | 规则文件来源列表。目录以 `/` 结尾（后端自动扫描 `*.kmmrule.json`），或以 `.kmmrule.json` 结尾的文件直接加载。后端保存时自动归一化：检测到目录路径缺 `/` 则补齐 |
 | `path_alias` | `object[]` | 否 | 路径别名列表（当前无消费者，保留供未来扩展） |
+| `databases` | `object` | 否 | database 名称→路径映射。对象天然防重，每个 entry 是对象为未来扩展留空间。格式：`{ [name: string]: { path: string } }` |
+
+`databases` 子字段：
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|:--:|------|
+| `databases[name].path` | `string` | 是 | database 文件路径 |
+
+示例：
+```json
+"databases": {
+  "wsl_scan": { "path": "/mnt/d/database_wsl.json" }
+}
+```
 
 ### 3.6 与 Orchestrator / Bootstrap 的接口
 
@@ -137,20 +148,20 @@ bootstrap 据此执行 §3.2-§3.4 的搜索/创建逻辑。
 `database.json` 是 `POST /api/database/generate` 扫描磁盘后产生的**纯客观数据**。它描述"磁盘上有什么"，不包含任何用户决策或计算产物。
 
 **database.json 中禁止包含**：
-- ❌ `managed` 字段（用户对重复条目的取舍 → 属于 workspace.decisions）
+- ❌ `managed` 字段（用户对重复条目的取舍 → 前端 localStorage decisions）
 - ❌ `warnings` 字段（扫描过程中的警告 → 在 API 响应中返回，不写入文件）
 - ❌ `errors` 字段（扫描过程中的错误 → 同上）
 
 ### 4.2 输出路径
 
-优先级：
-1. `user_config.database_output_path`（若为非空字符串）
-2. 平台默认位置（见 §2.1）
+database.json 的路径来源于 `user_config.databases[name].path`。`name` 由前端请求参数 `database_name?` 指定，不传则用默认（`databases` 对象的第一个 key）。
 
 | 平台 | 默认位置 |
 |------|----------|
 | Linux | `~/.local/share/kmm/database.json` |
 | Windows | `<exe_dir>/database.json` |
+
+默认位置仅在 `databases` 对象为空且未传入 `database_name?` 时生效。
 
 ### 4.3 history 字段
 
@@ -161,41 +172,41 @@ bootstrap 据此执行 §3.2-§3.4 的搜索/创建逻辑。
 
 database 扫描可能发现同一个 appid 出现在多个 Steam 库中（重复 game），或同一 mixed_id 对应多个路径（重复 mod）。这些重复条目**全部写入 database.json**，不作过滤。
 
-用户对重复条目的取舍（managed_entries）存储在 `workspace.json` 中。Pipeline 计算时由 orchestrator 读取 database + workspace.managed_entries，过滤后传入 engine。详见 `DESIGN_WORKSPACE_STATE.md`。
+用户对重复条目的取舍（managed_entries）由前端 localStorage 管理，compute 时作为参数传入。详见 `DESIGN_GUI_WORKSPACE.md`。
 
 ---
 
-## 5. workspace.json — 用户决策与计算结果
+## 5. 用户决策与结果 —— 前端 localStorage
 
 ### 5.1 定位
 
-`workspace.json` 是当前工作会话中用户主观决策和上次计算结果的持久化文件。
+workspace.json 已撤销。用户决策（decisions）和计算结果（results）不再由后端文件管理。
 
-**完整设计见 `DESIGN_WORKSPACE_STATE.md`**。本文档仅记录其与存储体系的交叉点。
+decisions 和 results 存储在前端 localStorage 中，使用 `modmanager:` 命名空间前缀。compute 时作为参数传入后端，compute 后前端从响应提取摘要写回 localStorage。
 
-### 5.2 文件位置
+**完整设计见 `DESIGN_GUI_WORKSPACE.md`**。本文档仅记录其与存储体系的交叉点。
 
-| 平台 | 路径 |
-|------|------|
-| Linux | `~/.local/share/kmm/workspace.json` |
-| Windows | `%localappdata%/kmm/workspace.json` |
+### 5.2 存储格式
 
-### 5.3 单工作区策略
+所有数据聚合为单一 key `modmanager:workspace`：
 
-始终只有一份 `workspace.json`。新操作覆盖旧状态。不支持多 session 并存。
+| key | 内容 |
+|-----|------|
+| `modmanager:workspace` | 包含 `lastDatabase`、`perDatabase`（按 name 索引的 decisions/results）、`aggregatedRuleSet`、`aggregatedRuleHash` |
 
-### 5.4 与 database.json 的职责边界
+结构详见 `DESIGN_GUI_WORKSPACE.md` §二。
 
-| 内容 | database.json | workspace.json | compute 参数 |
+### 5.3 与 database.json 的职责边界
+
+| 内容 | database.json | 前端 localStorage | compute 参数 |
 |------|:---:|:---:|:---:|
 | steamlib[] | ✅ | — | — |
 | game[]（纯数据，无 managed） | ✅ | — | — |
 | mod[]（纯数据，无 managed） | ✅ | — | — |
-| branch 决策 | — | ✅ decisions | ✅ |
-| managed 预选 | — | — | ✅（可选参数，列表格式） |
-| 扫描参数 | — | ✅ inputs | — |
-| compute 结果摘要 | — | ✅ results | — |
-| warnings / errors | —（API 响应） | ✅ results | — |
+| branch 决策 | — | ✅ workspace.perDatabase[name].decisions | ✅ |
+| managed 预选 | — | ✅ workspace.perDatabase[name].decisions.managed_entries | ✅（可选参数） |
+| compute 结果摘要 | — | ✅ workspace.perDatabase[name].results | — |
+| warnings / errors | —（API 响应） | ✅ workspace.perDatabase[name].results | — |
 
 ---
 
@@ -225,7 +236,8 @@ database 扫描可能发现同一个 appid 出现在多个 Steam 库中（重复
 
 ### 8.1 原则
 
-> 后端是唯一权威数据源。前端不做业务数据持久化。前端 Pinia store 仅暂存本次页面会话的内存状态。
+> 后端是唯一权威数据源。前端 Pinia store 仅暂存本次页面会话的内存状态。
+> 用户决策（decisions）和计算结果摘要（results）存前端 localStorage，compute 时作为参数传入后端。
 
 ### 8.2 抽象接口
 
@@ -247,9 +259,12 @@ interface PersistenceAdapter {
 |-----------|------|--------|
 | `ui:tab` | 当前 tab 路由 | App.vue |
 | `ui:sidebar-collapsed` | 侧边栏折叠状态 | LayoutShell |
-| `datasource:form` | 表单输入（discoveryMode, manualPath, workingPathstyle, greedyParsing, databaseOutputPath） | DataSourceStore |
+| `datasource:form` | 表单输入（discoveryMode, manualPath, workingPathstyle, greedyParsing） | DataSourceStore |
 | `datasource:library-visibility` | 库可见性开关 | DataSourceStore |
 | `datasource:game-visibility` | 游戏可见性开关 | DataSourceStore |
+| `modmanager:workspace` | 聚合 workspace 对象（含 lastDatabase、perDatabase、aggregatedRuleSet、aggregatedRuleHash） | ComputePrepPage / ConflictsPage / DatabaseSelector |
+
+workspace 结构详见 `DESIGN_GUI_WORKSPACE.md`。
 
 ### 8.4 禁止存储的内容
 
@@ -258,7 +273,7 @@ interface PersistenceAdapter {
 - ❌ 警告/错误列表（warnings, errors）
 - ❌ user_config 内容
 - ❌ database 内容
-- ❌ pipeline 参数（databasePath, rulesPaths, backupDir, userConfigPath —— 属于 workspace inputs）
+- ❌ pipeline 参数（backupDir 等业务字段）
 
 ### 8.5 错误处理
 
@@ -280,7 +295,8 @@ try { pers.save(key, value) } catch {
 
 | 数据类型 | 恢复来源 |
 |---------|---------|
-| 业务数据（database, pipeline 结果, decisions） | 后端 `GET /api/workspace/status` |
+| 业务数据（database, pipeline 结果） | 后端 API 获取 |
+| 用户决策（decisions, results） | 前端 localStorage `modmanager:workspace`（`workspace.perDatabase[name]`） |
 | UI 状态（tab, sidebar, 可见性, 表单输入） | `persistence.load()` |
 
 详见 `DESIGN_DATA_CLEANUP.md`。
@@ -306,10 +322,11 @@ try { pers.save(key, value) } catch {
 | D1 | user_config 搜索策略 | 单级、唯一。移除旧三级搜索合并 |
 | D2 | user_config 缺失时行为 | 自动生成空文件 + first_use 标记（而非抛异常） |
 | D3 | database / aggregated 默认路径 | Linux: `~/.local/share/kmm/`；Win: exe 所在目录 |
-| D4 | 扫描缓存独立于 database | 【已废弃。managed 决策迁移至 workspace.json，database 不再承担去重职责】 |
+| D4 | 扫描缓存独立于 database | 【已废弃。managed 决策迁移至前端 localStorage】 |
 | D5 | 扫描缓存放 `/tmp/`（Linux） | 可丢弃，重启自然清理，有意为之 |
-| D6 | 前端持久化 | localStorage 仅保留 UI 状态；业务数据全部由后端 workspace 管理 |
+| D6 | 前端持久化 | localStorage 保留 decisions/results（前端 workspace） + UI 状态 |
 | D7 | database history 字段 | 预留空数组，本次不实现 |
-| D8 | managed 字段归属 | 从 database.json 移除，迁移至 workspace.json（2026-05-13） |
+| D8 | managed 字段归属 | decisions/results 存前端 localStorage，compute 时作为参数传入后端 |
 | D9 | warnings / errors 归属 | 扫描/计算产物，在 API 响应中返回，不写入 database.json |
 | D10 | 前端 developer 副本 | 删除——前端不再持有 database 或 user_config 的本地缓存副本 |
+| D11 | user_config 搜索策略 | 单级、唯一 |

@@ -4,29 +4,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import LayoutShell from './components/LayoutShell.vue'
-import { apiPost } from './api/client'
-
-const router = useRouter()
 
 const isMockMode =
   import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK === 'true'
 
-onMounted(async () => {
-  try {
-    const resp = await apiPost('/workspace/status', {})
-    if (resp.ok && resp.data) {
-      const inputs = (resp.data as Record<string, any>).inputs || {}
-      if (!inputs.user_config_path) {
-        router.push('/settings')
-      }
-    }
-  } catch {
-    // Workspace not available yet — stay on default route
-  }
-})
+// Phase 3: workspace 已移除 — onMounted 不再做 workspace status check
 </script>
 
 <style scoped>

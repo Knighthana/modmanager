@@ -6,6 +6,7 @@
 > Purpose: 定义 orchestrator 的调度职责、阶段串联方式与 CLI/GUI 共享入口边界
 
 > 来源：DESIGN_BOOTSTRAP_ORCHESTRATOR.md（orchestrator 部分）
+> 更新：2026-05-14 — orchestrator 不读取 workspace；managed_entries / branch_decisions 作为可选参数接收
 > 实现状态：已落地并持续生效
 
 ---
@@ -15,16 +16,18 @@
 Orchestrator 负责流水线调度、进度回调、多阶段串联。它是唯一的调度入口，CLI 和 GUI 都通过它驱动流程，确保行为一致。
 
 ```
-                    ┌─────────────────────┐
+                     ┌─────────────────────┐
        CLI / GUI →  │    orchestrator      │  统一调度入口
-                    │  (run / compute /    │
-                    │   backup / apply)    │
-                    └──────────┬──────────┘
-                               │ 需要初始数据时调用
-                    ┌──────────▼──────────┐
-                    │     bootstrap        │  环境初始化
-                    └──────────────────────┘
-                               │
+                     │  (run / compute /    │
+                     │   backup / apply)    │
+                     └──────────┬──────────┘
+                                │ 需要环境数据时调用
+                     ┌──────────▼──────────┐
+                     │     bootstrap        │  环境初始化
+                     │  (user_config /      │
+                     │   database)          │
+                     └──────────┬──────────┘
+                                │
                ┌───────────────┼───────────────┐
                ▼               ▼               ▼
           aggregator        engine        backup_ops
@@ -77,16 +80,18 @@ class PipelineResult:
 
 ```python
 def compute(
-    database: dict,
     kmm_rule_paths: list[str] | None = None,
-    user_config_path: str = "",
     *,
-    aggregated_rule_path: str | None = None,  # 新流程：跳过聚合，直接加载
+    aggregated_rule_path: str | None = None,  # 跳过聚合，直接加载
+    database_name: str | None = None,          # 指定使用的 database，不传则用默认
     action_orders: dict[str, int] | None = None,
-    branch_decisions: dict[str, str] | None = None,
+    branch_decisions: dict[str, str] | None = None,    # 来自前端 localStorage
+    managed_entries: dict[str, dict[str, list[str]]] | None = None,  # 来自前端 localStorage
     on_progress: ProgressCallback | None = None,
 ) -> PipelineResult:
-    """聚合规则 → 计算映射。返回 PipelineResult（backup_result 和 apply_result 为 None）。"""
+    """聚合规则 → 计算映射。database 和 user_config 由 orchestrator 内部通过 bootstrap 获取。
+    不读取 workspace 文件。managed_entries 和 branch_decisions 作为可选参数直接接收。
+    返回 PipelineResult（backup_result 和 apply_result 为 None）。"""
 ```
 
 ### backup()
@@ -118,18 +123,20 @@ def apply(
 
 ```python
 def run(
-    database: dict,
     kmm_rule_paths: list[str],
-    user_config_path: str,
     backup_dir: str,
     *,
+    aggregated_rule_path: str | None = None,
+    database_name: str | None = None,
     action_orders: dict[str, int] | None = None,
     branch_decisions: dict[str, str] | None = None,
+    managed_entries: dict[str, dict[str, list[str]]] | None = None,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> PipelineResult:
     """全流水线：聚合 → 计算 → 备份 → 应用。
-    
+    database 和 user_config 由 orchestrator 内部通过 bootstrap 获取。
+    不读取 workspace 文件。managed_entries 和 branch_decisions 作为可选参数接收。
     等价于依次调用 compute() + backup() + apply()，
     但以 run() 作为一键入口时提供连续的进度回调。
     """
@@ -140,13 +147,18 @@ def run(
 ## 四、内部流程
 
 ```
-run(database, kmm_rule_paths, user_config_path, backup_dir, *, dry_run=False, ...)
+run(kmm_rule_paths, backup_dir, *, dry_run=False, ...)
+  │
+  ├─ 0. 环境初始化
+  │     bootstrap 获取 user_config + database
+  │     on_progress("bootstrap", 1, 1)
   │
   ├─ 1. 聚合规则
-  │     aggregated_rule_set = aggregate(kmm_rule_paths, user_config_path, ...)
+  │     aggregated_rule_set = aggregate(kmm_rule_paths, ...)
   │     on_progress("aggregate", 1, 1)
   │
   ├─ 2. 计算映射
+  │     database = _apply_managed_filter(database, managed_entries)  # managed_entries 来自参数
   │     mapping_result = compute_mapping(aggregated_rule_set, database, branch_decisions)
   │     on_progress("compute", 1, 1)
   │

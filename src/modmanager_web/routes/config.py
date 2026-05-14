@@ -52,13 +52,21 @@ def _normalize_rule_sources(config: dict[str, Any]) -> dict[str, Any]:
 
 @router.post("/save")
 async def save_config(req: SaveConfigRequest):
-    """Save a user_config dict to a file.
+    """Save a user_config dict to the platform default location.
 
-    Returns an ``ApiResponse`` with the saved path on success.
+    The target path is determined by ``discover_user_config()`` which returns
+    the config with its ``source_path``.  Returns an ``ApiResponse`` with
+    the saved path on success.
     """
     try:
         normalized_config = _normalize_rule_sources(req.config)
-        output_path = str(Path(req.output_path).expanduser().resolve())
+        # Use discover_user_config to obtain the config path
+        existing = discover_user_config()
+        output_path = existing.get("source_path", "")
+        if not output_path:
+            # Fallback to platform default
+            home = os.path.expanduser("~")
+            output_path = str(Path(home) / ".config" / "kmm" / "user_config.json")
         write_json_file(output_path, normalized_config)
         return adapt_dict_result({"saved": output_path})
     except Exception as exc:

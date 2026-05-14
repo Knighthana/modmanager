@@ -132,6 +132,7 @@ class SteamScanner:
             parsed_style = parsed.get("steamlib_pathstyle")
             if isinstance(parsed_style, str):
                 parsed_styles.append(parsed_style)
+            vdf_pathstyle = parsed_style if isinstance(parsed_style, str) else "linux"
 
             for parsed_lib in parsed.get("libraries", []):
                 raw_path = str(parsed_lib.get("path", "")).strip()
@@ -139,7 +140,8 @@ class SteamScanner:
                     continue
 
                 target_style = PathStyle.LINUX if self.working_pathstyle == "linux" else PathStyle.WINDOWS
-                normalized_path = normalize(raw_path, target_style)
+                source_style = PathStyle.WINDOWS if vdf_pathstyle == "windows" else PathStyle.LINUX
+                normalized_path = normalize(raw_path, target_style, from_style=source_style)
 
                 # VDF 'path' is the Steam root dir (e.g. D:\Games), not the steamapps
                 # sub-directory.  Append 'steamapps' so discovery works correctly.
@@ -163,9 +165,10 @@ class SteamScanner:
 
         if parsed_styles:
             self.steamlib_pathstyle = parsed_styles[0]
-        elif libraries:
-            style = detect_pathstyle(libraries[0].path)
-            self.steamlib_pathstyle = "windows" if style == PathStyle.WINDOWS else "linux"
+        # No fallback: if no VDF declares steamlib_pathstyle,
+        # the default "linux" (set in __init__) is kept.
+        # detect_pathstyle on WSL-translated /mnt/ paths would
+        # wrongly classify Windows Steam libraries as Linux.
 
         self.steam_libraries = libraries
         return libraries

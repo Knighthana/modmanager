@@ -1,17 +1,34 @@
-"""Database routes — ``POST /api/database/generate``, ``/save``, ``/load``."""
+"""Database routes — ``POST /api/database/generate``, ``/save``, ``/read``."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from modmanager.bootstrap import generate_database
-from modmanager.iojson import write_json_file
+from modmanager.bootstrap import discover_user_config, generate_database
+from modmanager.iojson import load_json_file, write_json_file
+from modmanager.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error
-from ..schemas import GenerateDatabaseRequest, LoadDatabaseRequest, SaveDatabaseRequest
+from ..schemas import GenerateDatabaseRequest, ReadDatabaseRequest, SaveDatabaseRequest
 from ..sse import stream_with_progress
 
 router = APIRouter()
+
+
+# ── Helper ────────────────────────────────────────────────────────────────────
+
+
+def _resolve_database_path(database_name: str, user_config: dict) -> str:
+    """Resolve the on-disk path for *database_name* from *user_config*."""
+    db = user_config.get("databases", {}).get(database_name)
+    if not db:
+        raise ValueError(
+            f"database '{database_name}' not found in user_config.databases"
+        )
+    return expand_path(db["path"])
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
 @router.post("/generate")
@@ -31,10 +48,9 @@ async def generate(req: GenerateDatabaseRequest):
         return generate_database(
             mode=req.mode,
             paths=req.paths,
-            working_pathstyle=req.working_pathstyle,
             greedy_parsing=req.greedy_parsing,
             on_progress=on_progress,
-            cache_path=req.cache_path,
+            database_name=req.database_name,
         )
 
     return StreamingResponse(
@@ -44,18 +60,15 @@ async def generate(req: GenerateDatabaseRequest):
     )
 
 
-@router.post("/load")
-async def load_database(req: LoadDatabaseRequest):
-    """Load a database.json file from a user-specified path.
+@router.post("/read")
+async def read_database(req: ReadDatabaseRequest):
+    """Load a database.json by *database_name* from user config.
 
     Returns the database dict wrapped in ApiResponse.
-    Uses path_resolver to handle fuzzy user input.
     """
-    from modmanager.path_resolver import resolve_file_path
-    from modmanager.iojson import load_json_file
-
     try:
-        resolved = resolve_file_path(req.path, "database.json")
+        user_config = discover_user_config()
+        resolved = _resolve_database_path(req.database_name, user_config)
         data = load_json_file(resolved)
         return adapt_dict_result(data)
     except FileNotFoundError as e:
@@ -66,22 +79,21 @@ async def load_database(req: LoadDatabaseRequest):
 
 @router.post("/save")
 async def save_database(req: SaveDatabaseRequest):
-    """Save database dict to disk (advanced users).
+    """Save database dict to disk using *database_name* from user config.
 
     Receives the full database dict (without managed fields) and writes
-    it to the specified ``output_path``.
+    to the path resolved from user_config.databases[database_name].
     """
-    db = req.database
-
-    # ── Write to file ─────────────────────────────────────────────────────
     try:
-        write_json_file(req.output_path, db)
+        user_config = discover_user_config()
+        resolved = _resolve_database_path(req.database_name, user_config)
+        write_json_file(resolved, req.database)
     except Exception as e:
         return adapt_error(f"Failed to write database: {e}")
 
     return {
         "ok": True,
-        "data": {"path": req.output_path, "database": db},
+        "data": {"path": resolved, "database": req.database},
         "errors": [],
         "warnings": [],
     }

@@ -151,6 +151,8 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { apiPost } from '../api/client'
+import { loadWorkspace, saveWorkspace, simpleHash } from '../utils/persistence'
+import { useForestStore } from '../stores/forest'
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -231,12 +233,13 @@ onMounted(async () => {
 async function loadRuleSources() {
   loadingSources.value = true
   try {
-    const resp = await apiPost<{ user_config: { rule_sources: string[] } }>(
-      '/api/config/discover',
+    const resp = await apiPost<Record<string, unknown>>(
+      '/config/discover',
       {},
     )
-    if (resp.ok && resp.data?.user_config?.rule_sources) {
-      ruleSources.value = resp.data.user_config.rule_sources
+    if (resp.ok && resp.data) {
+      const uc = resp.data as Record<string, unknown>
+      ruleSources.value = (uc.rule_sources as string[]) || []
     }
   } catch {
     // Silently handle — page shows empty sources with hint to go to settings
@@ -247,27 +250,44 @@ async function loadRuleSources() {
 
 async function scanRuleFiles() {
   loadingFiles.value = true
+  const allFiles: Array<{ name: string; path: string }> = []
+
   try {
-    const resp = await apiPost<{ files: Array<{ name: string; path: string }> }>(
-      '/api/rules/scan',
-      {},
-    )
-    if (resp.ok && resp.data?.files) {
-      ruleFiles.value = resp.data.files.map((f) => ({
-        name: f.name,
-        path: f.path,
-        checked: true,
-        expanded: false,
-        loading: false,
-        error: '',
-        detail: null,
-      }))
+    for (const source of ruleSources.value) {
+      if (source.endsWith('/')) {
+        // Directory — scan for .kmmrule.json files
+        try {
+          const resp = await apiPost<{ files: Array<{ name: string; path: string }> }>(
+            '/rules/scan',
+            { dir: source },
+          )
+          if (resp.ok && resp.data?.files) {
+            allFiles.push(...resp.data.files)
+          }
+        } catch {
+          // Skip directories that fail to scan
+        }
+      } else {
+        // Individual file — add directly (any extension, e.g. .kmmrule.json, .json.example)
+        const name = source.split('/').pop() || source
+        allFiles.push({ name, path: source })
+      }
     }
   } catch {
-    // Silently handle — page shows empty state
-  } finally {
-    loadingFiles.value = false
+    // Silently handle
   }
+
+  ruleFiles.value = allFiles.map((f) => ({
+    name: f.name,
+    path: f.path,
+    checked: true,
+    expanded: false,
+    loading: false,
+    error: '',
+    detail: null,
+  }))
+
+  loadingFiles.value = false
 }
 
 // ── Expand / collapse ──────────────────────────────────────────────────
@@ -283,11 +303,11 @@ async function toggleExpand(file: RuleFileItem) {
     file.loading = true
     file.error = ''
     try {
-      const resp = await apiPost<KmmRuleDetail>('/api/rules/read', {
+      const resp = await apiPost<{ content: string; name: string; path: string; size: number }>('/rules/read', {
         path: file.path,
       })
-      if (resp.ok && resp.data) {
-        file.detail = resp.data
+      if (resp.ok && resp.data?.content) {
+        file.detail = JSON.parse(resp.data.content) as KmmRuleDetail
       } else {
         file.error = resp.errors?.join('; ') ?? '读取规则文件失败'
       }
@@ -304,6 +324,7 @@ async function toggleExpand(file: RuleFileItem) {
 // ── Save selection ─────────────────────────────────────────────────────
 
 async function saveSelection() {
+  const forestStore = useForestStore()
   const selectedPaths = ruleFiles.value
     .filter((f) => f.checked)
     .map((f) => f.path)
@@ -315,7 +336,7 @@ async function saveSelection() {
 
   try {
     // 1. Aggregate rules
-    const aggResp = await apiPost<{ rule_count: number }>('/api/rules/aggregate', {
+    const aggResp = await apiPost<{ rule_count: number }>('/rules/aggregate', {
       paths: selectedPaths,
     })
 
@@ -325,15 +346,9 @@ async function saveSelection() {
       return
     }
 
-    // 2. Save inputs to workspace
-    const inputsResp = await apiPost<unknown>('/api/workspace/save-inputs', {
-      rule_paths: selectedPaths,
-    })
-
-    if (!inputsResp.ok) {
-      ElMessage.error(inputsResp.errors?.join('; ') ?? '保存工作区输入失败')
-      saving.value = false
-      return
+    // Store aggregated result in Pinia store for downstream pages (ComputePrepPage)
+    if (aggResp.data) {
+      forestStore.aggregatedRuleSet = aggResp.data as Record<string, unknown>
     }
 
     // 3. Show success

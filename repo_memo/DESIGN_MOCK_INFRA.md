@@ -229,7 +229,7 @@ npm run dev
 |---------|---------|---------|
 | `database.json` | SettingsPage（Database JSON 编辑） | `POST /api/database/load` |
 | `config.json` | SettingsPage（user_config 编辑） | `POST /api/config/discover` |
-| `pipeline-result.json` | OperationsPage（结果概览） | `GET /api/workspace/status` → results |
+| `pipeline-result.json` | OperationsPage（结果概览） | 从 localStorage（`results:{name}`）读取 |
 | `rules-list.json` | RulesOverviewPage（规则列表） | `POST /api/rules/scan` |
 
 ---

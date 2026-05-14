@@ -35,16 +35,15 @@ class SaveConfigRequest(BaseModel):
     """Request body for ``POST /api/config/save``."""
 
     config: dict[str, Any]
-    output_path: str | None = None
 
 
 # ── Database endpoints ────────────────────────────────────────────────────
 
 
-class LoadDatabaseRequest(BaseModel):
-    """Request body for ``POST /api/database/load``."""
+class ReadDatabaseRequest(BaseModel):
+    """Request body for ``POST /api/database/read``."""
 
-    path: str
+    database_name: str = "default"
 
 
 class GenerateDatabaseRequest(BaseModel):
@@ -52,20 +51,19 @@ class GenerateDatabaseRequest(BaseModel):
 
     mode: str = "auto"  # "auto" | "manual"
     paths: list[str] | None = None
-    working_pathstyle: str = "linux"
     greedy_parsing: bool = False
-    cache_path: str | None = None
+    database_name: str = "default"
 
 
 class SaveDatabaseRequest(BaseModel):
     """Request body for ``POST /api/database/save``.
 
     Receives the full database dict (without managed fields)
-    and writes to output_path.
+    and writes to the path from user_config.databases[database_name].
     """
 
     database: dict[str, Any]
-    output_path: str
+    database_name: str = "default"
 
 
 # ── Pipeline endpoints ────────────────────────────────────────────────────
@@ -74,10 +72,8 @@ class SaveDatabaseRequest(BaseModel):
 class ComputeRequest(BaseModel):
     """Request body for ``POST /api/pipeline/compute``."""
 
-    database: Any  # dict[str, Any] | str（database.json 路径，后端自行解析）
-    kmm_rule_paths: list[str] = []
-    user_config_path: str = ""
-    aggregated_rule_path: str | None = None
+    database_name: str = "default"
+    aggregated_rule_set: dict | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
     managed_entries: dict | None = None
@@ -88,8 +84,7 @@ class BackupRequest(BaseModel):
 
     mapping_result: dict[str, Any]
     backup_dir: str | None = None
-    database: dict[str, Any] | None = None
-    user_config_path: str | None = None
+    database_name: str = "default"
 
 
 class ApplyRequest(BaseModel):
@@ -97,18 +92,15 @@ class ApplyRequest(BaseModel):
 
     final_mapping: list[dict[str, Any]]
     backup_dir: str | None = None
-    database: dict[str, Any] | None = None
-    user_config_path: str | None = None
+    database_name: str = "default"
     dry_run: bool = False
 
 
 class RunRequest(BaseModel):
     """Request body for ``POST /api/pipeline/run``."""
 
-    database: Any  # dict[str, Any] | str（database.json 路径，后端自行解析）
-    kmm_rule_paths: list[str] = []
-    user_config_path: str = ""
-    aggregated_rule_path: str | None = None
+    database_name: str = "default"
+    aggregated_rule_set: dict | None = None
     backup_dir: str | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
@@ -149,7 +141,9 @@ class RulesAggregateRequest(BaseModel):
 class RulesAffectedEntriesRequest(BaseModel):
     """Request body for ``POST /api/rules/affected-entries``."""
 
-    aggregated_rule_path: str
+    aggregated_rule_path: str = ""
+    aggregated_rule_set: dict | None = None
+    database_name: str = "default"
 
 
 # ── Backups endpoints ─────────────────────────────────────────────────────
@@ -172,37 +166,3 @@ class RestoreRequest(BaseModel):
 
     backup_dir: str
     target_files: list[str] | None = None
-
-
-# ── Workspace endpoints ───────────────────────────────────────────────────
-
-
-class SaveInputsRequest(BaseModel):
-    """Request body for ``POST /api/workspace/save-inputs``.
-
-    All fields are optional — only provided keys are merged into workspace inputs.
-    """
-
-    database_path: str | None = None
-    rule_paths: list[str] | None = None
-    aggregated_rule_path: str | None = None
-    user_config_path: str | None = None
-    discovery_mode: str | None = None
-    discovery_manual_paths: list[str] | None = None
-
-
-class SaveDecisionsRequest(BaseModel):
-    """Request body for ``POST /api/workspace/save-decisions``."""
-
-    branch_decisions: dict[str, str] | None = None
-
-
-class SaveResultsRequest(BaseModel):
-    """Request body for ``POST /api/workspace/save-results``."""
-
-    trees_count: int | None = None
-    mapping_count: int | None = None
-    warnings: list[str] | None = None
-    errors: list[str] | None = None
-    stats: dict[str, Any] | None = None
-    inputs_hash: str | None = None

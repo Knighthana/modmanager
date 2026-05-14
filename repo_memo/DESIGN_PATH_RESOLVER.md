@@ -7,6 +7,7 @@
 
 > 来源：2026-05-07 用户讨论 — DataSource 手动路径、Database JSON、User config 等多处需要路径猜测  
 > 原则：所有"猜测"集中于此模块；产出后的路径为规范值，下游只做合规性校验
+> 更新：2026-05-14 — 【§十二补充裁定】补充 `expand_path` 函数文档、`~`/`$HOME` 展开规则、存储时保留原始输入、目录末尾 `/` 补齐职责边界
 
 ---
 
@@ -54,6 +55,27 @@ def resolve_file_path(input_str: str, filename: str) -> str:
     Raises:
         FileNotFoundError: 所有试探完毕后无结果
         IsADirectoryError: 目标存在但是目录而非文件
+    """
+```
+
+### 2.1 `expand_path` 展开函数
+
+```python
+def expand_path(path: str) -> str:
+    """展开路径中的 ~、$HOME（Linux）和 %APPDATA%（Windows）等环境变量。
+    
+    内部使用 os.path.expanduser（展开 ~）和 os.path.expandvars（展开 $VAR / %VAR%）。
+    返回展开后的绝对路径，不修改持久化存储。
+
+    Args:
+        path: 用户输入的原始路径（可能含 ~、$HOME、%APPDATA% 等）
+
+    Returns:
+        展开后的绝对路径字符串
+
+    Note:
+        存储时保留用户原始输入（含 ~），计算时通过 expand_path 展开。
+        path_resolver 只读不写用户设置。
     """
 ```
 
@@ -123,7 +145,32 @@ config_path = resolve_file_path(user_input, 'user_config.json')
 
 ---
 
-## 6. 决策记录
+## 6. 路径展开与持久化规则（§十二补充裁定）
+
+### 6.1 `expand_path` 展开的变量枚举
+
+| 符号 | 展开方式 | 示例（Linux） | 示例（Windows） |
+|------|---------|--------------|----------------|
+| `~` | `os.path.expanduser` | `~/.config/kmm` → `/home/user/.config/kmm` | `~\AppData\Roaming` → `C:\Users\user\AppData\Roaming` |
+| `$HOME` | `os.path.expandvars` | `$HOME/.config/kmm` → `/home/user/.config/kmm` | 不适用（Windows 用 `%USERPROFILE%`） |
+| `%APPDATA%` | `os.path.expandvars` | 不适用 | `%APPDATA%/kmm` → `C:\Users\user\AppData\Roaming\kmm` |
+
+### 6.2 使用规则
+
+1. **凡是来自用户直接输入的路径，必须经过 `path_resolver` 模块处理**。各端点统一用 `from modmanager.path_resolver import expand_path`。
+2. **存储时保留用户原始输入（含 `~`），计算时通过 `expand_path` 展开。** path_resolver 只读不写用户设置。
+3. **目录末尾 `/` 的补齐发生在 `_normalize_rule_sources`（保存时），不在 path_resolver；** path_resolver 永远不修改持久化存储。
+
+### 6.3 职责边界
+
+| 行为 | 归属模块 | 说明 |
+|------|---------|------|
+| `~`、`$HOME`、`%APPDATA%` 展开 | `path_resolver.expand_path` | 纯计算，不写存储 |
+| 路径存在性校验 | `path_resolver.resolve_directory_path` / `resolve_file_path` | 读类入口使用 |
+| 目录末尾 `/` 补齐 | `_normalize_rule_sources`（路由层保存时） | 修改持久化存储（user_config.rule_sources） |
+| 路径存储 | 调用方（路由/bootstrap） | 存原始用户输入，不调 path_resolver 修改 |
+
+## 7. 决策记录
 
 | # | 决策 | 结论 |
 |---|------|------|

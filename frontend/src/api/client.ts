@@ -1,14 +1,10 @@
-const BASE = '/api'
+import { API_BASE } from './config'
+import type { ApiResponse } from './transport'
 
-export interface ApiResponse<T = unknown> {
-  ok: boolean
-  data: T | null
-  errors: string[]
-  warnings: string[]
-}
+export type { ApiResponse } from './transport'
 
 export async function apiPost<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

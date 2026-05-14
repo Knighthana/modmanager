@@ -19,6 +19,11 @@
 
     <!-- ── Main content ─────────────────────────────────────────────── -->
     <template v-else>
+      <!-- DatabaseSelector -->
+      <div style="margin-bottom: 16px;">
+        <DatabaseSelector ref="databaseSelectorRef" />
+      </div>
+
       <!-- Top action bar -->
       <div class="action-bar">
         <div class="action-buttons">
@@ -149,14 +154,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
-import type { ApiResponse } from '../api/client'
+import { streamSse } from '../api/sse'
+import { loadWorkspace, saveWorkspace } from '../utils/persistence'
+import { hashRuleSet } from '../utils/hash'
+import { useForestStore } from '../stores/forest'
+import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 // ── Router ────────────────────────────────────────────────────────────────
 const router = useRouter()
+
+const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -274,40 +285,37 @@ onMounted(async () => {
 // ── Data loading ──────────────────────────────────────────────────────────
 
 async function loadData() {
-  // 1. Get workspace status to find aggregated_rule_path
-  let aggregatedRulePath: string | null = null
-  try {
-    const statusResp = await apiPost<{ inputs: { aggregated_rule_path?: string }; results: { timestamp?: string | null } }>(
-      '/api/workspace/status',
-      {},
-    )
-    // Note: the actual endpoint is GET, but our mock uses GET.
-    // We'll use fetch directly for the GET endpoint since apiPost is POST-only.
-    // Actually let's use raw fetch for the GET.
-    // But our mock handler is registered for GET, so we need to use GET.
-    const fetchResp = await fetch('/api/workspace/status')
-    const statusData = await fetchResp.json()
-    if (statusData.ok && statusData.data) {
-      aggregatedRulePath = statusData.data.inputs?.aggregated_rule_path ?? null
-      // Check if results already exist
-      if (statusData.data.results?.timestamp) {
-        canViewResults.value = true
-      }
-    }
-  } catch {
+  // 1. First check for stored aggregated rule set in Pinia store (fresh from RulesOverviewPage)
+  const forestStore = useForestStore()
+  let aggregatedRuleSet: Record<string, unknown> | null = forestStore.aggregatedRuleSet
+
+  // 2. Fallback: show error if not available (user must go back to RulesOverviewPage to select rules)
+  if (!aggregatedRuleSet) {
     noRulesSelected.value = true
+    loadingErrorMessage.value = '页面刷新后需要重新选择规则。请返回规则概览页。'
+    loadingFailed.value = true
     return
   }
 
-  if (!aggregatedRulePath) {
-    noRulesSelected.value = true
-    return
+  // 3. Hash validation: check if rule set has changed since last compute
+  const currentRulesHash = hashRuleSet(aggregatedRuleSet)
+  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+  const ws = loadWorkspace()
+  const lastSummary = ws.perDatabase?.[selectedDb]?.results
+  const lastRulesHash = lastSummary?.inputs_hash
+
+  if (lastRulesHash && currentRulesHash !== lastRulesHash) {
+    ElMessage.warning('规则集已变更，建议重新计算以获取最新结果')
   }
 
-  // 2. Fetch affected entries
+  // Restore decisions from workspace if available
+  const savedDecisions = ws.perDatabase?.[selectedDb]?.decisions
+
+  // 4. Fetch affected entries
   try {
-    const entriesResp = await apiPost<AffectedEntriesData>('/api/rules/affected-entries', {
-      aggregated_rule_path: aggregatedRulePath,
+    const entriesResp = await apiPost<AffectedEntriesData>('/rules/affected-entries', {
+      aggregated_rule_set: aggregatedRuleSet || undefined,
+      database_name: selectedDb,
     })
 
     if (!entriesResp.ok || !entriesResp.data) {
@@ -341,6 +349,11 @@ async function loadData() {
     // Recalculate library tri-state after population
     for (const lib of libraries.value) {
       recalcLibraryState(lib.index)
+    }
+
+    // Check if there are existing results to enable "View Results" button
+    if (lastSummary?.timestamp) {
+      canViewResults.value = true
     }
   } catch (e) {
     loadingFailed.value = true
@@ -463,38 +476,66 @@ async function startCompute() {
   computeSuccess.value = false
 
   const managedEntries = buildManagedEntries()
+  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+  const ruleSet = loadWorkspace().aggregatedRuleSet
 
   try {
-    const computeResp = await apiPost<unknown>('/api/pipeline/compute', {
+    await streamSse('/pipeline/compute', {
+      database_name: selectedDb,
+      aggregated_rule_set: ruleSet || undefined,
       managed_entries: managedEntries,
+    }, {
+      onResult(data: unknown) {
+        const result = data as {
+          ok: boolean
+          data?: { trees_count?: number; mapping_count?: number; warnings?: string[]; errors?: string[]; stats?: Record<string, unknown> }
+          errors?: string[]
+        }
+        if (!result.ok || result.errors?.length) {
+          computeMessage.value = result.errors?.join('; ') || '计算失败'
+          computing.value = false
+          return
+        }
+        if (result.data) {
+          computeMessage.value = `✅ 计算完成：${result.data.trees_count ?? 0} 棵树，${result.data.mapping_count ?? 0} 个映射`
+          computeSuccess.value = true
+
+          // Save results to workspace
+          const dbName = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+          const w1 = loadWorkspace()
+          w1.lastDatabase = dbName
+          if (!w1.perDatabase[dbName]) {
+            w1.perDatabase[dbName] = { decisions: {}, results: null }
+          }
+          w1.perDatabase[dbName].results = {
+            trees_count: result.data.trees_count ?? 0,
+            mapping_count: result.data.mapping_count ?? 0,
+            warnings: result.data.warnings ?? [],
+            errors: result.data.errors ?? [],
+            stats: result.data.stats ?? {},
+            inputs_hash: hashRuleSet(ruleSet),
+            timestamp: new Date().toISOString(),
+          }
+          saveWorkspace(w1)
+        }
+        computing.value = false
+      },
+      onError(msg: string) {
+        computeMessage.value = msg
+        computing.value = false
+      },
     })
 
-    if (!computeResp.ok) {
-      computeMessage.value = computeResp.errors?.join('; ') || '计算失败'
-      computeSuccess.value = false
-      return
+    // Save decisions to workspace
+    const w2 = loadWorkspace()
+    w2.lastDatabase = selectedDb
+    if (!w2.perDatabase[selectedDb]) {
+      w2.perDatabase[selectedDb] = { decisions: {}, results: null }
     }
-
-    // Save results to workspace
-    const saveResp = await apiPost<unknown>('/api/workspace/save-results', {
-      trees_count: 42,
-      mapping_count: 15,
-      warnings: [],
-      errors: [],
-      stats: {},
-      inputs_hash: 'mock-hash-001',
-    })
-
-    if (!saveResp.ok) {
-      computeMessage.value = '计算完成，但保存结果失败'
-      computeSuccess.value = false
-      return
+    w2.perDatabase[selectedDb].decisions = {
+      managed_entries: managedEntries,
     }
-
-    computeMessage.value = '✅ 计算完成：42 棵树，15 个映射'
-    computeSuccess.value = true
-    canViewResults.value = true
-    ElMessage.success('计算完成')
+    saveWorkspace(w2)
   } catch {
     computeMessage.value = '网络错误：计算请求失败'
     computeSuccess.value = false

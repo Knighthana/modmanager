@@ -14,7 +14,7 @@
 
 聚合器是一个与 M1 引擎**逻辑独立**的模块，负责将多份 `*.kmmrule.json` 文件合并为单份 `aggregated_rule_set.json`，供 M1 引擎消费。
 
-- **输入**：多份 kmm_rule JSON 文件 + `user_config.json`（bootstrap 传入的确定路径）+ 可选的 `action_order` 映射 + 可选的 `sidecar_ref` 注入映射
+- **输入**：多份 kmm_rule JSON 文件 + 可选的 `action_order` 映射 + 可选的 `sidecar_ref` 注入映射
 - **输出**：`aggregated_rule_set`（内存对象，可选写文件）
 - **核心职责**：字段归一化 + 权限鉴权 + `def_destin`/`def_action` 具体化 + 多源合并
 
@@ -55,27 +55,8 @@ kmm_rule 文件的顶层结构：
 
 ### 2.2 user_config.json
 
-user_config 的搜索、生成与字段规范已迁移至 `DESIGN_STORAGE.md` §3。
-
-聚合器不负责 user_config 的搜索或生成。调用方（orchestrator / CLI / Web API）通过 bootstrap 获取已解析的 user_config 后，将**单一确定路径**传入聚合器。
-
-bootstrap 的职责：
-- 若调用方显式传入 `user_config_path`，直接使用该路径
-- 若未传入，在平台默认位置搜索（Linux: `~/.config/kmm/`，Windows: `%appdata%/kmm/`）
-- 若文件不存在，尝试在目标位置创建默认空配置文件；成功则标记 `first_use = true`
-- 若创建失败，报告权限错误
-
-`user_config.json` 当前字段：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `bakprefix` | `string` | 备份目录名前缀，默认 `"kmmbackup_"` |
-| `bakignore` | `string[]` | 备份扫描忽略模式 |
-| `database_output_path` | `string \| null` | `database.json` 输出路径 |
-| `aggregated_ruleset_output_path` | `string \| null` | `aggregated_rule_set.json` 输出路径 |
-| `path_alias` | `object[]` | 路径别名（当前无消费者，保留供未来扩展） |
-
-Schema 定义见 `repo_spec/user_config.schema.json`。
+user_config 的字段定义与搜索策略见 `DESIGN_STORAGE.md` §3。
+聚合器不消费 user_config。调用方需要的是 `kmm_rule_paths` 列表和可选的 `output_path`——这些由上层（orchestrator）传入。
 
 ### 2.3 action_order 映射（可选）
 
@@ -289,7 +270,6 @@ sub_permissions[dom_mixed_id] = {actor_mixed_id1, actor_mixed_id2, ...}  // unio
 ```python
 def aggregate(
     kmm_rule_paths: list[str],
-    user_config_path: str,
     *,
     action_orders: dict[str, int] | None = None,
     sidecar_refs: dict[str, dict[str, dict[int, str]]] | None = None,
@@ -299,7 +279,6 @@ def aggregate(
 
     Args:
         kmm_rule_paths: kmm_rule JSON 文件的绝对路径列表
-        user_config_path: 由 bootstrap 解析后的 user_config.json 绝对路径
         action_orders: mixed_id -> action_order 的映射（可选，由 GUI 注入）
         sidecar_refs: file_abs_path -> mixed_id -> {action_index: sidecar_ref} 的映射（可选）
         output_path: 若提供，将结果写入此路径
@@ -314,24 +293,23 @@ def aggregate(
 ### 6.3 聚合流程
 
 ```
-1. 加载 user_config.json（验证 schema）
-2. 加载全部 kmm_rule 文件（逐个验证根结构）
-3. 第一遍：构建 game_permissions 和 sub_permissions（跨文件 union）
-4. 第二遍：逐文件、逐 mod 进行文件内处理
-   4a. 对每个 action 执行 def_destin / def_action 继承解析（具体化）
-   4b. 注入 provenance_ref（kmm_rule 文件绝对路径）
-   4c. 注入 action_order
-   4d. 注入 sidecar_ref（按外部映射的原始 action 序号匹配）
-   4e. 过滤 hold action
-   4f. 过滤 destin=none action
-5. 第三遍：跨文件合并
-   5a. 合并同 mixed_id 的 operation（actionlist 拼接, preview/readme extend+去重, nickname 后入覆盖）
-6. 第四遍：鉴权过滤
-   6a. 检查 game / sub 权限
-   6b. 不通过的 action 移除
-7. 调用 validate_aggregated_rule_set 校验输出
-8. 可选写文件
-9. 返回 (result, errors, warnings)
+1. 加载全部 kmm_rule 文件（逐个验证根结构）
+2. 第一遍：构建 game_permissions 和 sub_permissions（跨文件 union）
+3. 第二遍：逐文件、逐 mod 进行文件内处理
+   3a. 对每个 action 执行 def_destin / def_action 继承解析（具体化）
+   3b. 注入 provenance_ref（kmm_rule 文件绝对路径）
+   3c. 注入 action_order
+   3d. 注入 sidecar_ref（按外部映射的原始 action 序号匹配）
+   3e. 过滤 hold action
+   3f. 过滤 destin=none action
+4. 第三遍：跨文件合并
+   4a. 合并同 mixed_id 的 operation（actionlist 拼接, preview/readme extend+去重, nickname 后入覆盖）
+5. 第四遍：鉴权过滤
+   5a. 检查 game / sub 权限
+   5b. 不通过的 action 移除
+6. 调用 validate_aggregated_rule_set 校验输出
+7. 可选写文件
+8. 返回 (result, errors, warnings)
 ```
 
 ---
@@ -403,7 +381,6 @@ def aggregate(
 | `E_KMM_RULE_INVALID` | kmm_rule 文件结构不合法 |
 | `E_PERMISSION_DENIED_BASE` | action 目标为 base，但 actor 不在 `game[].modid` 中 |
 | `E_PERMISSION_DENIED_SUB` | action 目标为其他 mod，但 actor 不在目标 mod 的 `sub` 中 |
-| `E_USER_CONFIG_LOAD_FAILED` | 无法加载 user_config.json |
 | `E_AGGREGATION_FAILED` | 聚合过程致命错误 |
 
 ### 告警

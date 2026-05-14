@@ -13,6 +13,10 @@
 - `mod[].mixed_id`
 - `mod[].managed`
 - `game[].managed`
+- `lastDatabase` — 当前选中的 database name（字符串）
+- `selectedRulePaths` — 用户选定的规则文件路径列表（string[]）
+- `managedEntries` — 用户对重复条目的路径筛选（object：{game: {...}, mod: {...}}）
+- `branchDecisions` — 冲突裁决的决策映射（object：{root_path: chosen_source}）
 
 ## 输出结构冻结
 - compute_mapping 输出 key: `"trees"`（数组），`"final_mapping"`（数组）
@@ -20,9 +24,4 @@
 - ChangeRequest: `path`, `action`, `mixed_id`, `hashtype`, `hashvalue`
 - FinalMappingEntry: `path`, `request`
 
-## 已废弃字段（禁止使用）
-- ~~islbfdvdflocate~~
-- ~~appitemid~~
-- ~~itemid（若表示 mod 列表）~~
-- ~~forest（已改为 trees）~~
-- ~~dommod~~（已改为 mod）
+

@@ -6,13 +6,12 @@ independent of ``engine.py`` and relies only on shared infrastructure
 (``iojson``, ``validation``, ``paths``).
 
 Pipeline overview (6 steps):
-    1. Load user_config.json (validate existence and basic schema)
-    2. Load all kmm_rule files (validate root structure)
-    3. Build permission maps (game_permissions, sub_permissions) — first pass
-    4. Per-file concretization and injection — second pass
-    5. Cross-file merge — third pass
-    6. Permission filtering — fourth pass
-    7. Validate via ``validate_aggregated_rule_set`` and optionally write output
+    1. Load all kmm_rule files (validate root structure)
+    2. Build permission maps (game_permissions, sub_permissions) — first pass
+    3. Per-file concretization and injection — second pass
+    4. Cross-file merge — third pass
+    5. Permission filtering — fourth pass
+    6. Validate via ``validate_aggregated_rule_set`` and optionally write output
 """
 
 from __future__ import annotations
@@ -25,33 +24,6 @@ from .paths import split_mixed_id
 from .validation import validate_aggregated_rule_set
 
 __all__ = ["aggregate"]
-
-
-# ---------------------------------------------------------------------------
-# Step 1 — Load user_config.json
-# ---------------------------------------------------------------------------
-
-def _load_user_config(user_config_path: str) -> tuple[dict[str, Any] | None, list[str]]:
-    """Load and basic-validate *user_config.json*.
-
-    Returns ``(config_dict, errors)``.  On failure ``config_dict`` is ``None``.
-    """
-    errors: list[str] = []
-    if not user_config_path:
-        errors.append("E_NO_USER_CONFIG: user_config_path is empty")
-        return None, errors
-    try:
-        config = load_json_file(user_config_path)
-    except Exception as exc:
-        errors.append(f"E_USER_CONFIG_LOAD_FAILED: {user_config_path}: {exc}")
-        return None, errors
-    if not isinstance(config, dict):
-        errors.append(
-            f"E_USER_CONFIG_LOAD_FAILED: {user_config_path}: "
-            f"expected dict, got {type(config).__name__}"
-        )
-        return None, errors
-    return config, errors
 
 
 # ---------------------------------------------------------------------------
@@ -493,7 +465,6 @@ def _filter_permissions(
 
 def aggregate(
     kmm_rule_paths: list[str],
-    user_config_path: str,
     *,
     action_orders: dict[str, int] | None = None,
     sidecar_refs: dict[str, dict[str, dict[int, str]]] | None = None,
@@ -507,8 +478,6 @@ def aggregate(
     Args:
         kmm_rule_paths:
             List of paths to ``kmm_rule_*.json`` files.
-        user_config_path:
-            Absolute path to ``user_config.json`` (resolved by bootstrap).
         action_orders:
             Optional mapping ``{mixed_id: int}`` — injected into every action
             of the corresponding operation.
@@ -527,15 +496,7 @@ def aggregate(
     all_warnings: list[str] = []
 
     # ------------------------------------------------------------------
-    # Step 1 — Load user_config.json
-    # ------------------------------------------------------------------
-    config, errs = _load_user_config(user_config_path)
-    all_errors.extend(errs)
-    if config is None:
-        return None, all_errors, all_warnings
-
-    # ------------------------------------------------------------------
-    # Step 2 — Load all kmm_rule files
+    # Step 1 — Load all kmm_rule files
     # ------------------------------------------------------------------
     loaded_rules, errs = _load_kmm_rules(kmm_rule_paths)
     all_errors.extend(errs)
@@ -543,12 +504,12 @@ def aggregate(
         return None, all_errors, all_warnings
 
     # ------------------------------------------------------------------
-    # Step 3 — Build permission maps (first pass)
+    # Step 2 — Build permission maps (first pass)
     # ------------------------------------------------------------------
     game_permissions, sub_permissions = _build_permission_maps(loaded_rules)
 
     # ------------------------------------------------------------------
-    # Step 4 — Per-file concretization and injection (second pass)
+    # Step 3 — Per-file concretization and injection (second pass)
     # ------------------------------------------------------------------
     all_processed: list[dict[str, list[dict[str, Any]]]] = []
     all_nicknames: list[dict[str, str]] = []
@@ -566,7 +527,7 @@ def aggregate(
         all_warnings.extend(warns)
 
     # ------------------------------------------------------------------
-    # Step 5 — Cross-file merge (third pass)
+    # Step 4 — Cross-file merge (third pass)
     # ------------------------------------------------------------------
     merged_actions, merged_nicknames, merged_previews, merged_readmes, warns = (
         _merge_operations(
@@ -576,7 +537,7 @@ def aggregate(
     all_warnings.extend(warns)
 
     # ------------------------------------------------------------------
-    # Step 6 — Permission filtering (fourth pass)
+    # Step 5 — Permission filtering (fourth pass)
     # ------------------------------------------------------------------
     merged_actions, errs, warns = _filter_permissions(
         merged_actions,
@@ -590,7 +551,7 @@ def aggregate(
     all_warnings.extend(warns)
 
     # ------------------------------------------------------------------
-    # Step 7 — Build output, validate, optionally write
+    # Step 6 — Build output, validate, optionally write
     # ------------------------------------------------------------------
     operations: list[dict[str, Any]] = []
     # Preserve deterministic ordering: insertion order of mixed_ids
@@ -619,6 +580,7 @@ def aggregate(
     # Write output
     if output_path is not None:
         try:
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             write_json_file(output_path, result)
         except Exception as exc:
             all_errors.append(

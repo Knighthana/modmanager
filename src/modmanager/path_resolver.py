@@ -15,7 +15,7 @@ from pathlib import Path
 from .paths import normalize_posix
 
 
-def _expand_path(input_str: str) -> str:
+def expand_path(input_str: str) -> str:
     """Expand ~ and $HOME/%appdata% to absolute paths."""
     expanded = os.path.expanduser(input_str)
     expanded = os.path.expandvars(expanded)
@@ -49,7 +49,7 @@ def resolve_directory_path(input_str: str, dirname: str) -> str:
     if not input_str:
         raise ValueError("input_str 不能为空字符串")
 
-    input_str = _expand_path(input_str)
+    input_str = expand_path(input_str)
     normalized = _fully_normalize(input_str).rstrip('/')
 
     # 情况 1 & 2: input 以 dirname 结尾（含或不含 /）
@@ -106,7 +106,7 @@ def resolve_file_path(input_str: str, filename: str) -> str:
     if not input_str:
         raise ValueError("input_str 不能为空字符串")
 
-    input_str = _expand_path(input_str)
+    input_str = expand_path(input_str)
     normalized = _fully_normalize(input_str)
 
     # 以 / 结尾 → 一定是目录 → 在目录下找文件
@@ -176,6 +176,7 @@ def assert_file_path(path: str, label: str = "path") -> None:
 
 
 __all__ = [
+    "expand_path",
     "resolve_directory_path",
     "resolve_file_path",
     "assert_directory_path",

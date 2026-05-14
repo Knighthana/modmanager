@@ -3,18 +3,21 @@
 Provides:
   - ``ProgressCallback`` protocol for progress reporting.
   - ``_detect_software_dir()`` — locate the software root directory.
-  - ``discover_user_config()`` — three-tier user_config.json discovery and merge.
+  - ``discover_user_config()`` — single-level user_config.json discovery
+    with first-use default creation.
   - ``generate_database()`` — generate or load Steam database (auto / manual).
 """
 
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Any, Protocol
 
 from .database_ops import discover_with_fallback
 from .iojson import load_json_file, write_json_file
+from .path_resolver import expand_path
 from .paths import normalize_posix
 
 __all__ = [
@@ -67,16 +70,16 @@ def _detect_software_dir() -> str:
 
 
 def discover_user_config(home_dir: str | None = None) -> dict:
-    """Search three tiers of ``user_config.json`` and merge by priority.
+    """Discover ``user_config.json`` via single-level search with first-use creation.
 
-    Tier order (last wins on conflict):
-      1. ``~/.config/kmm/user_config.json``          (lowest priority)
-      2. ``<software-root>/user_config.json``          (medium priority)
-      3. ``$PWD/user_config.json``                     (highest priority)
+    Searches **only** the platform-default location:
+      - Linux:   ``~/.config/kmm/user_config.json``
+      - Windows: ``%APPDATA%/kmm/user_config.json``
 
-    Each tier is loaded if present and valid (a JSON object/dict).  Invalid
-    JSON or non-dict content at a tier causes that tier to be silently skipped
-    without affecting other tiers.
+    If the file exists and contains a valid JSON dict it is loaded and returned
+    (``first_use=false``).  If the file does not exist (or contains invalid
+    content), a default configuration is created at that location with an empty
+    ``databases`` object (``first_use=true``) and returned.
 
     Args:
         home_dir:
@@ -85,12 +88,8 @@ def discover_user_config(home_dir: str | None = None) -> dict:
             ``pathlib.Path.home()``.
 
     Returns:
-        Merged ``user_config`` dictionary.
-
-    Raises:
-        FileNotFoundError:
-            If none of the three search locations contains a valid
-            ``user_config.json``.
+        User config dictionary (always contains ``databases``, ``source_path``,
+        and ``first_use`` keys).
     """
     if home_dir is None:
         home_dir = (
@@ -99,52 +98,62 @@ def discover_user_config(home_dir: str | None = None) -> dict:
             or str(Path.home())
         )
 
-    # Build the three candidate paths
-    tier1 = str(Path(home_dir) / ".config" / "kmm" / "user_config.json")
-    tier2 = str(Path(_detect_software_dir()) / "user_config.json")
-    tier3 = str(Path(os.getcwd()) / "user_config.json")
+    # Platform-specific config directory
+    if sys.platform == "win32":
+        config_dir = Path(os.environ.get("APPDATA", str(Path(home_dir) / "AppData" / "Roaming")))
+    else:
+        config_dir = Path(home_dir) / ".config"
 
-    tiers = [tier1, tier2, tier3]
-    merged: dict = {}
-    found_any = False
+    config_path = config_dir / "kmm" / "user_config.json"
 
-    for path in tiers:
+    # --- File exists, load it ---
+    if config_path.exists():
         try:
-            data = load_json_file(path)
+            data = load_json_file(str(config_path))
+            if isinstance(data, dict):
+                data["source_path"] = str(config_path)
+                data["first_use"] = False
+                return data
         except Exception:
-            continue
-        if isinstance(data, dict):
-            merged.update(data)
-            found_any = True
-        # non-dict JSON at a tier is silently skipped
+            pass
+        # Invalid content — fall through to recreate
 
-    if not found_any:
-        raise FileNotFoundError(
-            f"No user_config.json found in any of the three search locations: "
-            f"{tier1}, {tier2}, {tier3}"
-        )
+    # --- File does not exist or is invalid — create default ---
+    config_path.parent.mkdir(parents=True, exist_ok=True)
 
-    return merged
+    default_db_path = normalize_posix(
+        str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json")
+    )
+    default_config: dict[str, Any] = {
+        "databases": {
+            "default": {"path": default_db_path},
+        },
+        "source_path": str(config_path),
+        "first_use": True,
+    }
+
+    write_json_file(str(config_path), default_config)
+    return dict(default_config)
 
 
 def generate_database(
     mode: str,
     *,
     paths: list[str] | None = None,
-    working_pathstyle: str = "linux",
     greedy_parsing: bool = False,
     on_progress: ProgressCallback | None = None,
-    cache_path: str | None = None,
+    database_name: str = "default",
 ) -> dict:
     """Generate or load the Steam database.
 
-    When a ``cache_path`` is provided and the file exists with a valid
-    structure (at least a ``"steamlib"`` key containing a list), it is loaded
-    and returned immediately — no scanning is performed.
+    The database path is determined from ``user_config.databases[database_name].path``.
+    If the file exists at that path with a valid structure (at least a
+    ``"steamlib"`` key containing a list), it is loaded and returned immediately
+    — no scanning is performed.
 
     Otherwise the database is generated by scanning Steam libraries (``"auto"``
     mode) or from explicitly provided paths (``"manual"`` mode).  On success
-    the result is optionally written to ``cache_path``.
+    the result is written to the path from user config.
 
     Args:
         mode:
@@ -159,10 +168,9 @@ def generate_database(
             When ``True``, scan all discovered mods regardless of game scoping.
         on_progress:
             Optional progress callback.
-        cache_path:
-            Optional path to a JSON cache file.  If it exists and is valid it
-            is loaded instead of scanning.  After a successful scan the result
-            is written to this path.
+        database_name:
+            Name of the database entry in ``user_config.databases``
+            (default ``"default"``).
 
     Returns:
         Database dictionary compatible with ``engine.compute_mapping``.
@@ -170,8 +178,32 @@ def generate_database(
     Raises:
         ValueError:
             If *mode* is not ``"auto"`` or ``"manual"``, or if
-            ``mode="manual"`` but *paths* is empty or ``None``.
+            ``mode="manual"`` but *paths* is empty or ``None``, or if
+            ``database_name`` is not found in ``user_config.databases``.
     """
+    # ── Resolve database path from user config ────────────────────────────
+    config = discover_user_config()
+    db_path = expand_path(config.get("databases", {}).get(database_name, {}).get("path", ""))
+    if not db_path:
+        raise ValueError(
+            f"database '{database_name}' not found in user_config.databases"
+        )
+
+    # ── Cache hit (skip in manual mode) ───────────────────────────────────
+    db_file = Path(db_path)
+    if mode != "manual":
+        if db_file.exists() and db_file.stat().st_size > 0:
+            try:
+                cached = load_json_file(db_path)
+                if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
+                    return cached
+            except Exception:
+                # Invalid cache — fall through to regenerate
+                pass
+
+    # ── Auto-detect working path style from platform ───────────────────────
+    working_pathstyle = "windows" if sys.platform == "win32" else "linux"
+
     # ── Validate mode ─────────────────────────────────────────────────────
     if mode not in ("auto", "manual"):
         raise ValueError(f"mode must be 'auto' or 'manual', got {mode!r}")
@@ -182,17 +214,6 @@ def generate_database(
     # ── Generate database ─────────────────────────────────────────────────
     if mode == "auto" and not paths:
         # Pure auto mode: no manual paths, no manual_only
-        # ── Cache hit (pure auto mode only) ──
-        if cache_path is not None:
-            cache_file = Path(cache_path)
-            if cache_file.exists() and cache_file.stat().st_size > 0:
-                try:
-                    cached = load_json_file(cache_path)
-                    if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
-                        return cached
-                except Exception:
-                    # Invalid cache — fall through to regenerate
-                    pass
         if on_progress is not None:
             on_progress("scan", 0, -1, "Discovering Steam libraries...")
         database = discover_with_fallback(
@@ -247,7 +268,7 @@ def generate_database(
             on_progress("scan", 1, 1, "Combined scan complete")
 
     # ── Write cache ───────────────────────────────────────────────────────
-    if cache_path is not None:
-        write_json_file(cache_path, database)
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    write_json_file(db_path, database)
 
     return database

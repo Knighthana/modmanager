@@ -5,7 +5,9 @@
 > Read-Tier: task-scoped
 > Purpose: 定义前端 localStorage 中业务数据的清退清单、persistence.ts 新职责边界、以及清退后的前后端数据流规范。作为 Phase 2 前端改造的唯一执行依据。
 > 创建：2026-05-13
-> 依赖：DESIGN_WORKSPACE_STATE.md（workspace API 作为清退后的数据恢复来源）
+> 更新：2026-05-14 — 清退后的 decisions/results 存前端 localStorage，非后端 workspace
+> 更新：2026-05-14 — 【§十二补充裁定】分散 key 聚合为单一 `modmanager:workspace` key
+> 依赖：DESIGN_GUI_WORKSPACE.md（前端 workspace 结构）
 
 ---
 
@@ -40,10 +42,10 @@
 | 删除项 | 行 | 替代方案 |
 |--------|-----|---------|
 | `savePersistentState()` | 286-293 | 后端 workspace |
-| `loadPersistentState()` | 296-311 | 调 `GET /api/workspace/status` |
-| `watch(..., savePersistentState)` | 317-321 | 表单输入变更 → 调 `POST /api/workspace/save-inputs` |
+| `loadPersistentState()` | 296-311 | 调 localStorage 读取 decisions/results |
+| `watch(..., savePersistentState)` | 317-321 | 删除该 watch；业务状态通过 localStorage（decisions/results）管理，UI 状态通过 persistence.ts |
 | `const PERSIST_KEY = 'forest-store'` | 38 | 删掉 |
-| `loadPersistentState()` 调用 | 314 | 改为 `GET /api/workspace/status` |
+| `loadPersistentState()` 调用 | 314 | 改为从 localStorage 读取 decisions/results |
 
 #### `__tests__/`
 
@@ -68,9 +70,12 @@
 |------|------|------|
 | 当前 tab 位置 | `string` | `/settings`, `/forest`, `/operations`... |
 | Sidebar 折叠状态 | `boolean` | `true` = 折叠，`false` = 展开 |
-| DataSourcePage 表单输入 | 见下方 | discoveryMode, manualPath, workingPathstyle, greedyParsing, databaseOutputPath |
+| DataSourcePage 表单输入 | 见下方 | discoveryMode, manualPath, workingPathstyle, greedyParsing |
 | 库可见性开关 | `Record<number, boolean>` | `libraryVisibility` |
 | 游戏可见性开关 | `Record<number, boolean>` | `gameVisibility` |
+| `modmanager:workspace` | `object` | 聚合 workspace 对象（含 lastDatabase、perDatabase、aggregatedRuleSet、aggregatedRuleHash） |
+
+workspace 结构见 `DESIGN_GUI_WORKSPACE.md` §二。
 
 ### 2.3 禁止存储的内容
 
@@ -79,7 +84,7 @@
 - ❌ 警告/错误列表（warnings, errors）
 - ❌ user_config 内容（从后端 `/api/config/discover` 获取）
 - ❌ storedDatabase / databaseSummary / lastResult
-- ❌ pipelineForm 中的业务字段（databasePath, rulesPaths, backupDir, userConfigPath 等——这些属于 workspace inputs）
+- ❌ pipelineForm 中的业务字段（rulesPaths, backupDir, userConfigPath 等——这些属于后端管理）
 
 ### 2.4 错误处理变更
 
@@ -105,13 +110,13 @@ try { pers.save(key, value) } catch {
 
 ### 3.1 核心原则
 
-> **后端是唯一权威数据源。前端不做业务数据持久化。前端 Pinia store 仅暂存本次页面会话的内存状态。**
+> **后端是唯一权威数据源。前端 Pinia store 仅暂存本次页面会话的内存状态。用户决策和计算结果摘要存前端 localStorage，compute 时传入后端。**
 
 ### 3.2 页面启动流程
 
 ```
 App.vue mount()
-  ├── 1. GET /api/workspace/status   → 恢复 inputs / decisions / results
+  ├── 1. 从 localStorage 读取 workspace（`modmanager:workspace`）→ 提取 lastDatabase、perDatabase
   ├── 2. Persistence.load('ui-state') → 恢复 tab / sidebar / visibility
   └── 3. 根据状态渲染初始页面
 ```
@@ -121,23 +126,24 @@ App.vue mount()
 ```
 DataSourcePage → 扫描
   ├── POST /api/database/generate  → 获取纯 database（无 managed）
-  ├── POST /api/workspace/save-inputs → 保存扫描参数
-  └── 用户选 managed → POST /api/workspace/save-decisions
+  └── 前端数据库切换时检查 workspace.perDatabase[name]?.decisions → 提示恢复决策
 
 RulesOverviewPage → 浏览
-  └── GET /api/workspace/status → 读取 rule_paths → POST /api/rules/scan
+  └── POST /api/rules/scan → 获得规则列表
 
 ForestPage → 计算
-  ├── GET /api/workspace/status → 读取 inputs + decisions
-  ├── POST /api/pipeline/compute { database_path?, rule_paths, branch_decisions }
-  └── 计算完成 → POST /api/workspace/save-results
+  ├── 从 workspace.perDatabase[name].decisions 读 decisions
+  ├── 从 workspace.aggregatedRuleSet 读聚合规则 dict
+  ├── POST /api/pipeline/compute { database_name, aggregated_rule_set, managed_entries, branch_decisions }
+  │   └── orchestrator 内部获取 database
+  └── 计算完成 → 前端写 workspace.perDatabase[name].results
 
 ConflictsPage → 决策
-  ├── GET /api/workspace/status → 读取 branch_decisions
-  └── 用户确认 → POST /api/workspace/save-decisions { branch_decisions }
+  ├── 从 workspace.perDatabase[name].decisions.branch_decisions 读
+  └── 用户确认 → 写 workspace.perDatabase[name].decisions.branch_decisions
 
 OperationsPage → 执行
-  ├── GET /api/workspace/status → 读取 results 摘要
+  ├── 从 workspace.perDatabase[name].results 读摘要
   └── 按钮 → POST /api/pipeline/backup | apply | restore
 ```
 
@@ -145,12 +151,12 @@ OperationsPage → 执行
 
 | 页面 | 恢复来源 |
 |------|---------|
-| DataSourcePage | persistence(discoveryMode, manualPath) + 重新调 scan 或加载 workspace.inputs |
-| ForestPage | workspace.inputs（表单参数）+ 可选重新 compute |
-| ConflictsPage | workspace.decisions.branch_decisions |
-| OperationsPage | workspace.results.last_compute 摘要 |
-| SettingsPage | `/api/config/discover` 获取 user_config；`/api/database/load` 获取 database JSON |
-| RulesOverviewPage | workspace.inputs.rule_paths → `/api/rules/scan` |
+| DataSourcePage | persistence（discoveryMode, manualPaths, 可见性）；扫描结果不缓存；`workspace.lastDatabase` 恢复下拉选中 |
+| ForestPage | `workspace.perDatabase[name].results` 恢复摘要；database 由 orchestrator 内部获取 |
+| ConflictsPage | `workspace.perDatabase[name].decisions.branch_decisions` |
+| OperationsPage | `workspace.perDatabase[name].results` 摘要 |
+| SettingsPage | `POST /api/config/discover` → user_config |
+| RulesOverviewPage | `POST /api/config/discover` → user_config.rule_sources → `/api/rules/scan` |
 
 ---
 
@@ -182,6 +188,6 @@ OperationsPage → 执行
 | # | 决策 | 结论 |
 |---|------|------|
 | D1 | persistence.ts 是否保留 | 保留，职责缩减为仅 UI 状态 |
-| D2 | 表单输入归属 | discoveryMode, manualPath 等 → persistence（无后端参与）；databasePath, rulePaths 等 → workspace inputs |
+| D2 | decisions/results 归属 | decisions/results 存前端 localStorage（`modmanager:workspace`），非后端 workspace |
 | D3 | 清退方式 | 一步到位，不保留过渡期双写 |
 | D4 | 错误处理 | 静默 → notify.warning |

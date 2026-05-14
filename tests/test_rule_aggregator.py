@@ -21,16 +21,7 @@ def _make_temp_kmm_rule(temp_dir: str, filename: str, content: dict) -> str:
     return str(path)
 
 
-def _make_temp_user_config(temp_dir: str) -> str:
-    path = Path(temp_dir) / "user_config.json"
-    path.write_text(json.dumps({"path_alias": []}, ensure_ascii=False), encoding="utf-8")
-    return str(path)
 
-
-def _make_temp_user_config_custom(temp_dir: str, content: dict) -> str:
-    path = Path(temp_dir) / "user_config.json"
-    path.write_text(json.dumps(content, ensure_ascii=False), encoding="utf-8")
-    return str(path)
 
 
 # ---------------------------------------------------------------------------
@@ -43,7 +34,6 @@ class TestAggregatorBasic(unittest.TestCase):
     def test_single_file_basic(self) -> None:
         """Load a single valid kmm_rule file, verify output structure."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -68,7 +58,7 @@ class TestAggregatorBasic(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -89,7 +79,6 @@ class TestAggregatorBasic(unittest.TestCase):
     def test_multi_file_merge_same_mixed_id(self) -> None:
         """Two kmm_rule files with the same mixed_id — actionlists concatenated."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule1 = _make_temp_kmm_rule(td, "r1.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -131,7 +120,7 @@ class TestAggregatorBasic(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule1, rule2], uc)
+            result, errors, warnings = aggregate([rule1, rule2])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -144,7 +133,6 @@ class TestAggregatorBasic(unittest.TestCase):
     def test_multi_file_preview_readme_merge(self) -> None:
         """Two files with overlapping preview/readme lists — extend + dedup."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule1 = _make_temp_kmm_rule(td, "r1.json", {
                 "mod": [
                     {
@@ -170,7 +158,7 @@ class TestAggregatorBasic(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule1, rule2], uc)
+            result, errors, warnings = aggregate([rule1, rule2])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -181,7 +169,6 @@ class TestAggregatorBasic(unittest.TestCase):
     def test_nickname_last_wins(self) -> None:
         """Two files with different nicknames — second file's nickname wins."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule1 = _make_temp_kmm_rule(td, "r1.json", {
                 "mod": [
                     {
@@ -205,7 +192,7 @@ class TestAggregatorBasic(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule1, rule2], uc)
+            result, errors, warnings = aggregate([rule1, rule2])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -220,7 +207,6 @@ class TestAggregatorFiltering(unittest.TestCase):
     def test_hold_action_filtered(self) -> None:
         """Action with action='hold' should not appear in output."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -238,7 +224,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -249,7 +235,6 @@ class TestAggregatorFiltering(unittest.TestCase):
     def test_hold_action_from_def_action_filtered(self) -> None:
         """Action inheriting 'hold' from def_action should be filtered."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "mod": [
                     {
@@ -264,7 +249,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -274,7 +259,6 @@ class TestAggregatorFiltering(unittest.TestCase):
     def test_destin_none_filtered(self) -> None:
         """Action with destin='none' should be filtered with warning."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "mod": [
                     {
@@ -288,7 +272,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -299,7 +283,6 @@ class TestAggregatorFiltering(unittest.TestCase):
     def test_def_action_inheritance(self) -> None:
         """Action without explicit action should inherit from def_action."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -317,7 +300,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -328,7 +311,6 @@ class TestAggregatorFiltering(unittest.TestCase):
     def test_def_destin_inheritance(self) -> None:
         """Action without explicit destin should inherit from def_destin."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -346,7 +328,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -357,7 +339,6 @@ class TestAggregatorFiltering(unittest.TestCase):
     def test_explicit_action_overrides_def(self) -> None:
         """Explicit action overrides def_action even when def_action is 'hold'."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -374,7 +355,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -389,7 +370,6 @@ class TestAggregatorPermission(unittest.TestCase):
     def test_game_permission_allow(self) -> None:
         """Mod listed in game[].modid with base-target action passes permission check."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -406,7 +386,7 @@ class TestAggregatorPermission(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -416,7 +396,6 @@ class TestAggregatorPermission(unittest.TestCase):
     def test_game_permission_deny(self) -> None:
         """Mod NOT in game[].modid with base-target action → E_PERMISSION_DENIED_BASE."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["999"]},  # 100 is NOT listed
@@ -433,7 +412,7 @@ class TestAggregatorPermission(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             # The operation still exists but the action is removed
             self.assertIsNotNone(result)
@@ -443,7 +422,6 @@ class TestAggregatorPermission(unittest.TestCase):
     def test_sub_permission_allow(self) -> None:
         """Mod listed in target's sub[] passes sub permission check."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "mod": [
                     {
@@ -464,7 +442,7 @@ class TestAggregatorPermission(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -474,7 +452,6 @@ class TestAggregatorPermission(unittest.TestCase):
     def test_sub_permission_deny(self) -> None:
         """Mod NOT in target's sub[] → E_PERMISSION_DENIED_SUB."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "mod": [
                     {
@@ -495,7 +472,7 @@ class TestAggregatorPermission(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertTrue(any("E_PERMISSION_DENIED_SUB" in e for e in errors))
@@ -508,7 +485,6 @@ class TestAggregatorInjection(unittest.TestCase):
     def test_provenance_ref_absolute(self) -> None:
         """Verify provenance_ref is an absolute path."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -525,7 +501,7 @@ class TestAggregatorInjection(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -535,7 +511,6 @@ class TestAggregatorInjection(unittest.TestCase):
     def test_action_order_injection(self) -> None:
         """Provide action_orders mapping, verify correct order value."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -553,7 +528,7 @@ class TestAggregatorInjection(unittest.TestCase):
             })
 
             action_orders = {"270150:100": 42}
-            result, errors, warnings = aggregate([rule], uc, action_orders=action_orders)
+            result, errors, warnings = aggregate([rule], action_orders=action_orders)
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -563,7 +538,6 @@ class TestAggregatorInjection(unittest.TestCase):
     def test_sidecar_ref_injection(self) -> None:
         """Provide sidecar_refs mapping, verify correct injection."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule_path = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -582,7 +556,7 @@ class TestAggregatorInjection(unittest.TestCase):
 
             resolved_path = str(Path(rule_path).resolve())
             sidecar_refs = {resolved_path: {"270150:100": {0: "my-sidecar-ref"}}}
-            result, errors, warnings = aggregate([rule_path], uc, sidecar_refs=sidecar_refs)
+            result, errors, warnings = aggregate([rule_path], sidecar_refs=sidecar_refs)
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -596,10 +570,9 @@ class TestAggregatorErrorHandling(unittest.TestCase):
     def test_invalid_kmm_rule_not_dict(self) -> None:
         """Load a non-dict kmm_rule file → E_KMM_RULE_INVALID."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", [1, 2, 3])
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNone(result)
             self.assertTrue(any("E_KMM_RULE_INVALID" in e for e in errors))
@@ -607,10 +580,9 @@ class TestAggregatorErrorHandling(unittest.TestCase):
     def test_invalid_kmm_rule_missing_mod_key(self) -> None:
         """Load a kmm_rule without 'mod' key → E_KMM_RULE_INVALID."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {"not_mod": []})
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNone(result)
             self.assertTrue(any("E_KMM_RULE_INVALID" in e for e in errors))
@@ -618,25 +590,22 @@ class TestAggregatorErrorHandling(unittest.TestCase):
     def test_invalid_kmm_rule_load_failed(self) -> None:
         """Load a non-existent kmm_rule file → E_KMM_RULE_LOAD_FAILED."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
 
-            result, errors, warnings = aggregate(["/nonexistent/rule.json"], uc)
+            result, errors, warnings = aggregate(["/nonexistent/rule.json"])
 
             self.assertIsNone(result)
             self.assertTrue(any("E_KMM_RULE_LOAD_FAILED" in e for e in errors))
 
-    def test_missing_user_config(self) -> None:
-        """Non-existent user_config path → E_USER_CONFIG_LOAD_FAILED."""
-        with tempfile.TemporaryDirectory() as td:
-            result, errors, warnings = aggregate([], "/nonexistent/user_config.json")
+    def test_empty_rule_paths_returns_none(self) -> None:
+        """Empty kmm_rule_paths list returns None (no rules to aggregate)."""
+        result, errors, warnings = aggregate([])
 
-            self.assertIsNone(result)
-            self.assertTrue(any("E_USER_CONFIG_LOAD_FAILED" in e for e in errors))
+        self.assertIsNone(result)
+        self.assertEqual(errors, [])
 
     def test_output_file_write(self) -> None:
         """Provide output_path, verify file is written with correct content."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -654,7 +623,7 @@ class TestAggregatorErrorHandling(unittest.TestCase):
             })
             output_path = Path(td) / "output.json"
 
-            result, errors, warnings = aggregate([rule], uc, output_path=str(output_path))
+            result, errors, warnings = aggregate([rule], output_path=str(output_path))
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -670,7 +639,6 @@ class TestAggregatorEmptyActions(unittest.TestCase):
     def test_all_actions_filtered_triggers_warning(self) -> None:
         """All actions filtered out → W_EMPTY_ACTIONLIST_AFTER_FILTER."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "mod": [
                     {
@@ -684,7 +652,7 @@ class TestAggregatorEmptyActions(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -699,7 +667,6 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
     def test_trailing_slash_fixed_into(self) -> None:
         """into_type=path, into=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -721,7 +688,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -735,7 +702,6 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
     def test_trailing_slash_fixed_from(self) -> None:
         """from_type=path, from=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -757,7 +723,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -771,7 +737,6 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
     def test_trailing_slash_glob_untouched(self) -> None:
         """from_type=path, from=['maps/*/'] → unchanged (glob)."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -793,7 +758,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])
@@ -807,7 +772,6 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
     def test_trailing_slash_file_type_untouched(self) -> None:
         """into_type=file, into=['maps/file.txt'] → unchanged, no warning."""
         with tempfile.TemporaryDirectory() as td:
-            uc = _make_temp_user_config(td)
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
                     {"appid": "270150", "modid": ["100"]},
@@ -829,7 +793,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                 ]
             })
 
-            result, errors, warnings = aggregate([rule], uc)
+            result, errors, warnings = aggregate([rule])
 
             self.assertIsNotNone(result)
             self.assertEqual(errors, [])

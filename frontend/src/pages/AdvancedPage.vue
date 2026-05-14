@@ -2,18 +2,16 @@
   <div>
     <h2>高级 — 数据文件 JSON 查看</h2>
 
+    <div style="margin-bottom: 16px;">
+      <DatabaseSelector ref="databaseSelectorRef" />
+    </div>
+
     <el-card shadow="never">
       <el-tabs v-model="activeTab">
         <el-tab-pane label="Database" name="database">
           <div class="file-meta">
-            <span class="meta-label">文件路径:</span>
-            <span class="meta-value">{{ meta.database.path || '—' }}</span>
-            <span v-if="meta.database.size" class="meta-sep">|</span>
-            <span v-if="meta.database.size" class="meta-label">大小:</span>
-            <span v-if="meta.database.size" class="meta-value">{{ meta.database.size }}</span>
-            <span v-if="meta.database.mtime" class="meta-sep">|</span>
-            <span v-if="meta.database.mtime" class="meta-label">最后修改:</span>
-            <span v-if="meta.database.mtime" class="meta-value">{{ meta.database.mtime }}</span>
+            <span class="meta-label">Database 名称:</span>
+            <span class="meta-value">{{ databaseName || '—' }}</span>
           </div>
           <el-input
             v-model="content.database"
@@ -37,16 +35,6 @@
         </el-tab-pane>
 
         <el-tab-pane label="Aggregated Rules" name="aggregated">
-          <div class="file-meta">
-            <span class="meta-label">文件路径:</span>
-            <span class="meta-value">{{ meta.aggregated.path || '—' }}</span>
-            <span v-if="meta.aggregated.size" class="meta-sep">|</span>
-            <span v-if="meta.aggregated.size" class="meta-label">大小:</span>
-            <span v-if="meta.aggregated.size" class="meta-value">{{ meta.aggregated.size }}</span>
-            <span v-if="meta.aggregated.mtime" class="meta-sep">|</span>
-            <span v-if="meta.aggregated.mtime" class="meta-label">最后修改:</span>
-            <span v-if="meta.aggregated.mtime" class="meta-value">{{ meta.aggregated.mtime }}</span>
-          </div>
           <el-input
             v-model="content.aggregated"
             type="textarea"
@@ -69,16 +57,6 @@
         </el-tab-pane>
 
         <el-tab-pane label="User Config" name="userConfig">
-          <div class="file-meta">
-            <span class="meta-label">文件路径:</span>
-            <span class="meta-value">{{ meta.userConfig.path || '—' }}</span>
-            <span v-if="meta.userConfig.size" class="meta-sep">|</span>
-            <span v-if="meta.userConfig.size" class="meta-label">大小:</span>
-            <span v-if="meta.userConfig.size" class="meta-value">{{ meta.userConfig.size }}</span>
-            <span v-if="meta.userConfig.mtime" class="meta-sep">|</span>
-            <span v-if="meta.userConfig.mtime" class="meta-label">最后修改:</span>
-            <span v-if="meta.userConfig.mtime" class="meta-value">{{ meta.userConfig.mtime }}</span>
-          </div>
           <el-input
             v-model="content.userConfig"
             type="textarea"
@@ -100,20 +78,20 @@
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="Workspace" name="workspace">
+        <el-tab-pane label="LocalStorage" name="localStorage">
           <div class="file-meta">
             <span class="meta-label">数据来源:</span>
-            <span class="meta-value">GET /api/workspace/status</span>
+            <span class="meta-value">window.localStorage (modmanager: 前缀)</span>
           </div>
           <el-input
-            v-model="content.workspace"
+            v-model="content.localStorage"
             type="textarea"
             :rows="20"
             readonly
             font-family="monospace"
           />
           <div class="action-bar">
-            <el-button size="small" @click="refreshTab('workspace')">刷新</el-button>
+            <el-button size="small" @click="refreshTab('localStorage')">刷新</el-button>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -122,43 +100,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { apiPost } from '../api/client'
+import DatabaseSelector from '../components/DatabaseSelector.vue'
+
+const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
+const databaseName = ref('')
 
 const activeTab = ref('database')
-
-interface MetaInfo {
-  path: string
-  size: string
-  mtime: string
-}
-
-const meta = reactive<Record<string, MetaInfo>>({
-  database: { path: '', size: '', mtime: '' },
-  aggregated: { path: '', size: '', mtime: '' },
-  userConfig: { path: '', size: '', mtime: '' },
-  workspace: { path: '', size: '', mtime: '' },
-})
 
 const content = reactive<Record<string, string>>({
   database: '',
   aggregated: '',
   userConfig: '',
-  workspace: '',
+  localStorage: '',
 })
 
 const editing = reactive<Record<string, boolean>>({
   database: false,
   aggregated: false,
   userConfig: false,
-  workspace: false,
+  localStorage: false,
 })
 
 const tabStatus = reactive<Record<string, { type: 'success' | 'danger' | 'info'; msg: string } | null>>({
   database: null,
   aggregated: null,
   userConfig: null,
-  workspace: null,
+  localStorage: null,
 })
 
 function toggleEdit(tab: string) {
@@ -191,50 +160,64 @@ async function refreshTab(tab: string) {
 
     switch (tab) {
       case 'database': {
-        const resp = await apiPost<{ database: Record<string, unknown>; path: string; size: number; mtime: string }>(
-          '/api/database/load',
-          {},
+        const dbName = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+        databaseName.value = dbName
+        const resp = await apiPost<Record<string, unknown>>(
+          '/database/read',
+          { database_name: dbName },
         )
         if (resp.ok && resp.data) {
-          raw = resp.data.database
-          meta.database.path = resp.data.path || ''
-          meta.database.size = resp.data.size ? `${(resp.data.size / 1024).toFixed(1)} KB` : ''
-          meta.database.mtime = resp.data.mtime || ''
+          raw = resp.data
         }
         break
       }
       case 'aggregated': {
-        const resp = await apiPost<{ rules: Record<string, unknown>; path: string; size: number; mtime: string }>(
-          '/api/rules/load-aggregated',
-          {},
+        // 先从配置获取 aggregated_ruleset_output_path
+        let path = 'aggregated_rule_set.json'
+        try {
+          const configResp = await apiPost<Record<string, unknown>>('/config/discover', {})
+          if (configResp.ok && configResp.data) {
+            const config = configResp.data as Record<string, unknown>
+            if (config.aggregated_ruleset_output_path) {
+              path = config.aggregated_ruleset_output_path as string
+            }
+          }
+        } catch {
+          // 使用默认路径
+        }
+        const resp = await apiPost<Record<string, unknown>>(
+          '/rules/load-aggregated',
+          { path },
         )
         if (resp.ok && resp.data) {
-          raw = resp.data.rules
-          meta.aggregated.path = resp.data.path || ''
-          meta.aggregated.size = resp.data.size ? `${(resp.data.size / 1024).toFixed(1)} KB` : ''
-          meta.aggregated.mtime = resp.data.mtime || ''
+          raw = resp.data
         }
         break
       }
       case 'userConfig': {
-        const resp = await apiPost<{ user_config: Record<string, unknown>; path: string; size: number; mtime: string }>(
-          '/api/config/discover',
+        const resp = await apiPost<Record<string, unknown>>(
+          '/config/discover',
           {},
         )
         if (resp.ok && resp.data) {
-          raw = resp.data.user_config
-          meta.userConfig.path = resp.data.path || ''
-          meta.userConfig.size = resp.data.size ? `${(resp.data.size / 1024).toFixed(1)} KB` : ''
-          meta.userConfig.mtime = resp.data.mtime || ''
+          raw = resp.data
         }
         break
       }
-      case 'workspace': {
-        const fetchResp = await fetch('/api/workspace/status')
-        const json = await fetchResp.json()
-        if (json.ok && json.data) {
-          raw = json.data
+      case 'localStorage': {
+        // Dump all modmanager-prefixed localStorage items
+        const dump: Record<string, unknown> = {}
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('modmanager:')) {
+            try {
+              dump[key] = JSON.parse(localStorage.getItem(key) || '')
+            } catch {
+              dump[key] = localStorage.getItem(key)
+            }
+          }
         }
+        raw = dump
         break
       }
     }
@@ -263,16 +246,16 @@ async function saveTab(tab: string) {
 
     switch (tab) {
       case 'database':
-        endpoint = '/api/database/save'
-        payload = { database: parsed, output_path: null }
+        endpoint = '/database/save'
+        payload = { database: parsed, database_name: databaseSelectorRef.value?.selectedDatabase ?? 'default' }
         break
       case 'aggregated':
         // Aggregated rules are auto-generated; saving not supported
         tabStatus.aggregated = { type: 'danger', msg: '聚合规则由系统自动生成，不支持手动保存' }
         return
       case 'userConfig':
-        endpoint = '/api/config/save'
-        payload = { output_path: null, config: parsed }
+        endpoint = '/config/save'
+        payload = { config: parsed }
         break
     }
 
@@ -293,6 +276,13 @@ async function saveTab(tab: string) {
 // Load first tab on mount
 onMounted(() => {
   refreshTab('database')
+})
+
+// Auto-refresh Database tab when it becomes active
+watch(activeTab, (newVal) => {
+  if (newVal === 'database') {
+    refreshTab('database')
+  }
 })
 </script>
 

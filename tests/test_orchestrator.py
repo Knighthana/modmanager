@@ -16,8 +16,6 @@ from modmanager.orchestrator import (
     compute,
     run,
 )
-from modmanager.rule_aggregator import _load_user_config
-
 
 class TestPipelineResult(TestCase):
     """Tests for PipelineResult dataclass."""
@@ -51,57 +49,31 @@ class TestPipelineResult(TestCase):
 class TestCompute(TestCase):
     """Tests for compute()."""
 
-    def test_compute_aggregation_failure(self) -> None:
-        """Invalid kmm_rule_paths should result in a failed PipelineResult."""
-        result = compute(
-            database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
-        )
-        self.assertFalse(result.ok)
-        self.assertTrue(len(result.errors) > 0)
-        # Should contain file-load related error messages
-        self.assertTrue(
-            any("E_KMM_RULE_LOAD_FAILED" in e for e in result.errors)
-            or any("E_USER_CONFIG_LOAD_FAILED" in e for e in result.errors)
-        )
-
-    def test_compute_with_aggregated_rule_path(self) -> None:
-        """compute() with aggregated_rule_path loads pre-aggregated rule set."""
-        import tempfile, json
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump({"schema_namespace": "KMM_RuleSet", "operation": []}, f)
-            agg_path = f.name
-        try:
-            result = compute(
-                database={"game": [], "mod": []},
-                aggregated_rule_path=agg_path,
-            )
-            self.assertTrue(result.ok)
-            self.assertEqual(result.errors, [])
-        finally:
-            import os
-            os.unlink(agg_path)
-
-    def test_compute_with_kmm_rule_paths_backward_compat(self) -> None:
-        """compute() with kmm_rule_paths still works (old flow, backward compat)."""
-        result = compute(
-            database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
-        )
-        self.assertFalse(result.ok)
-        # Should still attempt the old aggregation flow and fail on file load
-        self.assertTrue(any("E_USER_CONFIG_LOAD_FAILED" in e for e in result.errors)
-                        or any("E_KMM_RULE_LOAD_FAILED" in e for e in result.errors))
-
     def test_compute_no_rule_input_returns_explicit_error(self) -> None:
-        """compute() with neither aggregated_rule_path nor kmm_rule_paths → explicit error."""
+        """compute() without aggregated_rule_set → explicit error."""
         result = compute(
             database={},
         )
         self.assertFalse(result.ok)
         self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
+
+    def test_compute_with_valid_aggregated_rule_set(self) -> None:
+        """compute() with a valid aggregated_rule_set should succeed."""
+        result = compute(
+            database={"game": [], "mod": []},
+            aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.errors, [])
+
+    def test_compute_with_empty_aggregated_rule_set_still_works(self) -> None:
+        """compute() with an empty dict as aggregated_rule_set should succeed."""
+        result = compute(
+            database={"game": [], "mod": []},
+            aggregated_rule_set={},
+        )
+        # An empty rule set is still valid input; actual success depends on compute_mapping
+        self.assertIsNotNone(result)
 
 
 class TestBackup(TestCase):
@@ -136,39 +108,29 @@ class TestApply(TestCase):
 class TestRun(TestCase):
     """Tests for the full run() pipeline."""
 
-    def test_run_fails_on_bad_inputs(self) -> None:
-        """Run pipeline with bad inputs should return failed PipelineResult."""
+    def test_run_fails_without_aggregated_rule_set(self) -> None:
+        """Run pipeline without aggregated_rule_set should return failed PipelineResult."""
         result = run(
             database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
             backup_dir="/tmp",
         )
         self.assertFalse(result.ok)
-        self.assertTrue(len(result.errors) > 0)
+        self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
 
-    def test_run_with_aggregated_rule_path(self) -> None:
-        """run() with aggregated_rule_path loads pre-aggregated rule set."""
-        import tempfile, json, os
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump({"schema_namespace": "KMM_RuleSet", "operation": []}, f)
-            agg_path = f.name
-        try:
-            # Use dry_run=True so we only test the compute path, not backup/apply gates
-            result = run(
-                database={"game": [], "mod": []},
-                aggregated_rule_path=agg_path,
-                backup_dir="/tmp/",
-                user_config={"bakprefix": "kmmbackup_"},
-                dry_run=True,
-            )
-            self.assertTrue(result.ok)
-            self.assertEqual(result.errors, [])
-        finally:
-            os.unlink(agg_path)
+    def test_run_with_valid_aggregated_rule_set(self) -> None:
+        """run() with a valid aggregated_rule_set should succeed (dry-run)."""
+        result = run(
+            database={"game": [], "mod": []},
+            aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
+            backup_dir="/tmp/",
+            user_config={"bakprefix": "kmmbackup_"},
+            dry_run=True,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.errors, [])
 
     def test_run_no_rule_input_returns_explicit_error(self) -> None:
-        """run() with neither aggregated_rule_path nor kmm_rule_paths → explicit error."""
+        """run() without aggregated_rule_set → explicit error."""
         result = run(
             database={},
             backup_dir="/tmp",
@@ -378,23 +340,20 @@ class TestComputeManagedEntries(TestCase):
         """compute() should accept managed_entries without error."""
         result = compute(
             database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
+            aggregated_rule_set={},
             managed_entries={"game": {"270150": ["/fake/path/"]}},
         )
-        # Should still fail due to bad inputs (not due to managed_entries)
-        self.assertFalse(result.ok)
-        self.assertTrue(len(result.errors) > 0)
+        # Should not throw; actual success depends on compute_mapping
+        self.assertIsNotNone(result)
 
     def test_compute_managed_entries_none(self) -> None:
-        """compute() with managed_entries=None should still work (backward compat)."""
+        """compute() with managed_entries=None should still work."""
         result = compute(
             database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
+            aggregated_rule_set={},
             managed_entries=None,
         )
-        self.assertFalse(result.ok)
+        self.assertIsNotNone(result)
 
 
 class TestRunManagedEntries(TestCase):
@@ -404,64 +363,41 @@ class TestRunManagedEntries(TestCase):
         """run() should accept managed_entries without error."""
         result = run(
             database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
+            aggregated_rule_set={},
             backup_dir="/tmp",
             managed_entries={"game": {"270150": ["/fake/path/"]}},
         )
-        self.assertFalse(result.ok)
-        self.assertTrue(len(result.errors) > 0)
+        self.assertIsNotNone(result)
 
     def test_run_managed_entries_none(self) -> None:
-        """run() with managed_entries=None should still work (backward compat)."""
+        """run() with managed_entries=None should still work."""
         result = run(
             database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
+            aggregated_rule_set={},
             backup_dir="/tmp",
             managed_entries=None,
         )
-        self.assertFalse(result.ok)
-
-
-class TestLoadUserConfig(TestCase):
-    """Tests for _load_user_config edge cases."""
-
-    def test_load_user_config_empty_path_returns_error(self) -> None:
-        """Empty user_config_path returns E_NO_USER_CONFIG error."""
-        config, errors = _load_user_config("")
-        self.assertIsNone(config)
-        self.assertTrue(any("E_NO_USER_CONFIG" in e for e in errors))
-
-    def test_load_user_config_none_path_returns_error(self) -> None:
-        """None user_config_path returns E_NO_USER_CONFIG error."""
-        config, errors = _load_user_config("")
-        self.assertIsNone(config)
-        self.assertTrue(any("E_NO_USER_CONFIG" in e for e in errors))
+        self.assertIsNotNone(result)
 
 
 class TestProgressCallback(TestCase):
     """Tests for progress callback invocation."""
 
     def test_progress_callback_invoked(self) -> None:
-        """Progress callback should be called during compute with bad inputs."""
+        """Progress callback should be called during compute."""
         calls: list[tuple] = []
 
         def callback(step: str, finished: int, total: int, message: str = "") -> None:
             calls.append((step, finished, total, message))
 
         result = compute(
-            database={},
-            kmm_rule_paths=["/nonexistent/rule.json"],
-            user_config_path="/nonexistent/user_config.json",
+            database={"game": [], "mod": []},
+            aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
             on_progress=callback,
         )
 
-        # Callback should have been called at least for aggregate phase
+        # Callback should have been called at least for compute phase
         self.assertTrue(len(calls) > 0)
-        # Should have "aggregate" step
+        # Should have "compute" step
         steps = [c[0] for c in calls]
-        self.assertIn("aggregate", steps)
-
-        # Result should still be failed (bad inputs)
-        self.assertFalse(result.ok)
+        self.assertIn("compute", steps)

@@ -2,8 +2,8 @@ import { http, HttpResponse } from 'msw'
 import dbData from '../data/database.json'
 
 export const databaseHandlers = [
-  // POST /api/database/load — 加载数据库
-  http.post('/api/database/load', async ({ request }) => {
+  // POST /api/database/read — 加载数据库
+  http.post('/api/database/read', async ({ request }) => {
     return HttpResponse.json({
       ok: true,
       data: dbData,

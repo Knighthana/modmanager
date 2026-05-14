@@ -13,10 +13,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   // ── state ──────────────────────────────────────────────────────────────
   const discoveryMode = ref<DiscoverMode>('all')
   const manualPaths = ref<string[]>([])
-  const workingPathstyle = ref('linux')
   const greedyParsing = ref(false)
-  const databaseOutputPath = ref('/tmp/modmanager_database_generated.json')
-
   const libraries = ref<LibraryRow[]>([])
   const games = ref<GameRow[]>([])
   const mods = ref<ModRow[]>([])
@@ -65,7 +62,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   })
 
   // ── actions ───────────────────────────────────────────────────────────
-  async function scan() {
+  async function scan(database_name: string = 'default') {
     isScanning.value = true
     warnings.value = []
     errors.value = []
@@ -89,9 +86,8 @@ export const useDataSourceStore = defineStore('datasource', () => {
     const params = {
       mode: apiMode,
       paths: apiPaths,
-      workingPathstyle: workingPathstyle.value,
       greedyParsing: greedyParsing.value,
-      cache_path: apiMode === 'manual' ? null : databaseOutputPath.value,
+      database_name,
     }
 
     await streamSse('/database/generate', params, {
@@ -260,9 +256,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   function _resetState() {
     discoveryMode.value = 'all'
     manualPaths.value = []
-    workingPathstyle.value = 'linux'
     greedyParsing.value = false
-    databaseOutputPath.value = '/tmp/modmanager_database_generated.json'
     libraries.value = []
     games.value = []
     mods.value = []
@@ -279,9 +273,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     // state
     discoveryMode,
     manualPaths,
-    workingPathstyle,
     greedyParsing,
-    databaseOutputPath,
     libraries,
     games,
     mods,

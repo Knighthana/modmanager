@@ -80,8 +80,8 @@
 | `POST` | `/api/config/discover` | — | 发现 user_config |
 | `POST` | `/api/config/save` | — | 保存 user_config |
 | `POST` | `/api/database/generate` | SSE | 扫描 Steam 库生成 database |
-| `POST` | `/api/database/load` | — | 从路径加载 database.json |
-| `POST` | `/api/database/save` | — | 保存 database（含 managed 校验） |
+| `POST` | `/api/database/read` | — | 读取指定 database 内容 |
+| `POST` | `/api/database/save` | — | 保存 database |
 | `POST` | `/api/pipeline/compute` | SSE | 聚合 + 计算映射 |
 | `POST` | `/api/pipeline/backup` | SSE | 差异备份 |
 | `POST` | `/api/pipeline/apply` | SSE | 应用映射到磁盘 |
@@ -90,6 +90,9 @@
 | `POST` | `/api/pipeline/visualize` | — | Forest JSON → SVG/ASCII/DOT |
 | `POST` | `/api/rules/scan` | — | 扫描目录列出 kmm_rule 文件 |
 | `POST` | `/api/rules/read` | — | 读取单个 kmm_rule 文件内容 |
+| `POST` | `/api/rules/aggregate` | SSE | 聚合选定规则文件 |
+| `POST` | `/api/rules/affected-entries` | — | 查询聚合规则影响的 game/mod |
+| `POST` | `/api/rules/load-aggregated` | — | 加载 aggregated_rule_set.json 原文 |
 | `POST` | `/api/backups/list` | — | 列出备份目录摘要 |
 | `POST` | `/api/backups/inspect` | — | 查看备份详情 |
 

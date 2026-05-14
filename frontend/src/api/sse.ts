@@ -1,24 +1,14 @@
-const BASE = '/api'
+import { API_BASE } from './config'
+import type { SseProgress, ProgressCallbacks } from './transport'
 
-export interface SseProgress {
-  step: string
-  finished: number
-  total: number
-  message: string
-}
-
-export interface SseCallbacks {
-  onProgress?: (p: SseProgress) => void
-  onResult?: (data: unknown) => void
-  onError?: (message: string) => void
-}
+export type { SseProgress, ProgressCallbacks } from './transport'
 
 export async function streamSse(
   path: string,
   body: unknown,
-  callbacks: SseCallbacks,
+  callbacks: ProgressCallbacks,
 ): Promise<void> {
-  const response = await fetch(`${BASE}${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -58,4 +48,5 @@ export async function streamSse(
       }
     }
   }
+  callbacks.onComplete?.()
 }

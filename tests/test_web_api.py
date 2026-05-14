@@ -266,8 +266,6 @@ class TestComputePipeline:
 
         def fake_compute(**kwargs):
             if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 0, 1, "Aggregating...")
-                kwargs["on_progress"]("aggregate", 1, 1, "Complete")
                 kwargs["on_progress"]("compute", 0, 1, "Computing...")
                 kwargs["on_progress"]("compute", 1, 1, "Done")
             return PipelineResult(
@@ -278,18 +276,26 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.database.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
         )
 
         resp = client.post(
             "/api/pipeline/compute",
             json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["/fake/rules.json"],
-                "user_config_path": "/fake/user_config.json",
+                "database_name": "default",
+                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
             },
         )
         assert resp.status_code == 200
@@ -315,7 +321,6 @@ class TestComputePipeline:
         def fake_compute(**kwargs):
             captured_kwargs.update(kwargs)
             if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 1, 1, "Done")
                 kwargs["on_progress"]("compute", 1, 1, "Done")
             return PipelineResult(
                 ok=True,
@@ -325,10 +330,15 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
         )
 
         managed_entries = {
@@ -339,25 +349,23 @@ class TestComputePipeline:
         resp = client.post(
             "/api/pipeline/compute",
             json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["/fake/rules.json"],
-                "user_config_path": "/fake/user_config.json",
+                "database_name": "default",
+                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "managed_entries": managed_entries,
             },
         )
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
 
-    def test_compute_with_aggregated_rule_path(
+    def test_compute_with_aggregated_rule_set(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """aggregated_rule_path is passed through to orchestrator compute()."""
+        """aggregated_rule_set dict is passed through to orchestrator compute()."""
         captured_kwargs: dict = {}
 
         def fake_compute(**kwargs):
             captured_kwargs.update(kwargs)
             if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 1, 1, "done")
                 kwargs["on_progress"]("compute", 1, 1, "done")
             return PipelineResult(
                 ok=True,
@@ -367,76 +375,43 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
         )
 
+        rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
         resp = client.post(
             "/api/pipeline/compute",
             json={
-                "database": {"steamlib": []},
-                "aggregated_rule_path": "/fake/aggregated.json",
+                "database_name": "default",
+                "aggregated_rule_set": rule_set,
             },
         )
         assert resp.status_code == 200
-        # Verify aggregated_rule_path was passed to orchestrator
-        assert captured_kwargs.get("aggregated_rule_path") == "/fake/aggregated.json"
-        # kmm_rule_paths should be None (not passed)
-        assert captured_kwargs.get("kmm_rule_paths") is None
+        # Verify aggregated_rule_set was passed to orchestrator
+        assert captured_kwargs.get("aggregated_rule_set") == rule_set
 
     def test_compute_no_rule_input_returns_error(
         self, client: TestClient
     ) -> None:
-        """Both aggregated_rule_path and kmm_rule_paths empty → explicit error."""
+        """No aggregated_rule_set → explicit error."""
         resp = client.post(
             "/api/pipeline/compute",
             json={
-                "database": {"steamlib": []},
+                "database_name": "default",
             },
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
         assert any("E_NO_RULE_INPUT" in e for e in body["errors"])
-
-    def test_compute_with_kmm_rule_paths_backward_compat(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """kmm_rule_paths (old flow) still works."""
-        captured_kwargs: dict = {}
-
-        def fake_compute(**kwargs):
-            captured_kwargs.update(kwargs)
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 1, 1, "done")
-                kwargs["on_progress"]("compute", 1, 1, "done")
-            return PipelineResult(
-                ok=True,
-                trees=[],
-                final_mapping=[],
-                mapping_result={},
-            )
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
-        )
-        monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
-        )
-
-        resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["/fake/rules.json"],
-                "user_config_path": "/fake/user_config.json",
-            },
-        )
-        assert resp.status_code == 200
-        assert captured_kwargs.get("kmm_rule_paths") == ["/fake/rules.json"]
-        assert captured_kwargs.get("aggregated_rule_path") is None
 
 
 # ── Pipeline /run ─────────────────────────────────────────────────────────
@@ -452,8 +427,6 @@ class TestRunPipeline:
 
         def fake_run(**kwargs):
             if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 0, 1, "Aggregating...")
-                kwargs["on_progress"]("aggregate", 1, 1, "Done")
                 kwargs["on_progress"]("compute", 0, 1, "Computing...")
                 kwargs["on_progress"]("compute", 1, 1, "Done")
                 kwargs["on_progress"]("backup", 0, 2, "Backing up...")
@@ -478,18 +451,26 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
+            "modmanager_web.routes.database.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_run", fake_run
         )
 
         resp = client.post(
             "/api/pipeline/run",
             json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["/fake/rules.json"],
-                "user_config_path": "/fake/user_config.json",
+                "database_name": "default",
+                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "backup_dir": "/fake/backups",
             },
         )
@@ -520,7 +501,7 @@ class TestRunPipeline:
         def fake_run(**kwargs):
             captured_kwargs.update(kwargs)
             if kwargs.get("on_progress"):
-                for step in ["aggregate", "compute", "backup", "apply"]:
+                for step in ["compute", "backup", "apply"]:
                     kwargs["on_progress"](step, 1, 1, "done")
             return PipelineResult(
                 ok=True, trees=[], final_mapping=[], mapping_result={},
@@ -529,10 +510,15 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_run", fake_run
         )
 
         managed_entries = {
@@ -542,9 +528,8 @@ class TestRunPipeline:
         resp = client.post(
             "/api/pipeline/run",
             json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["/fake/rules.json"],
-                "user_config_path": "/fake/user_config.json",
+                "database_name": "default",
+                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "backup_dir": "/fake/backups",
                 "managed_entries": managed_entries,
             },
@@ -552,16 +537,16 @@ class TestRunPipeline:
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
 
-    def test_run_with_aggregated_rule_path(
+    def test_run_with_aggregated_rule_set(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """aggregated_rule_path is passed through to orchestrator run()."""
+        """aggregated_rule_set dict is passed through to orchestrator run()."""
         captured_kwargs: dict = {}
 
         def fake_run(**kwargs):
             captured_kwargs.update(kwargs)
             if kwargs.get("on_progress"):
-                for step in ["aggregate", "compute", "backup", "apply"]:
+                for step in ["compute", "backup", "apply"]:
                     kwargs["on_progress"](step, 1, 1, "done")
             return PipelineResult(
                 ok=True, trees=[], final_mapping=[], mapping_result={},
@@ -570,32 +555,37 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_run", fake_run
         )
 
+        rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
         resp = client.post(
             "/api/pipeline/run",
             json={
-                "database": {"steamlib": []},
-                "aggregated_rule_path": "/fake/aggregated.json",
+                "database_name": "default",
+                "aggregated_rule_set": rule_set,
                 "backup_dir": "/fake/backups",
             },
         )
         assert resp.status_code == 200
-        assert captured_kwargs.get("aggregated_rule_path") == "/fake/aggregated.json"
-        assert captured_kwargs.get("kmm_rule_paths") is None
+        assert captured_kwargs.get("aggregated_rule_set") == rule_set
 
     def test_run_no_rule_input_returns_error(
         self, client: TestClient
     ) -> None:
-        """Both aggregated_rule_path and kmm_rule_paths empty → explicit error."""
+        """No aggregated_rule_set → explicit error."""
         resp = client.post(
             "/api/pipeline/run",
             json={
-                "database": {"steamlib": []},
+                "database_name": "default",
                 "backup_dir": "/fake/backups",
             },
         )
@@ -717,10 +707,19 @@ class TestSseDisconnect:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.database.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager.path_resolver.resolve_file_path", lambda path, _name: path
+            "modmanager_web.routes.pipeline.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.load_json_file",
+            lambda path: {"steamlib": []},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.pipeline.orch_compute", fake_compute
         )
 
         # Send a normal request — the important thing is that it does not
@@ -728,9 +727,8 @@ class TestSseDisconnect:
         resp = client.post(
             "/api/pipeline/compute",
             json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["/fake/rules.json"],
-                "user_config_path": "/fake/user_config.json",
+                "database_name": "default",
+                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
             },
         )
         # If the SSE stream is well-formed, we're good.
@@ -852,7 +850,7 @@ class TestRulesAggregateEndpoint:
         """aggregate passes paths to rule_aggregator.aggregate()."""
         captured: dict = {}
 
-        def fake_aggregate(kmm_rule_paths, user_config_path, *, action_orders=None, sidecar_refs=None, output_path=None):
+        def fake_aggregate(kmm_rule_paths, *, action_orders=None, sidecar_refs=None, output_path=None):
             captured["paths"] = kmm_rule_paths
             captured["output_path"] = output_path
             return {"schema_namespace": "KMM_RuleSet", "operation": []}, [], []
@@ -861,8 +859,8 @@ class TestRulesAggregateEndpoint:
             "modmanager_web.routes.rules.rule_aggregate", fake_aggregate
         )
         monkeypatch.setattr(
-            "modmanager.workspace.load_workspace",
-            lambda: {"inputs": {"aggregated_rule_path": "", "user_config_path": ""}},
+            "modmanager_web.routes.rules.discover_user_config",
+            lambda home_dir=None: {},
         )
 
         resp = client.post(
@@ -926,15 +924,15 @@ class TestRulesAffectedEntries:
             ],
         }))
 
-        # Mock workspace to return the database path
+        # Mock user_config to return the database path via database_name
         monkeypatch.setattr(
-            "modmanager.workspace.load_workspace",
-            lambda: {"inputs": {"database_path": str(db_file)}},
+            "modmanager_web.routes.rules.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": str(db_file)}}},
         )
 
         resp = client.post(
             "/api/rules/affected-entries",
-            json={"aggregated_rule_path": str(agg_file)},
+            json={"aggregated_rule_path": str(agg_file), "database_name": "default"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -958,218 +956,6 @@ class TestRulesAffectedEntries:
             assert "libraryIndex" in data["mods"][0]
             assert "gameIndex" in data["mods"][0]
             assert "has_duplicate" in data["mods"][0]
-
-
-# ── Workspace API ───────────────────────────────────────────────────────────
-
-
-class TestWorkspaceStatus:
-    """GET /api/workspace/status"""
-
-    def test_workspace_status_returns_workspace(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """status returns the full workspace dict."""
-        fake_workspace = {
-            "session_updated": "2026-01-01T00:00:00Z",
-            "inputs": {
-                "database_path": "/tmp/db.json",
-                "rule_paths": [],
-                "aggregated_rule_path": "",
-                "user_config_path": "",
-                "discovery_mode": "auto",
-                "discovery_manual_paths": [],
-            },
-            "decisions": {"branch_decisions": {}},
-            "results": {
-                "last_compute": {
-                    "trees_count": 0,
-                    "mapping_count": 0,
-                    "warnings": [],
-                    "errors": [],
-                    "stats": {},
-                    "inputs_hash": "",
-                    "timestamp": None,
-                },
-            },
-        }
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.load_workspace",
-            lambda: fake_workspace,
-        )
-
-        resp = client.get("/api/workspace/status")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["ok"] is True
-        assert body["data"] == fake_workspace
-        assert body["errors"] == []
-
-
-class TestWorkspaceSaveInputs:
-    """POST /api/workspace/save-inputs"""
-
-    def test_save_inputs_merges_fields(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """save-inputs merges provided fields into workspace inputs."""
-        captured: dict = {}
-
-        def fake_merge_workspace(data, section, path=None):
-            captured["data"] = data
-            captured["section"] = section
-            return {"inputs": data, "decisions": {}, "results": {}}
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
-        )
-
-        resp = client.post(
-            "/api/workspace/save-inputs",
-            json={
-                "database_path": "/new/db.json",
-                "discovery_mode": "manual",
-            },
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["ok"] is True
-        assert captured["section"] == "inputs"
-        assert captured["data"]["database_path"] == "/new/db.json"
-        assert captured["data"]["discovery_mode"] == "manual"
-
-    def test_save_inputs_empty_body(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """save-inputs with empty body merges nothing (preserves existing)."""
-        captured: dict = {}
-
-        def fake_merge_workspace(data, section, path=None):
-            captured["data"] = data
-            captured["section"] = section
-            return {"inputs": data, "decisions": {}, "results": {}}
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
-        )
-
-        resp = client.post(
-            "/api/workspace/save-inputs",
-            json={},
-        )
-        assert resp.status_code == 200
-        assert captured["data"] == {}
-
-
-class TestWorkspaceSaveDecisions:
-    """POST /api/workspace/save-decisions"""
-
-    def test_save_decisions_merges_branch_decisions(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """save-decisions merges branch_decisions into workspace decisions."""
-        captured: dict = {}
-
-        def fake_merge_workspace(data, section, path=None):
-            captured["data"] = data
-            captured["section"] = section
-            return {"inputs": {}, "decisions": data, "results": {}}
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
-        )
-
-        resp = client.post(
-            "/api/workspace/save-decisions",
-            json={"branch_decisions": {"/tree/a": "/src/a"}},
-        )
-        assert resp.status_code == 200
-        assert captured["section"] == "decisions"
-        assert captured["data"]["branch_decisions"]["/tree/a"] == "/src/a"
-
-    def test_save_decisions_null_branch_decisions(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """save-decisions with null branch_decisions merges empty data."""
-        captured: dict = {}
-
-        def fake_merge_workspace(data, section, path=None):
-            captured["data"] = data
-            captured["section"] = section
-            return {"inputs": {}, "decisions": data, "results": {}}
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
-        )
-
-        resp = client.post(
-            "/api/workspace/save-decisions",
-            json={"branch_decisions": None},
-        )
-        assert resp.status_code == 200
-        assert captured["data"] == {}
-
-
-class TestWorkspaceSaveResults:
-    """POST /api/workspace/save-results"""
-
-    def test_save_results_merges_last_compute(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """save-results merges fields into results.last_compute."""
-        captured: dict = {}
-
-        def fake_merge_workspace(data, section, path=None):
-            captured["data"] = data
-            captured["section"] = section
-            return {"inputs": {}, "decisions": {}, "results": data}
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
-        )
-
-        resp = client.post(
-            "/api/workspace/save-results",
-            json={
-                "trees_count": 42,
-                "mapping_count": 99,
-                "warnings": ["W_TEST"],
-                "errors": [],
-                "stats": {"elapsed": 1.5},
-                "inputs_hash": "abc123",
-            },
-        )
-        assert resp.status_code == 200
-        assert captured["section"] == "results"
-        assert captured["data"]["last_compute"]["trees_count"] == 42
-        assert captured["data"]["last_compute"]["mapping_count"] == 99
-        assert captured["data"]["last_compute"]["warnings"] == ["W_TEST"]
-        assert captured["data"]["last_compute"]["inputs_hash"] == "abc123"
-
-    def test_save_results_partial(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """save-results with partial fields only merges those fields."""
-        captured: dict = {}
-
-        def fake_merge_workspace(data, section, path=None):
-            captured["data"] = data
-            captured["section"] = section
-            return {"inputs": {}, "decisions": {}, "results": data}
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.workspace.merge_workspace", fake_merge_workspace
-        )
-
-        resp = client.post(
-            "/api/workspace/save-results",
-            json={"trees_count": 7},
-        )
-        assert resp.status_code == 200
-        assert captured["data"]["last_compute"]["trees_count"] == 7
-        # Only provided field should be in the merge data
-        assert "mapping_count" not in captured["data"]["last_compute"]
 
 
 # ── Backups API ─────────────────────────────────────────────────────────────
@@ -1384,36 +1170,41 @@ class TestAdaptersExtended:
         assert "E_BACKUP_DIR_MISSING" in result["errors"]
 
 
-# ── Database /load ────────────────────────────────────────────────────────
+# ── Database /read ────────────────────────────────────────────────────────
 
 
-class TestLoadDatabase:
-    """POST /api/database/load"""
+class TestReadDatabase:
+    """POST /api/database/read"""
 
-    def test_load_database_from_path_success(self, client, tmp_path):
-        # 创建临时 database.json
-        db_file = tmp_path / "database.json"
-        db_file.write_text(json.dumps({"game": [], "mod": []}))
+    def test_read_database_success(
+        self, client, monkeypatch
+    ):
+        """read resolves database_name from user_config and loads database."""
+        fake_db = {"game": [{"appid": "270150"}], "mod": []}
 
-        resp = client.post("/api/database/load", json={"path": str(db_file)})
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["ok"] is True
-        assert body["data"]["game"] == []
+        monkeypatch.setattr(
+            "modmanager_web.routes.database.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.database.load_json_file",
+            lambda path: fake_db,
+        )
 
-    def test_load_database_from_directory(self, client, tmp_path):
-        # 传入目录路径，自动找 database.json
-        db_file = tmp_path / "database.json"
-        db_file.write_text(json.dumps({"game": [{"appid": "270150"}]}))
-
-        resp = client.post("/api/database/load", json={"path": str(tmp_path) + "/"})
+        resp = client.post("/api/database/read", json={"database_name": "default"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
         assert body["data"]["game"][0]["appid"] == "270150"
 
-    def test_load_database_not_found(self, client):
-        resp = client.post("/api/database/load", json={"path": "/nonexistent/path"})
+    def test_read_database_not_found(self, client, monkeypatch):
+        """read returns error when database_name is not in user_config."""
+        monkeypatch.setattr(
+            "modmanager_web.routes.database.discover_user_config",
+            lambda home_dir=None: {"databases": {}},
+        )
+
+        resp = client.post("/api/database/read", json={"database_name": "nonexistent"})
         body = resp.json()
         assert body["ok"] is False
 
@@ -1424,21 +1215,26 @@ class TestLoadDatabase:
 class TestSaveDatabase:
     """POST /api/database/save"""
 
-    def test_save_database_writes_file(self, client, tmp_path):
-        """save writes the database dict to disk."""
-        output = tmp_path / "saved_db.json"
+    def test_save_database_writes_file(self, client, tmp_path, monkeypatch):
+        """save writes the database dict to disk using database_name."""
+        db_file = tmp_path / "db.json"
         db_data = {"game": [{"appid": "270150"}], "mod": []}
 
+        monkeypatch.setattr(
+            "modmanager_web.routes.database.discover_user_config",
+            lambda home_dir=None: {"databases": {"default": {"path": str(db_file)}}},
+        )
+
+        # Use real write_json_file so we can verify the file was written
         resp = client.post(
             "/api/database/save",
-            json={"database": db_data, "output_path": str(output)},
+            json={"database": db_data, "database_name": "default"},
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
-        assert body["data"]["path"] == str(output)
         # Verify the file was actually written
-        saved = json.loads(output.read_text(encoding="utf-8"))
+        saved = json.loads(db_file.read_text(encoding="utf-8"))
         assert saved["game"][0]["appid"] == "270150"
 
 
@@ -1456,7 +1252,6 @@ class TestConfigSaveRuleSources:
         rules_dir = tmp_path / "my_rules"
         rules_dir.mkdir()
 
-        output = tmp_path / "saved_config.json"
         config = {
             "game": "valheim",
             "rule_sources": [
@@ -1465,9 +1260,19 @@ class TestConfigSaveRuleSources:
             ],
         }
 
+        # Mock discover_user_config to return a source_path pointing to tmp_path
+        output = tmp_path / "user_config.json"
+        monkeypatch.setattr(
+            "modmanager_web.routes.config.discover_user_config",
+            lambda home_dir=None: {
+                "databases": {},
+                "source_path": str(output),
+            },
+        )
+
         resp = client.post(
             "/api/config/save",
-            json={"config": config, "output_path": str(output)},
+            json={"config": config},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -1478,192 +1283,6 @@ class TestConfigSaveRuleSources:
         assert saved["rule_sources"][0].endswith("/")
         # The file path should not end with /
         assert not saved["rule_sources"][1].endswith("/")
-
-
-# ── Tilde expansion tests (TODO-11) ──────────────────────────────────────────
-
-
-class TestTildeExpansion:
-    """``POST /api/pipeline/compute`` and ``/run`` with ``~`` paths must expand correctly.
-
-    The route handler calls ``resolve_file_path`` which internally expands
-    ``~`` / ``$HOME`` via ``os.path.expanduser``.  We override ``HOME`` so that
-    ``~/file.json`` resolves into a ``tmp_path``-based location.
-    """
-
-    def _set_home(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-        """Redirect HOME to *tmp_path* so ``~`` resolves under our control."""
-        monkeypatch.setenv("HOME", str(tmp_path))
-
-    def test_compute_expands_tilde_in_kmm_rule_paths(
-        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Tilde in kmm_rule_paths is expanded before reaching orchestrator."""
-        self._set_home(monkeypatch, tmp_path)
-
-        # Create files under the fake HOME
-        rule_file = tmp_path / "my_rules.json"
-        rule_file.write_text('{"operation": []}')
-        cfg_file = tmp_path / "user_config.json"
-        cfg_file.write_text('{"game_permissions": {}}')
-
-        captured: dict = {}
-
-        def fake_compute(**kwargs):
-            captured["rule_paths"] = kwargs.get("kmm_rule_paths", [])
-            captured["user_cfg"] = kwargs.get("user_config_path", "")
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 1, 1, "done")
-            return PipelineResult(
-                ok=True, trees=[], final_mapping=[], mapping_result={},
-            )
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
-        )
-        # Do NOT mock resolve_file_path — we want the real expansion
-
-        resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database": {"steamlib": []},
-                # Use ~ path that resolves to tmp_path/my_rules.json
-                "kmm_rule_paths": ["~/my_rules.json"],
-                "user_config_path": "~/user_config.json",
-            },
-        )
-        assert resp.status_code == 200
-
-        # The captured paths should be expanded absolute paths
-        assert len(captured.get("rule_paths", [])) == 1
-        resolved_rule = captured["rule_paths"][0]
-        assert resolved_rule == str(rule_file), f"Expected {rule_file}, got {resolved_rule}"
-        # user_config should also be expanded
-        assert captured.get("user_cfg") == str(cfg_file)
-        # No literal tilde should remain
-        assert "~" not in str(captured)
-        assert "~" not in str(captured.get("user_cfg", ""))
-
-    def test_run_expands_tilde_in_kmm_rule_paths(
-        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Tilde expansion in /run endpoint."""
-        self._set_home(monkeypatch, tmp_path)
-
-        rule_file = tmp_path / "run_rule.json"
-        rule_file.write_text('{"operation": []}')
-        cfg_file = tmp_path / "user_config.json"
-        cfg_file.write_text('{"game_permissions": {}}')
-
-        captured: dict = {}
-
-        def fake_run(**kwargs):
-            captured["rule_paths"] = kwargs.get("kmm_rule_paths", [])
-            captured["user_cfg"] = kwargs.get("user_config_path", "")
-            if kwargs.get("on_progress"):
-                for step in ["aggregate", "compute", "backup", "apply"]:
-                    kwargs["on_progress"](step, 1, 1, "done")
-            return PipelineResult(
-                ok=True, trees=[], final_mapping=[], mapping_result={},
-                backup_result={"ok": True, "backed_up": [], "skipped": []},
-                apply_result={"ok": True, "applied": [], "skipped": []},
-            )
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
-        )
-
-        resp = client.post(
-            "/api/pipeline/run",
-            json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": ["~/run_rule.json"],
-                "user_config_path": "~/user_config.json",
-                "backup_dir": "/tmp",
-            },
-        )
-        assert resp.status_code == 200
-        assert len(captured.get("rule_paths", [])) == 1
-        assert captured["rule_paths"][0] == str(rule_file)
-        assert "~" not in str(captured)
-
-    def test_compute_expands_tilde_in_user_config_path(
-        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Tilde in user_config_path is expanded."""
-        self._set_home(monkeypatch, tmp_path)
-
-        cfg_file = tmp_path / "user_config.json"
-        cfg_file.write_text('{"game_permissions": {}}')
-        rule_file = tmp_path / "dummy.json"
-        rule_file.write_text('{"operation": []}')
-
-        captured: dict = {}
-
-        def fake_compute(**kwargs):
-            captured["user_cfg"] = kwargs.get("user_config_path", "")
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 1, 1, "done")
-            return PipelineResult(
-                ok=True, trees=[], final_mapping=[], mapping_result={},
-            )
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
-        )
-
-        resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database": {"steamlib": []},
-                "kmm_rule_paths": [str(rule_file)],
-                "user_config_path": "~/user_config.json",
-            },
-        )
-        assert resp.status_code == 200
-        assert captured.get("user_cfg") == str(cfg_file)
-        assert "~" not in str(captured.get("user_cfg", ""))
-
-    def test_database_path_with_tilde_expands(
-        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """When database is a path string with ~, it gets expanded."""
-        self._set_home(monkeypatch, tmp_path)
-
-        db_file = tmp_path / "database.json"
-        db_file.write_text('{"steamlib": []}')
-        rule_file = tmp_path / "dummy.json"
-        rule_file.write_text('{"operation": []}')
-        cfg_file = tmp_path / "user_config.json"
-        cfg_file.write_text('{"game_permissions": {}}')
-
-        captured: dict = {}
-
-        def fake_compute(**kwargs):
-            captured["db"] = kwargs.get("database", None)
-            captured["rule_paths"] = kwargs.get("kmm_rule_paths", [])
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("aggregate", 1, 1, "done")
-            return PipelineResult(
-                ok=True, trees=[], final_mapping=[], mapping_result={},
-            )
-
-        monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
-        )
-
-        resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database": "~/database.json",
-                "kmm_rule_paths": [str(rule_file)],
-                "user_config_path": str(cfg_file),
-            },
-        )
-        assert resp.status_code == 200
-        # The database should have been loaded and passed as a dict (not a string)
-        assert isinstance(captured.get("db"), dict)
-        assert "steamlib" in captured["db"]
 
 
 # ── Helper ────────────────────────────────────────────────────────────────

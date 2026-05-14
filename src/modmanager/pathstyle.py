@@ -63,13 +63,25 @@ def convert_path(path: str, to_style: PathStyle) -> str:
     return _linux_to_win(path)
 
 
-def normalize(path: str, to_style: PathStyle) -> str:
-    """Detect the style of *path* and return it converted to *to_style*.
+def normalize(path: str, to_style: PathStyle, *, from_style: PathStyle | None = None) -> str:
+    """Convert *path* to *to_style*.
+
+    If *from_style* is given, the path is converted directly without auto-detection.
+    If *from_style* is ``None`` (default), the path style is auto-detected via
+    :func:`detect_pathstyle`.
 
     This is the primary single-call entry point.  Usage example::
 
         norm = normalize(raw_path, working_style)
     """
+    if from_style is not None:
+        # Direct conversion — caller knows the source style
+        if from_style == PathStyle.WINDOWS and to_style == PathStyle.LINUX:
+            return _win_to_linux(path)
+        elif from_style == PathStyle.LINUX and to_style == PathStyle.WINDOWS:
+            return _linux_to_win(path)
+        else:
+            return path  # same style, no conversion needed
     return convert_path(path, to_style)
 
 

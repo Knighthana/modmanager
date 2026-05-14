@@ -70,10 +70,12 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
-import { apiPost } from '../api/client'
-import type { ConflictItem } from '../types'
+import { createPersistence } from '../utils/persistence'
+import type { ConflictItem, WorkspaceData } from '../types'
 import { STR } from '../locales/zh-CN'
 import { ElMessage } from 'element-plus'
+
+const pers = createPersistence()
 
 const route = useRoute()
 const store = useForestStore()
@@ -93,15 +95,13 @@ function onClearDecisions() {
 async function onConfirmDecisions() {
   isSaving.value = true
   try {
-    const resp = await apiPost('/workspace/save-decisions', {
-      branch_decisions: { ...store.branchDecisions },
-    })
-    if (resp.ok) {
-      ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
-    } else {
-      ElMessage.error(resp.errors?.[0] || STR.conflictsPage.saveDecisionFailed)
-    }
-  } catch {
+    const ws = pers.load<WorkspaceData>('workspace') || {} as WorkspaceData
+    const db = ws.lastDatabase || 'default'
+    if (!ws.perDatabase) ws.perDatabase = {}
+    if (!ws.perDatabase[db]) ws.perDatabase[db] = { decisions: {}, results: null }
+    ws.perDatabase[db].decisions!.branch_decisions = { ...store.branchDecisions }
+    pers.save('workspace', ws)
+    ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
     ElMessage.error(STR.conflictsPage.saveDecisionFailed)
   } finally {
     isSaving.value = false
@@ -113,13 +113,12 @@ async function onRecalculate() {
   if (!lastParams) return
 
   await store.runPipeline({
-    database: lastParams.database,
+    database_name: lastParams.database_name,
     kmm_rule_paths: lastParams.kmm_rule_paths,
-    user_config_path: lastParams.user_config_path,
-    backup_dir: lastParams.backup_dir,
+    managed_entries: lastParams.managed_entries,
+    branch_decisions: { ...store.branchDecisions },
     dry_run: lastParams.dry_run,
     action_orders: lastParams.action_orders,
-    branch_decisions: { ...store.branchDecisions },
   })
 }
 
