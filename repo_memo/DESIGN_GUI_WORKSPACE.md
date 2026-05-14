@@ -21,7 +21,7 @@ compute 时，前端从 localStorage 读取 decisions，作为请求参数传入
 
 ## 二、localStorage 存储结构
 
-所有分散的 key（`lastDatabase`、`decisions:{name}`、`results:{name}`、`aggregatedRuleSet`）聚合为单一 `modmanager:workspace` key：
+所有分散的 key（`lastDatabase`、`decisions:{name}`、`results:{name}`）聚合为单一 `modmanager:workspace` key；聚合规则完整 dict 仅保留在前端内存，localStorage 只保存聚合 metadata：
 
 ```
 modmanager:workspace
@@ -52,8 +52,12 @@ modmanager:workspace
       "results": { ... }
     }
   },
-  "aggregatedRuleSet": { ... },
-  "aggregatedRuleHash": "abc123"
+  "aggregatedRuleMeta": {
+    "output_path": "/home/user/.config/kmm/aggregated_rule_set.json",
+    "aggregated_hash": "abc123",
+    "aggregated_at": "2026-05-15T00:00:00Z",
+    "selected_rule_paths": ["/rules/r1.kmmrule.json"]
+  }
 }
 ```
 
@@ -63,8 +67,7 @@ modmanager:workspace
 |------|------|:----:|------|
 | `lastDatabase` | `string \| null` | 是 | 上次使用的 database name。前端刷新时用于恢复下拉选中 |
 | `perDatabase` | `object` | 是 | 按 database name 索引的 decisions 和 results |
-| `aggregatedRuleSet` | `object \| null` | 是 | 聚合后的规则集 dict。compute 时作为请求参数传入后端，不传文件路径 |
-| `aggregatedRuleHash` | `string \| null` | 是 | 参与聚合的 rule 文件路径+内容的 hash，用于校验规则是否变更 |
+| `aggregatedRuleMeta` | `object \| null` | 是 | 聚合缓存 metadata（output_path/hash/time/selected_rule_paths），用于刷新后恢复 |
 
 ### 2.3 `perDatabase[name].decisions`
 
@@ -100,20 +103,18 @@ modmanager:workspace
 
 > **不存储完整 trees / mapping**。完整数据体积大，完整 trees 由前端 Pinia 内存持有（跨 tab 不丢，刷新后重新 compute）。
 
-### 2.5 `aggregatedRuleHash` 校验逻辑
+### 2.5 `aggregatedRuleMeta.aggregated_hash` 校验逻辑
 
-`aggregatedRuleHash` 由参与聚合的 rule 文件路径 + 文件内容共同计算得出。
+`aggregatedRuleMeta.aggregated_hash` 由后端聚合结果计算并回传，前端用于快速一致性校验。
 
 ComputePrepPage 加载时：
-1. 读取当前 rule sources（来自 user_config.rule_sources），计算文件路径+内容的 hash
-2. 比对 workspace.aggregatedRuleHash
-3. 一致 → 复用旧 aggregatedRuleSet，不重新聚合
-4. 不一致 → 清空 aggregatedRuleSet，提示"规则已变更，请重新聚合"
+1. 读取 workspace.aggregatedRuleMeta.aggregated_hash
+2. 与当前内存/恢复出的规则集 hash 做比对
+3. 内存中有 aggregatedRuleSet → 直接复用
+4. 内存 miss 且 workspace.aggregatedRuleMeta.output_path 存在 → 调 `/api/rules/load-aggregated` 恢复
+5. 恢复失败或 hash 不一致 → 提示"规则已变更或缓存不可用，请重新聚合"
 
-hash 算法使用 SHA-256，计算方式：
-```
-hash = SHA-256(concat(sorted(paths)) + concat(sorted(contents)))
-```
+hash 算法使用 SHA-256（后端计算并回传）。
 
 ---
 
@@ -135,7 +136,7 @@ database 下拉组件是前端通用组件，出现在多个页面：
 ```
 用户点 [▶ 开始计算]
   → 前端从 workspace.perDatabase[当前 database name].decisions 读 decisions
-  → 从 workspace.aggregatedRuleSet 读聚合规则 dict
+  → 优先从内存读聚合规则 dict；内存 miss 时按 aggregatedRuleMeta.output_path 从后端恢复
   → 放入 POST /api/pipeline/compute 请求体
   → 成功 → 从响应提取摘要
   → 写入 workspace.perDatabase[当前 database name].results

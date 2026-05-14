@@ -203,7 +203,7 @@ web = [
 | `POST` | `/api/pipeline/visualize` | Forest JSON → SVG 可视化 | JSON |
 | `POST` | `/api/rules/scan` | 扫描目录列出 `*.kmmrule.json` 文件 | JSON |
 | `POST` | `/api/rules/read` | 读取单个 kmmrule 文件内容 | JSON |
-| `POST` | `/api/rules/aggregate` | 聚合选定规则文件 → aggregated_rule_set.json | SSE |
+| `POST` | `/api/rules/aggregate` | 聚合选定规则文件 → aggregated_rule_set.json，并返回 metadata（output_path/hash/time） | JSON |
 | `POST` | `/api/rules/affected-entries` | 查询聚合规则影响的 game/mod（供计算准备页） | JSON |
 | `POST` | `/api/rules/load-aggregated` | 加载 aggregated_rule_set.json 原文（供高级页） | JSON |
 | `POST` | `/api/backups/list` | 列出备份目录摘要 | JSON |
@@ -329,6 +329,33 @@ database 由 orchestrator 内部通过 bootstrap 获取。调用方传入 manage
 
 // → SSE stream  → event: progress ... → event: result
 ```
+
+#### `POST /api/rules/aggregate`
+
+聚合选定规则并写入 `aggregated_rule_set.json`。返回值包含聚合结果本体 + 恢复用 metadata。
+
+```json
+// ← Request
+{
+    "paths": ["/rules/r1.kmmrule.json", "/rules/r2.kmmrule.json"]
+}
+
+// → 200
+{
+    "ok": true,
+    "data": {
+        "schema_namespace": "KMM_RuleSet",
+        "operation": [],
+        "output_path": "/home/user/.config/kmm/aggregated_rule_set.json",
+        "aggregated_hash": "<sha256>",
+        "aggregated_at": "2026-05-15T00:00:00+00:00"
+    },
+    "errors": [],
+    "warnings": []
+}
+```
+
+兼容性说明：新增字段为向后兼容扩展。旧客户端可忽略 `output_path / aggregated_hash / aggregated_at`。
 
 #### `POST /api/pipeline/run`
 
