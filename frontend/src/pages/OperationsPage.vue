@@ -141,7 +141,7 @@ const selectedDb = computed(() => databaseSelectorRef.value?.selectedDatabase ??
 /** 是否有有效的计算结果 */
 const localResults = computed<LocalResults>(() => {
   const ws = loadWorkspace()
-  const data = ws.perDatabase?.[selectedDb.value]?.results
+  const data = ws.perDatabase?.[selectedDb.value]?.lastComputeSummary
   return data ?? { trees_count: 0, mapping_count: 0, warnings: [], errors: [], stats: {} }
 })
 

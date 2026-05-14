@@ -166,7 +166,7 @@ user_config 的字段定义与搜索策略见 `DESIGN_STORAGE.md` §3。
 | `into_type` | `into_type` | 保留 |
 | `action` | `action` | **必填**，聚合器已从 `def_action` 或显式值填入 |
 | `destin` | `destin` | **必填**，聚合器已从 `def_destin` 或显式值填入 |
-| `nwname` | — | 已废弃 2026-04-30（原仅 `rename_then_replace` 使用） |
+| `nwname` | — | rename_then_replace 专用字段（历史） |
 | `action_order` | `action_order` | **聚合器注入**，默认 `0` |
 | `provenance_ref` | `provenance_ref` | **聚合器注入**，永远为 kmm_rule 文件的绝对路径 |
 | `sidecar_ref` | `sidecar_ref` | 外部注入，无注入时默认 `"404"` |

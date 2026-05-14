@@ -30,6 +30,16 @@
 | Q6 | **适配层** — PipelineResult 外裹 `ApiResponse`，REST 友好，便于扩展 |
 | Q7 | **方案 A（独立对等）** — CLI 和 Web 各自独立调用 orchestrator，共享内核模式，耦合度最低 |
 
+### 端点稳定性
+
+| 稳定性 | 端点 |
+|--------|------|
+| STABLE ✅ | POST /api/database/generate, /read, /save |
+|           | POST /api/config/discover, /save |
+|           | POST /api/rules/scan, /read, /aggregate, /affected-entries |
+|           | POST /api/backups/list, /inspect |
+| EVOLVING ⚠️ | POST /api/pipeline/compute, /backup, /apply, /run |
+
 ---
 
 ## 1. Q7: CLI 与 Web API 的关系分析
@@ -195,10 +205,10 @@ web = [
 | `POST` | `/api/database/generate` | 扫描 Steam 库生成 database.json（纯数据，无 managed） | SSE |
 | `POST` | `/api/database/read` | 获取指定 database 的内容（由 database_name? 指定，不传则用默认） | JSON |
 | `POST` | `/api/database/save` | 保存 database（用于高级页编辑） | JSON |
-| `POST` | `/api/pipeline/compute` | 计算映射；接受 managed_entries? + branch_decisions? 参数；database 由 orchestrator 内部加载 | SSE |
-| `POST` | `/api/pipeline/backup` | 差异备份 | SSE |
-| `POST` | `/api/pipeline/apply` | 应用替换 | SSE |
-| `POST` | `/api/pipeline/run` | 全流水线（聚合→计算→备份→应用）；database 由 orchestrator 内部加载 | SSE |
+| `POST` | `/api/pipeline/compute` | ⚠️ 计算映射；接受 managed_entries? + branch_decisions? 参数；database 由 orchestrator 内部加载 | SSE |
+| `POST` | `/api/pipeline/backup` | ⚠️ 差异备份 | SSE |
+| `POST` | `/api/pipeline/apply` | ⚠️ 应用替换 | SSE |
+| `POST` | `/api/pipeline/run` | ⚠️ 全流水线（聚合→计算→备份→应用）；database 由 orchestrator 内部加载 | SSE |
 | `POST` | `/api/pipeline/restore` | 从备份恢复文件 | SSE |
 | `POST` | `/api/pipeline/visualize` | Forest JSON → SVG 可视化 | JSON |
 | `POST` | `/api/rules/scan` | 扫描目录列出 `*.kmmrule.json` 文件 | JSON |
@@ -313,7 +323,7 @@ data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
 }
 ```
 
-#### `POST /api/pipeline/compute`
+#### `POST /api/pipeline/compute` ⚠️
 
 database 由 orchestrator 内部通过 bootstrap 获取。调用方传入 managed_entries 和 branch_decisions（来自前端 localStorage）。
 
@@ -357,7 +367,7 @@ database 由 orchestrator 内部通过 bootstrap 获取。调用方传入 manage
 
 兼容性说明：新增字段为向后兼容扩展。旧客户端可忽略 `output_path / aggregated_hash / aggregated_at`。
 
-#### `POST /api/pipeline/run`
+#### `POST /api/pipeline/run` ⚠️
 
 database 和 user_config 由 orchestrator 内部通过 bootstrap 获取。调用方不传入。
 
@@ -396,7 +406,7 @@ event: result
 data: {
   "ok": true,
   "data": {
-    "forest": [...],
+    "trees": [...],
     "final_mapping": [...],
     "stats": {
       "backed_up": 42,
@@ -591,7 +601,7 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
     return {
         "ok": pr.ok,
         "data": {
-            "forest": pr.forest,
+            "trees": pr.trees,
             "final_mapping": pr.final_mapping,
             "mapping_result": pr.mapping_result,
             "stats": {

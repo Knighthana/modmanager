@@ -327,7 +327,7 @@ async function loadData() {
   const currentRulesHash = hashRuleSet(aggregatedRuleSet)
   const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
   const ws = loadWorkspace()
-  const lastSummary = ws.perDatabase?.[selectedDb]?.results
+  const lastSummary = ws.perDatabase?.[selectedDb]?.lastComputeSummary
   const lastRulesHash = lastSummary?.inputs_hash
   const cachedRulesHash = ws.aggregatedRuleMeta?.aggregated_hash || ws.aggregatedRuleHash
 
@@ -458,7 +458,7 @@ function toggleLibraryVisibility(libIndex: number) {
   }
 }
 
-// ── Build managed_entries from checkbox state ─────────────────────────────
+// ── Build managedEntries from checkbox state ──────────────────────────────
 
 function buildManagedEntries(): { game: Record<string, string[]>; mod: Record<string, string[]> } {
   const managedGame: Record<string, string[]> = {}
@@ -559,9 +559,9 @@ async function startCompute() {
           const w1 = loadWorkspace()
           w1.lastDatabase = dbName
           if (!w1.perDatabase[dbName]) {
-            w1.perDatabase[dbName] = { decisions: {}, results: null }
+            w1.perDatabase[dbName] = { decisions: {}, lastComputeSummary: null }
           }
-          w1.perDatabase[dbName].results = {
+          w1.perDatabase[dbName].lastComputeSummary = {
             trees_count: treesCount,
             mapping_count: mappingCount,
             warnings: result.data.warnings ?? [],
@@ -588,10 +588,10 @@ async function startCompute() {
     const w2 = loadWorkspace()
     w2.lastDatabase = selectedDb
     if (!w2.perDatabase[selectedDb]) {
-      w2.perDatabase[selectedDb] = { decisions: {}, results: null }
+      w2.perDatabase[selectedDb] = { decisions: {}, lastComputeSummary: null }
     }
     w2.perDatabase[selectedDb].decisions = {
-      managed_entries: managedEntries,
+      managedEntries: managedEntries,
     }
     saveWorkspace(w2)
   } catch {

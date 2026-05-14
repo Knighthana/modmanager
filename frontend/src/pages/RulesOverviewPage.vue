@@ -370,6 +370,10 @@ async function saveSelection() {
         selected_rule_paths: selectedPaths,
       }
       ws.aggregatedRuleHash = ws.aggregatedRuleMeta.aggregated_hash
+      // Also store selectedRulePaths per-database for database-specific access
+      const dbName = ws.lastDatabase || 'default'
+      if (!ws.perDatabase[dbName]) ws.perDatabase[dbName] = { decisions: {}, lastComputeSummary: null }
+      ws.perDatabase[dbName].selectedRulePaths = selectedPaths
       saveWorkspace(ws)
     }
 

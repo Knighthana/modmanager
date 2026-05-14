@@ -127,8 +127,9 @@ export interface DataSourceState {
 export interface WorkspaceData {
   lastDatabase: string
   perDatabase: Record<string, {
-    decisions: { managed_entries?: Record<string, unknown>; branch_decisions?: Record<string, string> }
-    results: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
+    decisions: { managedEntries?: Record<string, unknown>; branchDecisions?: Record<string, string> }
+    lastComputeSummary: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
+    selectedRulePaths?: string[]
   }>
   // Legacy fields kept for compatibility with older persisted payloads.
   aggregatedRuleSet?: Record<string, unknown> | null

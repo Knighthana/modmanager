@@ -7,8 +7,8 @@ import { ElMessage } from 'element-plus'
  * - UI 状态：tab 位置、sidebar 折叠、可见性 toggle、表单输入（无后端参与）
  * - workspace 数据：单一 ``modmanager:workspace`` key 下聚合
  *   - ``workspace.lastDatabase``：用户最近选择的 database name
- *   - ``workspace.perDatabase[name].decisions``：managed_entries + branch_decisions
- *   - ``workspace.perDatabase[name].results``：trees_count、mapping_count 等摘要
+ *   - ``workspace.perDatabase[name].decisions``：managedEntries + branchDecisions
+ *   - ``workspace.perDatabase[name].lastComputeSummary``：trees_count、mapping_count 等摘要
  *   - ``workspace.aggregatedRuleSet``：聚合后的规则集 dict
  *   - ``workspace.aggregatedRuleHash``：规则集的哈希值
  * - 不存 database 扫描结果（由后端按 name 管理）

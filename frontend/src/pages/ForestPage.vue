@@ -122,14 +122,14 @@ onMounted(() => {
   const ws = loadWorkspace()
   if (ws.lastDatabase) {
     const perDb = ws.perDatabase[ws.lastDatabase]
-    if (perDb?.results) {
+    if (perDb?.lastComputeSummary) {
       lastResultSummary.value = {
-        treesCount: perDb.results.trees_count,
-        mappingCount: perDb.results.mapping_count,
+        treesCount: perDb.lastComputeSummary.trees_count,
+        mappingCount: perDb.lastComputeSummary.mapping_count,
       }
 
       // Check result staleness (older than 24 hours)
-      const resultTimestamp = perDb.results.timestamp
+      const resultTimestamp = perDb.lastComputeSummary.timestamp
       if (resultTimestamp) {
         const resultAge = Date.now() - new Date(resultTimestamp).getTime()
         const isStale = resultAge > 24 * 60 * 60 * 1000 // 24 hours

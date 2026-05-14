@@ -238,8 +238,8 @@ describe('SettingsPage', () => {
     localStorage.setItem('modmanager:workspace', JSON.stringify({
       lastDatabase: 'legacy',
       perDatabase: {
-        legacy: { decisions: { branch_decisions: { '/a': '/x' } }, results: null },
-        drop: { decisions: {}, results: null },
+        legacy: { decisions: { branchDecisions: { '/a': '/x' } }, lastComputeSummary: null },
+        drop: { decisions: {}, lastComputeSummary: null },
       },
       aggregatedRuleSet: null,
       aggregatedRuleHash: '',

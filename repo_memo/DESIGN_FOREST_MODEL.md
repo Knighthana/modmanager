@@ -30,17 +30,17 @@ aggregated_rule_set (operation[]) ──→ database ──→ branch_decisions 
     │  3. 同 mod 去重              │
     │     (later wins)             │
     │                              │
-    │  4. 输出 forest (扁平列表)   │
+    │  4. 输出 trees (扁平列表)    │
     │     + final_mapping          │
     └──────────────┬───────────────┘
                    │
-    { warnings, errors, forest, final_mapping }
+    { warnings, errors, trees, final_mapping }
 ```
 
-#### 当前 forest 数据结构
+#### 当前 trees 数据结构
 
 ```python
-# forest[i] = {
+# trees[i] = {
 #     "path":              str,      # 目标文件绝对路径
 #     "destin_mixed_id":   str,      # 所属 mod 的 mixed_id
 #     "changerequest":     [dict],   # 有序的源请求列表
@@ -50,7 +50,7 @@ aggregated_rule_set (operation[]) ──→ database ──→ branch_decisions 
 ```
 
 **关键特征**：
-- forest 是**扁平列表**，不是图；每个条目是一个"目标文件"
+- trees 是**扁平列表**，不是图；每个条目是一个"目标文件"
 - "分岔"（branching）发生在一个目标有多条 changerequest 时
 - changerequest 的 `path` 字段是源文件路径；若该路径恰好也是另一个目标 → 形成链
 - 链的解析通过 `_resolve_effective_leaf_request` **自上而下**递归跟踪
@@ -122,7 +122,7 @@ class ForestTree:
 | 维度 | 纯重构（内部不变） | 新模型（公开接口变） |
 |------|-------------------|---------------------|
 | `compute_mapping` 内部逻辑 | 小改 | **大改**（解析算法重写） |
-| 输出 `forest` 结构 | 不变 | 可能增加字段 |
+| 输出 `trees` 结构 | 不变 | 可能增加字段 |
 | 输出 `final_mapping` 结构 | 不变 | 结构不变，语义可能变 |
 | `branch_decisions` 输入 | 不变 | **格式改变** |
 | 下游 orchestrator | 不变 | 可能需要适配 |
@@ -191,9 +191,9 @@ class ForestTree:
     #   "skipped"     — 用户决策跳过
 ```
 
-#### 1.2 `trees` 输出格式（替代旧 `forest`）
+#### 1.2 `trees` 输出格式
 
-`compute_mapping` 输出中的 `"forest"` key 改为 `"trees"`，列表元素结构：
+`compute_mapping` 输出中的 `"trees"` key，列表元素结构：
 
 ```python
 # trees[i] = {
@@ -242,7 +242,7 @@ class ForestTree:
 
 | 当前区域 | 改动性质 | 说明 |
 |---------|---------|------|
-| `compute_mapping()` 下半段 | **重写** | 构建 forest 和 final_mapping 的逻辑替换 |
+| `compute_mapping()` 下半段 | **重写** | 构建 trees 和 final_mapping 的逻辑替换 |
 | `_resolve_effective_leaf_request()` | **完全移除** | 旧的自顶向下递归替换为自底向上树解析 |
 | `_sort_request_key()` | 保留 | 同 mod 去重逻辑不变 |
 | `_pick_request_by_action_order()` | **移至树解析** | 在树解析阶段调用 |
@@ -319,12 +319,12 @@ def _build_output(trees, warnings, errors) -> dict:
 
 | 模块 | 改动内容 |
 |------|---------|
-| `orchestrator.py` | `PipelineResult.forest` → `PipelineResult.trees` |
-| `modmanager_web/schemas.py` | `forest: list[dict]` → `trees: list[dict]` |
-| `modmanager_web/adapters.py` | key 映射更新 |
+| `orchestrator.py` | `PipelineResult.trees` |
+| `modmanager_web/schemas.py` | `trees: list[dict]` |
+| `modmanager_web/adapters.py` | key 使用 `trees` |
 | `forest_visual.py` | 重写 `_build_graph_model()`，以"树"为中心 |
-| 前端 TypeScript | `ForestNode` → `TreeNode` 类型更新 |
-| 前端 stores | `forest` → `trees` 状态管理重写 |
+| 前端 TypeScript | `TreeNode` 类型更新 |
+| 前端 stores | `trees` 状态管理 |
 | 前端 ConflictsPage | 冲突展示改为"按树裁决" |
 
 ### 4. 任务分解与执行顺序

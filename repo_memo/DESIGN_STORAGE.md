@@ -317,7 +317,7 @@ try { pers.save(key, value) } catch {
 | D1 | user_config 搜索策略 | 单级、唯一。移除旧三级搜索合并 |
 | D2 | user_config 缺失时行为 | 自动生成空文件 + first_use 标记（而非抛异常） |
 | D3 | database / aggregated 默认路径 | Linux: `~/.local/share/kmm/`；Win: exe 所在目录 |
-| D4 | 扫描缓存独立于 database | 【已废弃。managed 决策迁移至前端 localStorage】 |
+| D4 | 扫描缓存独立于 database | managed 决策由前端 localStorage 的 workspace 管理 |
 | D5 | 扫描缓存放 `/tmp/`（Linux） | 可丢弃，重启自然清理，有意为之 |
 | D6 | 前端持久化 | localStorage 保留 decisions/results（前端 workspace） + UI 状态 |
 | D7 | database history 字段 | 预留空数组，本次不实现 |
