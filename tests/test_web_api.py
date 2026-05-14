@@ -871,6 +871,44 @@ class TestRulesAggregateEndpoint:
         body = resp.json()
         assert body["ok"] is True
         assert captured.get("paths") == ["/rule1.json", "/rule2.json"]
+        assert captured.get("output_path") == "aggregated_rule_set.json"
+        assert body["data"]["schema_namespace"] == "KMM_RuleSet"
+        assert body["data"]["output_path"] == "aggregated_rule_set.json"
+        assert isinstance(body["data"]["aggregated_hash"], str)
+        assert len(body["data"]["aggregated_hash"]) == 64
+        assert isinstance(body["data"]["aggregated_at"], str)
+
+    def test_rules_aggregate_uses_configured_output_path(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """aggregate writes to configured aggregated_ruleset_output_path when present."""
+        captured: dict = {}
+
+        def fake_aggregate(kmm_rule_paths, *, action_orders=None, sidecar_refs=None, output_path=None):
+            captured["paths"] = kmm_rule_paths
+            captured["output_path"] = output_path
+            return {"schema_namespace": "KMM_RuleSet", "operation": []}, [], []
+
+        monkeypatch.setattr(
+            "modmanager_web.routes.rules.rule_aggregate", fake_aggregate
+        )
+        monkeypatch.setattr(
+            "modmanager_web.routes.rules.discover_user_config",
+            lambda home_dir=None: {
+                "aggregated_ruleset_output_path": "/tmp/custom_aggregated_rule_set.json",
+                "source_path": "/home/test/.config/kmm/user_config.json",
+            },
+        )
+
+        resp = client.post(
+            "/api/rules/aggregate",
+            json={"paths": ["/rule1.json"]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        assert captured.get("output_path") == "/tmp/custom_aggregated_rule_set.json"
+        assert body["data"]["output_path"] == "/tmp/custom_aggregated_rule_set.json"
 
 
 class TestRulesLoadAggregated:

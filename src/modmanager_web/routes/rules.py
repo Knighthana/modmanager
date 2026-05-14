@@ -6,7 +6,10 @@ responses wrapped in the standard ``ApiResponse`` envelope.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -109,14 +112,18 @@ async def rules_aggregate(req: RulesAggregateRequest):
         return adapt_error("paths list is required and must not be empty")
 
     try:
-        # Try to get aggregated_ruleset_output_path from user_config
+        # Prefer explicit configured output path; otherwise derive a stable
+        # default path next to user_config for cross-page recovery.
         user_config = discover_user_config()
-        output_path = user_config.get("aggregated_ruleset_output_path", "")
-        # Expand ~ and only write if user explicitly configured a path
-        if output_path:
-            output_path = expand_path(output_path)
+        configured_output_path = user_config.get("aggregated_ruleset_output_path", "")
+        if configured_output_path:
+            output_path = expand_path(configured_output_path)
         else:
-            output_path = None
+            source_path = str(user_config.get("source_path", "")).strip()
+            if source_path:
+                output_path = str(Path(source_path).parent / "aggregated_rule_set.json")
+            else:
+                output_path = "aggregated_rule_set.json"
     except Exception:
         output_path = "aggregated_rule_set.json"
 
@@ -133,9 +140,18 @@ async def rules_aggregate(req: RulesAggregateRequest):
             "warnings": warnings,
         }
 
+    aggregated_hash = hashlib.sha256(
+        json.dumps(result, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
     return {
         "ok": True,
-        "data": result,
+        "data": {
+            **result,
+            "output_path": output_path,
+            "aggregated_hash": aggregated_hash,
+            "aggregated_at": datetime.now(timezone.utc).isoformat(),
+        },
         "errors": [],
         "warnings": warnings,
     }
