@@ -13,6 +13,8 @@
 
 Workspace 逻辑由前端 localStorage 承载，不使用后端 workspace 文件或 workspace REST API 端点。
 
+实现约束：workspace 读写入口统一在 `frontend/src/utils/persistence.ts` 的 `loadWorkspace/saveWorkspace`。`frontend/src/stores/workspace.ts` 已移除，不再作为写入口。
+
 用户决策（decisions）和计算结果摘要（results）通过 `localStorage` 在前端持久化，使用 `modmanager:` 命名空间前缀。
 
 compute 时，前端从 localStorage 读取 decisions，作为请求参数传入 `POST /api/pipeline/compute`。compute 完成后，前端从响应中提取摘要，写入 localStorage 的 results。
@@ -150,7 +152,7 @@ database 下拉组件是前端通用组件，出现在多个页面：
 
 | 操作 | 行为 |
 |------|------|
-| 删除 database | 删除 `workspace.perDatabase[name]`；若 `workspace.lastDatabase` 为该 name → 清空 |
+| 删除 database | 删除 `workspace.perDatabase[name]`；若 `workspace.lastDatabase` 为该 name → 切到第一个可用 database，若无则置空 |
 | 重命名 database | 将 `workspace.perDatabase[旧name]` → `workspace.perDatabase[新name]`；更新 `workspace.lastDatabase` |
 
 ---
