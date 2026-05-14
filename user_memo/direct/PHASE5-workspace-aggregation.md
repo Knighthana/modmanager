@@ -1,89 +1,47 @@
-# Phase 5 — localStorage 聚合 + compute 仅接受 dict
+# Phase 5 — 契约对齐基线（已落地）
 
-> Status: plan
-> Authority: arch
-> Source: `work_memo/2026-05-14_decisions.md` §十二
-
----
-
-## Task 5.1: 后端 — 删除 compute/run 的路径参数
-
-### 5.1.1 `schemas.py`
-- `ComputeRequest`：删 `aggregated_rule_path`、`kmm_rule_paths`。保留 `aggregated_rule_set: dict | None = None`
-- `RunRequest`：同上
-
-### 5.1.2 `routes/pipeline.py`
-- `/compute`：删 pre-check 中的路径判断。删 `resolved_agg_path` 和 `rule_paths` 的解析逻辑。直接传 `aggregated_rule_set=req.aggregated_rule_set`
-- `/run`：同上
-
-### 5.1.3 `orchestrator.py`
-- `compute()` / `run()`：删 `aggregated_rule_path` 和 `kmm_rule_paths` 参数
-- 内部删文件加载逻辑。`aggregated_rule_set` dict 直接使用
+> Status: aligned
+> Authority: user-guidance
+> Source: repo_memo 当前冻结契约 + 已落地代码
 
 ---
 
-## Task 5.2: 前端 — localStorage 聚合为 `modmanager:workspace`
+## 一、目标
 
-### 5.2.1 所有涉及 localStorage 的文件
+本文件保留 Phase 5 的核心目标，但不再描述已过时的迁移路径。
 
-全局搜索并替换以下分散 key → 统一读写：
-
-**旧（分散）**：
-```
-pers.save('lastDatabase', ...)       pers.load('lastDatabase')
-pers.save('decisions:...', ...)      pers.load('decisions:...')
-pers.save('results:...', ...)        pers.load('results:...')
-pers.save('aggregatedRuleSet', ...)  pers.load('aggregatedRuleSet')
-```
-
-**新（聚合）**：
-```ts
-// 读
-const ws = pers.load<WorkspaceData>('workspace') || {}
-// 写
-pers.save('workspace', { ...ws, lastDatabase: 'default', perDatabase: {...}, aggregatedRuleSet: {...} })
-```
-
-### 5.2.2 `utils/persistence.ts`
-- 注释更新：key 列表中 `modmanager:workspace` 替代分散 key
-
-### 5.2.3 `DESIGN_GUI_WORKSPACE.md` 对应的 WorkspaceData 类型
-```ts
-interface WorkspaceData {
-  lastDatabase: string
-  perDatabase: Record<string, {
-    decisions: { managed_entries?: Record<string, unknown>; branch_decisions?: Record<string, string> }
-    results: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
-  }>
-  aggregatedRuleSet: Record<string, unknown> | null
-  aggregatedRuleHash: string
-}
-```
-
-### 5.2.4 涉及的文件
-- `frontend/src/pages/DataSourcePage.vue`
-- `frontend/src/pages/ForestPage.vue`
-- `frontend/src/pages/ComputePrepPage.vue`
-- `frontend/src/pages/OperationsPage.vue`
-- `frontend/src/pages/AdvancedPage.vue`
-- `frontend/src/pages/RulesOverviewPage.vue`
-- `frontend/src/components/DatabaseSelector.vue`
-- `frontend/src/utils/persistence.ts`
+当前目标仅有两条：
+1. 前端持久化统一到单键 `modmanager:workspace`。
+2. compute/run 使用 `aggregated_rule_set` 契约，禁止回退到旧字段。
 
 ---
 
-## 执行顺序
+## 二、当前已落地状态
 
-1. Task 5.1.1 — schemas.py
-2. Task 5.1.3 — orchestrator.py（先改签名，再改实现）
-3. Task 5.1.2 — routes/pipeline.py
-4. Task 5.2 — 前端 localStorage 聚合
+### 2.1 workspace 单键聚合
+- 已落地：`lastDatabase`、`perDatabase.decisions/results`、`aggregatedRuleMeta` 在同一 workspace 结构中管理。
+- 已落地：workspace 读写入口统一为 persistence 工具，避免多写者。
+- 已落地：删除旧的 workspace store 双写入口。
+
+### 2.2 pipeline 请求口径
+- 已落地：前端 compute/run 使用 `aggregated_rule_set`。
+- 已落地：`managed_entries` 与 `branch_decisions` 按数据库上下文传入。
+- 已落地：Forest 页面职责收敛为结果消费，不再作为计算入口。
 
 ---
 
-## 验收
+## 三、实施 guardrails（implement 必遵守）
 
-```bash
-python -m pytest tests/ -x -q   # 全绿
-cd frontend && npm run build     # 构建成功
-```
+1. 不新增分散 localStorage key（如 decisions:name/results:name 形式）。
+2. 不恢复旧字段（`kmm_rule_paths`、`kmm_rules`、`aggregated_rule_path` 作为 compute 主路径字段）。
+3. 不重建 workspace API 端点；workspace 仍由前端 localStorage 承担。
+4. 新增字段前，先对齐 repo_memo 的字段冻结文档。
+
+---
+
+## 四、后续只做增量检查
+
+如需继续改动，仅做以下检查：
+1. `frontend` 测试通过。
+2. `frontend` build 通过。
+3. 变更后 `DESIGN_GUI_WORKSPACE` 与实现一致。
