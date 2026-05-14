@@ -5,6 +5,7 @@
 - [x] TODO-60: GUI-P0 计算结果计数字段对齐（避免 0 树 0 映射假成功）
 - [x] TODO-61: GUI-P0 ForestPage 职责边界修复（移除计算/运行触发）
 - [x] TODO-62: GUI-P1 Settings database rename/delete 同步 workspace（perDatabase 迁移/清理）
+- [x] TODO-63: GUI-P1 AdvancedPage 三标签自动刷新一致性（database/aggregated/userConfig）
 
 - [ ] （挂起）TODO-10: 前端空输入校验；挂起原因：开发阶段需要等待后端API各项问题充分暴露之后再做前端侧的输入校验；
 - [ ] （待讨论）TODO-51: 统一界面视觉——各选项卡标题位置/大小标准化；code字体路径；按钮大小字边距，规则概览和计算准备中浅按钮颜色提示

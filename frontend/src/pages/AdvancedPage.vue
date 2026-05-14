@@ -278,11 +278,9 @@ onMounted(() => {
   refreshTab('database')
 })
 
-// Auto-refresh Database tab when it becomes active
+// Auto-refresh whichever tab becomes active.
 watch(activeTab, (newVal) => {
-  if (newVal === 'database') {
-    refreshTab('database')
-  }
+  refreshTab(newVal)
 })
 </script>
 
