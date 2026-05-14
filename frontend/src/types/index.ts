@@ -41,7 +41,9 @@ export interface ConflictItem {
 
 export interface PipelineParams {
   database_name: string
-  kmm_rule_paths: string[]
+  aggregated_rule_set?: Record<string, unknown>
+  // Legacy field kept to avoid breaking old call sites during migration.
+  kmm_rule_paths?: string[]
   managed_entries?: Record<string, unknown>
   branch_decisions?: Record<string, string>
   dry_run?: boolean
@@ -51,7 +53,7 @@ export interface PipelineParams {
 export interface DiscoverParams {
   mode: string
   paths: string[] | null
-  greedyParsing: boolean
+  greedy_parsing: boolean
   database_name: string
 }
 

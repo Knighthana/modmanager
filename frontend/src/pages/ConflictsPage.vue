@@ -114,7 +114,7 @@ async function onRecalculate() {
 
   await store.runPipeline({
     database_name: lastParams.database_name,
-    kmm_rule_paths: lastParams.kmm_rule_paths,
+    aggregated_rule_set: lastParams.aggregated_rule_set,
     managed_entries: lastParams.managed_entries,
     branch_decisions: { ...store.branchDecisions },
     dry_run: lastParams.dry_run,

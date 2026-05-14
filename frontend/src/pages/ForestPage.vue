@@ -2,31 +2,6 @@
   <div>
     <div class="forest-top-bar">
       <h2 style="margin: 0;">{{ STR.forestPage.title }}</h2>
-      <div class="top-bar-actions">
-        <el-button
-          type="primary"
-          size="small"
-          :loading="store.isRunning"
-          :disabled="store.isRunning"
-          @click="onCompute"
-        >
-          {{ store.isRunning ? STR.forestPage.computeBtnRunning : STR.forestPage.computeBtn }}
-        </el-button>
-        <el-button
-          type="success"
-          size="small"
-          :loading="store.isRunning"
-          :disabled="store.isRunning"
-          @click="onRun"
-        >
-          {{ STR.forestPage.runBtn }}
-        </el-button>
-      </div>
-    </div>
-
-    <!-- DatabaseSelector -->
-    <div style="margin-bottom: 16px;">
-      <DatabaseSelector ref="databaseSelectorRef" />
     </div>
 
     <!-- 上次计算结果恢复提示 -->
@@ -132,7 +107,6 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useForestStore } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
-import DatabaseSelector from '../components/DatabaseSelector.vue'
 import type { TreeNode } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription } from '../utils/errorCodes'
@@ -140,8 +114,6 @@ import { loadWorkspace } from '../utils/persistence'
 import { STR } from '../locales/zh-CN'
 
 const store = useForestStore()
-
-const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 
 // Last result summary restored from localStorage
 const lastResultSummary = ref<{ treesCount: number; mappingCount: number } | null>(null)
@@ -200,26 +172,6 @@ const emptyMessage = computed(() => {
   return ''
 })
 
-function prepareParams() {
-  const rules = store.pipelineForm.rulesPaths
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean)
-
-  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
-
-  // Load decisions from workspace
-  const ws = loadWorkspace()
-  const decisions = ws.perDatabase?.[selectedDb]?.decisions
-
-  return {
-    database_name: selectedDb,
-    kmm_rule_paths: rules,
-    managed_entries: decisions?.managed_entries,
-    branch_decisions: decisions?.branch_decisions,
-  }
-}
-
 function onMessageClick(msg: string, e: MouseEvent) {
     const desc = getDescription(msg)
     if (desc) {
@@ -236,32 +188,6 @@ async function fetchVisualizationWithFilter() {
   await store.fetchVisualization(filtered)
 }
 
-async function onCompute() {
-  const params = prepareParams()
-  await store.computeOnly({
-    ...params,
-    dry_run: true,
-  })
-
-  // 计算完成后，获取可视化
-  if (store.trees.length > 0) {
-    await fetchVisualizationWithFilter()
-  }
-}
-
-async function onRun() {
-  const params = prepareParams()
-  await store.runPipeline({
-    ...params,
-    dry_run: store.pipelineForm.dryRun,
-  })
-
-  // 运行完成后，获取可视化
-  if (store.trees.length > 0) {
-    await fetchVisualizationWithFilter()
-  }
-}
-
 // 切换展示模式时自动重新请求可视化
 watch(showBranchingOnly, () => {
   if (store.trees.length > 0) {
@@ -273,13 +199,8 @@ watch(showBranchingOnly, () => {
 <style scoped>
 .forest-top-bar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-bottom: 16px;
-}
-.top-bar-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 </style>

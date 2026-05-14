@@ -533,7 +533,13 @@ async function startCompute() {
       onResult(data: unknown) {
         const result = data as {
           ok: boolean
-          data?: { trees_count?: number; mapping_count?: number; warnings?: string[]; errors?: string[]; stats?: Record<string, unknown> }
+          data?: {
+            trees?: unknown[]
+            final_mapping?: unknown[]
+            warnings?: string[]
+            errors?: string[]
+            stats?: Record<string, unknown>
+          }
           errors?: string[]
         }
         if (!result.ok || result.errors?.length) {
@@ -542,8 +548,11 @@ async function startCompute() {
           return
         }
         if (result.data) {
-          computeMessage.value = `✅ 计算完成：${result.data.trees_count ?? 0} 棵树，${result.data.mapping_count ?? 0} 个映射`
+          const treesCount = Array.isArray(result.data.trees) ? result.data.trees.length : 0
+          const mappingCount = Array.isArray(result.data.final_mapping) ? result.data.final_mapping.length : 0
+          computeMessage.value = `✅ 计算完成：${treesCount} 棵树，${mappingCount} 个映射`
           computeSuccess.value = true
+          canViewResults.value = true
 
           // Save results to workspace
           const dbName = databaseSelectorRef.value?.selectedDatabase ?? 'default'
@@ -553,8 +562,8 @@ async function startCompute() {
             w1.perDatabase[dbName] = { decisions: {}, results: null }
           }
           w1.perDatabase[dbName].results = {
-            trees_count: result.data.trees_count ?? 0,
-            mapping_count: result.data.mapping_count ?? 0,
+            trees_count: treesCount,
+            mapping_count: mappingCount,
             warnings: result.data.warnings ?? [],
             errors: result.data.errors ?? [],
             stats: result.data.stats ?? {},

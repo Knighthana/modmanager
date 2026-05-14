@@ -58,7 +58,7 @@ describe('useForestStore', () => {
     store.branchDecisions = { '/a.png': '/m1/a.png' }
     store.lastSuccessfulParams = {
       database_name: 'default',
-      kmm_rule_paths: ['/rules.json'],
+      aggregated_rule_set: { schema_namespace: 'KMM_RuleSet', operation: [] },
       dry_run: true,
     }
     store.reset()
@@ -148,14 +148,14 @@ describe('useForestStore', () => {
     const store = useForestStore()
     const params = {
       database_name: 'test_db',
-      kmm_rule_paths: ['/rules.json'],
+      aggregated_rule_set: { schema_namespace: 'KMM_RuleSet', operation: [] },
       dry_run: true,
     }
     await store.runPipeline(params)
 
     expect(store.lastSuccessfulParams).not.toBeNull()
     expect(store.lastSuccessfulParams!.database_name).toEqual('test_db')
-    expect(store.lastSuccessfulParams!.kmm_rule_paths).toEqual(['/rules.json'])
+    expect(store.lastSuccessfulParams!.aggregated_rule_set).toEqual({ schema_namespace: 'KMM_RuleSet', operation: [] })
   })
 
   it('computeOnly stores lastSuccessfulParams on result with ok=true', async () => {
@@ -186,13 +186,13 @@ describe('useForestStore', () => {
     const store = useForestStore()
     const params = {
       database_name: 'test_db',
-      kmm_rule_paths: ['/rules.json'],
+      aggregated_rule_set: { schema_namespace: 'KMM_RuleSet', operation: [] },
       dry_run: true,
     }
     await store.computeOnly(params)
 
     expect(store.lastSuccessfulParams).not.toBeNull()
-    expect(store.lastSuccessfulParams!.kmm_rule_paths).toEqual(['/rules.json'])
+    expect(store.lastSuccessfulParams!.aggregated_rule_set).toEqual({ schema_namespace: 'KMM_RuleSet', operation: [] })
   })
 
   // ── B1-01 / B1-02: discoverDatabase / loadConfig split ──────────────────

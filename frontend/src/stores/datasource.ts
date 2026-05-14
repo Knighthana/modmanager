@@ -67,7 +67,8 @@ export const useDataSourceStore = defineStore('datasource', () => {
     warnings.value = []
     errors.value = []
 
-    // Determine mode and paths for the API call
+    // Determine mode and paths for the API call.
+    // Backend supports: auto (with/without paths) and manual.
     let apiMode: string
     let apiPaths: string[] | null
 
@@ -86,7 +87,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
     const params = {
       mode: apiMode,
       paths: apiPaths,
-      greedyParsing: greedyParsing.value,
+      greedy_parsing: greedyParsing.value,
       database_name,
     }
 

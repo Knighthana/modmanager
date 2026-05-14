@@ -63,7 +63,7 @@ describe('ConflictsPage', () => {
     const store = useForestStore()
     store.lastSuccessfulParams = {
       database_name: 'default',
-      kmm_rule_paths: ['/rules.json'],
+      aggregated_rule_set: { schema_namespace: 'KMM_RuleSet', operation: [] },
       dry_run: true,
     }
 
@@ -84,7 +84,7 @@ describe('ConflictsPage', () => {
     // Set up params and decisions
     store.lastSuccessfulParams = {
       database_name: 'default',
-      kmm_rule_paths: ['/rules/r1.json', '/rules/r2.json'],
+      aggregated_rule_set: { schema_namespace: 'KMM_RuleSet', operation: [{ mixed_id: '270150:1' }] },
       dry_run: true,
       action_orders: { replace: 1 },
     }
@@ -98,7 +98,7 @@ describe('ConflictsPage', () => {
 
     expect(runSpy).toHaveBeenCalledWith({
       database_name: 'default',
-      kmm_rule_paths: ['/rules/r1.json', '/rules/r2.json'],
+      aggregated_rule_set: { schema_namespace: 'KMM_RuleSet', operation: [{ mixed_id: '270150:1' }] },
       managed_entries: undefined,
       branch_decisions: { '/a.png': '/m1/a.png' },
       dry_run: true,

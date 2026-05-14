@@ -96,7 +96,16 @@ export const useForestStore = defineStore('forest', () => {
     isRunning.value = true
     reset()
 
-    await streamSse('/pipeline/run', params, {
+    const resolvedRuleSet = params.aggregated_rule_set ?? aggregatedRuleSet.value ?? undefined
+
+    await streamSse('/pipeline/run', {
+      database_name: params.database_name,
+      aggregated_rule_set: resolvedRuleSet,
+      managed_entries: params.managed_entries,
+      branch_decisions: params.branch_decisions,
+      dry_run: params.dry_run,
+      action_orders: params.action_orders,
+    }, {
       onProgress(p: SseProgress) {
         progress.value = p
       },
@@ -111,7 +120,10 @@ export const useForestStore = defineStore('forest', () => {
         }
         // Store params for later recalculate
         if (result.ok) {
-          lastSuccessfulParams.value = { ...params }
+          lastSuccessfulParams.value = {
+            ...params,
+            aggregated_rule_set: resolvedRuleSet,
+          }
         }
       },
       onError(msg: string) {
@@ -126,9 +138,11 @@ export const useForestStore = defineStore('forest', () => {
     isRunning.value = true
     reset()
 
+    const resolvedRuleSet = params.aggregated_rule_set ?? aggregatedRuleSet.value ?? undefined
+
     await streamSse('/pipeline/compute', {
       database_name: params.database_name,
-      kmm_rule_paths: params.kmm_rule_paths,
+      aggregated_rule_set: resolvedRuleSet,
       managed_entries: params.managed_entries,
       branch_decisions: params.branch_decisions,
     }, {
@@ -146,7 +160,10 @@ export const useForestStore = defineStore('forest', () => {
         }
         // Store params for later recalculate
         if (result.ok) {
-          lastSuccessfulParams.value = { ...params }
+          lastSuccessfulParams.value = {
+            ...params,
+            aggregated_rule_set: resolvedRuleSet,
+          }
         }
       },
       onError(msg: string) {
@@ -188,7 +205,7 @@ export const useForestStore = defineStore('forest', () => {
       paths: pipelineForm.value.discoveryMode === 'manual'
         ? [pipelineForm.value.manualSteamPath]
         : null,
-      greedyParsing: pipelineForm.value.greedyParsing,
+      greedy_parsing: pipelineForm.value.greedyParsing,
       database_name: pipelineForm.value.databaseName,
     }
 
