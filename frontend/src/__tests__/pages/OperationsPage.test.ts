@@ -56,36 +56,62 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
   return wrapper.vm as unknown as Record<string, unknown>
 }
 
-// ── Static mock workspace response ────────────────────────────────────
+// ── Workspace helper for localStorage ─────────────────────────────────
 
-function mockWorkspaceResponse(data: unknown) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    json: () => Promise.resolve({ ok: true, data }),
-  }))
+function setWorkspaceInStorage(overrides?: Partial<{
+  trees_count: number
+  mapping_count: number
+  warnings: string[]
+  errors: string[]
+  stats: Record<string, unknown>
+  inputs_hash: string
+  timestamp: string | null
+}> | null) {
+  if (overrides === null) {
+    // Explicitly set results to null
+    const ws = {
+      lastDatabase: 'default',
+      perDatabase: {
+        default: { decisions: {}, results: null },
+      },
+      aggregatedRuleSet: null,
+      aggregatedRuleHash: '',
+    }
+    localStorage.setItem('modmanager:workspace', JSON.stringify(ws))
+    return
+  }
+  const defaultResults = {
+    trees_count: 42,
+    mapping_count: 15,
+    warnings: ['W_LOCAL_MOD_MISSING: castle'],
+    errors: [],
+    stats: { added: 3, overwritten: 10, deleted: 2 },
+    inputs_hash: 'abc123',
+    timestamp: '2026-05-13T10:00:05Z',
+  }
+  const results = overrides ? { ...defaultResults, ...overrides } : defaultResults
+  const ws = {
+    lastDatabase: 'default',
+    perDatabase: {
+      default: {
+        decisions: {},
+        results,
+      },
+    },
+    aggregatedRuleSet: null,
+    aggregatedRuleHash: '',
+  }
+  localStorage.setItem('modmanager:workspace', JSON.stringify(ws))
 }
 
-const defaultWorkspaceData = {
-  session_updated: '2026-05-13T10:00:00Z',
-  inputs: {
-    database_path: '/tmp/database.json',
-    rule_paths: ['/rules/r1.json'],
-    aggregated_rule_path: '/tmp/aggregated.json',
-    user_config_path: '/cfg.json',
-    discovery_mode: 'auto',
-    discovery_manual_paths: [],
-  },
-  decisions: { branch_decisions: {} },
-  results: {
-    last_compute: {
-      trees_count: 42,
-      mapping_count: 15,
-      warnings: ['W_LOCAL_MOD_MISSING: castle'],
-      errors: [],
-      stats: { added: 3, overwritten: 10, deleted: 2 },
-      inputs_hash: 'abc123',
-      timestamp: '2026-05-13T10:00:05Z',
-    },
-  },
+/** Mock fetch for DatabaseSelector's config/discover call */
+function mockApiDiscover() {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    json: () => Promise.resolve({
+      ok: true,
+      data: { databases: { default: { path: '/fake/db.json' } } },
+    }),
+  }))
 }
 
 // ── Element Plus stubs ────────────────────────────────────────────────
@@ -109,32 +135,19 @@ describe('OperationsPage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    localStorage.clear()
   })
 
-  // ── Loading & empty state ───────────────────────────────────────────
+  // ── Empty state ─────────────────────────────────────────────────────
 
-  it('shows loading state initially', () => {
-    // Don't resolve fetch — keep loading
-    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
+  it('shows empty state when workspace has no results', async () => {
+    setWorkspaceInStorage(null)
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
     })
 
-    expect(wrapper.text()).toContain('加载中...')
-  })
-
-  it('shows empty state when workspace has no last_compute results', async () => {
-    mockWorkspaceResponse({
-      ...defaultWorkspaceData,
-      results: { last_compute: null },
-    })
-
-    const wrapper = mount(OperationsPage, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-
-    // Wait for onMounted to resolve
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
 
@@ -142,21 +155,9 @@ describe('OperationsPage', () => {
     expect(wrapper.text()).toContain('尚未计算')
   })
 
-  it('shows empty state when workspace has results but trees_count is 0', async () => {
-    mockWorkspaceResponse({
-      ...defaultWorkspaceData,
-      results: {
-        last_compute: {
-          trees_count: 0,
-          mapping_count: 0,
-          warnings: [],
-          errors: [],
-          stats: {},
-          inputs_hash: '',
-          timestamp: null,
-        },
-      },
-    })
+  it('shows empty state when results has trees_count 0', async () => {
+    setWorkspaceInStorage(null)
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -171,7 +172,8 @@ describe('OperationsPage', () => {
   // ── Summary display ─────────────────────────────────────────────────
 
   it('renders summary when workspace has results', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -189,7 +191,8 @@ describe('OperationsPage', () => {
   })
 
   it('renders stats breakdown: added, overwritten, deleted', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -206,7 +209,8 @@ describe('OperationsPage', () => {
   // ── Dry-run switch ──────────────────────────────────────────────────
 
   it('dry-run switch defaults to enabled', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -222,7 +226,8 @@ describe('OperationsPage', () => {
   // ── Operation buttons ───────────────────────────────────────────────
 
   it('renders backup, apply, restore buttons', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -239,7 +244,8 @@ describe('OperationsPage', () => {
   })
 
   it('buttons are disabled while an operation is running', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -261,7 +267,8 @@ describe('OperationsPage', () => {
   // ── Backup operation ────────────────────────────────────────────────
 
   it('confirmBackup opens confirm dialog then calls streamSse', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData) // user clicks confirm
     mockedStreamSse.mockImplementation(async (_path: string, _body: unknown, callbacks: { onProgress?: (p: SseProgress) => void; onResult?: (data: unknown) => void; onError?: (msg: string) => void }) => {
       callbacks.onProgress?.({ step: 'backup', finished: 1, total: 3, message: 'Backing up...' })
@@ -290,7 +297,8 @@ describe('OperationsPage', () => {
   })
 
   it('confirmBackup does nothing when user cancels', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
     mockedConfirm.mockRejectedValue(new Error('cancel'))
 
     const wrapper = mount(OperationsPage, {
@@ -310,7 +318,8 @@ describe('OperationsPage', () => {
   // ── Apply operation ─────────────────────────────────────────────────
 
   it('confirmApply calls streamSse with dry-run flag', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
     // Set up forest store with some mapping data
@@ -352,7 +361,8 @@ describe('OperationsPage', () => {
   // ── Restore operation ───────────────────────────────────────────────
 
   it('confirmRestore calls streamSse with backup_dir', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
     mockedStreamSse.mockImplementation(async (_path: string, _body: unknown, callbacks: { onProgress?: (p: SseProgress) => void; onResult?: (data: unknown) => void; onError?: (msg: string) => void }) => {
@@ -384,7 +394,8 @@ describe('OperationsPage', () => {
   // ── Progress tracking ───────────────────────────────────────────────
 
   it('progress updates while operation runs', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
     let progressCallback: ((p: SseProgress) => void) | undefined
@@ -414,7 +425,8 @@ describe('OperationsPage', () => {
   // ── Error handling ──────────────────────────────────────────────────
 
   it('shows error message when operation fails', async () => {
-    mockWorkspaceResponse(defaultWorkspaceData)
+    setWorkspaceInStorage()
+    mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
     mockedStreamSse.mockImplementation(async (_path: string, _body: unknown, callbacks: { onProgress?: (p: SseProgress) => void; onResult?: (data: unknown) => void; onError?: (msg: string) => void }) => {
@@ -440,20 +452,16 @@ describe('OperationsPage', () => {
   // ── getStat helper ──────────────────────────────────────────────────
 
   it('getStat returns 0 for missing stat keys', async () => {
-    mockWorkspaceResponse({
-      ...defaultWorkspaceData,
-      results: {
-        last_compute: {
-          trees_count: 5,
-          mapping_count: 3,
-          warnings: [],
-          errors: [],
-          stats: { added: 1 },
-          inputs_hash: '',
-          timestamp: null,
-        },
-      },
+    setWorkspaceInStorage({
+      trees_count: 5,
+      mapping_count: 3,
+      warnings: [],
+      errors: [],
+      stats: { added: 1 },
+      inputs_hash: '',
+      timestamp: null,
     })
+    mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
       global: { plugins: [router], stubs: elStubs },

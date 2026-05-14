@@ -62,10 +62,8 @@ describe('ConflictsPage', () => {
     })
     const store = useForestStore()
     store.lastSuccessfulParams = {
-      database: { steamlib: [] },
+      database_name: 'default',
       kmm_rule_paths: ['/rules.json'],
-      user_config_path: '/cfg.json',
-      backup_dir: '/backups',
       dry_run: true,
     }
 
@@ -85,10 +83,8 @@ describe('ConflictsPage', () => {
 
     // Set up params and decisions
     store.lastSuccessfulParams = {
-      database: { steamlib: ['/steam'] },
+      database_name: 'default',
       kmm_rule_paths: ['/rules/r1.json', '/rules/r2.json'],
-      user_config_path: '/cfg.json',
-      backup_dir: '/backups',
       dry_run: true,
       action_orders: { replace: 1 },
     }
@@ -101,13 +97,12 @@ describe('ConflictsPage', () => {
     await (wrapper.vm as unknown as { onRecalculate: () => Promise<void> }).onRecalculate()
 
     expect(runSpy).toHaveBeenCalledWith({
-      database: { steamlib: ['/steam'] },
+      database_name: 'default',
       kmm_rule_paths: ['/rules/r1.json', '/rules/r2.json'],
-      user_config_path: '/cfg.json',
-      backup_dir: '/backups',
+      managed_entries: undefined,
+      branch_decisions: { '/a.png': '/m1/a.png' },
       dry_run: true,
       action_orders: { replace: 1 },
-      branch_decisions: { '/a.png': '/m1/a.png' },
     })
   })
 
@@ -149,13 +144,10 @@ describe('ConflictsPage', () => {
     store.setDecision('/a.png', '/m1/a.png')
     await wrapper.vm.$nextTick()
 
-    // Mock fetch
-    const mockFetch = vi.fn()
-    vi.stubGlobal('fetch', mockFetch)
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true, data: null, errors: [], warnings: [] }),
-    })
+    // Mock localStorage
+    const mockSetItem = vi.spyOn(Storage.prototype, 'setItem')
+    const mockGetItem = vi.spyOn(Storage.prototype, 'getItem')
+    mockGetItem.mockReturnValue(JSON.stringify({ lastDatabase: 'default', perDatabase: { default: { decisions: {}, results: null } } }))
 
     const buttons = wrapper.findAll('.el-button-stub')
     const confirmBtn = buttons.find(b => b.text().includes('确认决策'))
@@ -166,12 +158,15 @@ describe('ConflictsPage', () => {
     await confirmBtn!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    // Verify fetch was called with correct API
-    expect(mockFetch).toHaveBeenCalled()
-    const callUrl = mockFetch.mock.calls[0][0]
-    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
-    expect(callUrl).toContain('/api/workspace/save-decisions')
-    expect(callBody.branch_decisions).toEqual({ '/a.png': '/m1/a.png' })
+    // Verify localStorage was called to save workspace
+    expect(mockSetItem).toHaveBeenCalled()
+    const saveCall = mockSetItem.mock.calls.find(call => call[0].includes('workspace'))
+    expect(saveCall).toBeTruthy()
+    const savedData = JSON.parse(saveCall![1])
+    expect(savedData.perDatabase.default.decisions.branch_decisions).toEqual({ '/a.png': '/m1/a.png' })
+
+    mockSetItem.mockRestore()
+    mockGetItem.mockRestore()
   })
 
   it('confirm decision button is disabled when no decisions made', () => {

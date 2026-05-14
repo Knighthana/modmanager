@@ -57,10 +57,8 @@ describe('useForestStore', () => {
     store.errors = ['some error']
     store.branchDecisions = { '/a.png': '/m1/a.png' }
     store.lastSuccessfulParams = {
-      database: { steamlib: [] },
+      database_name: 'default',
       kmm_rule_paths: ['/rules.json'],
-      user_config_path: '/cfg.json',
-      backup_dir: '/backups',
       dry_run: true,
     }
     store.reset()
@@ -149,16 +147,14 @@ describe('useForestStore', () => {
 
     const store = useForestStore()
     const params = {
-      database: { steamlib: [] },
+      database_name: 'test_db',
       kmm_rule_paths: ['/rules.json'],
-      user_config_path: '/cfg.json',
-      backup_dir: '/backups',
       dry_run: true,
     }
     await store.runPipeline(params)
 
     expect(store.lastSuccessfulParams).not.toBeNull()
-    expect(store.lastSuccessfulParams!.database).toEqual({ steamlib: [] })
+    expect(store.lastSuccessfulParams!.database_name).toEqual('test_db')
     expect(store.lastSuccessfulParams!.kmm_rule_paths).toEqual(['/rules.json'])
   })
 
@@ -189,10 +185,8 @@ describe('useForestStore', () => {
 
     const store = useForestStore()
     const params = {
-      database: { steamlib: [] },
+      database_name: 'test_db',
       kmm_rule_paths: ['/rules.json'],
-      user_config_path: '/cfg.json',
-      backup_dir: null,
       dry_run: true,
     }
     await store.computeOnly(params)
@@ -232,19 +226,18 @@ describe('useForestStore', () => {
     const store = useForestStore()
     // discoverDatabase now reads from pipelineForm internally
     store.pipelineForm.discoveryMode = 'auto'
-    store.pipelineForm.workingPathstyle = 'linux'
     store.pipelineForm.greedyParsing = false
-    store.pipelineForm.cachePath = '/tmp/db.json'
+    store.pipelineForm.databaseName = 'test_db'
     await store.discoverDatabase()
 
     // After discoverDatabase, databaseSummary should be set
     expect(store.databaseSummary).not.toBeNull()
     // But userConfig should NOT be set (loadConfig was not called)
     expect(store.userConfig).toBeNull()
-    // 2 fetch calls: 1 for initFromWorkspace (/workspace/status), 1 for discoverDatabase (/database/generate)
-    expect(mockFetch.mock.calls.length).toBe(2)
-    // Second call should be database/generate
-    expect(mockFetch.mock.calls[1][0]).toContain('/database/generate')
+    // 1 fetch call: discoverDatabase (/database/generate) — initFromWorkspace removed
+    expect(mockFetch.mock.calls.length).toBe(1)
+    // First call should be database/generate
+    expect(mockFetch.mock.calls[0][0]).toContain('/database/generate')
   })
 
   it('loadConfig fetches and saves user_config', async () => {
@@ -311,15 +304,14 @@ describe('useForestStore', () => {
     expect(store.pipelineForm.discoveryMode).toBe('auto')
 
     // Set form fields via pipelineForm so discoverDatabase picks them up
-    store.pipelineForm.workingPathstyle = 'linux'
     store.pipelineForm.greedyParsing = false
-    store.pipelineForm.cachePath = '/tmp/db.json'
+    store.pipelineForm.databaseName = 'test_db'
     await store.discoverDatabase()
 
     // Verify that fetch was called with mode='auto' and paths=null
-    // First call is initFromWorkspace (/workspace/status), second is discoverDatabase (/database/generate)
-    const callUrl = mockFetch.mock.calls[1][0]
-    const callBody = JSON.parse(mockFetch.mock.calls[1][1].body)
+    // Only call is discoverDatabase (/database/generate)
+    const callUrl = mockFetch.mock.calls[0][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callUrl).toContain('/database/generate')
     expect(callBody.mode).toBe('auto')
     expect(callBody.paths).toBeNull()
@@ -353,13 +345,12 @@ describe('useForestStore', () => {
     const store = useForestStore()
     store.pipelineForm.discoveryMode = 'manual'
     store.pipelineForm.manualSteamPath = '/tmp/fixture/steamapps'
-    store.pipelineForm.workingPathstyle = 'linux'
     store.pipelineForm.greedyParsing = false
-    store.pipelineForm.cachePath = '/tmp/db.json'
+    store.pipelineForm.databaseName = 'test_db'
     await store.discoverDatabase()
 
-    const callUrl = mockFetch.mock.calls[1][0]
-    const callBody = JSON.parse(mockFetch.mock.calls[1][1].body)
+    const callUrl = mockFetch.mock.calls[0][0]
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body)
     expect(callUrl).toContain('/database/generate')
     expect(callBody.mode).toBe('manual')
     expect(callBody.paths).toEqual(['/tmp/fixture/steamapps'])

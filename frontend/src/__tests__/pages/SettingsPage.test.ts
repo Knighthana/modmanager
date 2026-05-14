@@ -29,7 +29,7 @@ const elStubs = {
   'el-tag': { template: '<span class="el-tag-stub"><slot /></span>' },
   'el-popconfirm': { template: '<div class="el-popconfirm-stub"><slot name="reference" /></div>' },
   'el-table': { template: '<div class="el-table-stub"><slot /><slot name="append" /></div>' },
-  'el-table-column': { template: '<div class="el-table-column-stub"><slot /></div>' },
+  'el-table-column': { template: '<div class="el-table-column-stub"><slot :row="{}" :index="0" /></div>', props: ['prop', 'label', 'width'] },
 }
 
 const mockedApiPost = vi.mocked(apiPost)
@@ -41,18 +41,15 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
 
 // Mock config data matching the API response
 const mockConfigData = {
-  user_config: {
-    bakprefix: 'mybackup_',
-    bakignore: ['*.log', 'node_modules/'],
-    database_output_path: '/custom/path/database.json',
-    aggregated_ruleset_output_path: '/custom/path/aggregated.json',
-    rule_sources: ['/home/user/rules/', '/home/user/custom.kmmrule.json'],
+  bakprefix: 'mybackup_',
+  bakignore: ['*.log', 'node_modules/'],
+  databases: {
+    'default': { path: '/custom/path/database.json' },
   },
-  metadata: {
-    version: '1.0.0',
-    discovered: '2026-05-13T10:00:00Z',
-    source: 'mock',
-  },
+  aggregated_ruleset_output_path: '/custom/path/aggregated.json',
+  rule_sources: ['/home/user/rules/', '/home/user/custom.kmmrule.json'],
+  source_path: '/home/user/.config/kmm/user_config.json',
+  first_use: false,
 }
 
 describe('SettingsPage', () => {
@@ -89,12 +86,12 @@ describe('SettingsPage', () => {
 
     expect(form.bakprefix).toBe('mybackup_')
     expect(form.bakignore).toEqual(['*.log', 'node_modules/'])
-    expect(form.databaseOutputPath).toBe('/custom/path/database.json')
+    // Verify databases loaded correctly
+    expect((form.databases as any)[0]?.key).toBe('default')
     expect(form.aggregatedOutputPath).toBe('/custom/path/aggregated.json')
     expect(form.ruleSources).toEqual(['/home/user/rules/', '/home/user/custom.kmmrule.json'])
-
     // Verify apiPost was called with the discover endpoint
-    expect(mockedApiPost).toHaveBeenCalledWith('/api/config/discover', {})
+    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', {})
   })
 
   it('onSaveConfig calls /api/config/save with correct data', async () => {
@@ -115,7 +112,7 @@ describe('SettingsPage', () => {
     // Pre-populate form
     form.bakprefix = 'testprefix_'
     form.bakignore = ['*.tmp']
-    form.databaseOutputPath = '/test/db.json'
+    form.databases = [{ key: 'default', value: '/test/db.json' }]
     form.aggregatedOutputPath = '/test/agg.json'
     form.ruleSources = ['/test/rules/']
 
@@ -123,14 +120,12 @@ describe('SettingsPage', () => {
     await (vm.onSaveConfig as () => Promise<void>)()
 
     // onMounted calls /api/config/discover first, then onSaveConfig calls save
-    expect(mockedApiPost).toHaveBeenLastCalledWith('/api/config/save', {
-      output_path: null,
+    expect(mockedApiPost).toHaveBeenLastCalledWith('/config/save', {
       config: {
         bakprefix: 'testprefix_',
         bakignore: ['*.tmp'],
-        database_output_path: '/test/db.json',
+        databases: { 'default': { path: '/test/db.json' } },
         aggregated_ruleset_output_path: '/test/agg.json',
-        user_config_path: null,
         rule_sources: ['/test/rules/'],
       },
     })

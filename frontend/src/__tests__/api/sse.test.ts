@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // We import the type only; the actual function is tested via mocks
-import type { SseCallbacks } from '../../api/sse'
+import type { ProgressCallbacks } from '../../api/sse'
 
 describe('SSE stream parsing logic', () => {
   let fetchMock: ReturnType<typeof vi.fn>
@@ -43,7 +43,7 @@ describe('SSE stream parsing logic', () => {
 
     fetchMock.mockResolvedValue(createMockResponse(chunks))
 
-    const callbacks: SseCallbacks = {
+    const callbacks: ProgressCallbacks = {
       onProgress: vi.fn(),
       onResult: vi.fn(),
       onError: vi.fn(),
@@ -71,7 +71,7 @@ describe('SSE stream parsing logic', () => {
   it('calls onError for HTTP error responses', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 500 })
 
-    const callbacks: SseCallbacks = { onError: vi.fn() }
+    const callbacks: ProgressCallbacks = { onError: vi.fn() }
     const { streamSse } = await import('../../api/sse')
     await streamSse('/test', {}, callbacks)
 
@@ -88,7 +88,7 @@ describe('SSE stream parsing logic', () => {
 
     fetchMock.mockResolvedValue(createMockResponse(chunks))
 
-    const callbacks: SseCallbacks = {
+    const callbacks: ProgressCallbacks = {
       onProgress: vi.fn(),
       onResult: vi.fn(),
     }
@@ -108,7 +108,7 @@ describe('SSE stream parsing logic', () => {
 
     fetchMock.mockResolvedValue(createMockResponse(chunks))
 
-    const callbacks: SseCallbacks = {
+    const callbacks: ProgressCallbacks = {
       onProgress: vi.fn(),
       onResult: vi.fn(),
       onError: vi.fn(),
@@ -131,7 +131,7 @@ describe('SSE stream parsing logic', () => {
 
     fetchMock.mockResolvedValue(createMockResponse(chunks))
 
-    const callbacks: SseCallbacks = { onError: vi.fn() }
+    const callbacks: ProgressCallbacks = { onError: vi.fn() }
 
     const { streamSse } = await import('../../api/sse')
     await streamSse('/test', {}, callbacks)

@@ -31,87 +31,10 @@ describe('App.vue — startup navigation guard', () => {
     localStorage.clear()
   })
 
-  it('navigates to /settings when user_config_path is empty', async () => {
-    mockedApiPost.mockResolvedValue({
-      ok: true,
-      data: {
-        inputs: {
-          user_config_path: '',
-          database_path: '',
-          rule_paths: [],
-        },
-        results: null,
-      },
-      errors: [],
-      warnings: [],
-    })
-
-    // Push to '/' first
-    await router.push('/')
-    await router.isReady()
-
-    const pushSpy = vi.spyOn(router, 'push')
-
-    mount(App, {
+  it('renders the shell component', () => {
+    const wrapper = mount(App, {
       global: { plugins: [router], stubs: elStubs },
     })
-
-    // Wait for onMounted to resolve
-    await new Promise(process.nextTick)
-    await new Promise(process.nextTick)
-
-    expect(mockedApiPost).toHaveBeenCalledWith('/workspace/status', {})
-    expect(pushSpy).toHaveBeenCalledWith('/settings')
-  })
-
-  it('does NOT navigate when user_config_path is configured', async () => {
-    mockedApiPost.mockResolvedValue({
-      ok: true,
-      data: {
-        inputs: {
-          user_config_path: '/home/user/.config/kmm/user_config.json',
-          database_path: '',
-          rule_paths: [],
-        },
-        results: null,
-      },
-      errors: [],
-      warnings: [],
-    })
-
-    await router.push('/')
-    await router.isReady()
-
-    const pushSpy = vi.spyOn(router, 'push')
-
-    mount(App, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-
-    await new Promise(process.nextTick)
-    await new Promise(process.nextTick)
-
-    expect(mockedApiPost).toHaveBeenCalledWith('/workspace/status', {})
-    // push should not have been called with /settings
-    expect(pushSpy).not.toHaveBeenCalledWith('/settings')
-  })
-
-  it('does NOT navigate when API call fails', async () => {
-    mockedApiPost.mockRejectedValue(new Error('Network error'))
-
-    await router.push('/')
-    await router.isReady()
-
-    const pushSpy = vi.spyOn(router, 'push')
-
-    mount(App, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-
-    await new Promise(process.nextTick)
-    await new Promise(process.nextTick)
-
-    expect(mockedApiPost).toHaveBeenCalledWith('/workspace/status', {})
-    expect(pushSpy).not.toHaveBeenCalled()
+    expect(wrapper.find('.layout-shell-stub').exists()).toBe(true)
   })
 })

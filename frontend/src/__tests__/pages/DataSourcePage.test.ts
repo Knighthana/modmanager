@@ -242,7 +242,6 @@ describe('DataSourcePage', () => {
     const store = useDataSourceStore()
 
     store.lastResult = { steamlib: [], game: [], mod: [] }
-    store.databaseOutputPath = '/tmp/test.json'
     await wrapper.vm.$nextTick()
 
     // Mock fetch (apiPost uses fetch + res.json)
