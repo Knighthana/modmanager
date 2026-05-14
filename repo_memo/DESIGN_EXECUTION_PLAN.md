@@ -145,6 +145,6 @@ POST /api/config/discover          → 返回 user_config
 |---|------|------|
 | D1 | managed 归属 | 前端 localStorage（`modmanager:decisions:{name}.managed_entries`），compute 时作为参数传入 |
 | D6 | compute 端点 database 参数 | 不接收完整 database dict。orchestrator 内部通过 bootstrap 获取。接收 `database_name?` 选择目标 database |
-| D7 | workspace 模式 | 已撤销——用户决策迁移至前端 localStorage |
+| D7 | workspace 模式 | 前端 localStorage（decisions/results） |
 | D12 | decisions 范围 | managed_entries + branch_decisions 存前端 localStorage，compute 时作为参数传入 orchestrator |
 | D13 | results 存储粒度 | 仅摘要 + inputs_hash；不存完整 trees/mapping |
