@@ -16,3 +16,6 @@
 - [x] TODO-54: 工具文件治理 → 已裁定。user_config 由 first_use 自动创建；database 由扫描写入。`tools/test_wsl_crossover.py` 产生日志。
 - [x] TODO-56: 刷新后 Database 数据丢失 → 已修正。DataSourcePage/AdvancedPage/ForestPage 的 onMounted 自动调 `/api/database/read` 恢复数据。
 - [x] TODO-57: manual 模式缓存返回旧数据 → 已修正。`bootstrap.py` 中 manual 模式跳过缓存，强制重新扫描。
+- [ ] TODO-66: 规则概览 — preview 图片加载。需要新增 `POST /api/rules/preview { path }` 端点，返回图片二进制。前端以 fit-cover 正方形裁剪展示。
+- [ ] TODO-67: 规则概览 — README 文件内容查看。需要新增 `POST /api/rules/readme { path }` 端点，返回文本内容。前端点 README 文件名弹出内容对话框。
+- [ ] TODO-68: 规则概览 — author 字段的键含义与展示方式待讨论。当前气泡遍历展示所有 key-value 作为占位。

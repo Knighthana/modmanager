@@ -11,8 +11,10 @@
       <template v-else>
         <div class="sources-list">
           <div v-for="src in ruleSources" :key="src" class="source-item">
-            <el-icon><FolderOpened /></el-icon>
-            <span class="source-path">{{ src }}</span>
+            <el-button size="small" text @click="viewSourceFile(src)">
+              <el-icon><FolderOpened /></el-icon>
+            </el-button>
+            <code class="source-path-code">{{ src }}</code>
           </div>
         </div>
         <div class="source-hint">
@@ -39,7 +41,10 @@
         >
           <div class="rule-file-header">
             <el-checkbox v-model="file.checked" />
-            <span class="file-name">{{ file.name }}</span>
+            <div class="file-name-row">
+              <span class="file-display-name">{{ getDisplayName(file) }}</span>
+              <span class="file-path-name">{{ file.name }}</span>
+            </div>
             <el-button
               size="small"
               text
@@ -56,17 +61,30 @@
             <template v-else-if="file.detail">
               <!-- rule_meta_tag -->
               <div class="detail-section">
-                <div class="detail-section-title">rule_meta_tag</div>
+                <div class="detail-section-title">规则文件元信息</div>
                 <div class="detail-row">
                   <span class="meta-label">namespace:</span>
                   <span class="meta-value">{{ file.detail.rule_meta_tag.rulenamespace }}</span>
                   <el-divider direction="vertical" />
-                  <span class="meta-label">name:</span>
+                  <span class="meta-label">rulename:</span>
                   <span class="meta-value">{{ file.detail.rule_meta_tag.rulename }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="meta-label">author:</span>
-                  <span class="meta-value">{{ formatAuthors(file.detail.rule_meta_tag.author) }}</span>
+                  <span v-if="!file.detail.rule_meta_tag.author || file.detail.rule_meta_tag.author.length === 0">—</span>
+                  <template v-for="(a, ai) in file.detail.rule_meta_tag.author" :key="ai">
+                    <el-popover placement="top" :width="240" trigger="click">
+                      <template #reference>
+                        <el-button size="small" text type="primary">{{ a.nickname ?? '佚名' }}</el-button>
+                      </template>
+                      <div style="font-size:13px;line-height:1.6;">
+                        <div v-for="(v, k) in a" :key="k" style="display:flex;gap:8px;">
+                          <span style="color:#999;min-width:60px;">{{ k }}</span>
+                          <span>{{ typeof v === 'string' ? v : JSON.stringify(v) }}</span>
+                        </div>
+                      </div>
+                    </el-popover>
+                  </template>
                 </div>
                 <div class="detail-row">
                   <span class="meta-label">description:</span>
@@ -123,7 +141,6 @@
     <div class="action-bar">
       <el-button
         type="primary"
-        size="large"
         :loading="saving"
         :disabled="selectedCount === 0"
         @click="saveSelection"
@@ -132,7 +149,6 @@
       </el-button>
       <el-button
         type="success"
-        size="large"
         :disabled="savedCount === null"
         @click="$router.push('/compute-prep')"
       >
@@ -150,6 +166,20 @@
         </div>
       </transition>
     </div>
+
+    <!-- 查看源文件对话框 -->
+    <el-dialog v-model="sourceDialogVisible" title="源文件内容" width="70%" top="5vh">
+      <div v-if="sourceLoading" style="text-align:center;padding:40px;">加载中...</div>
+      <div v-else-if="sourceError" style="color:red;">{{ sourceError }}</div>
+      <el-input
+        v-else
+        v-model="sourceContent"
+        type="textarea"
+        :rows="25"
+        readonly
+        style="font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px;"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -204,17 +234,46 @@ interface RuleFileItem {
   detail: KmmRuleDetail | null
 }
 
-// ── Game appid → name mapping ─────────────────────────────────────────
+// ── Game appid → name mapping (loaded from database) ──────────────────
 
-const GAME_NAMES: Record<string, string> = {
-  '270150': 'RWR',
-  '107410': 'Arma3',
-  '730': 'CS:GO',
-  '440': 'TF2',
+const gameNames = ref<Record<string, string>>({})
+
+async function loadGameNames() {
+  try {
+    const ws = loadWorkspace()
+    const dbName = ws.lastDatabase || 'default'
+    const resp = await apiPost<{ game?: Array<{ appid: string; name: string }> }>('/database/read', { database_name: dbName })
+    if (resp.ok && resp.data?.game) {
+      const map: Record<string, string> = {}
+      for (const g of resp.data.game) {
+        if (g.appid && g.name) map[g.appid] = g.name
+      }
+      gameNames.value = map
+    }
+  } catch { /* silent */ }
 }
 
 function getGameName(appid: string): string {
-  return GAME_NAMES[appid] ?? `Game[${appid}]`
+  return gameNames.value[appid] ?? `Game[${appid}]`
+}
+
+function getDisplayName(file: RuleFileItem): string {
+  if (file.detail) {
+    const games = file.detail.game || []
+    const mods = file.detail.mod || []
+    const gameName = games.length > 0 ? getGameName(games[0].appid) : ''
+    const modName = mods.length > 0 ? (mods[0].nickname || mods[0].mixed_id?.split(':')[1] || '') : ''
+    if (gameName && modName) return `${gameName}-${modName}`
+    if (gameName) return gameName
+    return file.detail.rule_meta_tag?.rulename || file.name
+  }
+  return file.name
+}
+
+function showAuthorDetail(authors: Author[]) {
+  if (!authors || authors.length === 0) return
+  const lines = authors.map(a => a.nickname ?? '佚名')
+  ElMessage.info(lines.join('、'))
 }
 
 // ── Reactive state ─────────────────────────────────────────────────────
@@ -225,16 +284,21 @@ const loadingSources = ref(true)
 const loadingFiles = ref(true)
 const saving = ref(false)
 const savedCount = ref<number | null>(null)
+const sourceDialogVisible = ref(false)
+const sourceContent = ref('')
+const sourceLoading = ref(false)
+const sourceError = ref('')
 
 const selectedCount = computed(() => ruleFiles.value.filter((f) => f.checked).length)
 
 // ── Lifecycle ──────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  // Step 1: discover config to get rule_sources
   await loadRuleSources()
-  // Step 2: scan rule files
   await scanRuleFiles()
+  loadGameNames()
+  await preloadDetails()
+  await autoRestoreAggregated()
 })
 
 async function loadRuleSources() {
@@ -297,6 +361,32 @@ async function scanRuleFiles() {
   loadingFiles.value = false
 }
 
+// ── Preload ────────────────────────────────────────────────────────────
+
+async function preloadDetails() {
+  await Promise.all(ruleFiles.value.map(f => loadFileDetail(f)))
+}
+
+async function loadFileDetail(file: RuleFileItem): Promise<void> {
+  if (file.detail || file.loading) return
+  file.loading = true
+  file.error = ''
+  try {
+    const resp = await apiPost<{ content: string; name: string; path: string; size: number }>('/rules/read', {
+      path: file.path,
+    })
+    if (resp.ok && resp.data?.content) {
+      file.detail = JSON.parse(resp.data.content) as KmmRuleDetail
+    } else {
+      file.error = resp.errors?.join('; ') ?? '读取规则文件失败'
+    }
+  } catch {
+    file.error = '网络错误：无法读取规则文件'
+  } finally {
+    file.loading = false
+  }
+}
+
 // ── Expand / collapse ──────────────────────────────────────────────────
 
 async function toggleExpand(file: RuleFileItem) {
@@ -304,28 +394,39 @@ async function toggleExpand(file: RuleFileItem) {
     file.expanded = false
     return
   }
-
-  // If detail not loaded yet, fetch it
-  if (!file.detail && !file.loading) {
-    file.loading = true
-    file.error = ''
-    try {
-      const resp = await apiPost<{ content: string; name: string; path: string; size: number }>('/rules/read', {
-        path: file.path,
-      })
-      if (resp.ok && resp.data?.content) {
-        file.detail = JSON.parse(resp.data.content) as KmmRuleDetail
-      } else {
-        file.error = resp.errors?.join('; ') ?? '读取规则文件失败'
-      }
-    } catch {
-      file.error = '网络错误：无法读取规则文件'
-    } finally {
-      file.loading = false
-    }
-  }
-
+  if (!file.detail) await loadFileDetail(file)
   file.expanded = true
+}
+
+// ── Auto-restore aggregated rules if hash matches ──────────────────────
+
+async function autoRestoreAggregated() {
+  const ws = loadWorkspace()
+  const stored = ws.aggregatedRuleMeta?.selected_rule_paths
+  if (!stored || stored.length === 0 || ruleFiles.value.length === 0) return
+
+  // Compare sorted paths — if identical, previous aggregate is still valid
+  const currentPaths = ruleFiles.value.filter(f => f.checked).map(f => f.path).sort()
+  const storedPaths = [...stored].sort()
+  if (JSON.stringify(currentPaths) !== JSON.stringify(storedPaths)) return
+
+  savedCount.value = currentPaths.length
+
+  // Restore aggregated result from backend file
+  try {
+    const configResp = await apiPost<Record<string, unknown>>('/config/discover', {})
+    if (configResp.ok && configResp.data) {
+      const uc = configResp.data as Record<string, unknown>
+      const path = (uc.aggregated_ruleset_output_path as string) || ''
+      if (path) {
+        const resp = await apiPost<Record<string, unknown>>('/rules/load-aggregated', { path })
+        if (resp.ok && resp.data) {
+          const store = useForestStore()
+          store.aggregatedRuleSet = resp.data as Record<string, unknown>
+        }
+      }
+    }
+  } catch { /* silent */ }
 }
 
 // ── Save selection ─────────────────────────────────────────────────────
@@ -394,6 +495,31 @@ async function saveSelection() {
   }
 }
 
+// ── Source file viewer ────────────────────────────────────────────────
+
+async function viewSourceFile(path: string) {
+  sourceDialogVisible.value = true
+  sourceLoading.value = true
+  sourceError.value = ''
+  sourceContent.value = ''
+  try {
+    const resp = await apiPost<{ content: string }>('/rules/read', { path })
+    if (resp.ok && resp.data?.content) {
+      try {
+        sourceContent.value = JSON.stringify(JSON.parse(resp.data.content), null, 2)
+      } catch {
+        sourceContent.value = resp.data.content
+      }
+    } else {
+      sourceError.value = resp.errors?.join('; ') || '无法读取文件'
+    }
+  } catch {
+    sourceError.value = '网络错误：无法读取文件'
+  } finally {
+    sourceLoading.value = false
+  }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function formatAuthors(authors: Author[]): string {
@@ -442,8 +568,14 @@ function formatAuthors(authors: Author[]): string {
   color: #303133;
 }
 
-.source-path {
-  word-break: break-all;
+.source-path-code {
+  font-size: 13px;
+  color: #303133;
+  background: #f5f7fa;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .source-hint {
@@ -486,12 +618,26 @@ function formatAuthors(authors: Author[]): string {
   gap: 8px;
 }
 
-.file-name {
+.file-name-row {
   flex: 1;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.file-name-row::-webkit-scrollbar { display: none; }
+.file-display-name {
+  font-weight: 700;
   font-size: 14px;
   color: #303133;
-  font-family: 'Courier New', Courier, monospace;
+}
+.file-path-name {
+  font-weight: 400;
+  font-size: 12px;
+  color: #999;
 }
 
 /* ── Detail section ─────────────────────────────── */
@@ -616,8 +762,7 @@ function formatAuthors(authors: Author[]): string {
 .action-bar {
   margin-top: 20px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
 
