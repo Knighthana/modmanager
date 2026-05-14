@@ -145,10 +145,12 @@ async def rules_aggregate(req: RulesAggregateRequest):
 async def rules_affected_entries(req: RulesAffectedEntriesRequest):
     """Query the database for game/mod entries referenced by an aggregated rule set.
 
-    Accepts ``{ aggregated_rule_path, database_name }``.  Loads the aggregated
-    rule set together with the database (resolved via database_name from
-    user_config), and returns libraries/games/mods entries with ``libraryIndex``
-    and ``has_duplicate`` markers.
+    Accepts ``{ aggregated_rule_path?, aggregated_rule_set?, database_name }``.
+    The aggregated rule set can be provided either inline via
+    ``aggregated_rule_set`` or by path via ``aggregated_rule_path``.
+    Loads the rule set together with the database (resolved via
+    ``database_name`` from user_config), and returns libraries/games/mods entries
+    with ``libraryIndex`` and ``has_duplicate`` markers.
     """
     if not req.aggregated_rule_path and not req.aggregated_rule_set:
         return adapt_error("aggregated_rule_path or aggregated_rule_set is required")
