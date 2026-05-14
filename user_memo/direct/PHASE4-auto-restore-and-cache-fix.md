@@ -1,113 +1,41 @@
-# Phase 4 — 前端数据自动恢复 + manual 模式缓存修正
+# Phase 4 — 自动恢复与缓存行为基线（已落地）
 
-> Status: plan
-> Authority: arch
-> Created: 2026-05-14
-> Source: `work_memo/states.md` TODO-56, TODO-57
-
----
-
-## Task 4.1: `bootstrap.py` — manual 模式跳过缓存
-
-### 问题
-`generate_database()` 中缓存检查位于 mode 分支之前。manual 模式需要重新扫描指定路径，不应返回旧缓存。
-
-### 当前代码（`bootstrap.py` 约 185-198 行）
-```python
-config = discover_user_config()
-db_path = config.get("databases", {}).get(database_name, {}).get("path")
-
-# 缓存检查 —— 在所有 mode 分支之前
-cache_file = Path(db_path)
-if cache_file.exists() and cache_file.stat().st_size > 0:
-    cached = load_json_file(db_path)
-    if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
-        return cached  # ← manual 模式也会走这里
-```
-
-### 修正
-将缓存检查移到 auto 模式分支内，或在缓存检查前判断 mode：
-
-```python
-# manual 模式跳过缓存
-if mode != "manual":
-    cache_file = Path(db_path)
-    if cache_file.exists() and cache_file.stat().st_size > 0:
-        try:
-            cached = load_json_file(db_path)
-            if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
-                return cached
-        except Exception:
-            pass
-```
-
-### 涉及文件
-`src/modmanager/bootstrap.py`
+> Status: aligned
+> Authority: user-guidance
+> Purpose: 固化自动恢复与扫描缓存行为，避免回归
 
 ---
 
-## Task 4.2: `DataSourcePage.vue` — onMounted 自动加载 database
+## 一、目标
 
-### 问题
-页面刷新后，database 数据丢失。用户必须手动点"扫描"或"读取"。
+本阶段目标是提升刷新后可恢复性，同时防止 manual 扫描被旧缓存误命中。
 
-### 修正
-在 `onMounted` 中：
-1. 从 localStorage 读 `lastDatabase`
-2. 若存在 → 自动调 `POST /api/database/read { database_name: lastDatabase }` 
-3. 将返回的 database dict 填入 datasourceStore（`updateDatabase(db)`）
-4. 下拉自动选中 `lastDatabase`
-
-### 伪代码
-```ts
-onMounted(async () => {
-  const lastDb = pers.load<string>('lastDatabase')
-  if (lastDb) {
-    selectedDatabase.value = lastDb
-    try {
-      const resp = await apiPost('/database/read', { database_name: lastDb })
-      if (resp.ok && resp.data) {
-        store.updateDatabase(resp.data as Record<string, unknown>)
-      }
-    } catch { /* 静默失败——用户可以手动扫描 */ }
-  }
-})
-```
+当前生效原则：
+1. 自动恢复走 workspace 单键持久化模型。
+2. manual 与 auto 模式语义必须可区分。
+3. Forest 页面保持结果消费职责，不承担计算触发职责。
 
 ---
 
-## Task 4.3: `AdvancedPage.vue` — Database tab 自动加载
+## 二、当前基线
 
-### 修正
-Database tab 激活时（或页面 onMounted），自动调 `/api/database/read` 加载当前 database 内容展示。
-
-### 涉及文件
-`frontend/src/pages/AdvancedPage.vue`
+1. datasource 页面可按当前数据库上下文恢复展示。
+2. advanced 页面 tab 切换刷新策略已统一。
+3. forest 页面读取已计算结果并展示，不越界触发计算。
 
 ---
 
-## Task 4.4: `ForestPage.vue` — onMounted 恢复上次结果
+## 三、implement guardrails
 
-### 修正
-在 `onMounted` 中：
-1. 从 localStorage 读 `lastDatabase`
-2. 若存在 → 读 `results:{lastDatabase}` 
-3. 若存在 → 展示"上次计算结果：X 棵树，Y 个映射"（或恢复可视化）
-
----
-
-## 执行顺序
-
-1. Task 4.1 — bootstrap.py manual 模式缓存修正
-2. Task 4.2 — DataSourcePage 自动加载
-3. Task 4.3 — AdvancedPage 自动加载
-4. Task 4.4 — ForestPage 恢复结果
+1. 不回退到分散 key（如 `results:{db}`）存储模型。
+2. 不在 Forest 页面新增 compute/run 触发流程。
+3. manual 扫描路径必须优先遵循用户输入语义，不被旧缓存短路。
+4. 自动恢复失败时允许降级，不应阻断页面主流程。
 
 ---
 
-## 验收
+## 四、增量验证清单
 
-```bash
-python -m pytest tests/ -x -q   # Python 测试全绿
-cd frontend && npm run build     # 前端构建成功
-```
+1. 刷新后 datasource、advanced、forest 状态一致。
+2. 切换数据库名称后，恢复状态跟随数据库上下文。
+3. 前端测试与构建均通过。
