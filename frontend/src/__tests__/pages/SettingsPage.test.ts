@@ -203,4 +203,68 @@ describe('SettingsPage', () => {
 
     expect(form.ruleSources).toEqual(['/b/', '/c/'])
   })
+
+  it('syncs workspace perDatabase when database keys are renamed or removed', async () => {
+    const discoverResp: ApiResponse<Record<string, unknown>> = {
+      ok: true,
+      data: {
+        bakprefix: 'kmmbackup_',
+        bakignore: [],
+        databases: {
+          legacy: { path: '/db/legacy.json' },
+          drop: { path: '/db/drop.json' },
+        },
+        aggregated_ruleset_output_path: null,
+        rule_sources: [],
+        source_path: '/tmp/user_config.json',
+        first_use: false,
+      },
+      errors: [],
+      warnings: [],
+    }
+    const saveResp: ApiResponse<Record<string, unknown>> = {
+      ok: true,
+      data: { saved: true },
+      errors: [],
+      warnings: [],
+    }
+
+    mockedApiPost.mockImplementation(async (path: string) => {
+      if (path === '/config/discover') return discoverResp
+      if (path === '/config/save') return saveResp
+      return { ok: true, data: null, errors: [], warnings: [] }
+    })
+
+    localStorage.setItem('modmanager:workspace', JSON.stringify({
+      lastDatabase: 'legacy',
+      perDatabase: {
+        legacy: { decisions: { branch_decisions: { '/a': '/x' } }, results: null },
+        drop: { decisions: {}, results: null },
+      },
+      aggregatedRuleSet: null,
+      aggregatedRuleHash: '',
+      aggregatedRuleMeta: null,
+    }))
+
+    const wrapper = mount(SettingsPage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+
+    await new Promise(process.nextTick)
+    await new Promise(process.nextTick)
+
+    const vm = vmAny(wrapper)
+    ;(vm.form as Record<string, unknown>).databases = [
+      { key: 'renamed', value: '/db/renamed.json' },
+    ]
+    ;(vm.databaseRenameMap as Record<string, string>).legacy = 'renamed'
+
+    await (vm.onSaveConfig as () => Promise<void>)()
+
+    const ws = JSON.parse(localStorage.getItem('modmanager:workspace') || '{}')
+    expect(ws.lastDatabase).toBe('renamed')
+    expect(ws.perDatabase.renamed).toBeTruthy()
+    expect(ws.perDatabase.legacy).toBeUndefined()
+    expect(ws.perDatabase.drop).toBeUndefined()
+  })
 })

@@ -251,6 +251,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
+import { loadWorkspace, saveWorkspace } from '../utils/persistence'
 import { STR } from '../locales/zh-CN'
 
 interface DbEntry {
@@ -347,6 +348,8 @@ async function onSaveConfig() {
       },
     })
     if (result.ok) {
+      syncWorkspaceDatabases(Object.keys(databases))
+      databaseRenameMap.value = {}
       ElMessage.success('设置已保存')
     } else {
       ElMessage.error(result.errors?.[0] || '保存失败')
@@ -455,6 +458,52 @@ const editingDbKeyIdx = ref(-1)
 const editingDbKeyVal = ref('')
 const addingDbKey = ref(false)
 const newDbKey = ref('')
+const databaseRenameMap = ref<Record<string, string>>({})
+
+function syncWorkspaceDatabases(currentDbKeys: string[]) {
+  const ws = loadWorkspace()
+  const currentSet = new Set(currentDbKeys)
+  let changed = false
+
+  if (!ws.perDatabase) {
+    ws.perDatabase = {}
+    changed = true
+  }
+
+  for (const [oldKey, newKey] of Object.entries(databaseRenameMap.value)) {
+    if (!oldKey || !newKey || oldKey === newKey) continue
+    if (!currentSet.has(newKey)) continue
+
+    if (ws.perDatabase[oldKey]) {
+      if (!ws.perDatabase[newKey]) {
+        ws.perDatabase[newKey] = ws.perDatabase[oldKey]
+      }
+      delete ws.perDatabase[oldKey]
+      changed = true
+    }
+
+    if (ws.lastDatabase === oldKey) {
+      ws.lastDatabase = newKey
+      changed = true
+    }
+  }
+
+  for (const key of Object.keys(ws.perDatabase)) {
+    if (!currentSet.has(key)) {
+      delete ws.perDatabase[key]
+      changed = true
+    }
+  }
+
+  if (ws.lastDatabase && !currentSet.has(ws.lastDatabase)) {
+    ws.lastDatabase = currentDbKeys[0] ?? ''
+    changed = true
+  }
+
+  if (changed) {
+    saveWorkspace(ws)
+  }
+}
 
 function onAddDbKey() {
   addingDbKey.value = true
@@ -476,7 +525,16 @@ function cancelAddDbKey() {
 }
 
 function removeDbKey(idx: number) {
+  const removedKey = form.value.databases[idx]?.key
   form.value.databases.splice(idx, 1)
+  if (!removedKey) return
+
+  delete databaseRenameMap.value[removedKey]
+  for (const [oldKey, newKey] of Object.entries(databaseRenameMap.value)) {
+    if (newKey === removedKey) {
+      delete databaseRenameMap.value[oldKey]
+    }
+  }
 }
 
 function restoreDefaultDb() {
@@ -494,8 +552,12 @@ function startEditDbKey(idx: number, row: DbEntry) {
 
 function confirmEditDbKey(idx: number) {
   const val = editingDbKeyVal.value.trim()
+  const oldKey = form.value.databases[idx]?.key
   if (val && !form.value.databases.some((d, i) => d.key === val && i !== idx)) {
     form.value.databases[idx].key = val
+    if (oldKey && oldKey !== val) {
+      databaseRenameMap.value[oldKey] = val
+    }
   }
   editingDbKeyIdx.value = -1
   editingDbKeyVal.value = ''
