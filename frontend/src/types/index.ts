@@ -127,7 +127,8 @@ export interface DataSourceState {
 export interface WorkspaceData {
   lastDatabase: string
   perDatabase: Record<string, {
-    decisions: { managedEntries?: Record<string, unknown>; branchDecisions?: Record<string, string> }
+    managedEntries?: Record<string, unknown>
+    branchDecisions?: Record<string, string>
     lastComputeSummary: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
     selectedRulePaths?: string[]
   }>

@@ -163,7 +163,7 @@ describe('ConflictsPage', () => {
     const saveCall = mockSetItem.mock.calls.find(call => call[0].includes('workspace'))
     expect(saveCall).toBeTruthy()
     const savedData = JSON.parse(saveCall![1])
-    expect(savedData.perDatabase.default.decisions.branchDecisions).toEqual({ '/a.png': '/m1/a.png' })
+    expect(savedData.perDatabase.default.branchDecisions).toEqual({ '/a.png': '/m1/a.png' })
 
     mockSetItem.mockRestore()
     mockGetItem.mockRestore()

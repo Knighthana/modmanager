@@ -137,8 +137,8 @@ class TestGenerateDatabase(TestCase):
                 with self.assertRaises(ValueError):
                     generate_database("auto", database_name="nonexistent")
 
-    def test_generate_database_cache_hit(self) -> None:
-        """A valid cache file is loaded instead of scanning."""
+    def test_generate_database_always_rescans(self) -> None:
+        """generate_database() always rescans — no cache hit (cache is for /read, not /generate)."""
         with tempfile.TemporaryDirectory() as td:
             db_path = str(Path(td) / "db.json")
             fake_config = self._make_user_config_override(td, db_path)
@@ -157,7 +157,10 @@ class TestGenerateDatabase(TestCase):
 
             with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
                 result = generate_database("auto")
-            self.assertEqual(result, cache_data)
+            # Always returns fresh scan result, not cache
+            self.assertIn("steamlib", result)
+            self.assertIn("game", result)
+            self.assertIn("mod", result)
 
     def test_generate_database_cache_empty_file(self) -> None:
         """An empty cache file should be ignored (fall through to scan)."""

@@ -129,7 +129,7 @@ export const STR = {
 
   // ── DataSourcePage ────────────────────────────────────────────────────
   dataSourcePage: {
-    title: '📡 数据源',
+    title: '📡 数据来源',
     discoveryCard: '数据源发现',
     discoveryMode: '发现模式',
     modeAll: '🌐 全部（自动 + 手动）',

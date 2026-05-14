@@ -90,23 +90,28 @@
 ```
 ┌ 数据源 ────────────────────────────────────────────────────┐
 │                                                              │
+│  目标数据库: [default ▼]                                      │
 │  ○ 全部   ○ 仅自动   ○ 仅手动                                │
 │                                                              │
-│  [🔍 扫描 Steam 库]                                          │
+│  [🔍 扫描 Steam 库]  [✅ 确认并进入规则概览]                    │
 │                                                              │
-│  ▶ 📊 库摘要表（可见性 ✅/❌ toggle）                          │
-│  ▶ 📋 游戏表（appid / 名称 / 路径 / MOD 数 / 所属库）          │
-│  ▶ 📦 MOD 表（mixed_id / 路径 / 所属库 / 所属游戏）            │
+│  ▶ 📊 库摘要表（可见性 👀/🙈 toggle）                          │
+│  ▶ 📋 游戏表（appid / 名称 / MOD 数 / 所属库 / 路径）          │
+│  ▶ 📦 MOD 表（MODID / 名称 / 所属APPID / 所属库 / 路径）       │
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 **关键约束**：
 - DataSourcePage 仅展示扫描结果。重复条目客观展示，不做裁决。裁决在计算准备页完成。
-- 可见性筛选（库/游戏 toggle）为 UI 状态，通过 persistence.ts 持久化
-- "扫描 Steam 库"按钮 → `POST /api/database/generate` → 后端写 database.json → 返回纯数据
+- 可见性筛选（库/游戏 toggle，👀可见 / 🙈隐藏）为 UI 状态，通过 persistence.ts 持久化
+- "扫描 Steam 库"按钮 → `POST /api/database/generate` → 后端扫描并写入 database → 返回数据。**每次均重新扫描，不走缓存。**
+- "确认并进入规则概览"按钮：扫描结果存在时彩色可点击，否则灰色不可点击。点击后保存 database 并跳转。
+- ~~"保存当前选择"按钮已删除~~——扫描已顺带保存，无需独立保存按钮。
+- **database 下拉组件**：用户选择要操作的目标 database。选项来自 `user_config.databases`。选中值仅作为组件本地状态——不改 localStorage、不改后端文件。操作时作为 `database_name?` 参数传入请求。**DataSourcePage 上不显示"有历史决策"标签。**
 - 重复 appid/mixed_id 条目自然展示，无额外处理
-- **database 下拉组件**：用户选择要操作的目标 database。选项来自 `user_config.databases`。选中值仅作为组件本地状态——不改 localStorage、不改后端文件。操作时作为 `database_name?` 参数传入请求。
+- 游戏表列顺序：序号 → 可见性 → appid → 名称 → MOD数 → 所属库 → 路径
+- 点击游戏表的"所属库"→ 滚到库表对应行；点击 MOD 表的"所属APPID"→ 滚到游戏表对应行；点击游戏表的 MOD 数→ 滚到该游戏第一个 MOD 处
 
 ---
 
@@ -122,7 +127,7 @@
 ┌ 规则概览 ──────────────────────────────────────────────────────┐
 │                                                               │
 │  规则来源（来自 user_config）:                                  │
-│    /home/user/kmm_rules/          [前往设置页管理]              │
+│    /home/user/kmm_rules/          [前往设置面板管理]              │
 │                                                               │
 │  发现的规则文件:                                                │
 │  ☑ my_mods.kmmrule.json            [展开 ▾]                   │
@@ -141,7 +146,7 @@
 │  ☐ unused.kmmrule.json                                        │
 │                                                               │
 │  ──────────────────────────────────                          │
-│  [保存规则选择] → 聚合 → [进入计算准备]                          │
+│  [💾 保存规则选择]  [✅ 进入计算准备]                             │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -149,7 +154,8 @@
 - 页面自动展示 `user_config.rule_sources` 中发现的所有规则文件（无需手动扫描）
 - 每个 rule 可展开查看详情
 - 用户通过 checkbox 勾选/取消 rule
-- [保存规则选择] → `POST /api/rules/aggregate { paths: [已选文件路径] }`
+- [💾 保存规则选择] → `POST /api/rules/aggregate { paths: [已选文件路径] }` → 结果存 localStorage workspace.aggregatedRuleSet + selectedRulePaths
+- [✅ 进入计算准备]：聚合完成后亮起可点击（`savedCount !== null`），否则灰色不可点击
 
 **不展示**聚合后的冲突分析——留给计算准备页。
 

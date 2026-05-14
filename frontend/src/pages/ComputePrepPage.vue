@@ -338,7 +338,7 @@ async function loadData() {
   }
 
   // Restore decisions from workspace if available
-  const savedDecisions = ws.perDatabase?.[selectedDb]?.decisions
+  const savedDecisions = ws.perDatabase?.[selectedDb]
 
   // 5. Fetch affected entries
   try {
@@ -559,7 +559,7 @@ async function startCompute() {
           const w1 = loadWorkspace()
           w1.lastDatabase = dbName
           if (!w1.perDatabase[dbName]) {
-            w1.perDatabase[dbName] = { decisions: {}, lastComputeSummary: null }
+            w1.perDatabase[dbName] = { lastComputeSummary: null }
           }
           w1.perDatabase[dbName].lastComputeSummary = {
             trees_count: treesCount,
@@ -588,11 +588,9 @@ async function startCompute() {
     const w2 = loadWorkspace()
     w2.lastDatabase = selectedDb
     if (!w2.perDatabase[selectedDb]) {
-      w2.perDatabase[selectedDb] = { decisions: {}, lastComputeSummary: null }
+      w2.perDatabase[selectedDb] = { lastComputeSummary: null }
     }
-    w2.perDatabase[selectedDb].decisions = {
-      managedEntries: managedEntries,
-    }
+    w2.perDatabase[selectedDb].managedEntries = managedEntries
     saveWorkspace(w2)
   } catch {
     computeMessage.value = '网络错误：计算请求失败'
@@ -611,7 +609,6 @@ function viewResults() {
 
 <style scoped>
 .compute-prep-page {
-  max-width: 1200px;
   margin: 0 auto;
   padding: 16px 24px;
 }

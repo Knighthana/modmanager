@@ -98,8 +98,8 @@ async function onConfirmDecisions() {
     const ws = pers.load<WorkspaceData>('workspace') || {} as WorkspaceData
     const db = ws.lastDatabase || 'default'
     if (!ws.perDatabase) ws.perDatabase = {}
-    if (!ws.perDatabase[db]) ws.perDatabase[db] = { decisions: {}, lastComputeSummary: null }
-    ws.perDatabase[db].decisions!.branchDecisions = { ...store.branchDecisions }
+    if (!ws.perDatabase[db]) ws.perDatabase[db] = { lastComputeSummary: null }
+    ws.perDatabase[db].branchDecisions = { ...store.branchDecisions }
     pers.save('workspace', ws)
     ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
     ElMessage.error(STR.conflictsPage.saveDecisionFailed)

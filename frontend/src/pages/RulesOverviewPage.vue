@@ -1,6 +1,6 @@
 <template>
   <div class="rules-overview-page gui-page">
-    <h2>规则概览</h2>
+    <h2>📋 规则概览</h2>
 
     <!-- 规则来源 -->
     <el-card shadow="never" class="section-card">
@@ -17,7 +17,7 @@
         </div>
         <div class="source-hint">
           <span class="hint-text">规则来源来自 user_config，可在设置页中管理。</span>
-          <el-button size="small" text @click="$router.push('/settings')">前往设置页管理</el-button>
+          <el-button size="small" type="primary" plain @click="$router.push('/settings')">前往设置面板管理</el-button>
         </div>
       </template>
     </el-card>
@@ -128,7 +128,15 @@
         :disabled="selectedCount === 0"
         @click="saveSelection"
       >
-        保存规则选择
+        💾 保存规则选择
+      </el-button>
+      <el-button
+        type="success"
+        size="large"
+        :disabled="savedCount === null"
+        @click="$router.push('/compute-prep')"
+      >
+        ✅ 进入计算准备
       </el-button>
 
       <transition name="el-fade-in">
@@ -139,7 +147,6 @@
             :closable="false"
             show-icon
           />
-          <router-link to="/compute-prep" class="next-link">[进入计算准备]</router-link>
         </div>
       </transition>
     </div>
@@ -372,7 +379,7 @@ async function saveSelection() {
       ws.aggregatedRuleHash = ws.aggregatedRuleMeta.aggregated_hash
       // Also store selectedRulePaths per-database for database-specific access
       const dbName = ws.lastDatabase || 'default'
-      if (!ws.perDatabase[dbName]) ws.perDatabase[dbName] = { decisions: {}, lastComputeSummary: null }
+      if (!ws.perDatabase[dbName]) ws.perDatabase[dbName] = { lastComputeSummary: null }
       ws.perDatabase[dbName].selectedRulePaths = selectedPaths
       saveWorkspace(ws)
     }
@@ -399,7 +406,6 @@ function formatAuthors(authors: Author[]): string {
 
 <style scoped>
 .rules-overview-page {
-  max-width: 960px;
   margin: 0 auto;
   padding: 16px 24px;
 }

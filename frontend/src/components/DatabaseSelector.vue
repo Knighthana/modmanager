@@ -3,7 +3,7 @@
     <el-select v-model="selectedDatabase" placeholder="选择 database" style="width: 220px;">
       <el-option v-for="opt in options" :key="opt.value" :label="opt.label" :value="opt.value" />
     </el-select>
-    <el-tag v-if="hasDecisions" size="small" type="warning" effect="plain">有历史决策</el-tag>
+    <el-tag v-if="showDecisionsTag && hasDecisions" size="small" type="warning" effect="plain">有历史决策</el-tag>
   </div>
 </template>
 
@@ -11,6 +11,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { apiPost } from '../api/client'
 import { loadWorkspace, saveWorkspace } from '../utils/persistence'
+
+withDefaults(defineProps<{ showDecisionsTag?: boolean }>(), { showDecisionsTag: true })
 
 interface DatabaseOption {
   label: string
@@ -50,7 +52,7 @@ onMounted(async () => {
 function checkDecisions() {
   const ws = loadWorkspace()
   const perDb = ws.perDatabase?.[selectedDatabase.value]
-  hasDecisions.value = !!(perDb?.decisions && Object.keys(perDb.decisions).length > 0)
+  hasDecisions.value = !!(perDb?.managedEntries || perDb?.branchDecisions)
 }
 
 watch(selectedDatabase, () => {

@@ -84,8 +84,8 @@
             </div>
           </div>
         </el-form-item>
-        <el-form-item label="目标 Database">
-          <DatabaseSelector ref="databaseSelectorRef" />
+        <el-form-item label="目标数据库">
+          <DatabaseSelector ref="databaseSelectorRef" :showDecisionsTag="false" />
         </el-form-item>
         <el-form-item>
           <el-button
@@ -95,6 +95,14 @@
             @click="onScan"
           >
             {{ store.isScanning ? STR.dataSourcePage.scanning : STR.dataSourcePage.scanBtn }}
+          </el-button>
+          <el-button
+            type="primary"
+            size="default"
+            :disabled="!store.lastResult"
+            @click="onConfirm"
+          >
+            {{ STR.dataSourcePage.confirmToRulesOverview }}
           </el-button>
           <span v-if="isDiscoverDisabled" style="margin-left: 8px; font-size: 12px; color: #999;">
             {{ STR.dataSourcePage.manualPathRequired }}
@@ -110,7 +118,7 @@
         <template #header>
           <span>{{ STR.dataSourcePage.libSummary(store.libraries.length) }}</span>
         </template>
-        <el-table :data="store.libraries" border stripe size="small">
+        <el-table :data="store.libraries" border stripe size="small" ref="libTableRef">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
           <el-table-column :label="STR.dataSourcePage.colVis" width="70">
             <template #default="{ row }: { row: LibraryRow }">
@@ -120,7 +128,7 @@
                 type="success"
                 @click="store.setLibraryVisibility(row.index, false)"
               >
-                ✅
+                👀
               </el-button>
               <el-button
                 v-else
@@ -128,7 +136,7 @@
                 type="warning"
                 @click="store.setLibraryVisibility(row.index, true)"
               >
-                ❌
+                🙈
               </el-button>
             </template>
           </el-table-column>
@@ -152,7 +160,7 @@
         <template #header>
           <span>{{ STR.dataSourcePage.gameTable(store.filteredGames.length) }}</span>
         </template>
-        <el-table :data="store.filteredGames" border stripe size="small">
+        <el-table :data="store.filteredGames" border stripe size="small" ref="gameTableRef">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
           <el-table-column :label="STR.dataSourcePage.colVis" width="70">
             <template #default="{ row }: { row: GameRow }">
@@ -162,7 +170,7 @@
                 type="success"
                 @click="store.setGameVisibility(row.index, false)"
               >
-                ✅
+                👀
               </el-button>
               <el-button
                 v-else
@@ -170,17 +178,12 @@
                 type="warning"
                 @click="store.setGameVisibility(row.index, true)"
               >
-                ❌
+                🙈
               </el-button>
             </template>
           </el-table-column>
           <el-table-column :label="STR.dataSourcePage.colAppid" width="90" prop="appid" />
           <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
-          <el-table-column :label="STR.dataSourcePage.colPath" min-width="200" class-name="horizontal-cell-scroll">
-            <template #default="{ row }: { row: GameRow }">
-              <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.basepath) }}</div>
-            </template>
-          </el-table-column>
           <el-table-column :label="STR.dataSourcePage.colModCount" width="80">
             <template #default="{ row }: { row: GameRow }">
               <el-button
@@ -203,6 +206,11 @@
               </el-button>
             </template>
           </el-table-column>
+          <el-table-column :label="STR.dataSourcePage.colPath" min-width="200" class-name="horizontal-cell-scroll">
+            <template #default="{ row }: { row: GameRow }">
+              <div class="horizontal-cell-scroll">{{ ensureTrailingSlash(row.basepath) }}</div>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -211,7 +219,7 @@
         <template #header>
           <span>{{ STR.dataSourcePage.modTable(store.filteredMods.length) }}</span>
         </template>
-        <el-table :data="store.filteredMods" border stripe size="small">
+        <el-table :data="store.filteredMods" border stripe size="small" ref="modTableRef">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
           <el-table-column :label="STR.dataSourcePage.colModId" width="120" prop="modid" show-overflow-tooltip />
           <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
@@ -296,27 +304,6 @@
       </el-alert>
     </div>
 
-    <!-- 底部按钮 -->
-    <div v-if="store.lastResult" style="margin-bottom: 16px;">
-      <el-button
-        type="success"
-        size="large"
-        :loading="isSaving"
-        :disabled="isSaving"
-        @click="onSave"
-      >
-        {{ STR.dataSourcePage.saveCurrentSelection }}
-      </el-button>
-      <el-button
-        type="primary"
-        size="large"
-        :loading="isSaving"
-        :disabled="isSaving"
-        @click="onConfirm"
-      >
-        {{ STR.dataSourcePage.confirmToRulesOverview }}
-      </el-button>
-    </div>
   </div>
 </template>
 
@@ -333,7 +320,6 @@ import { STR } from '../locales/zh-CN'
 import type { DiscoverMode, LibraryRow, GameRow, ModRow } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription, extractCode } from '../utils/errorCodes'
-import { ElMessage } from 'element-plus'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 const pers = createPersistence()
@@ -343,6 +329,9 @@ const forestStore = useForestStore()
 const router = useRouter()
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
+const libTableRef = ref<any>(null)
+const gameTableRef = ref<any>(null)
+const modTableRef = ref<any>(null)
 
 // ── manual path add state ──
 const newManualPath = ref('')
@@ -477,14 +466,7 @@ async function doSave(): Promise<boolean> {
 }
 
 // ── save only (no navigation) ──
-async function onSave() {
-  const ok = await doSave()
-  if (ok) {
-    ElMessage.success('已保存')
-  }
-}
-
-// ── save & navigate to rules overview ──
+// ── confirm & navigate to rules overview ──
 async function onConfirm() {
   const ok = await doSave()
   if (ok) {
@@ -596,41 +578,31 @@ function removeManualPath(idx: number) {
 }
 
 function scrollToLibrary(libraryIndex: number) {
-  // Find the library row's DOM element in the library table
-  const rows = document.querySelectorAll('.el-table__body-wrapper tbody tr')
-  // The library table is the first el-table on the page
-  const tables = document.querySelectorAll('.el-table')
-  if (tables.length > 0) {
-    const libTableRows = tables[0].querySelectorAll('.el-table__body-wrapper tbody tr')
-    const targetRow = libTableRows[libraryIndex]
-    scrollintotabitem(targetRow as HTMLElement | null)
-  }
+  const table = libTableRef.value
+  if (!table) return
+  const rows = (table.$el as HTMLElement).querySelectorAll('.el-table__body-wrapper tbody tr')
+  const targetRow = rows[libraryIndex] as HTMLElement | undefined
+  scrollintotabitem(targetRow ?? null)
 }
 
 function scrollToGame(gameIndex: number) {
-  // The game table is the second el-table
-  const tables = document.querySelectorAll('.el-table')
-  if (tables.length > 1) {
-    const gameTableRows = tables[1].querySelectorAll('.el-table__body-wrapper tbody tr')
-    const targetRow = gameTableRows[gameIndex]
-    scrollintotabitem(targetRow as HTMLElement | null)
-  }
+  const table = gameTableRef.value
+  if (!table) return
+  const rows = (table.$el as HTMLElement).querySelectorAll('.el-table__body-wrapper tbody tr')
+  const targetRow = rows[gameIndex] as HTMLElement | undefined
+  scrollintotabitem(targetRow ?? null)
 }
 
 function scrollToFirstMod(game: GameRow) {
-  // Find the first MOD for this game
   const firstMod = store.mods.find(
     m => m.appid === game.appid && m.gameIndex === game.index,
   )
   if (!firstMod) return
-
-  // The MOD table is the third el-table
-  const tables = document.querySelectorAll('.el-table')
-  if (tables.length > 2) {
-    const modTableRows = tables[2].querySelectorAll('.el-table__body-wrapper tbody tr')
-    const targetRow = modTableRows[firstMod.index]
-    scrollintotabitem(targetRow as HTMLElement | null)
-  }
+  const table = modTableRef.value
+  if (!table) return
+  const rows = (table.$el as HTMLElement).querySelectorAll('.el-table__body-wrapper tbody tr')
+  const targetRow = rows[firstMod.index] as HTMLElement | undefined
+  scrollintotabitem(targetRow ?? null)
 }
 </script>
 

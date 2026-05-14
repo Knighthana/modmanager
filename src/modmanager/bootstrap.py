@@ -189,18 +189,6 @@ def generate_database(
             f"database '{database_name}' not found in user_config.databases"
         )
 
-    # ── Cache hit (skip in manual mode) ───────────────────────────────────
-    db_file = Path(db_path)
-    if mode != "manual":
-        if db_file.exists() and db_file.stat().st_size > 0:
-            try:
-                cached = load_json_file(db_path)
-                if isinstance(cached, dict) and isinstance(cached.get("steamlib"), list):
-                    return cached
-            except Exception:
-                # Invalid cache — fall through to regenerate
-                pass
-
     # ── Auto-detect working path style from platform ───────────────────────
     working_pathstyle = "windows" if sys.platform == "win32" else "linux"
 
@@ -267,8 +255,8 @@ def generate_database(
         if on_progress is not None:
             on_progress("scan", 1, 1, "Combined scan complete")
 
-    # ── Write cache ───────────────────────────────────────────────────────
-    db_file.parent.mkdir(parents=True, exist_ok=True)
+    # ── Write result ───────────────────────────────────────────────────────
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     write_json_file(db_path, database)
 
     return database
