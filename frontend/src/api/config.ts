@@ -38,4 +38,9 @@ export const API_ENDPOINTS = {
   RULES_LOAD_AGGREGATED: `${API_BASE}/rules/load-aggregated`,
   BACKUPS_LIST: `${API_BASE}/backups/list`,
   BACKUPS_INSPECT: `${API_BASE}/backups/inspect`,
+  // Workspace
+  WORKSPACE_LIST: `${API_BASE}/workspace/list`,
+  WORKSPACE_CREATE: `${API_BASE}/workspace/create`,
+  WORKSPACE_SVG: (id: string) => `${API_BASE}/workspace/${id}/forest/svg`,
+  WORKSPACE_MAPPING: (id: string) => `${API_BASE}/workspace/${id}/forest/mapping`,
 } as const

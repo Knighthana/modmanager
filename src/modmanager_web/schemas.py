@@ -166,3 +166,20 @@ class RestoreRequest(BaseModel):
 
     backup_dir: str
     target_files: list[str] | None = None
+
+
+# ── Workspace endpoints ────────────────────────────────────────────────────
+
+
+class CreateWorkspaceRequest(BaseModel):
+    """Request body for ``POST /api/workspace/create``."""
+
+    name: str
+    database_name: str
+
+
+class SaveDecisionsRequest(BaseModel):
+    """Request body for ``POST /api/workspace/{id}/decisions/save``."""
+
+    managed_entries: dict[str, dict[str, list[str]]] | None = None
+    branch_decisions: dict[str, str] | None = None

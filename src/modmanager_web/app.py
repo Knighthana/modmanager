@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .routes import config, database, pipeline, rules, backups
+from .routes import config, database, pipeline, rules, backups, workspace
 
 
 def create_app() -> FastAPI:
@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
     app.include_router(rules.router, prefix="/api/rules", tags=["rules"])
     app.include_router(backups.router, prefix="/api/backups", tags=["backups"])
+    app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"])
 
     # ── Static file mount + SPA fallback (only when build artefact exists) ──
     if prod_build:

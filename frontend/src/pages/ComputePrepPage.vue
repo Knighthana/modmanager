@@ -5,7 +5,7 @@
     <template v-if="noRulesSelected">
       <el-card shadow="never">
         <el-empty description="请先在规则概览选择规则">
-          <el-button size="small" text @click="$router.push('/rules-overview')">前往规则概览</el-button>
+          <el-button size="small" text @click="$router.push(`/workspace/${$route.params.workspaceId}/rules`)">前往规则概览</el-button>
         </el-empty>
       </el-card>
     </template>
@@ -37,6 +37,14 @@
           </el-button>
           <el-button
             type="success"
+            :loading="computing"
+            :disabled="computing"
+            @click="startComputeAndView"
+          >
+            🚀 计算并查看
+          </el-button>
+          <el-button
+            type="info"
             :disabled="!canViewResults"
             @click="viewResults"
           >
@@ -161,17 +169,19 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
 import { streamSse } from '../api/sse'
-import { loadWorkspace, saveWorkspace } from '../utils/persistence'
+import { saveCurrentWorkspaceId, loadWorkspace, saveWorkspace } from '../utils/persistence'
 import { hashRuleSet } from '../utils/hash'
 import { useForestStore } from '../stores/forest'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 // ── Router ────────────────────────────────────────────────────────────────
 const router = useRouter()
+const route = useRoute()
+const workspaceId = computed(() => route.params.workspaceId as string)
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 
@@ -303,6 +313,9 @@ function modRowClass({ row }: { row: AffectedMod }): string {
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  if (workspaceId.value) {
+    saveCurrentWorkspaceId(workspaceId.value)
+  }
   await loadData()
 })
 
@@ -414,27 +427,33 @@ async function loadData() {
       }
     }
 
-    // Restore checkbox state from workspace managedEntries
-    const savedManaged = ws.perDatabase?.[selectedDb]?.managedEntries
-    if (savedManaged) {
-      const gameKept = (savedManaged as Record<string, unknown>).game as Record<string, string[]> | undefined
-      const modKept = (savedManaged as Record<string, unknown>).mod as Record<string, string[]> | undefined
-      if (gameKept) {
-        for (const g of games.value) {
-          const kept = gameKept[g.appid]
-          if (kept !== undefined) {
-            g._checked = kept.includes(g.basepath)
+    // Load decisions from workspace API and restore checkbox state
+    try {
+      const decisionsResp = await apiPost<{ managed_entries: { game: Record<string, string[]>; mod: Record<string, string[]> } }>(
+        `/workspace/${workspaceId.value}/decisions/load`,
+        { database_name: selectedDb }
+      )
+      if (decisionsResp.ok && decisionsResp.data?.managed_entries) {
+        const { game: gameKept, mod: modKept } = decisionsResp.data.managed_entries
+        if (gameKept) {
+          for (const g of games.value) {
+            const kept = gameKept[g.appid]
+            if (kept !== undefined) {
+              g._checked = kept.includes(g.basepath)
+            }
+          }
+        }
+        if (modKept) {
+          for (const m of mods.value) {
+            const kept = modKept[m.mixed_id]
+            if (kept !== undefined) {
+              m._checked = kept.includes(m.path)
+            }
           }
         }
       }
-      if (modKept) {
-        for (const m of mods.value) {
-          const kept = modKept[m.mixed_id]
-          if (kept !== undefined) {
-            m._checked = kept.includes(m.path)
-          }
-        }
-      }
+    } catch {
+      // Decisions API not available — all entries remain checked (default)
     }
 
     // Check if there are existing results to enable "View Results" button
@@ -566,7 +585,11 @@ function buildManagedEntries(): { game: Record<string, string[]>; mod: Record<st
 
 // ── Compute action ────────────────────────────────────────────────────────
 
-async function startCompute() {
+/**
+ * Core compute logic shared by "开始计算" and "计算并查看".
+ * Returns true on success.
+ */
+async function doCompute(): Promise<boolean> {
   computing.value = true
   computeMessage.value = ''
   computeSuccess.value = false
@@ -588,11 +611,12 @@ async function startCompute() {
     computeMessage.value = '缺少聚合规则，请返回规则概览页重新聚合后再计算'
     computeSuccess.value = false
     computing.value = false
-    return
+    return false
   }
 
   try {
-    await streamSse('/pipeline/compute', {
+    const wid = workspaceId.value
+    await streamSse(`/workspace/${wid}/pipeline/compute`, {
       database_name: selectedDb,
       aggregated_rule_set: ruleSet || undefined,
       managed_entries: managedEntries,
@@ -624,28 +648,6 @@ async function startCompute() {
           // Populate forest store for visualization
           forestStore.trees = (result.data.trees as any[]) || []
           forestStore.finalMapping = (result.data.final_mapping as any[]) || []
-
-          // Save results to workspace
-          const dbName = databaseSelectorRef.value?.selectedDatabase ?? 'default'
-          const w1 = loadWorkspace()
-          w1.lastDatabase = dbName
-          if (!w1.perDatabase[dbName]) {
-            w1.perDatabase[dbName] = { lastComputeSummary: null }
-          }
-          w1.perDatabase[dbName].lastComputeSummary = {
-            trees_count: treesCount,
-            mapping_count: mappingCount,
-            warnings: result.data.warnings ?? [],
-            errors: result.data.errors ?? [],
-            stats: result.data.stats ?? {},
-            inputs_hash: hashRuleSet(ruleSet),
-            timestamp: new Date().toISOString(),
-          }
-          if (w1.aggregatedRuleMeta) {
-            w1.aggregatedRuleMeta.aggregated_hash = hashRuleSet(ruleSet)
-            w1.aggregatedRuleHash = w1.aggregatedRuleMeta.aggregated_hash
-          }
-          saveWorkspace(w1)
         }
         computing.value = false
       },
@@ -655,26 +657,42 @@ async function startCompute() {
       },
     })
 
-    // Save decisions to workspace
-    const w2 = loadWorkspace()
-    w2.lastDatabase = selectedDb
-    if (!w2.perDatabase[selectedDb]) {
-      w2.perDatabase[selectedDb] = { lastComputeSummary: null }
-    }
-    w2.perDatabase[selectedDb].managedEntries = managedEntries
-    saveWorkspace(w2)
+    // Save decisions via workspace API
+    await apiPost(`/workspace/${wid}/decisions/save`, {
+      managed_entries: managedEntries,
+      database_name: selectedDb,
+    })
+
+    return true
   } catch {
     computeMessage.value = '网络错误：计算请求失败'
     computeSuccess.value = false
+    return false
   } finally {
     computing.value = false
+  }
+}
+
+/** "▶️ 开始计算" — compute then navigate to workspace list */
+async function startCompute() {
+  const ok = await doCompute()
+  if (ok) {
+    router.push('/')
+  }
+}
+
+/** "🚀 计算并查看" — compute then navigate to forest visualization */
+async function startComputeAndView() {
+  const ok = await doCompute()
+  if (ok) {
+    router.push(`/workspace/${workspaceId.value}/forest`)
   }
 }
 
 // ── View results ──────────────────────────────────────────────────────────
 
 function viewResults() {
-  router.push('/forest')
+  router.push(`/workspace/${workspaceId.value}/forest`)
 }
 </script>
 

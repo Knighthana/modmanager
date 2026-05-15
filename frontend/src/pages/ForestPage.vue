@@ -5,7 +5,7 @@
         <el-button size="small" @click="resetView">🔄 重置视图</el-button>
         <el-button size="small" @click="toggleMinimap">📐 小地图</el-button>
         <el-switch
-          v-if="hasResult"
+          v-if="store.trees.length > 0 || store.errors.length > 0"
           v-model="showBranchingOnly"
           size="small"
           active-text="仅分岔"
@@ -16,11 +16,6 @@
       <div class="forest-actions">
         <el-button size="small" @click="showDrawer = !showDrawer">📊 摘要</el-button>
       </div>
-    </div>
-
-    <!-- 上次计算结果 -->
-    <div v-if="lastResultSummary && !hasResult" style="margin-bottom:12px;font-size:13px;color:var(--el-text-color-secondary);">
-      上次计算结果：{{ lastResultSummary.treesCount }} 棵树，{{ lastResultSummary.mappingCount }} 个映射。在计算准备页重新计算以查看森林图。
     </div>
 
     <!-- 错误 / 警告区 -->
@@ -53,55 +48,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
 import ForestViewer from '../components/ForestViewer.vue'
 import type { TreeNode } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription } from '../utils/errorCodes'
-import { loadWorkspace } from '../utils/persistence'
+import { saveCurrentWorkspaceId } from '../utils/persistence'
 import { STR } from '../locales/zh-CN'
 
 const store = useForestStore()
+const route = useRoute()
 
-// Last result summary restored from localStorage
-const lastResultSummary = ref<{ treesCount: number; mappingCount: number } | null>(null)
+onMounted(async () => {
+  const workspaceId = route.params.workspaceId as string
+  if (workspaceId) {
+    saveCurrentWorkspaceId(workspaceId)
+  }
 
-onMounted(() => {
-  const ws = loadWorkspace()
-  if (ws.lastDatabase) {
-    const perDb = ws.perDatabase[ws.lastDatabase]
-    if (perDb?.lastComputeSummary) {
-      lastResultSummary.value = {
-        treesCount: perDb.lastComputeSummary.trees_count,
-        mappingCount: perDb.lastComputeSummary.mapping_count,
-      }
-      const resultTimestamp = perDb.lastComputeSummary.timestamp
-      if (resultTimestamp) {
-        const resultAge = Date.now() - new Date(resultTimestamp).getTime()
-        const isStale = resultAge > 24 * 60 * 60 * 1000
-        if (isStale) {
-          const hoursOld = Math.floor(resultAge / (60 * 60 * 1000))
-          ElMessage.warning(`计算结果已 ${hoursOld} 小时未更新，建议重新计算以确保结果最新`)
+  // Fetch SVG from workspace API (returns SVG text, Content-Type: image/svg+xml)
+  try {
+    const svgResp = await fetch(`/api/workspace/${workspaceId}/forest/svg`)
+    if (svgResp.ok) {
+      store.svgContent = await svgResp.text()
+    }
+  } catch {
+    // SVG not available — user will see empty state
+  }
+
+  // Fetch mapping from workspace API (returns JSON)
+  try {
+    const mappingResp = await fetch(`/api/workspace/${workspaceId}/forest/mapping`)
+    if (mappingResp.ok) {
+      const mappingData = await mappingResp.json()
+      if (mappingData) {
+        if (Array.isArray(mappingData.trees)) {
+          store.trees = mappingData.trees
+        }
+        if (Array.isArray(mappingData.final_mapping)) {
+          store.finalMapping = mappingData.final_mapping
         }
       }
     }
-  }
-  // Fetch visualization if trees already loaded (e.g. navigated from ComputePrepPage)
-  if (store.trees.length > 0) {
-    fetchVisualizationWithFilter()
+  } catch {
+    // Mapping not available
   }
 })
-
-// Watch trees changes (e.g. after compute completes)
-watch(() => store.trees.length, () => {
-  if (store.trees.length > 0) {
-    fetchVisualizationWithFilter()
-  }
-})
-
-const hasResult = computed(() => store.trees.length > 0 || store.errors.length > 0)
 
 const activeCollapseNames = computed(() => {
   const names: string[] = []
@@ -129,9 +122,6 @@ const hasBranchingTrees = computed(() => store.trees.some(t => t.resolved_state 
 
 const emptyMessage = computed(() => {
   if (store.trees.length === 0) {
-    if (lastResultSummary.value) {
-      return `上次计算结果：${lastResultSummary.value.treesCount} 棵树，${lastResultSummary.value.mappingCount} 个映射。请在计算准备页点击"▶️ 开始计算"。`
-    }
     return STR.forestPage.emptyNoForest
   }
   if (showBranchingOnly.value) {
@@ -147,21 +137,7 @@ function onMessageClick(msg: string, e: MouseEvent) {
     }
 }
 
-async function fetchVisualizationWithFilter() {
-  const filtered = getFilteredTrees()
-  if (filtered.length === 0) {
-    store.svgContent = ''
-    return
-  }
-  await store.fetchVisualization(filtered)
-}
 
-// 切换展示模式时自动重新请求可视化
-watch(showBranchingOnly, () => {
-  if (store.trees.length > 0) {
-    fetchVisualizationWithFilter()
-  }
-})
 </script>
 
 <style scoped>

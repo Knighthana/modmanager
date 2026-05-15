@@ -114,48 +114,30 @@ export interface DataSourceState {
   lastResult: Record<string, unknown> | null
 }
 
-// ── Workspace persistence types ─────────────────────────────────────────────
+// ── Workspace types ──────────────────────────────────────────────────────────
+
+/** Workspace metadata returned by GET /api/workspace/list or /meta */
+export interface WorkspaceMeta {
+  workspace_id: string
+  name: string
+  database_name: string
+  created_at: string
+  updated_at: string
+  app_version: string
+}
+
+/** Decisions structure (managed_entries + branch_decisions) */
+export interface WorkspaceDecisions {
+  managed_entries: Record<string, Record<string, string[]>>
+  branch_decisions: Record<string, string>
+}
 
 /**
- * Aggregated workspace data stored under a single ``modmanager:workspace`` key.
- *
- * Replaces the previous scattered keys: lastDatabase, decisions:*, results:*,
- * aggregatedRuleSet.
- *
- * @see DESIGN_GUI_WORKSPACE.md
+ * @deprecated Legacy workspace data type — replaced by WorkspaceMeta + backend API.
+ * Kept for backward compatibility during migration.
  */
 export interface WorkspaceData {
   lastDatabase: string
-  perDatabase: Record<string, {
-    managedEntries?: Record<string, unknown>
-    branchDecisions?: Record<string, string>
-    lastComputeSummary: { trees_count: number; mapping_count: number; warnings: string[]; errors: string[]; stats: Record<string, unknown>; inputs_hash: string; timestamp: string } | null
-    selectedRulePaths?: string[]
-  }>
-  // Legacy fields kept for compatibility with older persisted payloads.
-  aggregatedRuleSet?: Record<string, unknown> | null
-  aggregatedRuleHash?: string
-  aggregatedRuleMeta?: {
-    output_path: string
-    aggregated_hash: string
-    aggregated_at: string
-    selected_rule_paths: string[]
-  } | null
-  /** UI state merged into workspace (see TODO-uiState-workspace.md). Optional for backward compat. */
-  uiState?: {
-    sidebarCollapsed?: boolean
-    datasource?: {
-      discoveryMode?: string
-      manualPaths?: string[]
-      greedyParsing?: boolean
-      libraryVisibility?: Record<number, boolean>
-      gameVisibility?: Record<number, boolean>
-    }
-    computePrep?: {
-      libraryVisibility?: Record<number, boolean>
-    }
-    forest?: {
-      statusBarExpanded?: boolean
-    }
-  }
+  perDatabase: Record<string, unknown>
+  uiState?: Record<string, unknown>
 }

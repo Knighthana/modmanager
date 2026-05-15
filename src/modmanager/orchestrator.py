@@ -7,17 +7,24 @@ Provides:
   - ``backup()``   — differential backup of mapped files.
   - ``apply()``    — apply the final mapping to disk.
   - ``run()``      — full pipeline (aggregate → compute → backup → apply).
+  - ``compute_ws()`` — workspace-aware compute (reads rules/decisions from workspace).
+  - ``run_ws()``     — workspace-aware full pipeline.
 """
 
 from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 from .backup_dir_builder import build_backup_dir
 from .backup_ops import apply_final_mapping, run_differential_backup
+from .bootstrap import discover_user_config
+from .core.workspacemanager import WorkspaceManager
 from .engine import compute_mapping
+from .iojson import load_json_file
+from .path_resolver import expand_path
 
 
 __all__ = [
@@ -27,6 +34,8 @@ __all__ = [
     "backup",
     "apply",
     "run",
+    "compute_ws",
+    "run_ws",
 ]
 
 
@@ -395,6 +404,191 @@ def run(
         ok=not any(all_errors),
         errors=all_errors,
         warnings=all_warnings,
+        trees=compute_result.trees,
+        final_mapping=compute_result.final_mapping,
+        mapping_result=compute_result.mapping_result,
+        backup_result=backup_result,
+        apply_result=apply_result,
+        backup_dir=resolved_backup_dir,
+    )
+
+
+# ── Workspace-aware entry points ──────────────────────────────────────────
+
+
+def _get_workspace_manager(user_config: dict[str, Any] | None = None) -> WorkspaceManager:
+    """Resolve workspace root directory from user_config or default."""
+    cfg = user_config or {}
+    ws_dir = cfg.get("workspace_dir") or str(Path.home() / ".cache" / "kmm" / "workspace")
+    return WorkspaceManager(expand_path(ws_dir))
+
+
+def _resolve_database(database_name: str, user_config: dict[str, Any]) -> dict[str, Any]:
+    """Load a database dict from its name in user_config."""
+    databases = user_config.get("databases", {})
+    if database_name not in databases:
+        raise ValueError(f"database '{database_name}' not found in user_config.databases")
+    db_path = expand_path(databases[database_name]["path"])
+    return load_json_file(db_path)
+
+
+def compute_ws(
+    workspace_id: str,
+    *,
+    on_progress: ProgressCallback | None = None,
+) -> PipelineResult:
+    """Compute mapping in a workspace context.
+
+    Reads ``aggregated_rule.json`` and ``decisions.json`` from the
+    workspace, resolves the bound database, and computes the mapping.
+    Results (mapping + SVG + fingerprints) are written back to the
+    workspace directory.
+
+    Args:
+        workspace_id: Target workspace identifier.
+        on_progress: Optional progress callback.
+
+    Returns:
+        A ``PipelineResult``.  ``backup_result`` and ``apply_result`` are
+        always ``None`` from this function.
+    """
+    user_config = discover_user_config()
+    wm = _get_workspace_manager(user_config)
+
+    if not wm.exists(workspace_id):
+        return PipelineResult(
+            ok=False,
+            errors=[f"workspace '{workspace_id}' not found"],
+        )
+
+    # ── Load workspace context ────────────────────────────────────────
+    meta = wm.read_meta(workspace_id)
+    database_name = meta["database_name"]
+
+    if not wm.has_aggregated_rule(workspace_id):
+        return PipelineResult(
+            ok=False,
+            errors=["no aggregated rule set in workspace — aggregate rules first"],
+        )
+    aggregated_rule_set = wm.read_aggregated_rule(workspace_id)
+
+    decisions = (
+        wm.read_decisions(workspace_id) if wm.has_decisions(workspace_id) else {}
+    )
+
+    # ── Resolve and load database ─────────────────────────────────────
+    try:
+        database = _resolve_database(database_name, user_config)
+    except Exception as exc:
+        return PipelineResult(ok=False, errors=[str(exc)])
+
+    # ── Compute ───────────────────────────────────────────────────────
+    result = compute(
+        database=database,
+        aggregated_rule_set=aggregated_rule_set,
+        branch_decisions=decisions.get("branch_decisions"),
+        managed_entries=decisions.get("managed_entries"),
+        on_progress=on_progress,
+    )
+
+    if not result.ok:
+        return result
+
+    # ── Write results back to workspace ───────────────────────────────
+    wm.write_mapping(workspace_id, result.mapping_result)
+    wm.write_fingerprints(workspace_id, {})  # TODO: real fingerprints
+
+    # Generate and write SVG
+    if result.trees:
+        try:
+            from .forest_visual import visualize_payload
+            svg = visualize_payload({"trees": result.trees}, "svg")
+            wm.write_svg(workspace_id, svg)
+        except Exception:
+            pass  # SVG generation is non-critical
+
+    return result
+
+
+def run_ws(
+    workspace_id: str,
+    *,
+    backup_dir: str | None = None,
+    dry_run: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> PipelineResult:
+    """Execute the full pipeline in a workspace context.
+
+    Builds on ``compute_ws()`` and adds backup + apply phases.
+    Results are written back to the workspace directory.
+
+    Args:
+        workspace_id: Target workspace identifier.
+        backup_dir: Target backup directory.  ``None`` → auto-derived.
+        dry_run: When ``True`` skip actual file modifications.
+        on_progress: Optional progress callback.
+
+    Returns:
+        A ``PipelineResult`` with all intermediate results populated.
+    """
+    # ── Compute ───────────────────────────────────────────────────────
+    compute_result = compute_ws(workspace_id=workspace_id, on_progress=on_progress)
+
+    if not compute_result.ok:
+        return compute_result
+
+    if dry_run:
+        return compute_result
+
+    # ── Resolve backup dir ────────────────────────────────────────────
+    user_config = discover_user_config()
+    wm = _get_workspace_manager(user_config)
+    meta = wm.read_meta(workspace_id)
+    database = _resolve_database(meta["database_name"], user_config)
+
+    resolved_backup_dir = backup_dir
+    if resolved_backup_dir is None:
+        resolved_backup_dir = build_backup_dir(
+            compute_result.final_mapping,
+            database,
+            user_config,
+        )
+
+    # ── Backup ────────────────────────────────────────────────────────
+    backup_result = backup(
+        compute_result.mapping_result,
+        resolved_backup_dir,
+        on_progress=on_progress,
+    )
+
+    if not backup_result.get("ok"):
+        errors = list(compute_result.errors)
+        be = backup_result.get("errors", [])
+        errors.extend(be if isinstance(be, list) else [str(be)])
+        return PipelineResult(
+            ok=False,
+            errors=errors,
+            warnings=compute_result.warnings,
+            trees=compute_result.trees,
+            final_mapping=compute_result.final_mapping,
+            mapping_result=compute_result.mapping_result,
+            backup_result=backup_result,
+        )
+
+    # ── Apply ─────────────────────────────────────────────────────────
+    apply_result = apply(
+        compute_result.final_mapping,
+        resolved_backup_dir,
+        dry_run=dry_run,
+        on_progress=on_progress,
+    )
+
+    return PipelineResult(
+        ok=not any(
+            compute_result.errors
+        ),
+        errors=list(compute_result.errors),
+        warnings=list(compute_result.warnings),
         trees=compute_result.trees,
         final_mapping=compute_result.final_mapping,
         mapping_result=compute_result.mapping_result,

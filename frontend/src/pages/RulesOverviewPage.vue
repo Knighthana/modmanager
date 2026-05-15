@@ -150,7 +150,7 @@
       <el-button
         type="success"
         :disabled="savedCount === null"
-        @click="$router.push('/compute-prep')"
+        @click="$router.push(`/workspace/${$route.params.workspaceId}/compute`)"
       >
         ✅ 进入计算准备
       </el-button>
@@ -185,11 +185,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { apiPost } from '../api/client'
-import { loadWorkspace, saveWorkspace, simpleHash } from '../utils/persistence'
+import { saveCurrentWorkspaceId, loadWorkspace, saveWorkspace, simpleHash } from '../utils/persistence'
 import { useForestStore } from '../stores/forest'
+
+const route = useRoute()
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -294,6 +297,10 @@ const selectedCount = computed(() => ruleFiles.value.filter((f) => f.checked).le
 // ── Lifecycle ──────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  const workspaceId = route.params.workspaceId as string
+  if (workspaceId) {
+    saveCurrentWorkspaceId(workspaceId)
+  }
   await loadRuleSources()
   await scanRuleFiles()
   loadGameNames()
@@ -412,19 +419,13 @@ async function autoRestoreAggregated() {
 
   savedCount.value = currentPaths.length
 
-  // Restore aggregated result from backend file
+  // Restore aggregated result from workspace API
   try {
-    const configResp = await apiPost<Record<string, unknown>>('/config/discover', {})
-    if (configResp.ok && configResp.data) {
-      const uc = configResp.data as Record<string, unknown>
-      const path = (uc.aggregated_ruleset_output_path as string) || ''
-      if (path) {
-        const resp = await apiPost<Record<string, unknown>>('/rules/load-aggregated', { path })
-        if (resp.ok && resp.data) {
-          const store = useForestStore()
-          store.aggregatedRuleSet = resp.data as Record<string, unknown>
-        }
-      }
+    const workspaceId = route.params.workspaceId as string
+    const resp = await apiPost<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`, {})
+    if (resp.ok && resp.data) {
+      const store = useForestStore()
+      store.aggregatedRuleSet = resp.data as Record<string, unknown>
     }
   } catch { /* silent */ }
 }
@@ -443,8 +444,9 @@ async function saveSelection() {
   savedCount.value = null
 
   try {
-    // 1. Aggregate rules
-    const aggResp = await apiPost<Record<string, unknown>>('/rules/aggregate', {
+    // 1. Aggregate rules via workspace API
+    const workspaceId = route.params.workspaceId as string
+    const aggResp = await apiPost<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregate`, {
       paths: selectedPaths,
     })
 

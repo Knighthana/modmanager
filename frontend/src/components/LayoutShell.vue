@@ -7,33 +7,46 @@
         </div>
       </div>
       <el-menu :default-active="currentRoute" router>
+        <el-menu-item index="/">
+          <span>📂 工作区</span>
+        </el-menu-item>
+        <template v-if="workspaceId">
+          <el-menu-item :index="`/workspace/${workspaceId}/rules`">
+            <span>📋 规则概览</span>
+          </el-menu-item>
+          <el-menu-item :index="`/workspace/${workspaceId}/compute`">
+            <span>🧮 计算准备</span>
+          </el-menu-item>
+          <el-menu-item :index="`/workspace/${workspaceId}/forest`">
+            <span>🌲 森林可视</span>
+          </el-menu-item>
+          <el-menu-item :index="`/workspace/${workspaceId}/conflicts`">
+            <span>⚔️ 冲突裁决</span>
+            <el-badge v-if="store.unresolvedCount > 0" :value="store.unresolvedCount" />
+          </el-menu-item>
+        </template>
+        <template v-else>
+          <el-menu-item disabled>
+            <span style="color: var(--el-text-color-placeholder);">📋 规则概览 — 请先创建工作区</span>
+          </el-menu-item>
+          <el-menu-item disabled>
+            <span style="color: var(--el-text-color-placeholder);">🧮 计算准备 — 请先创建工作区</span>
+          </el-menu-item>
+          <el-menu-item disabled>
+            <span style="color: var(--el-text-color-placeholder);">🌲 森林可视 — 请先创建工作区</span>
+          </el-menu-item>
+        </template>
         <el-menu-item index="/datasource">
-          <span>{{ STR.layoutShell.navDatasource }}</span>
-        </el-menu-item>
-        <el-menu-item index="/rules-overview">
-          <span>{{ STR.layoutShell.navRulesOverview }}</span>
-        </el-menu-item>
-        <el-menu-item index="/compute-prep">
-          <span>{{ STR.layoutShell.navComputePrep }}</span>
-        </el-menu-item>
-        <el-menu-item index="/forest">
-          <span>{{ STR.layoutShell.navForest }}</span>
-        </el-menu-item>
-        <el-menu-item index="/conflicts">
-          <span>{{ STR.layoutShell.navConflicts }}</span>
-          <el-badge v-if="store.unresolvedCount > 0" :value="store.unresolvedCount" />
-        </el-menu-item>
-        <el-menu-item index="/operations">
-          <span>{{ STR.layoutShell.navOperations }}</span>
+          <span>📡 数据来源</span>
         </el-menu-item>
         <el-menu-item index="/rule-editor">
-          <span>{{ STR.layoutShell.navRuleEditor }}</span>
+          <span>✏️ 规则制定</span>
         </el-menu-item>
         <el-menu-item index="/settings">
-          <span>{{ STR.layoutShell.navSettings }}</span>
+          <span>⚙️ 设置面板</span>
         </el-menu-item>
         <el-menu-item index="/advanced">
-          <span>{{ STR.layoutShell.navAdvanced }}</span>
+          <span>🔧 进阶用户</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -52,9 +65,16 @@ import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
 import SseStatusBar from './SseStatusBar.vue'
 import { STR } from '../locales/zh-CN'
+import { loadCurrentWorkspaceId } from '../utils/persistence'
 
 const route = useRoute()
 const store = useForestStore()
 
 const currentRoute = computed(() => route.path)
+const workspaceId = computed(() => {
+  // Read from URL param (workspace-scoped pages) or sessionStorage fallback
+  const fromRoute = (route.params as Record<string, string>).workspaceId
+  if (fromRoute) return fromRoute
+  return loadCurrentWorkspaceId()
+})
 </script>

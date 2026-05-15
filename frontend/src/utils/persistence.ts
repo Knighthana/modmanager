@@ -1,111 +1,162 @@
 import { ElMessage } from 'element-plus'
 
 /**
- * 纯 UI 状态持久化层 + workspace 数据聚合。
+ * 前端浏览器存储层 — sessionStorage 主读 + localStorage 留档。
  *
- * 职责边界：
- * - UI 状态：已合并进 workspace.uiState（不再使用独立的 localStorage key）
- * - workspace 数据：单一 ``modmanager:workspace`` key 下聚合
- *   - ``workspace.lastDatabase``：用户最近选择的 database name
- *   - ``workspace.perDatabase[name].decisions``：managedEntries + branchDecisions
- *   - ``workspace.perDatabase[name].lastComputeSummary``：trees_count、mapping_count 等摘要
- *   - ``workspace.aggregatedRuleSet``：聚合后的规则集 dict
- *   - ``workspace.aggregatedRuleHash``：规则集的哈希值
- *   - ``workspace.uiState.*``：UI 状态（表单输入、可见性 toggle 等）
- * - 不存 database 扫描结果（由后端按 name 管理）
+ * 设计：``DESIGN_WORKSPACE_MODEL.md`` §6
  *
- * Current implementation uses ``localStorage`` with a ``modmanager:`` prefix.
- * A ``TauriStoreAdapter`` is reserved for future Tauri integration.
+ * 读写规则：
+ * - sessionStorage 是主读源（Tab 隔离，刷新不丢）
+ * - localStorage 是留档（仅新 Tab 初始化时回退一次）
+ * - 改动时同时写两处
+ *
+ * 键规范：
+ *   sessionStorage           localStorage
+ *   ─────────────            ────────────
+ *   sidebarCollapsed         sidebarCollapsed
+ *   activeTab                （不存在）
+ *   currentWorkspaceId       （不存在）
+ *   uiState:datasource       uiState:datasource
+ *   uiState:{workspace_id}   uiState:{workspace_id}
  */
 
-interface PersistenceAdapter {
-  save(key: string, value: unknown): void
-  load<T>(key: string): T | null
-  clear(key: string): void
+const PREFIX = 'modmanager:'
+
+// ── Internal helpers ──────────────────────────────────────────────────────
+
+function _sessionKey(key: string): string {
+  return PREFIX + key
 }
 
-class LocalStorageAdapter implements PersistenceAdapter {
-  save(key: string, value: unknown): void {
-    try {
-      localStorage.setItem(`modmanager:${key}`, JSON.stringify(value))
-    } catch {
-      ElMessage.warning('偏好保存失败，下次启动可能丢失设置')
+function _localKey(key: string): string {
+  return PREFIX + key
+}
+
+function _tryParse(raw: string | null): unknown | null {
+  if (raw === null) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
+// ── Public API ────────────────────────────────────────────────────────────
+
+/** Read a value: sessionStorage first, fallback to localStorage (then promote). */
+export function loadPersistent<T>(key: string): T | null {
+  // 1. sessionStorage (main source)
+  const sessRaw = sessionStorage.getItem(_sessionKey(key))
+  if (sessRaw !== null) return _tryParse(sessRaw) as T | null
+
+  // 2. localStorage (fallback for new tabs)
+  const localRaw = localStorage.getItem(_localKey(key))
+  if (localRaw !== null) {
+    const val = _tryParse(localRaw) as T | null
+    if (val !== null) {
+      // Promote to sessionStorage so subsequent reads skip localStorage
+      sessionStorage.setItem(_sessionKey(key), JSON.stringify(val))
     }
+    return val
   }
+  return null
+}
 
-  load<T>(key: string): T | null {
-    try {
-      const raw = localStorage.getItem(`modmanager:${key}`)
-      if (raw === null) return null
-      return JSON.parse(raw) as T
-    } catch {
-      ElMessage.warning('偏好读取失败，部分设置将被重置')
-      return null
+/** Write a value to both sessionStorage and localStorage (write-through). */
+export function savePersistent(key: string, value: unknown): void {
+  try {
+    const payload = JSON.stringify(value)
+    sessionStorage.setItem(_sessionKey(key), payload)
+    localStorage.setItem(_localKey(key), payload)
+  } catch {
+    ElMessage.warning('偏好保存失败')
+  }
+}
+
+/** Remove a value from both storages. */
+export function clearPersistent(key: string): void {
+  try {
+    sessionStorage.removeItem(_sessionKey(key))
+    localStorage.removeItem(_localKey(key))
+  } catch {
+    // ignore
+  }
+}
+
+// ── Convenience typed helpers ────────────────────────────────────────────
+
+export function loadSidebarCollapsed(): boolean {
+  return loadPersistent<boolean>('sidebarCollapsed') ?? false
+}
+
+export function saveSidebarCollapsed(collapsed: boolean): void {
+  savePersistent('sidebarCollapsed', collapsed)
+}
+
+export function loadActiveTab(): string {
+  return loadPersistent<string>('activeTab') ?? ''
+}
+
+export function saveActiveTab(tab: string): void {
+  sessionStorage.setItem(PREFIX + 'activeTab', tab)
+  // NOT written to localStorage — activeTab is ephemeral
+}
+
+export function loadCurrentWorkspaceId(): string | null {
+  return loadPersistent<string>('currentWorkspaceId')
+}
+
+export function saveCurrentWorkspaceId(id: string): void {
+  sessionStorage.setItem(PREFIX + 'currentWorkspaceId', id)
+  // NOT written to localStorage — workspace_id is tab-scoped
+}
+
+export function loadUiState<T>(scope: string): T | null {
+  return loadPersistent<T>(`uiState:${scope}`)
+}
+
+export function saveUiState(scope: string, state: unknown): void {
+  savePersistent(`uiState:${scope}`, state)
+}
+
+export function clearUiState(scope: string): void {
+  clearPersistent(`uiState:${scope}`)
+}
+
+// ── Migrate old workspace key ────────────────────────────────────────────
+
+/** One-time cleanup of the old ``modmanager:workspace`` localStorage key. */
+export function migrateOldWorkspace(): void {
+  try {
+    const old = localStorage.getItem(PREFIX + 'workspace')
+    if (old !== null) {
+      localStorage.removeItem(PREFIX + 'workspace')
+      console.log('[persistence] removed old modmanager:workspace key')
     }
+  } catch { /* ignore */ }
+}
+
+// ── Backward-compat shims (to be removed after all pages migrated) ──────
+
+/** @deprecated Use per-key loadPersistent / savePersistent instead. */
+export function createPersistence() {
+  const adapter = {
+    save(key: string, value: unknown) { savePersistent(key, value) },
+    load<T>(key: string): T | null { return loadPersistent<T>(key) },
+    clear(key: string) { clearPersistent(key) },
   }
-
-  clear(key: string): void {
-    try {
-      localStorage.removeItem(`modmanager:${key}`)
-    } catch {
-      ElMessage.warning('偏好清理失败')
-    }
-  }
+  return adapter
 }
 
-// Reserved for future Tauri integration
-// class TauriStoreAdapter implements PersistenceAdapter { ... }
-
-export function createPersistence(): PersistenceAdapter {
-  return new LocalStorageAdapter()
+/** @deprecated Replaced by backend workspace API. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function loadWorkspace(): any {
+  return loadPersistent<Record<string, unknown>>('workspace') ?? {}
 }
 
-export type { PersistenceAdapter }
-
-// ── Workspace helpers ────────────────────────────────────────────────────
-// These replace the previous scattered key pattern (lastDatabase, decisions:*,
-// results:*, aggregatedRuleSet, datasource-*) with a single
-// ``modmanager:workspace`` key. UI state is now stored under
-// workspace.uiState.* rather than separate keys.
-
-import type { WorkspaceData } from '../types'
-
-function defaultWorkspace(): WorkspaceData {
-  return {
-    lastDatabase: '',
-    perDatabase: {},
-    aggregatedRuleSet: null,
-    aggregatedRuleHash: '',
-    aggregatedRuleMeta: null,
-    uiState: {
-      sidebarCollapsed: false,
-      datasource: {
-        discoveryMode: 'all',
-        manualPaths: [],
-        greedyParsing: false,
-        libraryVisibility: {},
-        gameVisibility: {},
-      },
-      computePrep: {
-        libraryVisibility: {},
-      },
-    },
-  }
+/** @deprecated Replaced by backend workspace API. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function saveWorkspace(_ws: any): void {
+  console.warn('[persistence] saveWorkspace is deprecated — use backend workspace API')
 }
 
-/** Load the full workspace object from localStorage. */
-export function loadWorkspace(): WorkspaceData {
-  const pers = createPersistence()
-  return pers.load<WorkspaceData>('workspace') ?? defaultWorkspace()
-}
-
-/** Save the full workspace object to localStorage. */
-export function saveWorkspace(ws: WorkspaceData): void {
-  const pers = createPersistence()
-  pers.save('workspace', ws)
-}
-
-/** Compute a simple hash from an arbitrary value (for aggregatedRuleHash). */
+/** @deprecated Use backend hash or crypto API instead. */
 export function simpleHash(obj: unknown): string {
   const str = JSON.stringify(obj)
   let hash = 0

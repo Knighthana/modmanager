@@ -313,7 +313,7 @@ import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { apiPost } from '../api/client'
-import { loadWorkspace, saveWorkspace } from '../utils/persistence'
+import { loadWorkspace, saveWorkspace, loadUiState, saveUiState, migrateOldWorkspace } from '../utils/persistence'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
@@ -480,9 +480,14 @@ const isDiscoverDisabled = computed(() => {
 })
 
 // 恢复 UI 状态（仅表单输入 + 可见性开关，不含扫描结果）
-function loadUiState() {
-  const ws = loadWorkspace()
-  const ds = ws.uiState?.datasource
+function loadUiStateFromStorage() {
+  const ds = loadUiState<{
+    discoveryMode?: string
+    manualPaths?: string[]
+    greedyParsing?: boolean
+    libraryVisibility?: Record<number, boolean>
+    gameVisibility?: Record<number, boolean>
+  }>('datasource')
   if (!ds) return
   if (ds.discoveryMode) store.discoveryMode = ds.discoveryMode as DiscoverMode
   if (ds.manualPaths) store.manualPaths = ds.manualPaths
@@ -492,20 +497,19 @@ function loadUiState() {
 }
 
 // 保存 UI 状态（仅表单输入 + 可见性开关）
-function saveUiState() {
-  const ws = loadWorkspace()
-  if (!ws.uiState) ws.uiState = {}
-  if (!ws.uiState.datasource) ws.uiState.datasource = {}
-  ws.uiState.datasource.discoveryMode = store.discoveryMode
-  ws.uiState.datasource.manualPaths = [...store.manualPaths]
-  ws.uiState.datasource.greedyParsing = store.greedyParsing
-  ws.uiState.datasource.libraryVisibility = { ...store.libraryVisibility }
-  ws.uiState.datasource.gameVisibility = { ...store.gameVisibility }
-  saveWorkspace(ws)
+function saveUiStateToStorage() {
+  saveUiState('datasource', {
+    discoveryMode: store.discoveryMode,
+    manualPaths: [...store.manualPaths],
+    greedyParsing: store.greedyParsing,
+    libraryVisibility: { ...store.libraryVisibility },
+    gameVisibility: { ...store.gameVisibility },
+  })
 }
 
 onMounted(async () => {
-  loadUiState()
+  migrateOldWorkspace()
+  loadUiStateFromStorage()
 
   // Auto-load last database from localStorage
   const lastDb = loadWorkspace().lastDatabase
@@ -525,11 +529,11 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  saveUiState()
+  saveUiStateToStorage()
 })
 
 async function onScan() {
-  saveUiState()
+  saveUiStateToStorage()
   const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
   await store.scan(selectedDb)
 }

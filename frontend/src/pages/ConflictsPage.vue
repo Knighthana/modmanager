@@ -71,7 +71,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
 import { createPersistence } from '../utils/persistence'
-import type { ConflictItem, WorkspaceData } from '../types'
+import type { ConflictItem } from '../types'
 import { STR } from '../locales/zh-CN'
 import { ElMessage } from 'element-plus'
 
@@ -95,7 +95,7 @@ function onClearDecisions() {
 async function onConfirmDecisions() {
   isSaving.value = true
   try {
-    const ws = pers.load<WorkspaceData>('workspace') || {} as WorkspaceData
+    const ws = (pers.load('workspace') || {}) as Record<string, any>
     const db = ws.lastDatabase || 'default'
     if (!ws.perDatabase) ws.perDatabase = {}
     if (!ws.perDatabase[db]) ws.perDatabase[db] = { lastComputeSummary: null }
