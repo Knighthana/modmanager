@@ -70,12 +70,10 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
-import { createPersistence } from '../utils/persistence'
+import { savePersistent } from '../utils/persistence'
 import type { ConflictItem } from '../types'
 import { STR } from '../locales/zh-CN'
 import { ElMessage } from 'element-plus'
-
-const pers = createPersistence()
 
 const route = useRoute()
 const store = useForestStore()
@@ -95,13 +93,9 @@ function onClearDecisions() {
 async function onConfirmDecisions() {
   isSaving.value = true
   try {
-    const ws = (pers.load('workspace') || {}) as Record<string, any>
-    const db = ws.lastDatabase || 'default'
-    if (!ws.perDatabase) ws.perDatabase = {}
-    if (!ws.perDatabase[db]) ws.perDatabase[db] = { lastComputeSummary: null }
-    ws.perDatabase[db].branchDecisions = { ...store.branchDecisions }
-    pers.save('workspace', ws)
+    savePersistent('conflicts.branchDecisions', { ...store.branchDecisions })
     ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
+  } catch {
     ElMessage.error(STR.conflictsPage.saveDecisionFailed)
   } finally {
     isSaving.value = false

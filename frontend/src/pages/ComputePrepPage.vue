@@ -173,8 +173,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
 import { streamSse } from '../api/sse'
-import { saveCurrentWorkspaceId, loadWorkspace, saveWorkspace } from '../utils/persistence'
-import { hashRuleSet } from '../utils/hash'
+import { saveCurrentWorkspaceId, loadUiState, saveUiState } from '../utils/persistence'
 import { useForestStore } from '../stores/forest'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
@@ -320,13 +319,10 @@ onMounted(async () => {
 })
 
 async function tryRestoreAggregatedRuleSetFromBackend(): Promise<Record<string, unknown> | null> {
-  const ws = loadWorkspace()
-  const outputPath = ws.aggregatedRuleMeta?.output_path
-  if (!outputPath) return null
+  const workspaceId = route.params.workspaceId as string
+  if (!workspaceId) return null
 
-  const resp = await apiPost<Record<string, unknown>>('/rules/load-aggregated', {
-    path: outputPath,
-  })
+  const resp = await apiPost<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`, {})
   if (!resp.ok || !resp.data || typeof resp.data !== 'object') {
     return null
   }
@@ -360,22 +356,8 @@ async function loadData() {
     return
   }
 
-  // 4. Hash validation: check if rule set has changed since last compute
-  const currentRulesHash = hashRuleSet(aggregatedRuleSet)
+  // 4. Get selected database
   const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
-  const ws = loadWorkspace()
-  const lastSummary = ws.perDatabase?.[selectedDb]?.lastComputeSummary
-  const lastRulesHash = lastSummary?.inputs_hash
-  const cachedRulesHash = ws.aggregatedRuleMeta?.aggregated_hash || ws.aggregatedRuleHash
-
-  if (lastRulesHash && currentRulesHash !== lastRulesHash) {
-    ElMessage.warning('规则集已变更，建议重新计算以获取最新结果')
-  } else if (cachedRulesHash && currentRulesHash !== cachedRulesHash) {
-    ElMessage.warning('检测到聚合规则缓存已变化，建议重新聚合后再计算')
-  }
-
-  // Restore decisions from workspace if available
-  const savedDecisions = ws.perDatabase?.[selectedDb]
 
   // 5. Fetch affected entries
   try {
@@ -417,8 +399,8 @@ async function loadData() {
       recalcLibraryState(lib.index)
     }
 
-    // Restore library visibility from workspace.uiState.computePrep.libraryVisibility
-    const savedVis = ws.uiState?.computePrep?.libraryVisibility
+    // Restore library visibility from uiState
+    const savedVis = loadUiState<Record<number, boolean>>(`computePrep.visibility.${workspaceId.value}`)
     if (savedVis) {
       for (const lib of libraries.value) {
         if (savedVis[lib.index] !== undefined) {
@@ -457,7 +439,7 @@ async function loadData() {
     }
 
     // Check if there are existing results to enable "View Results" button
-    if (lastSummary?.timestamp) {
+    if (forestStore.trees.length > 0 || forestStore.finalMapping.length > 0) {
       canViewResults.value = true
     }
   } catch (e) {
@@ -532,16 +514,12 @@ function toggleLibraryVisibility(libIndex: number) {
   if (!lib) return
   lib._visible = !lib._visible
 
-  // Persist visibility state to workspace.uiState.computePrep.libraryVisibility
+  // Persist visibility state via saveUiState
   const vis: Record<number, boolean> = {}
   for (const l of libraries.value) {
     vis[l.index] = l._visible
   }
-  const ws = loadWorkspace()
-  if (!ws.uiState) ws.uiState = {}
-  if (!ws.uiState.computePrep) ws.uiState.computePrep = {}
-  ws.uiState.computePrep.libraryVisibility = vis
-  saveWorkspace(ws)
+  saveUiState(`computePrep.visibility.${workspaceId.value}`, vis)
 }
 
 // ── Build managedEntries from checkbox state ──────────────────────────────

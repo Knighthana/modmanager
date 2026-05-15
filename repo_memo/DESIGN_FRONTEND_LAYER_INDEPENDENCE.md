@@ -126,48 +126,21 @@ export async function streamSse(
 
 ### 包含的 Stores
 
-#### 2.1 useWorkspaceStore
-**职责**：localStorage 的唯一代理，管理用户决策和计算摘要
+#### 2.1 浏览器存储层（persistence.ts）
 
-**状态**
-```typescript
-{
-  lastDatabase: string
-  perDatabase: {
-    [databaseName]: {
-      selectedRulePaths: string[]
-      managedEntries: { game: {...}, mod: {...} }
-      branchDecisions: { root_path: string }
-      lastComputeSummary: {
-        treesCount: number
-        mappingCount: number
-        warnings: string[]
-        errors: string[]
-        inputsHash: string
-        timestamp: string
-      }
-    }
-  }
-  uiState: {
-    sidebarCollapsed: boolean
-    activeTab: string
-    libraryVisibility: Record<number, boolean>
-    gameVisibility: Record<number, boolean>
-  }
-}
-```
+**职责**：浏览器存储的唯一底层。所有 localStorage/sessionStorage 读写通过其导出函数进行。
 
-**关键方法**
-- `loadWorkspace()` — 从 localStorage 加载
-- `saveWorkspace()` — 刷新到 localStorage
-- `setManagedEntries(db, entries)` — 更新管理决策并 flush
-- `resolveBranch(db, root, chosen)` — 更新冲突裁决并 flush
-- `updateSummary(db, summary)` — 更新计算摘要
+**导出函数**
+- `loadPersistent<T>(key)` — sessionStorage 优先 → localStorage 回退
+- `savePersistent(key, value)` — 同时写 sessionStorage + localStorage
+- `clearPersistent(key)` — 清除两处
+- `loadUiState(scope)` / `saveUiState(scope, state)` — 按 scope 分键读写 UI 状态
+- `loadCurrentWorkspaceId()` / `saveCurrentWorkspaceId(id)` — Tab 级工作区导航状态
+- `loadSidebarCollapsed()` / `saveSidebarCollapsed(collapsed)` — 侧栏折叠偏好
 
 **特点**：
-- 是 localStorage 的唯一写者（所有组件改 store，由 store 负责同步）
+- `persistence.ts` 是浏览器存储的唯一底层（所有组件通过其导出函数读写，不直接操作 localStorage/sessionStorage）
 - 提供 reactive 属性，组件订阅即可自动更新
-- flush 策略：每个修改 action 结束时立即 `saveWorkspace()`
 
 #### 2.2 useDataSourceStore
 **职责**：DataSourcePage 的扫描会话数据与 UI 状态
@@ -224,8 +197,9 @@ export async function streamSse(
 - 只需 `import { apiPost } from '@/api'` 这一条 import，当 api 的实现改变时自动适应
 
 **单一数据源**
-- useWorkspaceStore 是 localStorage 的唯一写者
-- 所有页面组件通过 store 读写数据，不直接摸 localStorage
+- `persistence.ts` 是浏览器存储的唯一底层读写入口
+- 业务数据（decisions, mapping, SVG）以后端工作区目录为权威
+- 所有页面组件通过 `persistence.ts` 函数读写浏览器存储，不直接操作 localStorage/sessionStorage
 - 防止状态不一致和数据竞争
 
 ---
@@ -297,8 +271,8 @@ Tauri 迁移时，组件代码完全不动：
 
 ### 状态层（第 2 层）
 - [ ] 所有 reactive 状态都在 Pinia store
-- [ ] Component 不直接操作 localStorage，仅通过 store
-- [ ] useWorkspaceStore 是 localStorage 的唯一写者
+- [ ] Component 不直接操作 localStorage/sessionStorage，仅通过 `persistence.ts` 函数
+- [ ] `persistence.ts` 是浏览器存储的唯一读写入口（`useWorkspaceStore` 唯一写者已延后，见 audit_todo_future.md）
 - [ ] 每个 store 的职责清晰（workspace / datasource / compute 不混)
 
 ### 组件层（第 3 层）

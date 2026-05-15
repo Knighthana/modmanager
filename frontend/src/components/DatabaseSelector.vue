@@ -3,16 +3,12 @@
     <el-select v-model="selectedDatabase" placeholder="选择 database" style="width: 220px;">
       <el-option v-for="opt in options" :key="opt.value" :label="opt.label" :value="opt.value" />
     </el-select>
-    <el-tag v-if="showDecisionsTag && hasDecisions" size="small" type="warning" effect="plain">有历史决策</el-tag>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { apiPost } from '../api/client'
-import { loadWorkspace, saveWorkspace } from '../utils/persistence'
-
-withDefaults(defineProps<{ showDecisionsTag?: boolean }>(), { showDecisionsTag: true })
 
 interface DatabaseOption {
   label: string
@@ -21,7 +17,6 @@ interface DatabaseOption {
 
 const options = ref<DatabaseOption[]>([])
 const selectedDatabase = ref('default')
-const hasDecisions = ref(false)
 
 onMounted(async () => {
   try {
@@ -38,25 +33,6 @@ onMounted(async () => {
   } catch {
     // 接口不可用时使用默认值
   }
-
-  // 读上次选中的 database
-  const ws = loadWorkspace()
-  if (ws.lastDatabase && options.value.some(o => o.value === ws.lastDatabase)) {
-    selectedDatabase.value = ws.lastDatabase
-  }
-
-  // 检查当前选中是否有历史决策
-  checkDecisions()
-})
-
-function checkDecisions() {
-  const ws = loadWorkspace()
-  const perDb = ws.perDatabase?.[selectedDatabase.value]
-  hasDecisions.value = !!(perDb?.managedEntries || perDb?.branchDecisions)
-}
-
-watch(selectedDatabase, () => {
-  checkDecisions()
 })
 
 defineExpose({ selectedDatabase, options })

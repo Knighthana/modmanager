@@ -56,52 +56,47 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
   return wrapper.vm as unknown as Record<string, unknown>
 }
 
-// ── Workspace helper for localStorage ─────────────────────────────────
+// ── Forest store helper for test data ─────────────────────────────────
 
-function setWorkspaceInStorage(overrides?: Partial<{
-  trees_count: number
-  mapping_count: number
-  warnings: string[]
-  errors: string[]
-  stats: Record<string, unknown>
-  inputs_hash: string
-  timestamp: string | null
-}> | null) {
-  if (overrides === null) {
-    // Explicitly set results to null
-    const ws = {
-      lastDatabase: 'default',
-      perDatabase: {
-        default: { decisions: {}, lastComputeSummary: null },
-      },
-      aggregatedRuleSet: null,
-      aggregatedRuleHash: '',
-    }
-    localStorage.setItem('modmanager:workspace', JSON.stringify(ws))
+function setForestStoreData(data?: {
+  trees_count?: number
+  mapping_count?: number
+  warnings?: string[]
+  errors?: string[]
+  stats?: Record<string, number>
+} | null) {
+  const store = useForestStore()
+  if (data === null) {
+    // Clear store to simulate no results
+    store.reset()
     return
   }
-  const defaultResults = {
+  const defaultData = {
     trees_count: 42,
     mapping_count: 15,
     warnings: ['W_LOCAL_MOD_MISSING: castle'],
     errors: [],
     stats: { added: 3, overwritten: 10, deleted: 2 },
-    inputs_hash: 'abc123',
-    timestamp: '2026-05-13T10:00:05Z',
   }
-  const results = overrides ? { ...defaultResults, ...overrides } : defaultResults
-  const ws = {
-    lastDatabase: 'default',
-    perDatabase: {
-      default: {
-        decisions: {},
-        lastComputeSummary: results,
-      },
-    },
-    aggregatedRuleSet: null,
-    aggregatedRuleHash: '',
-  }
-  localStorage.setItem('modmanager:workspace', JSON.stringify(ws))
+  const merged = { ...defaultData, ...data }
+
+  // Build TreeNode[] and MappingEntry[] to satisfy length checks
+  store.trees = Array.from({ length: merged.trees_count }, (_, i) => ({
+    root_path: `/tree/${i}`,
+    destin_mixed_id: 'mod:1',
+    changerequest: [],
+    refs: [],
+    resolved_state: 'kept' as const,
+  }))
+  store.finalMapping = Array.from({ length: merged.mapping_count }, (_, i) => ({
+    path: `/map/${i}`,
+    mixed_id: `mod:${i}`,
+    hashtype: 'sha256',
+    hashvalue: `hash${i}`,
+  }))
+  store.warnings = merged.warnings
+  store.errors = merged.errors
+  store.stats = merged.stats
 }
 
 /** Mock fetch for DatabaseSelector's config/discover call */
@@ -142,7 +137,7 @@ describe('OperationsPage', () => {
   // ── Empty state ─────────────────────────────────────────────────────
 
   it('shows empty state when workspace has no results', async () => {
-    setWorkspaceInStorage(null)
+    setForestStoreData(null)
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -157,7 +152,7 @@ describe('OperationsPage', () => {
   })
 
   it('shows empty state when results has trees_count 0', async () => {
-    setWorkspaceInStorage(null)
+    setForestStoreData(null)
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -173,7 +168,7 @@ describe('OperationsPage', () => {
   // ── Summary display ─────────────────────────────────────────────────
 
   it('renders summary when workspace has results', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -192,7 +187,7 @@ describe('OperationsPage', () => {
   })
 
   it('renders stats breakdown: added, overwritten, deleted', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -210,7 +205,7 @@ describe('OperationsPage', () => {
   // ── Dry-run switch ──────────────────────────────────────────────────
 
   it('dry-run switch defaults to enabled', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -227,7 +222,7 @@ describe('OperationsPage', () => {
   // ── Operation buttons ───────────────────────────────────────────────
 
   it('renders backup, apply, restore buttons', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -245,7 +240,7 @@ describe('OperationsPage', () => {
   })
 
   it('buttons are disabled while an operation is running', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
 
     const wrapper = mount(OperationsPage, {
@@ -268,7 +263,7 @@ describe('OperationsPage', () => {
   // ── Backup operation ────────────────────────────────────────────────
 
   it('confirmBackup opens confirm dialog then calls streamSse', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData) // user clicks confirm
     mockedStreamSse.mockImplementation(async (_path: string, _body: unknown, callbacks: { onProgress?: (p: SseProgress) => void; onResult?: (data: unknown) => void; onError?: (msg: string) => void }) => {
@@ -298,7 +293,7 @@ describe('OperationsPage', () => {
   })
 
   it('confirmBackup does nothing when user cancels', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
     mockedConfirm.mockRejectedValue(new Error('cancel'))
 
@@ -319,7 +314,7 @@ describe('OperationsPage', () => {
   // ── Apply operation ─────────────────────────────────────────────────
 
   it('confirmApply calls streamSse with dry-run flag', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
@@ -362,7 +357,7 @@ describe('OperationsPage', () => {
   // ── Restore operation ───────────────────────────────────────────────
 
   it('confirmRestore calls streamSse with backup_dir', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
@@ -395,7 +390,7 @@ describe('OperationsPage', () => {
   // ── Progress tracking ───────────────────────────────────────────────
 
   it('progress updates while operation runs', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
@@ -426,7 +421,7 @@ describe('OperationsPage', () => {
   // ── Error handling ──────────────────────────────────────────────────
 
   it('shows error message when operation fails', async () => {
-    setWorkspaceInStorage()
+    setForestStoreData()
     mockApiDiscover()
     mockedConfirm.mockResolvedValue(undefined as unknown as MessageBoxData)
 
@@ -453,14 +448,12 @@ describe('OperationsPage', () => {
   // ── getStat helper ──────────────────────────────────────────────────
 
   it('getStat returns 0 for missing stat keys', async () => {
-    setWorkspaceInStorage({
+    setForestStoreData({
       trees_count: 5,
       mapping_count: 3,
       warnings: [],
       errors: [],
       stats: { added: 1 },
-      inputs_hash: '',
-      timestamp: null,
     })
     mockApiDiscover()
 

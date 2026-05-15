@@ -220,31 +220,10 @@ describe('ComputePrepPage', () => {
     const mockFetch = vi.mocked(fetch)
     mockFetch.mockResolvedValue(new Response(JSON.stringify(statusWithRules), { status: 200 }))
 
-    // Keep forestStore.aggregatedRuleSet null and provide workspace metadata path
-    const wsWithMeta = {
-      lastDatabase: 'default',
-      perDatabase: {
-        default: {
-          selectedRulePaths: [],
-          managedEntries: { game: {}, mod: {} },
-          branchDecisions: {},
-          results: null,
-        },
-      },
-      aggregatedRuleSet: null,
-      aggregatedRuleHash: '',
-      aggregatedRuleMeta: {
-        output_path: '/tmp/fixture/aggregated_rule_set.json',
-        aggregated_hash: 'abc123',
-        aggregated_at: '2026-05-15T00:00:00Z',
-        selected_rule_paths: ['/tmp/fixture/r1.kmmrule.json'],
-      },
-      uiState: {},
-    }
-    localStorage.setItem('modmanager:workspace', JSON.stringify(wsWithMeta))
+    await router.push('/workspace/test-ws-1/compute')
 
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/rules/load-aggregated') {
+      if (path === '/workspace/test-ws-1/rules/aggregated') {
         return {
           ok: true,
           data: { schema_namespace: 'KMM_RuleSet', operation: [] },
@@ -268,7 +247,7 @@ describe('ComputePrepPage', () => {
     await wrapper.vm.$nextTick()
 
     const apiPaths = mockedApiPost.mock.calls.map((c) => c[0])
-    expect(apiPaths).toContain('/rules/load-aggregated')
+    expect(apiPaths).toContain('/workspace/test-ws-1/rules/aggregated')
     expect(apiPaths).toContain('/rules/affected-entries')
     expect(wrapper.text()).not.toContain('请先在规则概览选择规则')
   })
@@ -559,8 +538,8 @@ describe('ComputePrepPage', () => {
 
     const vm = vmAny(wrapper)
     const comp = vm as {
-      gameRowClass: (data: { row: { has_duplicate: boolean } }) => string
-      modRowClass: (data: { row: { has_duplicate: boolean } }) => string
+      gameRowClass: (data: { row: Record<string, unknown> }) => string
+      modRowClass: (data: { row: Record<string, unknown> }) => string
     }
 
     expect(comp.gameRowClass({ row: { _checked: true, appid: '270150', has_duplicate: true } })).toBe('duplicate-row')
@@ -692,31 +671,17 @@ describe('ComputePrepPage', () => {
     expect(pushSpy).toHaveBeenLastCalledWith('/workspace/test-ws-1/forest')
   })
 
-  it('canViewResults is true when status has results.timestamp', async () => {
+  it('canViewResults is true when forest store has existing results', async () => {
     const mockFetch = vi.mocked(fetch)
     mockFetch.mockResolvedValue(new Response(JSON.stringify(statusWithRules), { status: 200 }))
     // affected-entries still needed
     mockedApiPost.mockResolvedValue(mockAffectedEntries)
 
-    // Set aggregatedRuleSet in Pinia store BEFORE mount
+    // Set aggregatedRuleSet and existing results in Pinia store BEFORE mount
     setAggregatedRuleSetBeforeMount()
-
-    // Set workspace with existing results to enable canViewResults
-    const workspaceWithResults = {
-      lastDatabase: 'default',
-      perDatabase: {
-        default: {
-          selectedRulePaths: [],
-          managedEntries: { game: {}, mod: {} },
-          branchDecisions: {},
-          lastComputeSummary: { timestamp: '2026-05-13T12:00:00Z', trees_count: 1, mapping_count: 10, warnings: [], errors: [], stats: {}, inputs_hash: 'abc123' },
-        },
-      },
-      aggregatedRuleSet: null,
-      aggregatedRuleHash: '',
-      uiState: {},
-    }
-    localStorage.setItem('modmanager:workspace', JSON.stringify(workspaceWithResults))
+    const forestStore = useForestStore()
+    forestStore.trees = [{ root_path: '/a', resolved_state: 'pending', destin_mixed_id: '', changerequest: [], refs: [], candidates: [] }]
+    forestStore.finalMapping = [{ path: '/a', mixed_id: 'test:1', hashtype: 'sha256', hashvalue: 'abc' }]
 
     const wrapper = mount(ComputePrepPage, {
       global: { plugins: [router], stubs: elStubs },

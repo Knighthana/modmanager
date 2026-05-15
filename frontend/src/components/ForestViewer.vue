@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useForestStore } from '../stores/forest'
-import { loadWorkspace, saveWorkspace } from '../utils/persistence'
+import { loadPersistent, savePersistent } from '../utils/persistence'
 import { STR } from '../locales/zh-CN'
 import svgPanZoom from 'svg-pan-zoom'
 
@@ -65,23 +65,12 @@ const minimapViewport = ref<{ x: number; y: number; w: number; h: number } | nul
 const panZoomReady = ref(false)
 const showStatusDetail = ref(true) // expanded by default per design
 
-// Restore from workspace
-try {
-  const ws = loadWorkspace()
-  if (ws.uiState?.forest?.statusBarExpanded !== undefined) {
-    showStatusDetail.value = ws.uiState.forest.statusBarExpanded
-  }
-} catch { /* ignore */ }
+// Restore from persistent storage
+showStatusDetail.value = loadPersistent<boolean>('forest.statusBarExpanded') ?? true
 
 function toggleStatusBar() {
   showStatusDetail.value = !showStatusDetail.value
-  try {
-    const ws = loadWorkspace()
-    if (!ws.uiState) ws.uiState = {}
-    if (!ws.uiState.forest) ws.uiState.forest = {}
-    ws.uiState.forest.statusBarExpanded = showStatusDetail.value
-    saveWorkspace(ws)
-  } catch { /* ignore */ }
+  savePersistent('forest.statusBarExpanded', showStatusDetail.value)
 }
 
 let panZoomInstance: SvgPanZoom.Instance | null = null

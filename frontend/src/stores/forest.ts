@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { streamSse } from '../api/sse'
 import { apiPost } from '../api/client'
-import { createPersistence } from '../utils/persistence'
+// persistence no longer needed in forest store
 import type { SseProgress } from '../api/sse'
 import type { TreeNode, Changerequest, ConflictItem, PipelineParams, DiscoverParams } from '../types'
 
@@ -51,6 +51,7 @@ export const useForestStore = defineStore('forest', () => {
   const isRunning = ref(false)
   const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '' })
   const storedMappingResult = ref<Record<string, unknown> | null>(null)
+  const stats = ref<Record<string, number>>({})
 
   // ── pipeline form state (persists across page navigation) ──
   const pipelineForm = ref({
@@ -117,6 +118,7 @@ export const useForestStore = defineStore('forest', () => {
           trees.value = result.data.trees || []
           finalMapping.value = result.data.final_mapping || []
           storedMappingResult.value = result.data.mapping_result
+          stats.value = result.data.stats ?? {}
         }
         // Store params for later recalculate
         if (result.ok) {
@@ -157,6 +159,7 @@ export const useForestStore = defineStore('forest', () => {
           trees.value = result.data.trees || []
           finalMapping.value = result.data.final_mapping || []
           storedMappingResult.value = result.data.mapping_result
+          stats.value = result.data.stats ?? {}
         }
         // Store params for later recalculate
         if (result.ok) {
@@ -276,6 +279,7 @@ export const useForestStore = defineStore('forest', () => {
     svgContent.value = ''
     progress.value = { step: '', finished: 0, total: -1, message: '' }
     storedMappingResult.value = null
+    stats.value = {}
     lastSuccessfulParams.value = null
 
     // ── 输入字段：保留用户/数据源配置 ──
@@ -299,6 +303,7 @@ export const useForestStore = defineStore('forest', () => {
     databaseSummary,
     userConfig,
     storedMappingResult,
+    stats,
     dbManualOverride,
     lastSuccessfulParams,
     pipelineForm,

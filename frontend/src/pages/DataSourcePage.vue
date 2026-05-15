@@ -313,7 +313,7 @@ import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { apiPost } from '../api/client'
-import { loadWorkspace, saveWorkspace, loadUiState, saveUiState, migrateOldWorkspace } from '../utils/persistence'
+import { loadUiState, saveUiState, migrateOldWorkspace } from '../utils/persistence'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
@@ -442,10 +442,9 @@ async function doSave(): Promise<boolean> {
       // Update datasource store so managed values are reflected in local state
       store.updateDatabase(savedDb)
 
-      // Persist selected database
-      const ws = loadWorkspace()
-      ws.lastDatabase = selectedDb
-      saveWorkspace(ws)
+      // Persist selected database in uiState
+      const ds = loadUiState<Record<string, unknown>>('datasource') ?? {}
+      saveUiState('datasource', { ...ds, lastDatabase: selectedDb })
 
       if (!forestStore.userConfig) {
         await forestStore.loadConfig()
@@ -511,8 +510,8 @@ onMounted(async () => {
   migrateOldWorkspace()
   loadUiStateFromStorage()
 
-  // Auto-load last database from localStorage
-  const lastDb = loadWorkspace().lastDatabase
+  // Auto-load last database from uiState
+  const lastDb = (loadUiState<Record<string, unknown>>('datasource')?.lastDatabase as string | undefined)
   if (lastDb) {
     try {
       const resp = await apiPost<{ database: Record<string, unknown> }>(

@@ -134,7 +134,7 @@ describe('ConflictsPage', () => {
     expect(clearSpy).toHaveBeenCalled()
   })
 
-  it('confirm decision button calls POST /api/workspace/save-decisions', async () => {
+  it('confirm decision saves branchDecisions via savePersistent', async () => {
     const wrapper = mount(ConflictsPage, {
       global: { plugins: [router], stubs: elStubs },
     })
@@ -144,10 +144,10 @@ describe('ConflictsPage', () => {
     store.setDecision('/a.png', '/m1/a.png')
     await wrapper.vm.$nextTick()
 
-    // Mock localStorage
+    // Mock sessionStorage (savePersistent writes to both storages)
     const mockSetItem = vi.spyOn(Storage.prototype, 'setItem')
     const mockGetItem = vi.spyOn(Storage.prototype, 'getItem')
-    mockGetItem.mockReturnValue(JSON.stringify({ lastDatabase: 'default', perDatabase: { default: { decisions: {}, lastComputeSummary: null } } }))
+    mockGetItem.mockReturnValue(null)
 
     const buttons = wrapper.findAll('.el-button-stub')
     const confirmBtn = buttons.find(b => b.text().includes('确认决策'))
@@ -158,12 +158,12 @@ describe('ConflictsPage', () => {
     await confirmBtn!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    // Verify localStorage was called to save workspace
+    // Verify that branchDecisions was saved via savePersistent
     expect(mockSetItem).toHaveBeenCalled()
-    const saveCall = mockSetItem.mock.calls.find(call => call[0].includes('workspace'))
+    const saveCall = mockSetItem.mock.calls.find(call => call[0] === 'modmanager:conflicts.branchDecisions')
     expect(saveCall).toBeTruthy()
     const savedData = JSON.parse(saveCall![1])
-    expect(savedData.perDatabase.default.branchDecisions).toEqual({ '/a.png': '/m1/a.png' })
+    expect(savedData).toEqual({ '/a.png': '/m1/a.png' })
 
     mockSetItem.mockRestore()
     mockGetItem.mockRestore()

@@ -109,7 +109,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { streamSse, type SseProgress } from '../api/sse'
 import { useForestStore } from '../stores/forest'
 import { generateBackupDir } from '../stores/forest'
-import { loadWorkspace } from '../utils/persistence'
+// workspace state now from forest store
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 import { STR } from '../locales/zh-CN'
 
@@ -139,11 +139,13 @@ const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '
 const selectedDb = computed(() => databaseSelectorRef.value?.selectedDatabase ?? 'default')
 
 /** 是否有有效的计算结果 */
-const localResults = computed<LocalResults>(() => {
-  const ws = loadWorkspace()
-  const data = ws.perDatabase?.[selectedDb.value]?.lastComputeSummary
-  return data ?? { trees_count: 0, mapping_count: 0, warnings: [], errors: [], stats: {} }
-})
+const localResults = computed<LocalResults>(() => ({
+  trees_count: store.trees.length,
+  mapping_count: store.finalMapping.length,
+  warnings: store.warnings,
+  errors: store.errors,
+  stats: store.stats,
+}))
 
 const hasResults = computed(() => localResults.value.trees_count > 0)
 

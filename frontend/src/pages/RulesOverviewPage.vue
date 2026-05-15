@@ -189,7 +189,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { apiPost } from '../api/client'
-import { saveCurrentWorkspaceId, loadWorkspace, saveWorkspace, simpleHash } from '../utils/persistence'
+import { saveCurrentWorkspaceId } from '../utils/persistence'
 import { useForestStore } from '../stores/forest'
 
 const route = useRoute()
@@ -243,9 +243,7 @@ const gameNames = ref<Record<string, string>>({})
 
 async function loadGameNames() {
   try {
-    const ws = loadWorkspace()
-    const dbName = ws.lastDatabase || 'default'
-    const resp = await apiPost<{ game?: Array<{ appid: string; name: string }> }>('/database/read', { database_name: dbName })
+    const resp = await apiPost<{ game?: Array<{ appid: string; name: string }> }>('/database/read', { database_name: 'default' })
     if (resp.ok && resp.data?.game) {
       const map: Record<string, string> = {}
       for (const g of resp.data.game) {
@@ -408,24 +406,19 @@ async function toggleExpand(file: RuleFileItem) {
 // ── Auto-restore aggregated rules if hash matches ──────────────────────
 
 async function autoRestoreAggregated() {
-  const ws = loadWorkspace()
-  const stored = ws.aggregatedRuleMeta?.selected_rule_paths
-  if (!stored || stored.length === 0 || ruleFiles.value.length === 0) return
-
-  // Compare sorted paths — if identical, previous aggregate is still valid
-  const currentPaths = ruleFiles.value.filter(f => f.checked).map(f => f.path).sort()
-  const storedPaths = [...stored].sort()
-  if (JSON.stringify(currentPaths) !== JSON.stringify(storedPaths)) return
-
-  savedCount.value = currentPaths.length
+  if (ruleFiles.value.length === 0) return
 
   // Restore aggregated result from workspace API
   try {
     const workspaceId = route.params.workspaceId as string
     const resp = await apiPost<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`, {})
     if (resp.ok && resp.data) {
+      // Only restore if the store doesn't already have data
       const store = useForestStore()
-      store.aggregatedRuleSet = resp.data as Record<string, unknown>
+      if (!store.aggregatedRuleSet) {
+        store.aggregatedRuleSet = resp.data as Record<string, unknown>
+      }
+      savedCount.value = ruleFiles.value.filter(f => f.checked).length
     }
   } catch { /* silent */ }
 }
@@ -457,34 +450,12 @@ async function saveSelection() {
     }
 
     // Store aggregated rule set in memory for downstream pages.
-    // Persist only metadata in workspace to keep local payload small.
+    // Backend workspace API handles metadata persistence.
     if (aggResp.data) {
       const payload = aggResp.data as Record<string, unknown>
-      const {
-        output_path,
-        aggregated_hash,
-        aggregated_at,
-        rule_count: _ruleCount,
-        ...ruleSet
-      } = payload
-
+      const { output_path: _op, aggregated_hash: _ah, aggregated_at: _aa, rule_count: _rc, ...ruleSet } = payload
       // Keep only rule-set shape in memory (without metadata fields)
       forestStore.aggregatedRuleSet = ruleSet
-
-      const ws = loadWorkspace()
-      ws.aggregatedRuleSet = null
-      ws.aggregatedRuleMeta = {
-        output_path: typeof output_path === 'string' ? output_path : '',
-        aggregated_hash: typeof aggregated_hash === 'string' ? aggregated_hash : simpleHash(ruleSet),
-        aggregated_at: typeof aggregated_at === 'string' ? aggregated_at : new Date().toISOString(),
-        selected_rule_paths: selectedPaths,
-      }
-      ws.aggregatedRuleHash = ws.aggregatedRuleMeta.aggregated_hash
-      // Also store selectedRulePaths per-database for database-specific access
-      const dbName = ws.lastDatabase || 'default'
-      if (!ws.perDatabase[dbName]) ws.perDatabase[dbName] = { lastComputeSummary: null }
-      ws.perDatabase[dbName].selectedRulePaths = selectedPaths
-      saveWorkspace(ws)
     }
 
     // 3. Show success

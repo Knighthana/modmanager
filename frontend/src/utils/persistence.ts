@@ -132,38 +132,4 @@ export function migrateOldWorkspace(): void {
   } catch { /* ignore */ }
 }
 
-// ── Backward-compat shims (to be removed after all pages migrated) ──────
-
-/** @deprecated Use per-key loadPersistent / savePersistent instead. */
-export function createPersistence() {
-  const adapter = {
-    save(key: string, value: unknown) { savePersistent(key, value) },
-    load<T>(key: string): T | null { return loadPersistent<T>(key) },
-    clear(key: string) { clearPersistent(key) },
-  }
-  return adapter
-}
-
-/** @deprecated Replaced by backend workspace API. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function loadWorkspace(): any {
-  return loadPersistent<Record<string, unknown>>('workspace') ?? {}
-}
-
-/** @deprecated Replaced by backend workspace API. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function saveWorkspace(_ws: any): void {
-  console.warn('[persistence] saveWorkspace is deprecated — use backend workspace API')
-}
-
-/** @deprecated Use backend hash or crypto API instead. */
-export function simpleHash(obj: unknown): string {
-  const str = JSON.stringify(obj)
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash |= 0
-  }
-  return (hash >>> 0).toString(36)
-}
+// (deprecated shims removed — createPersistence, loadWorkspace, saveWorkspace, simpleHash)

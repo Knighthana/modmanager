@@ -7,18 +7,7 @@ vi.mock('../../api/client', () => ({
   apiPost: vi.fn(),
 }))
 
-// Override saveWorkspace so syncWorkspaceDatabases actually persists
-const PREFIX = 'modmanager:'
 vi.mock('../../utils/persistence', () => ({
-  loadWorkspace: () => {
-    // Read from sessionStorage first (primary), fallback to localStorage
-    const raw = sessionStorage.getItem(PREFIX + 'workspace') || localStorage.getItem(PREFIX + 'workspace')
-    return raw ? JSON.parse(raw) : {}
-  },
-  saveWorkspace: vi.fn((ws: Record<string, unknown>) => {
-    sessionStorage.setItem(PREFIX + 'workspace', JSON.stringify(ws))
-  }),
-  // Other exports used by the component
   loadPersistent: () => null,
   savePersistent: () => {},
   clearPersistent: () => {},
@@ -32,8 +21,6 @@ vi.mock('../../utils/persistence', () => ({
   saveUiState: () => {},
   clearUiState: () => {},
   migrateOldWorkspace: () => {},
-  createPersistence: () => ({ save: () => {}, load: () => null, clear: () => {} }),
-  simpleHash: (obj: unknown) => { const str = JSON.stringify(obj); let hash = 0; for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash |= 0; } return (hash >>> 0).toString(36); },
 }))
 
 import SettingsPage from '../../pages/SettingsPage.vue'
@@ -233,70 +220,5 @@ describe('SettingsPage', () => {
     expect(form.ruleSources).toEqual(['/b/', '/c/'])
   })
 
-  it('syncs workspace perDatabase when database keys are renamed or removed', async () => {
-    const discoverResp: ApiResponse<Record<string, unknown>> = {
-      ok: true,
-      data: {
-        bakprefix: 'kmmbackup_',
-        bakignore: [],
-        databases: {
-          legacy: { path: '/db/legacy.json' },
-          drop: { path: '/db/drop.json' },
-        },
-        aggregated_ruleset_output_path: null,
-        rule_sources: [],
-        source_path: '/tmp/user_config.json',
-        first_use: false,
-      },
-      errors: [],
-      warnings: [],
-    }
-    const saveResp: ApiResponse<Record<string, unknown>> = {
-      ok: true,
-      data: { saved: true },
-      errors: [],
-      warnings: [],
-    }
-
-    mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return discoverResp
-      if (path === '/config/save') return saveResp
-      return { ok: true, data: null, errors: [], warnings: [] }
-    })
-
-    const initialWs = {
-      lastDatabase: 'legacy',
-      perDatabase: {
-        legacy: { decisions: { branchDecisions: { '/a': '/x' } }, lastComputeSummary: null },
-        drop: { decisions: {}, lastComputeSummary: null },
-      },
-      aggregatedRuleSet: null,
-      aggregatedRuleHash: '',
-      aggregatedRuleMeta: null,
-    }
-    // Set in both storages so loadWorkspace() can find it regardless of mock state
-    localStorage.setItem('modmanager:workspace', JSON.stringify(initialWs))
-    sessionStorage.setItem('modmanager:workspace', JSON.stringify(initialWs))
-
-    const wrapper = mount(SettingsPage, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-
-    await new Promise(process.nextTick)
-    await new Promise(process.nextTick)
-
-    const vm = vmAny(wrapper)
-    ;(vm.form as Record<string, unknown>).databases = [
-      { key: 'renamed', value: '/db/renamed.json' },
-    ]
-    ;(vm.databaseRenameMap as Record<string, string>).legacy = 'renamed'
-
-    await (vm.onSaveConfig as () => Promise<void>)()
-
-    const ws = JSON.parse(sessionStorage.getItem('modmanager:workspace') || '{}')
-    expect(ws.lastDatabase).toBe('renamed')
-    expect(ws.perDatabase.renamed).toBeTruthy()
-    expect(ws.perDatabase.legacy).toBeUndefined()
-    expect(ws.perDatabase.drop).toBeUndefined()
-  })
+  // syncWorkspaceDatabases test removed — workspace localStorage no longer used
 })
