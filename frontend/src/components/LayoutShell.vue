@@ -1,5 +1,5 @@
 <template>
-  <el-container style="height: 100vh;">
+  <el-container style="height: 100vh; overflow: hidden;">
     <el-aside width="200px">
       <div style="padding: 16px 12px; border-bottom: 1px solid var(--el-border-color-light); margin-bottom: 4px;">
         <div style="font-weight: 800; font-size: 14px; line-height: 1.4; word-break: break-word; color: var(--el-text-color-primary);">
@@ -26,15 +26,27 @@
           </el-menu-item>
         </template>
         <template v-else>
-          <el-menu-item index="" @click="showWorkspaceHint">
-            <span style="color: var(--el-text-color-placeholder);">📋 规则概览</span>
-          </el-menu-item>
-          <el-menu-item index="" @click="showWorkspaceHint">
-            <span style="color: var(--el-text-color-placeholder);">🧮 计算准备</span>
-          </el-menu-item>
-          <el-menu-item index="" @click="showWorkspaceHint">
-            <span style="color: var(--el-text-color-placeholder);">🌲 森林可视</span>
-          </el-menu-item>
+          <el-popover placement="right" :width="200" trigger="click" content="请先在 📂 工作区 页面创建或选择一个工作区">
+            <template #reference>
+              <el-menu-item index="">
+                <span style="color: var(--el-text-color-placeholder);">📋 规则概览</span>
+              </el-menu-item>
+            </template>
+          </el-popover>
+          <el-popover placement="right" :width="200" trigger="click" content="请先在 📂 工作区 页面创建或选择一个工作区">
+            <template #reference>
+              <el-menu-item index="">
+                <span style="color: var(--el-text-color-placeholder);">🧮 计算准备</span>
+              </el-menu-item>
+            </template>
+          </el-popover>
+          <el-popover placement="right" :width="200" trigger="click" content="请先在 📂 工作区 页面创建或选择一个工作区">
+            <template #reference>
+              <el-menu-item index="">
+                <span style="color: var(--el-text-color-placeholder);">🌲 森林可视</span>
+              </el-menu-item>
+            </template>
+          </el-popover>
         </template>
         <el-menu-item index="/datasource">
           <span>📡 数据来源</span>
@@ -62,7 +74,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { useForestStore } from '../stores/forest'
 import { useAppStore } from '../stores/app'
 import SseStatusBar from './SseStatusBar.vue'
@@ -78,11 +89,4 @@ const workspaceId = computed(() => {
   if (fromRoute) return fromRoute
   return appStore.currentWorkspaceId
 })
-
-function showWorkspaceHint() {
-  ElMessage.info({
-    message: '请先在"📂 工作区"页面创建或选择一个工作区',
-    duration: 5000,
-  })
-}
 </script>
