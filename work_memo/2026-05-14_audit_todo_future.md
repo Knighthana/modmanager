@@ -18,9 +18,9 @@
 > 方向正确，建议收敛为唯一写者。余地：现在做还是下一迭代做。persistence 作为底层工具保留，workspace store 调用它，不是替代关系；useComputeStore 可作为后续收敛项，不必和 workspace store 强绑定同一批次上线。
 
 ### 待执行
-- [ ] 创建 `src/stores/workspace.ts`——所有 localStorage workspace 读写的唯一入口
-- [ ] `persistence.ts` 保留为底层工具，workspace store 内部调用
-- [ ] 各页面改为通过 workspace store action 读写，移除直接 `pers.save/load('workspace')` 调用
+- [x] 创建 `src/stores/app.ts`——所有浏览器存储读写的唯一入口（2026-05-16 实施，命名变更：`useWorkspaceStore` → `useAppStore`，因 workspace 已改义为后端工作区目录）
+- [x] `persistence.ts` 保留为底层工具，useAppStore 内部调用
+- [x] 各页面改为通过 useAppStore action 读写，移除直接 import persistence.ts 的调用
 - [ ] （可选）创建 `useComputeStore` 用于 aggregatedRuleSet 内存传递
 
 ---
@@ -48,7 +48,7 @@ UI 状态分散在多个 persistence key（`datasource-libraryVisibility`、`dat
 ### 待执行
 - [x] 将 `libraryVisibility`、`gameVisibility` 迁移进 `workspace.uiState` (2026-05-14 实施)
 - [x] DataSourcePage + ComputePrepPage 可见性状态持久化
-- [ ] `activeTab`、`sidebarCollapsed` 迁入（当前无实现）
+- [x] `activeTab`、`sidebarCollapsed` 迁入（2026-05-16 实施，通过 useAppStore 独立 key 实现，非嵌套 uiState 对象）
 
 ---
 

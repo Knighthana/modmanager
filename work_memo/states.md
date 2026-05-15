@@ -26,6 +26,6 @@
 - [ ] TODO-70: 森林图展示打磨（小地图比例/滚动条/放缩）— 独立任务
 
 ### 可延后（来自 audit_todo_future.md）
-- [ ] ~~`useWorkspaceStore` 唯一写者~~ → 已转化为 `useAppStore`（进行中）
-- [ ] `activeTab` / `sidebarCollapsed` 迁入 uiState
+- [x] ~~`useWorkspaceStore` 唯一写者~~ → 已落地为 `useAppStore`
+- [x] `activeTab` / `sidebarCollapsed` 迁入 uiState → 已通过 useAppStore 实现（独立 key，非嵌套对象）
 - [ ] 前端 Transport Abstraction（`src/api/transport.ts`）
