@@ -69,10 +69,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { apiPost } from '../api/client'
 import { API_ENDPOINTS } from '../api/config'
-import { saveCurrentWorkspaceId, clearUiState } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import type { WorkspaceMeta } from '../types'
 
 const router = useRouter()
+const appStore = useAppStore()
 const workspaces = ref<WorkspaceMeta[]>([])
 const databases = ref<string[]>([])
 const loading = ref(true)
@@ -132,7 +133,7 @@ async function doCreate() {
 }
 
 function enterWorkspace(ws: WorkspaceMeta) {
-  saveCurrentWorkspaceId(ws.workspace_id)
+  appStore.setCurrentWorkspaceId(ws.workspace_id)
   router.push(`/workspace/${ws.workspace_id}/rules`)
 }
 
@@ -148,7 +149,7 @@ async function confirmDelete(ws: WorkspaceMeta) {
       {}
     )
     if (res.ok) {
-      clearUiState(ws.workspace_id)
+      appStore.clearUiStateFor(ws.workspace_id)
       ElMessage.success('工作区已删除')
       await loadWorkspaces()
     } else {

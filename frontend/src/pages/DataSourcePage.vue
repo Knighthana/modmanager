@@ -313,7 +313,7 @@ import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { apiPost } from '../api/client'
-import { loadUiState, saveUiState, migrateOldWorkspace } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
@@ -325,6 +325,7 @@ import DatabaseSelector from '../components/DatabaseSelector.vue'
 const store = useDataSourceStore()
 const forestStore = useForestStore()
 const router = useRouter()
+const appStore = useAppStore()
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 const libTableRef = ref<any>(null)
@@ -443,8 +444,8 @@ async function doSave(): Promise<boolean> {
       store.updateDatabase(savedDb)
 
       // Persist selected database in uiState
-      const ds = loadUiState<Record<string, unknown>>('datasource') ?? {}
-      saveUiState('datasource', { ...ds, lastDatabase: selectedDb })
+      const ds = appStore.loadUiStateFor<Record<string, unknown>>('datasource') ?? {}
+      appStore.saveUiStateFor('datasource', { ...ds, lastDatabase: selectedDb })
 
       if (!forestStore.userConfig) {
         await forestStore.loadConfig()
@@ -480,7 +481,7 @@ const isDiscoverDisabled = computed(() => {
 
 // 恢复 UI 状态（仅表单输入 + 可见性开关，不含扫描结果）
 function loadUiStateFromStorage() {
-  const ds = loadUiState<{
+  const ds = appStore.loadUiStateFor<{
     discoveryMode?: string
     manualPaths?: string[]
     greedyParsing?: boolean
@@ -497,7 +498,7 @@ function loadUiStateFromStorage() {
 
 // 保存 UI 状态（仅表单输入 + 可见性开关）
 function saveUiStateToStorage() {
-  saveUiState('datasource', {
+  appStore.saveUiStateFor('datasource', {
     discoveryMode: store.discoveryMode,
     manualPaths: [...store.manualPaths],
     greedyParsing: store.greedyParsing,
@@ -507,11 +508,10 @@ function saveUiStateToStorage() {
 }
 
 onMounted(async () => {
-  migrateOldWorkspace()
   loadUiStateFromStorage()
 
   // Auto-load last database from uiState
-  const lastDb = (loadUiState<Record<string, unknown>>('datasource')?.lastDatabase as string | undefined)
+  const lastDb = (appStore.loadUiStateFor<Record<string, unknown>>('datasource')?.lastDatabase as string | undefined)
   if (lastDb) {
     try {
       const resp = await apiPost<{ database: Record<string, unknown> }>(

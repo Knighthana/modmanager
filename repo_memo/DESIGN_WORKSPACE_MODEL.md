@@ -610,7 +610,7 @@ DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsin
 | TODO-70（森林图展示打磨） | 森林可视页的纯展示优化——小地图比例、滚动条、放缩数值。独立任务，与工作区模型无关 |
 | `force_compute` 参数 | compute 端点的缓存跳过标志，MVP 后可加 |
 | 外部资源端点（preview/README） | TODO-66/67 范畴 |
-| `useWorkspaceStore` 唯一写者 | `audit_todo_future.md` 第 1 项，可延后 |
+| `useAppStore` 唯一写者 | 组件通过 Pinia `useAppStore` 读写浏览器存储，不直接 import persistence.ts。Tauri 迁移时仅改 persistence 底层 |
 | 前端 Transport Abstraction | `audit_todo_future.md` 第 3 项，可延后 |
 
 ---

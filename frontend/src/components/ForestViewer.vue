@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useForestStore } from '../stores/forest'
-import { loadPersistent, savePersistent } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import { STR } from '../locales/zh-CN'
 import svgPanZoom from 'svg-pan-zoom'
 
@@ -53,6 +53,7 @@ const props = defineProps<{
 }>()
 
 const store = useForestStore()
+const appStore = useAppStore()
 const router = useRouter()
 
 const containerRef = ref<HTMLElement>()
@@ -66,11 +67,11 @@ const panZoomReady = ref(false)
 const showStatusDetail = ref(true) // expanded by default per design
 
 // Restore from persistent storage
-showStatusDetail.value = loadPersistent<boolean>('forest.statusBarExpanded') ?? true
+showStatusDetail.value = appStore.load<boolean>('forest.statusBarExpanded') ?? true
 
 function toggleStatusBar() {
   showStatusDetail.value = !showStatusDetail.value
-  savePersistent('forest.statusBarExpanded', showStatusDetail.value)
+  appStore.save('forest.statusBarExpanded', showStatusDetail.value)
 }
 
 let panZoomInstance: SvgPanZoom.Instance | null = null

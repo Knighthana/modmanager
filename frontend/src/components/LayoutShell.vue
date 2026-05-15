@@ -65,16 +65,17 @@ import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
 import SseStatusBar from './SseStatusBar.vue'
 import { STR } from '../locales/zh-CN'
-import { loadCurrentWorkspaceId } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 
 const route = useRoute()
 const store = useForestStore()
+const appStore = useAppStore()
 
 const currentRoute = computed(() => route.path)
 const workspaceId = computed(() => {
   // Read from URL param (workspace-scoped pages) or sessionStorage fallback
   const fromRoute = (route.params as Record<string, string>).workspaceId
   if (fromRoute) return fromRoute
-  return loadCurrentWorkspaceId()
+  return appStore.currentWorkspaceId
 })
 </script>

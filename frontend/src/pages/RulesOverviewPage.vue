@@ -189,10 +189,11 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
 import { apiPost } from '../api/client'
-import { saveCurrentWorkspaceId } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
 
 const route = useRoute()
+const appStore = useAppStore()
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -297,7 +298,7 @@ const selectedCount = computed(() => ruleFiles.value.filter((f) => f.checked).le
 onMounted(async () => {
   const workspaceId = route.params.workspaceId as string
   if (workspaceId) {
-    saveCurrentWorkspaceId(workspaceId)
+    appStore.setCurrentWorkspaceId(workspaceId)
   }
   await loadRuleSources()
   await scanRuleFiles()

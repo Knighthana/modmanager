@@ -70,13 +70,14 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
-import { savePersistent } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import type { ConflictItem } from '../types'
 import { STR } from '../locales/zh-CN'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const store = useForestStore()
+const appStore = useAppStore()
 const tableRef = ref()
 const isSaving = ref(false)
 
@@ -93,7 +94,7 @@ function onClearDecisions() {
 async function onConfirmDecisions() {
   isSaving.value = true
   try {
-    savePersistent('conflicts.branchDecisions', { ...store.branchDecisions })
+    appStore.save('conflicts.branchDecisions', { ...store.branchDecisions })
     ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
   } catch {
     ElMessage.error(STR.conflictsPage.saveDecisionFailed)

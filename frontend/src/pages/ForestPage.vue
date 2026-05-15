@@ -55,16 +55,17 @@ import ForestViewer from '../components/ForestViewer.vue'
 import type { TreeNode } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription } from '../utils/errorCodes'
-import { saveCurrentWorkspaceId } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import { STR } from '../locales/zh-CN'
 
 const store = useForestStore()
+const appStore = useAppStore()
 const route = useRoute()
 
 onMounted(async () => {
   const workspaceId = route.params.workspaceId as string
   if (workspaceId) {
-    saveCurrentWorkspaceId(workspaceId)
+    appStore.setCurrentWorkspaceId(workspaceId)
   }
 
   // Fetch SVG from workspace API (returns SVG text, Content-Type: image/svg+xml)

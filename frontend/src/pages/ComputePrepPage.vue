@@ -173,7 +173,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/client'
 import { streamSse } from '../api/sse'
-import { saveCurrentWorkspaceId, loadUiState, saveUiState } from '../utils/persistence'
+import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
@@ -181,6 +181,7 @@ import DatabaseSelector from '../components/DatabaseSelector.vue'
 const router = useRouter()
 const route = useRoute()
 const workspaceId = computed(() => route.params.workspaceId as string)
+const appStore = useAppStore()
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 
@@ -313,7 +314,7 @@ function modRowClass({ row }: { row: AffectedMod }): string {
 
 onMounted(async () => {
   if (workspaceId.value) {
-    saveCurrentWorkspaceId(workspaceId.value)
+    appStore.setCurrentWorkspaceId(workspaceId.value)
   }
   await loadData()
 })
@@ -400,7 +401,7 @@ async function loadData() {
     }
 
     // Restore library visibility from uiState
-    const savedVis = loadUiState<Record<number, boolean>>(`computePrep.visibility.${workspaceId.value}`)
+    const savedVis = appStore.loadUiStateFor<Record<number, boolean>>(`computePrep.visibility.${workspaceId.value}`)
     if (savedVis) {
       for (const lib of libraries.value) {
         if (savedVis[lib.index] !== undefined) {
@@ -519,7 +520,7 @@ function toggleLibraryVisibility(libIndex: number) {
   for (const l of libraries.value) {
     vis[l.index] = l._visible
   }
-  saveUiState(`computePrep.visibility.${workspaceId.value}`, vis)
+  appStore.saveUiStateFor(`computePrep.visibility.${workspaceId.value}`, vis)
 }
 
 // ── Build managedEntries from checkbox state ──────────────────────────────

@@ -126,9 +126,11 @@ export async function streamSse(
 
 ### 包含的 Stores
 
-#### 2.1 浏览器存储层（persistence.ts）
+#### 2.1 浏览器存储层（两层架构）
 
-**职责**：浏览器存储的唯一底层。所有 localStorage/sessionStorage 读写通过其导出函数进行。
+##### 底层：persistence.ts
+
+**职责**：浏览器存储的唯一底层。所有 localStorage/sessionStorage 读写通过其导出函数进行。不与组件直接对话。
 
 **导出函数**
 - `loadPersistent<T>(key)` — sessionStorage 优先 → localStorage 回退
@@ -138,9 +140,13 @@ export async function streamSse(
 - `loadCurrentWorkspaceId()` / `saveCurrentWorkspaceId(id)` — Tab 级工作区导航状态
 - `loadSidebarCollapsed()` / `saveSidebarCollapsed(collapsed)` — 侧栏折叠偏好
 
-**特点**：
-- `persistence.ts` 是浏览器存储的唯一底层（所有组件通过其导出函数读写，不直接操作 localStorage/sessionStorage）
-- 提供 reactive 属性，组件订阅即可自动更新
+##### 上层：useAppStore（Pinia）
+
+**职责**：组件的唯一持久化入口。封装 persistence.ts 为 reactive action。**组件不允许 import persistence.ts**——只通过 useAppStore 读写浏览器存储。Tauri 迁移时仅替换 persistence.ts 内部的存储适配器，useAppStore 和组件零改动。
+
+**设计决策**：
+- 命名：`useAppStore`（非旧 audit 中的 `useWorkspaceStore`——workspace 现已改义为后端工作区目录，app store 管的是 app 级 UI 状态）
+- 审计 `audit_todo_future.md` 中 `useWorkspaceStore` 唯一写者 → 此处落地为 `useAppStore`
 
 #### 2.2 useDataSourceStore
 **职责**：DataSourcePage 的扫描会话数据与 UI 状态
@@ -197,10 +203,10 @@ export async function streamSse(
 - 只需 `import { apiPost } from '@/api'` 这一条 import，当 api 的实现改变时自动适应
 
 **单一数据源**
-- `persistence.ts` 是浏览器存储的唯一底层读写入口
+- `useAppStore` 是组件读写浏览器存储的**唯一入口**（组件不 import persistence.ts）
+- `persistence.ts` 是浏览器存储的**唯一底层**（存储介质适配在此层完成）
 - 业务数据（decisions, mapping, SVG）以后端工作区目录为权威
-- 所有页面组件通过 `persistence.ts` 函数读写浏览器存储，不直接操作 localStorage/sessionStorage
-- 防止状态不一致和数据竞争
+- Tauri 迁移路径：仅替换 persistence.ts 内部的 LocalStorageAdapter → TauriStoreAdapter
 
 ---
 
@@ -271,8 +277,9 @@ Tauri 迁移时，组件代码完全不动：
 
 ### 状态层（第 2 层）
 - [ ] 所有 reactive 状态都在 Pinia store
-- [ ] Component 不直接操作 localStorage/sessionStorage，仅通过 `persistence.ts` 函数
-- [ ] `persistence.ts` 是浏览器存储的唯一读写入口（`useWorkspaceStore` 唯一写者已延后，见 audit_todo_future.md）
+- [ ] Component 不直接操作 localStorage/sessionStorage，仅通过 useAppStore
+- [ ] Component 不 import persistence.ts（门禁由 useAppStore 承担）
+- [ ] `useAppStore` 是组件读写浏览器存储的唯一入口（替代旧 audit 中的 useWorkspaceStore 唯一写者）
 - [ ] 每个 store 的职责清晰（workspace / datasource / compute 不混)
 
 ### 组件层（第 3 层）
