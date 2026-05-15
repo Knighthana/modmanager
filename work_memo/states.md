@@ -11,8 +11,3 @@
 - [ ] TODO-68: 规则概览 — author 字段的键含义与展示方式待讨论
 - [ ] TODO-69: `inputs_hash` 实现不完整
 - [ ] TODO-70: 森林图展示打磨（小地图比例/滚动条/放缩）— 独立任务
-
-### 可延后（来自 audit_todo_future.md）
-- [x] ~~`useWorkspaceStore` 唯一写者~~ → 已落地为 `useAppStore`
-- [x] `activeTab` / `sidebarCollapsed` 迁入 uiState → 已通过 useAppStore 实现（独立 key，非嵌套对象）
-- [x] 前端 Transport Abstraction（`src/api/transport.ts`）→ 已完成：14 个文件 import 收敛到 transport.ts
