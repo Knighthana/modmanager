@@ -20,3 +20,5 @@
 - [ ] TODO-67: 规则概览 — README 文件内容查看。需要新增 `POST /api/rules/readme { path }` 端点，返回文本内容。前端点 README 文件名弹出内容对话框。
 - [ ] TODO-68: 规则概览 — author 字段的键含义与展示方式待讨论。当前气泡遍历展示所有 key-value 作为占位。
 - [ ] TODO-69: `inputs_hash` 实现不完整——当前仅 hash 规则集，文档要求 hash(database_path + rule_paths + branch_decisions + managed_entries)。需修正。
+- [ ] TODO-70: 森林图仍然存在 小地图不能反映用户视觉看到的比例；右边的滚动条又冒出来了；放缩数值需要计算 的问题等待处理；
+- [ ] TODO-71: trees到底存在哪；存还是不存，存在前端还是后端；

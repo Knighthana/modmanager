@@ -36,7 +36,7 @@
     </div>
 
     <!-- ForestViewer -->
-    <ForestViewer :empty-message="emptyMessage" />
+    <ForestViewer ref="forestViewerRef" :empty-message="emptyMessage" />
 
     <!-- Drawer -->
     <el-drawer v-model="showDrawer" title="摘要" direction="rtl" size="360px">
@@ -49,14 +49,6 @@
         </el-descriptions>
       </div>
     </el-drawer>
-
-    <!-- Bottom status bar (per DESIGN_GUI.md §3.4) -->
-    <div v-if="hasResult" class="forest-bottom-bar" @click="showBottomPanel = !showBottomPanel">
-      <span class="bottom-btn">📋 {{ store.errors.length + store.warnings.length }}</span>
-      <span v-if="showBottomPanel" class="bottom-status">
-        &nbsp;{{ store.trees.length }} 树 {{ store.finalMapping.length }} 映射 {{ store.warnings.length }} 警告 {{ store.errors.length }} 错误
-      </span>
-    </div>
   </div>
 </template>
 
@@ -122,9 +114,10 @@ const activeCollapseNames = computed(() => {
 const showBranchingOnly = ref(false)
 const showMinimap = ref(false)
 const showDrawer = ref(false)
-const showBottomPanel = ref(false)
 
-function resetView() { /* TODO: svg-pan-zoom fit + center */ }
+const forestViewerRef = ref<InstanceType<typeof ForestViewer> | null>(null)
+
+function resetView() { forestViewerRef.value?.resetView() }
 function toggleMinimap() { showMinimap.value = !showMinimap.value }
 
 function getFilteredTrees(): TreeNode[] {
@@ -185,37 +178,5 @@ watch(showBranchingOnly, () => {
 .forest-top-bar .status-text {
   font-size: 13px;
   color: var(--el-text-color-secondary);
-}
-
-.forest-bottom-bar {
-  position: fixed;
-  bottom: 12px;
-  left: 280px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.bottom-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: rgba(64, 158, 255, 0.15);
-  color: #409eff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.bottom-status {
-  background: rgba(255,255,255,0.95);
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 </style>

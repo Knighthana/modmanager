@@ -7,11 +7,6 @@
     >
       {{ props.emptyMessage || STR.forestViewer.emptyFallback }}
     </div>
-    <div v-if="store.svgContent" class="forest-toolbar">
-      <el-button size="small" @click="onResetView">
-        {{ STR.forestViewer.resetView }}
-      </el-button>
-    </div>
     <!-- Wrapper: 容器 + 小地图 overlay -->
     <div v-if="store.svgContent" class="forest-wrapper">
       <div
@@ -23,13 +18,17 @@
         @click="onNodeClick"
         v-html="store.svgContent"
       />
+      <div v-if="store.trees.length > 0" class="forest-status-overlay" @click="toggleStatusBar">
+        📋 {{ store.errors.length + store.warnings.length }}
+        <span v-if="showStatusDetail">
+          &nbsp;{{ store.trees.length }} 树 {{ store.finalMapping.length }} 映射 {{ store.warnings.length }} 警告 {{ store.errors.length }} 错误
+        </span>
+      </div>
       <div v-if="panZoomReady" class="forest-minimap"
            :style="{ width: minimapSize.w + 'px', height: minimapSize.h + 'px' }"
            @mousedown.stop
            @click.stop="onMinimapClick">
-        <!-- 全图区域矩形 -->
         <div class="forest-minimap-area" />
-        <!-- 视口矩形 -->
         <div v-if="minimapViewport" class="forest-minimap-viewport"
              :style="{
                left: minimapViewport.x + 'px',
@@ -44,8 +43,8 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useForestStore } from '../stores/forest'
+import { loadWorkspace, saveWorkspace } from '../utils/persistence'
 import { STR } from '../locales/zh-CN'
 import svgPanZoom from 'svg-pan-zoom'
 
@@ -57,13 +56,33 @@ const store = useForestStore()
 const router = useRouter()
 
 const containerRef = ref<HTMLElement>()
-const containerHeight = ref(500)
+const containerHeight = ref(window.innerHeight - 120) // nearly full viewport
 const selectedTreeRoot = ref<string | null>(null)
 const didPan = ref(false)
 const minimapSize = ref({ w: 180, h: 120 })
 let svgViewBox: { w: number; h: number } | null = null
 const minimapViewport = ref<{ x: number; y: number; w: number; h: number } | null>(null)
 const panZoomReady = ref(false)
+const showStatusDetail = ref(true) // expanded by default per design
+
+// Restore from workspace
+try {
+  const ws = loadWorkspace()
+  if (ws.uiState?.forest?.statusBarExpanded !== undefined) {
+    showStatusDetail.value = ws.uiState.forest.statusBarExpanded
+  }
+} catch { /* ignore */ }
+
+function toggleStatusBar() {
+  showStatusDetail.value = !showStatusDetail.value
+  try {
+    const ws = loadWorkspace()
+    if (!ws.uiState) ws.uiState = {}
+    if (!ws.uiState.forest) ws.uiState.forest = {}
+    ws.uiState.forest.statusBarExpanded = showStatusDetail.value
+    saveWorkspace(ws)
+  } catch { /* ignore */ }
+}
 
 let panZoomInstance: SvgPanZoom.Instance | null = null
 
@@ -84,12 +103,17 @@ function initPanZoom() {
   const vb = parseSvgViewBox(store.svgContent)
   svgViewBox = vb
 
+  // minZoom = container fits entire SVG
+  const containerW = containerRef.value?.clientWidth || 800
+  const containerH = containerRef.value?.clientHeight || 600
+  const fitZoom = vb ? Math.min(containerW / vb.w, containerH / vb.h) : 0.1
+
   panZoomInstance = svgPanZoom(svgEl, {
     fit: true,
     center: true,
-    minZoom: 0.1,
-    maxZoom: 5,
-    zoomScaleSensitivity: 0.2,
+    minZoom: fitZoom,
+    maxZoom: 500,
+    zoomScaleSensitivity: 0.5,
     controlIconsEnabled: false,
     dblClickZoomEnabled: true,
     mouseWheelZoomEnabled: true,
@@ -153,6 +177,8 @@ function onResetView() {
   didPan.value = false
 }
 
+defineExpose({ resetView: onResetView })
+
 function computeMinimapViewport(): { x: number; y: number; w: number; h: number } | null {
   if (!panZoomInstance || !svgViewBox) return null
   const zoom = panZoomInstance.getZoom()
@@ -173,14 +199,13 @@ function computeMinimapViewport(): { x: number; y: number; w: number; h: number 
 
   const mmW = minimapSize.value.w
   const mmH = minimapSize.value.h
-  const sx = mmW / svgViewBox.w
-  const sy = mmH / svgViewBox.h
+  const scale = Math.min(mmW / svgViewBox.w, mmH / svgViewBox.h)
 
   return {
-    x: visX * sx,
-    y: visY * sy,
-    w: visW * sx,
-    h: visH * sy,
+    x: visX * scale,
+    y: visY * scale,
+    w: visW * scale,
+    h: visH * scale,
   }
 }
 
@@ -206,45 +231,11 @@ function onMinimapClick(e: MouseEvent) {
 watch(() => store.svgContent, async (newVal) => {
   if (!newVal) {
     destroyPanZoom()
-    containerHeight.value = 500
     return
   }
 
-  // 等待 v-html 渲染
   await nextTick()
-  // 等待浏览器完成布局（确保 clientWidth 可用）
   await new Promise(resolve => requestAnimationFrame(resolve))
-
-  // 确保 ResizeObserver 在容器首次出现时被创建
-  if (!ro && containerRef.value) {
-    ro = new ResizeObserver(() => {
-      const vb2 = store.svgContent ? parseSvgViewBox(store.svgContent) : null
-      if (vb2 && containerRef.value) {
-        const cw2 = containerRef.value.clientWidth
-        if (cw2 > 0) {
-          containerHeight.value = Math.max((cw2 / vb2.w) * vb2.h, 100)
-        }
-      }
-      if (panZoomInstance) {
-        panZoomInstance.resize()
-        panZoomInstance.fit()
-        minimapViewport.value = computeMinimapViewport()
-      }
-    })
-    ro.observe(containerRef.value)
-  }
-
-  // 现在 clientWidth 是准确的
-  const vb = parseSvgViewBox(newVal)
-  if (vb && containerRef.value) {
-    const cw = containerRef.value.clientWidth
-    if (cw > 0) {
-      containerHeight.value = Math.max((cw / vb.w) * vb.h, 100)
-    }
-  }
-
-  // 等待高度生效
-  await nextTick()
 
   initPanZoom()
 })
@@ -252,16 +243,11 @@ watch(() => store.svgContent, async (newVal) => {
 let ro: ResizeObserver | null = null
 
 onMounted(() => {
+  const updateHeight = () => { containerHeight.value = window.innerHeight - 180 }
+  window.addEventListener('resize', updateHeight)
+
   if (containerRef.value) {
     ro = new ResizeObserver(() => {
-      // 容器宽度变化 → 重新计算高度 + 适配
-      const vb = store.svgContent ? parseSvgViewBox(store.svgContent) : null
-      if (vb && containerRef.value) {
-        const cw = containerRef.value.clientWidth
-        if (cw > 0) {
-          containerHeight.value = Math.max((cw / vb.w) * vb.h, 100)
-        }
-      }
       if (panZoomInstance) {
         panZoomInstance.resize()
         panZoomInstance.fit()
@@ -382,5 +368,17 @@ function onNodeClick(e: MouseEvent) {
   background: rgba(59, 130, 246, 0.12);
   pointer-events: none;
   border-radius: 2px;
+}
+
+.forest-status-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 25;
+  background: rgba(255,255,255,0.9);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 </style>

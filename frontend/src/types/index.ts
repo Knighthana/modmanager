@@ -154,5 +154,8 @@ export interface WorkspaceData {
     computePrep?: {
       libraryVisibility?: Record<number, boolean>
     }
+    forest?: {
+      statusBarExpanded?: boolean
+    }
   }
 }

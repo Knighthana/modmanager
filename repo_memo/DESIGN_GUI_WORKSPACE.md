@@ -66,6 +66,9 @@ modmanager:workspace
     },
     "computePrep": {
       "libraryVisibility": {}
+    },
+    "forest": {
+      "statusBarExpanded": true
     }
   },
   "aggregatedRuleMeta": {
@@ -136,6 +139,8 @@ modmanager:workspace
 | `datasource.gameVisibility` | `object` | 游戏可见性 `{ index: boolean }` |
 | `computePrep` | `object \| null` | ComputePrepPage 状态 |
 | `computePrep.libraryVisibility` | `object` | 库可见性 `{ index: boolean }` |
+| `forest` | `object \| null` | ForestPage 状态 |
+| `forest.statusBarExpanded` | `boolean` | 底栏状态条是否展开（默认 `true`） |
 
 ### 2.5 `aggregatedRuleMeta.aggregatedRuleHash` 校验逻辑
 
