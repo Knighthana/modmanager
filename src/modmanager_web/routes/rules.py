@@ -193,24 +193,34 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
     except Exception:
         database = {"steamlib": [], "game": [], "mod": []}
 
-    # Extract referenced mixed_ids from the aggregated rule set
+    # Extract referenced appids and mixed_ids from the aggregated rule set
     referenced_mixed_ids: set[str] = set()
+    referenced_appids: set[str] = set()
+    nickname_by_mixed_id: dict[str, str] = {}
     for op in agg_rules.get("operation", []):
         mid = op.get("mixed_id", "")
         if mid:
             referenced_mixed_ids.add(mid)
+            appid = mid.split(":")[0] if ":" in mid else ""
+            if appid:
+                referenced_appids.add(appid)
+            nick = op.get("nickname", "")
+            if nick:
+                nickname_by_mixed_id[mid] = nick
 
-    # Build library index: basepath → steamlib index
-    steamlib_list = database.get("steamlib", []) or []
+    # Build library index: match game basepath by prefix against steamlib paths
     basepath_to_lib_idx: dict[str, int] = {}
+    steamlib_list = database.get("steamlib", []) or []
     for idx, lib in enumerate(steamlib_list):
         bp = lib.get("path", "")
         if bp:
-            basepath_to_lib_idx[bp] = idx
+            basepath_to_lib_idx[bp.rstrip("/")] = idx
 
     # Collect libraries
     libraries: list[dict] = []
     lib_indices_used: set[int] = set()
+    # Synthetic library entries for basepaths not found in steamlib
+    synthetic_libs: dict[str, int] = {}
 
     # Process games
     games_list = database.get("game", []) or []
@@ -223,8 +233,24 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
     games_out: list[dict] = []
     for g in games_list:
         appid = str(g.get("appid", ""))
+        # Only include games referenced by the aggregated rules
+        if appid not in referenced_appids:
+            continue
         basepath = g.get("basepath", "")
-        lib_idx = basepath_to_lib_idx.get(basepath, -1)
+        # Prefix match: find which steamlib contains this game
+        lib_idx = -1
+        for lib_path, li in basepath_to_lib_idx.items():
+            if basepath.startswith(lib_path):
+                lib_idx = li
+                break
+        # Fallback: create a synthetic library entry for this basepath
+        if lib_idx < 0 and basepath:
+            parts = basepath.rstrip("/").rsplit("/steamapps/", 1)
+            if len(parts) == 2:
+                derived_path = parts[0] + "/steamapps/"
+                if derived_path not in synthetic_libs:
+                    synthetic_libs[derived_path] = len(steamlib_list) + len(synthetic_libs)
+                lib_idx = synthetic_libs[derived_path]
         if lib_idx >= 0:
             lib_indices_used.add(lib_idx)
         games_out.append({
@@ -246,26 +272,42 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
     mods_out: list[dict] = []
     for m in mods_list:
         mixed_id = str(m.get("mixed_id", ""))
-        # Find the game for this mod to get libraryIndex
+        # Only include mods referenced by the aggregated rules
+        if mixed_id not in referenced_mixed_ids:
+            continue
         game_appid = mixed_id.split(":")[0] if ":" in mixed_id else ""
+        # Find the correct game entry: match by modpath prefix (same steamapps root)
         game_entry = None
         for g in database.get("game", []):
             if str(g.get("appid", "")) == game_appid:
-                game_entry = g
-                break
-        game_idx = -1
-        if game_entry:
-            for idx, g in enumerate(database.get("game", [])):
-                if g is game_entry:
-                    game_idx = idx
+                modpath = g.get("modpath", "")
+                if modpath and m.get("path", "").startswith(modpath):
+                    game_entry = g
+                    break
+        if not game_entry:
+            # Fallback: match by appid only
+            for g in database.get("game", []):
+                if str(g.get("appid", "")) == game_appid:
+                    game_entry = g
                     break
         basepath = game_entry.get("basepath", "") if game_entry else ""
-        lib_idx = basepath_to_lib_idx.get(basepath, -1)
+        game_idx = next((i for i, g in enumerate(games_out) if g["appid"] == game_appid), -1)
+        lib_idx = -1
+        for lib_path, li in basepath_to_lib_idx.items():
+            if basepath.startswith(lib_path):
+                lib_idx = li
+                break
+        # Fallback: use synthetic library if basepath not in steamlib
+        if lib_idx < 0 and basepath:
+            parts = basepath.rstrip("/").rsplit("/steamapps/", 1)
+            if len(parts) == 2:
+                derived_path = parts[0] + "/steamapps/"
+                lib_idx = synthetic_libs.get(derived_path, -1)
         if lib_idx >= 0:
             lib_indices_used.add(lib_idx)
         mods_out.append({
             "mixed_id": mixed_id,
-            "nickname": m.get("nickname", ""),
+            "nickname": nickname_by_mixed_id.get(mixed_id, m.get("nickname", "")),
             "path": m.get("path", ""),
             "libraryIndex": lib_idx,
             "gameIndex": game_idx,
@@ -284,6 +326,17 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
                 "game_count": game_count,
                 "mod_count": mod_count,
             })
+
+    # Add synthetic library entries (basepaths not in steamlib)
+    for derived_path, lib_idx in synthetic_libs.items():
+        game_count = sum(1 for g in games_out if g["libraryIndex"] == lib_idx)
+        mod_count = sum(1 for m in mods_out if m["libraryIndex"] == lib_idx)
+        libraries.append({
+            "index": lib_idx,
+            "path": derived_path,
+            "game_count": game_count,
+            "mod_count": mod_count,
+        })
 
     return {
         "ok": True,

@@ -1,5 +1,5 @@
 <template>
-  <div class="gui-page">
+  <div class="datasource-page gui-page">
     <h2>{{ STR.dataSourcePage.title }}</h2>
 
     <!-- Mode + Settings -->
@@ -183,7 +183,7 @@
             </template>
           </el-table-column>
           <el-table-column :label="STR.dataSourcePage.colAppid" width="90" prop="appid" />
-          <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
+          <el-table-column :label="STR.dataSourcePage.colName" min-width="180" prop="name" show-overflow-tooltip />
           <el-table-column :label="STR.dataSourcePage.colModCount" width="80">
             <template #default="{ row }: { row: GameRow }">
               <el-button
@@ -222,7 +222,7 @@
         <el-table :data="store.filteredMods" border stripe size="small" ref="modTableRef">
           <el-table-column :label="STR.dataSourcePage.colIndex" width="60" type="index" />
           <el-table-column :label="STR.dataSourcePage.colModId" width="120" prop="modid" show-overflow-tooltip />
-          <el-table-column :label="STR.dataSourcePage.colName" min-width="140" prop="name" show-overflow-tooltip />
+          <el-table-column :label="STR.dataSourcePage.colName" min-width="180" prop="name" show-overflow-tooltip />
           <el-table-column :label="STR.dataSourcePage.colBelongingAppid" width="100">
             <template #default="{ row }: { row: ModRow }">
               <el-button
@@ -614,5 +614,10 @@ function scrollToFirstMod(game: GameRow) {
 }
 .horizontal-cell-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.datasource-page {
+  margin: 0 auto;
+  padding: 16px 24px;
 }
 </style>

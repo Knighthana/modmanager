@@ -1,6 +1,6 @@
 <template>
   <div class="compute-prep-page gui-page">
-    <h2>计算准备</h2>
+    <h2>🧮 计算准备</h2>
     <!-- ── Empty state: no rules selected ────────────────────────────── -->
     <template v-if="noRulesSelected">
       <el-card shadow="never">
@@ -29,29 +29,27 @@
         <div class="action-buttons">
           <el-button
             type="primary"
-            size="large"
             :loading="computing"
             :disabled="computing"
             @click="startCompute"
           >
-            ▶ 开始计算
+            ▶️ 开始计算
           </el-button>
           <el-button
-            size="large"
+            type="success"
             :disabled="!canViewResults"
             @click="viewResults"
           >
-            查看结果
+            👁️ 查看结果
           </el-button>
         </div>
-        <div class="summary-text" v-if="summaryText">
-          {{ summaryText }}
+        <div v-if="computeMessage" class="compute-result-text" :class="{ 'compute-success': computeSuccess }">
+          {{ computeMessage }}
         </div>
       </div>
 
-      <!-- Compute result message -->
-      <div v-if="computeMessage" class="compute-message" :class="{ 'compute-success': computeSuccess }">
-        {{ computeMessage }}
+      <div v-if="summaryText" class="summary-line">
+        {{ summaryText }}
       </div>
 
       <!-- ── Library table ──────────────────────────────────────────── -->
@@ -67,26 +65,34 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="序" width="48" align="center">
+          <el-table-column label="序号" width="56" align="center">
             <template #default="{ $index }">{{ $index + 1 }}</template>
           </el-table-column>
-          <el-table-column label="路径" min-width="300">
+          <el-table-column label="可见" width="70" align="center">
             <template #default="{ row }">
-              <div class="path-cell">{{ row.path }}</div>
+              <el-button
+                v-if="row._visible"
+                size="small"
+                type="success"
+                @click="toggleLibraryVisibility(row.index)"
+              >
+                👀
+              </el-button>
+              <el-button
+                v-else
+                size="small"
+                type="warning"
+                @click="toggleLibraryVisibility(row.index)"
+              >
+                🙈
+              </el-button>
             </template>
           </el-table-column>
           <el-table-column label="游戏" width="60" align="center" prop="game_count" />
           <el-table-column label="MOD" width="60" align="center" prop="mod_count" />
-          <el-table-column label="可见" width="60" align="center">
+          <el-table-column label="路径" min-width="300">
             <template #default="{ row }">
-              <el-button
-                size="small"
-                text
-                :type="row._visible ? 'warning' : 'info'"
-                @click="toggleLibraryVisibility(row.index)"
-              >
-                👁
-              </el-button>
+              <div class="path-cell">{{ row.path }}</div>
             </template>
           </el-table-column>
         </el-table>
@@ -108,11 +114,11 @@
               <el-checkbox v-model="row._checked" @change="() => onChildChange(row.libraryIndex)" />
             </template>
           </el-table-column>
-          <el-table-column label="序" width="48" align="center">
+          <el-table-column label="序号" width="56" align="center">
             <template #default="{ $index }">{{ $index + 1 }}</template>
           </el-table-column>
           <el-table-column label="appid" width="100" prop="appid" />
-          <el-table-column label="名称" width="120" prop="name" />
+          <el-table-column label="名称" min-width="180" prop="name" />
           <el-table-column label="路径" min-width="320">
             <template #default="{ row }">
               <div class="path-cell scroll-x">{{ row.basepath }}</div>
@@ -137,7 +143,7 @@
               <el-checkbox v-model="row._checked" @change="() => onChildChange(row.libraryIndex)" />
             </template>
           </el-table-column>
-          <el-table-column label="序" width="48" align="center">
+          <el-table-column label="序号" width="56" align="center">
             <template #default="{ $index }">{{ $index + 1 }}</template>
           </el-table-column>
           <el-table-column label="mixed_id" width="200" prop="mixed_id" />
@@ -266,14 +272,32 @@ const summaryText = computed(() => {
   return parts.join('，')
 })
 
-// ── Row class for duplicate highlighting ─────────────────────────────────
+// ── Row class for duplicate highlighting (computed dynamically from visible rows) ──
+
+const duplicateGameAppids = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const g of filteredGames.value.filter(g => g._checked)) {
+    counts[g.appid] = (counts[g.appid] || 0) + 1
+  }
+  return new Set(Object.keys(counts).filter(k => counts[k] > 1))
+})
+
+const duplicateModMixedIds = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const m of filteredMods.value.filter(m => m._checked)) {
+    counts[m.mixed_id] = (counts[m.mixed_id] || 0) + 1
+  }
+  return new Set(Object.keys(counts).filter(k => counts[k] > 1))
+})
 
 function gameRowClass({ row }: { row: AffectedGame }): string {
-  return row.has_duplicate ? 'duplicate-row' : ''
+  if (!row._checked) return ''
+  return duplicateGameAppids.value.has(row.appid) ? 'duplicate-row' : ''
 }
 
 function modRowClass({ row }: { row: AffectedMod }): string {
-  return row.has_duplicate ? 'duplicate-row' : ''
+  if (!row._checked) return ''
+  return duplicateModMixedIds.value.has(row.mixed_id) ? 'duplicate-row' : ''
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -635,16 +659,15 @@ function viewResults() {
 }
 
 /* ── Compute message ────────────────────────── */
-.compute-message {
-  padding: 8px 16px;
+.compute-result-text {
+  padding: 4px 12px;
   border-radius: 4px;
-  margin-bottom: 16px;
   background: #fef0f0;
   color: #f56c6c;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.compute-message.compute-success {
+.compute-result-text.compute-success {
   background: #f0f9eb;
   color: #67c23a;
 }
@@ -680,20 +703,11 @@ function viewResults() {
 }
 
 /* ── Duplicate row highlight (soft yellow) ───── */
-:deep(.duplicate-row) {
+:deep(.el-table__body tr.duplicate-row > td.el-table__cell) {
   background-color: #fffbe6 !important;
 }
 
-:deep(.duplicate-row:hover) {
+:deep(.el-table__body tr.duplicate-row:hover > td.el-table__cell) {
   background-color: #fff5cc !important;
-}
-
-/* ── Stub overrides for el-table row class ──── */
-:deep(.el-table .duplicate-row td.el-table__cell) {
-  background-color: #fffbe6;
-}
-
-:deep(.el-table .duplicate-row:hover td.el-table__cell) {
-  background-color: #fff5cc;
 }
 </style>

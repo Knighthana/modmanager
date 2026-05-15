@@ -162,8 +162,9 @@ def validate_database(database: Any) -> list[str]:
     1. database must be a dict
     2. database['game'] must be list
     3. Each game entry must have 'appid' as string
-    4. All appid must be unique
-    5. game entries must have 'basepath' and 'modpath'
+    4. game entries must have 'basepath' and 'modpath'
+    5. mod entries must have 'mixed_id' and 'path'
+    (Duplicate appid / mixed_id is allowed — resolved by managedEntries or branchDecisions.)
     """
     errors: list[str] = []
 
@@ -196,10 +197,8 @@ def validate_database(database: Any) -> list[str]:
             errors.append(f"E_DATABASE_INVALID: game[{idx}]['appid'] cannot be empty string")
             continue
 
-        # Check uniqueness
-        if appid in seen_appids:
-            errors.append(f"E_DATABASE_INVALID: game[{idx}]['appid'] {appid!r} is not unique")
-            continue
+        # appid / mixed_id may appear multiple times (same game in multiple libraries).
+        # Duplicates are resolved by managedEntries or branch decisions — not rejected here.
         seen_appids.add(appid)
 
         # Check required path fields

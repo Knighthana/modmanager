@@ -224,7 +224,8 @@ class ValidateDatabaseTests(unittest.TestCase):
         errs = validate_database({"game": [{"appid": "", "basepath": "/path", "modpath": "/path"}]})
         self.assertTrue(any("E_DATABASE_INVALID" in e and "empty" in e for e in errs))
 
-    def test_appid_not_unique(self):
+    def test_appid_not_unique_allowed(self):
+        """Duplicate appids are allowed — resolved by managedEntries or branchDecisions."""
         database = {
             "game": [
                 {"appid": "270150", "basepath": "/path1", "modpath": "/path1"},
@@ -232,7 +233,8 @@ class ValidateDatabaseTests(unittest.TestCase):
             ]
         }
         errs = validate_database(database)
-        self.assertTrue(any("E_DATABASE_INVALID" in e and "not unique" in e for e in errs))
+        # No uniqueness error — duplicates are valid
+        self.assertFalse(any("not unique" in e for e in errs))
 
     def test_basepath_missing(self):
         errs = validate_database({"game": [{"appid": "270150", "modpath": "/path"}]})
