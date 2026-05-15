@@ -52,29 +52,29 @@
 ### 接口定义（TypeScript）
 
 ```typescript
-// src/api/transport.ts
+// src/api/transport.ts — 统一导出入口
+export { apiPost, apiGet, invoke } from './client'
+export { streamSse } from './sse'
+```
 
-export interface PostFn<T = unknown> {
-  (path: string, body: unknown): Promise<ApiResponse<T>>
-}
+**调用规则**：
+- `apiPost(path, body)` — POST 请求。`path` 为**相对路径**（如 `/workspace/create`），不含 `/api` 前缀——`apiPost` 内部拼接 `API_BASE + path`
+- `apiGet(path)` — GET 请求。同样传相对路径
+- `streamSse(path, body, callbacks)` — SSE 流式请求。同样传相对路径
+- `API_ENDPOINTS` 常量中的值**不含** `API_BASE`，全部为相对路径
+- 违反此规则的后果：双重 `/api` 前缀 → 404 或 405
 
-export interface ProgressCallbacks {
-  onProgress?: (p: SseProgress) => void
-  onResult?: (data: unknown) => void
-  onError?: (message: string) => void
-}
+```typescript
+// src/api/config.ts
+// API_BASE 仅由 apiPost/apiGet/streamSse 内部使用
+export const API_BASE = getApiBase()   // '/api'
 
-export interface SseProgress {
-  step: string
-  finished: number
-  total: number
-  message: string
-}
-
-export interface ApiResponse<T = unknown> {
-  ok: boolean
-  data: T | null
-  errors: string[]
+// API_ENDPOINTS 中的值是相对路径，不含 API_BASE
+export const API_ENDPOINTS = {
+  WORKSPACE_LIST: '/workspace/list',       // ✓
+  // WORKSPACE_LIST: `${API_BASE}/workspace/list`  // ✗ 双重前缀
+} as const
+```
   warnings: string[]
 }
 ```

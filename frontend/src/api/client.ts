@@ -11,3 +11,8 @@ export async function apiPost<T>(path: string, body: unknown): Promise<ApiRespon
   })
   return res.json()
 }
+
+export async function apiGet<T>(path: string): Promise<ApiResponse<T>> {
+  const res = await fetch(`${API_BASE}${path}`)
+  return res.json()
+}

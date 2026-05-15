@@ -171,7 +171,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { apiPost } from '../api/transport'
+import { apiPost, apiGet } from '../api/transport'
 import { streamSse } from '../api/transport'
 import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
@@ -323,7 +323,7 @@ async function tryRestoreAggregatedRuleSetFromBackend(): Promise<Record<string, 
   const workspaceId = route.params.workspaceId as string
   if (!workspaceId) return null
 
-  const resp = await apiPost<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`, {})
+  const resp = await apiGet<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`)
   if (!resp.ok || !resp.data || typeof resp.data !== 'object') {
     return null
   }
@@ -412,9 +412,8 @@ async function loadData() {
 
     // Load decisions from workspace API and restore checkbox state
     try {
-      const decisionsResp = await apiPost<{ managed_entries: { game: Record<string, string[]>; mod: Record<string, string[]> } }>(
-        `/workspace/${workspaceId.value}/decisions/load`,
-        { database_name: selectedDb }
+      const decisionsResp = await apiGet<{ managed_entries: { game: Record<string, string[]>; mod: Record<string, string[]> } }>(
+        `/workspace/${workspaceId.value}/decisions/load`
       )
       if (decisionsResp.ok && decisionsResp.data?.managed_entries) {
         const { game: gameKept, mod: modKept } = decisionsResp.data.managed_entries

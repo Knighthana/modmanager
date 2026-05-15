@@ -188,7 +188,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
-import { apiPost } from '../api/transport'
+import { apiPost, apiGet } from '../api/transport'
 import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
 
@@ -412,7 +412,7 @@ async function autoRestoreAggregated() {
   // Restore aggregated result from workspace API
   try {
     const workspaceId = route.params.workspaceId as string
-    const resp = await apiPost<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`, {})
+    const resp = await apiGet<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`)
     if (resp.ok && resp.data) {
       // Only restore if the store doesn't already have data
       const store = useForestStore()

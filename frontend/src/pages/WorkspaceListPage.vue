@@ -67,7 +67,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
-import { apiPost } from '../api/transport'
+import { apiPost, apiGet } from '../api/transport'
 import { API_ENDPOINTS } from '../api/config'
 import { useAppStore } from '../stores/app'
 import type { WorkspaceMeta } from '../types'
@@ -85,7 +85,7 @@ const newDatabase = ref('')
 async function loadWorkspaces() {
   loading.value = true
   try {
-    const res = await apiPost<{ workspaces: WorkspaceMeta[] }>(API_ENDPOINTS.WORKSPACE_LIST, {})
+    const res = await apiGet<{ workspaces: WorkspaceMeta[] }>(API_ENDPOINTS.WORKSPACE_LIST)
     if (res.ok && res.data) {
       workspaces.value = res.data.workspaces || []
     }
