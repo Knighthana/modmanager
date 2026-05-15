@@ -46,9 +46,9 @@ UI 状态分散在多个 persistence key（`datasource-libraryVisibility`、`dat
 > 可以并入，方向合理。按高价值字段先迁移，并加写入节流（例如 200ms 级）避免频繁刷 localStorage。
 
 ### 待执行
-- [ ] 将 `libraryVisibility`、`gameVisibility`、`activeTab`、`sidebarCollapsed` 迁移进 `workspace.uiState`
-- [ ] 添加写入节流（debounce 200ms）
-- [ ] 删除旧的分散 persistence key
+- [x] 将 `libraryVisibility`、`gameVisibility` 迁移进 `workspace.uiState` (2026-05-14 实施)
+- [x] DataSourcePage + ComputePrepPage 可见性状态持久化
+- [ ] `activeTab`、`sidebarCollapsed` 迁入（当前无实现）
 
 ---
 
