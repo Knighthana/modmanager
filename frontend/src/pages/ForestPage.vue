@@ -1,104 +1,62 @@
 <template>
-  <div class="gui-page">
+  <div class="forest-page gui-page">
     <div class="forest-top-bar">
-      <h2 style="margin: 0;">{{ STR.forestPage.title }}</h2>
+      <div class="forest-controls">
+        <el-button size="small" @click="resetView">🔄 重置视图</el-button>
+        <el-button size="small" @click="toggleMinimap">📐 小地图</el-button>
+        <el-switch
+          v-if="hasResult"
+          v-model="showBranchingOnly"
+          size="small"
+          active-text="仅分岔"
+          inactive-text="全部"
+          style="margin-left:8px;"
+        />
+      </div>
+      <div class="forest-actions">
+        <el-button size="small" @click="showDrawer = !showDrawer">📊 摘要</el-button>
+      </div>
     </div>
 
-    <!-- 上次计算结果恢复提示 -->
-    <el-card
-      v-if="lastResultSummary && !hasResult"
-      shadow="never"
-      style="margin-bottom: 16px;"
-    >
-      <span style="font-size: 13px; color: var(--el-text-color-secondary);">
-        上次计算结果：{{ lastResultSummary.treesCount }} 棵树，{{ lastResultSummary.mappingCount }} 个映射
-      </span>
-    </el-card>
+    <!-- 上次计算结果 -->
+    <div v-if="lastResultSummary && !hasResult" style="margin-bottom:12px;font-size:13px;color:var(--el-text-color-secondary);">
+      上次计算结果：{{ lastResultSummary.treesCount }} 棵树，{{ lastResultSummary.mappingCount }} 个映射。在计算准备页重新计算以查看森林图。
+    </div>
 
-    <!-- ResultSummary -->
-    <el-row v-if="hasResult" :gutter="16" style="margin-bottom: 16px;">
-      <el-col :span="6">
-        <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.treesCount }}</span>
-          <div style="font-size: 24px; font-weight: 600;">{{ store.trees.length }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.conflicts }}</span>
-          <div style="font-size: 24px; font-weight: 600;">{{ store.conflictList.length }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.finalMapping }}</span>
-          <div style="font-size: 24px; font-weight: 600;">{{ store.finalMapping.length }}</div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="never">
-          <span style="font-size: 13px; color: var(--el-text-color-secondary);">{{ STR.forestPage.errors }}</span>
-          <div style="font-size: 24px; font-weight: 600;"
-               :style="{ color: store.errors.length > 0 ? 'var(--el-color-danger)' : 'var(--el-text-color-primary)' }">
-            {{ store.errors.length }}
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 错误与警告面板 -->
-    <div v-if="store.errors.length || store.warnings.length" style="margin-bottom: 16px;">
-      <el-collapse v-model="activeCollapseNames">
-        <el-collapse-item v-if="store.errors.length" :title="`${STR.forestPage.errors} (${store.errors.length})`" name="errors">
-          <el-alert
-            v-for="(err, i) in store.errors"
-            :key="'err-' + i"
-            :title="err"
-            type="error"
-            :closable="false"
-            style="margin-bottom: 4px; cursor: pointer;"
-            @click="(e: MouseEvent) => onMessageClick(err, e)"
-          />
-        </el-collapse-item>
-        <el-collapse-item v-if="store.warnings.length" :title="`${STR.forestPage.warnings} (${store.warnings.length})`" name="warnings">
-          <el-alert
-            v-for="(warn, i) in store.warnings"
-            :key="'warn-' + i"
-            :title="warn"
-            type="warning"
-            :closable="false"
-            style="margin-bottom: 4px; cursor: pointer;"
-            @click="(e: MouseEvent) => onMessageClick(warn, e)"
-          />
-        </el-collapse-item>
-      </el-collapse>
-
-      <!-- 提示：若全是 W_LOCAL_MOD_MISSING，建议先运行自动探测 -->
+    <!-- 错误 / 警告区 -->
+    <div v-if="store.errors.length > 0 || store.warnings.length > 0" style="margin-bottom:12px;max-height:120px;overflow-y:auto;">
       <el-alert
-        v-if="store.errors.every(e => e.startsWith('W_')) && store.errors.length > 0"
-        :title="STR.forestPage.allWarningsHintTitle"
-        :description="STR.forestPage.allWarningsHintDesc"
-        type="info"
+        v-for="(msg, i) in [...store.errors, ...store.warnings]"
+        :key="i"
+        :title="msg"
+        :type="store.errors.includes(msg) ? 'error' : 'warning'"
         :closable="false"
-        style="margin-top: 8px;"
+        style="margin-bottom:4px;"
       />
     </div>
 
-    <!-- 展示模式切换 -->
-    <el-card v-if="hasResult" shadow="never" style="margin-bottom: 16px;">
-      <el-form label-width="140px">
-        <el-form-item :label="STR.forestPage.displayMode">
-          <el-switch
-            v-model="showBranchingOnly"
-            :active-text="STR.forestPage.branchingOnly"
-            :inactive-text="STR.forestPage.allTrees"
-          />
-        </el-form-item>
-      </el-form>
-    </el-card>
-
     <!-- ForestViewer -->
     <ForestViewer :empty-message="emptyMessage" />
+
+    <!-- Drawer -->
+    <el-drawer v-model="showDrawer" title="摘要" direction="rtl" size="360px">
+      <div v-if="store.trees.length > 0" style="padding:0 16px;">
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="树">{{ store.trees.length }}</el-descriptions-item>
+          <el-descriptions-item label="映射">{{ store.finalMapping.length }}</el-descriptions-item>
+          <el-descriptions-item label="警告">{{ store.warnings.length }}</el-descriptions-item>
+          <el-descriptions-item label="错误">{{ store.errors.length }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-drawer>
+
+    <!-- Bottom status bar (per DESIGN_GUI.md §3.4) -->
+    <div v-if="hasResult" class="forest-bottom-bar" @click="showBottomPanel = !showBottomPanel">
+      <span class="bottom-btn">📋 {{ store.errors.length + store.warnings.length }}</span>
+      <span v-if="showBottomPanel" class="bottom-status">
+        &nbsp;{{ store.trees.length }} 树 {{ store.finalMapping.length }} 映射 {{ store.warnings.length }} 警告 {{ store.errors.length }} 错误
+      </span>
+    </div>
   </div>
 </template>
 
@@ -127,19 +85,27 @@ onMounted(() => {
         treesCount: perDb.lastComputeSummary.trees_count,
         mappingCount: perDb.lastComputeSummary.mapping_count,
       }
-
-      // Check result staleness (older than 24 hours)
       const resultTimestamp = perDb.lastComputeSummary.timestamp
       if (resultTimestamp) {
         const resultAge = Date.now() - new Date(resultTimestamp).getTime()
-        const isStale = resultAge > 24 * 60 * 60 * 1000 // 24 hours
-
+        const isStale = resultAge > 24 * 60 * 60 * 1000
         if (isStale) {
           const hoursOld = Math.floor(resultAge / (60 * 60 * 1000))
           ElMessage.warning(`计算结果已 ${hoursOld} 小时未更新，建议重新计算以确保结果最新`)
         }
       }
     }
+  }
+  // Fetch visualization if trees already loaded (e.g. navigated from ComputePrepPage)
+  if (store.trees.length > 0) {
+    fetchVisualizationWithFilter()
+  }
+})
+
+// Watch trees changes (e.g. after compute completes)
+watch(() => store.trees.length, () => {
+  if (store.trees.length > 0) {
+    fetchVisualizationWithFilter()
   }
 })
 
@@ -154,6 +120,12 @@ const activeCollapseNames = computed(() => {
 
 // 展示模式切换：仅显示分枝（pending）树
 const showBranchingOnly = ref(false)
+const showMinimap = ref(false)
+const showDrawer = ref(false)
+const showBottomPanel = ref(false)
+
+function resetView() { /* TODO: svg-pan-zoom fit + center */ }
+function toggleMinimap() { showMinimap.value = !showMinimap.value }
 
 function getFilteredTrees(): TreeNode[] {
   if (!showBranchingOnly.value) return store.trees
@@ -164,6 +136,9 @@ const hasBranchingTrees = computed(() => store.trees.some(t => t.resolved_state 
 
 const emptyMessage = computed(() => {
   if (store.trees.length === 0) {
+    if (lastResultSummary.value) {
+      return `上次计算结果：${lastResultSummary.value.treesCount} 棵树，${lastResultSummary.value.mappingCount} 个映射。请在计算准备页点击"▶️ 开始计算"。`
+    }
     return STR.forestPage.emptyNoForest
   }
   if (showBranchingOnly.value) {
@@ -199,8 +174,48 @@ watch(showBranchingOnly, () => {
 <style scoped>
 .forest-top-bar {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--el-border-color-light);
+}
+.forest-top-bar .status-text {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.forest-bottom-bar {
+  position: fixed;
+  bottom: 12px;
+  left: 280px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.bottom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(64, 158, 255, 0.15);
+  color: #409eff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bottom-status {
+  background: rgba(255,255,255,0.95);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 </style>

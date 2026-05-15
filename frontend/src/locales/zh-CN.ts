@@ -8,7 +8,7 @@
 export const STR = {
   // ── ForestPage ────────────────────────────────────────────────────────
   forestPage: {
-    title: 'Forest 可视化',
+    title: '🌲 森林可视',
     pipelineParams: 'Pipeline 参数',
     dbPathLabel: 'Database 路径',
     dbPathPlaceholder: '输入 database.json 路径',

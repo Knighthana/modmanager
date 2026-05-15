@@ -414,6 +414,29 @@ async function loadData() {
       }
     }
 
+    // Restore checkbox state from workspace managedEntries
+    const savedManaged = ws.perDatabase?.[selectedDb]?.managedEntries
+    if (savedManaged) {
+      const gameKept = (savedManaged as Record<string, unknown>).game as Record<string, string[]> | undefined
+      const modKept = (savedManaged as Record<string, unknown>).mod as Record<string, string[]> | undefined
+      if (gameKept) {
+        for (const g of games.value) {
+          const kept = gameKept[g.appid]
+          if (kept !== undefined) {
+            g._checked = kept.includes(g.basepath)
+          }
+        }
+      }
+      if (modKept) {
+        for (const m of mods.value) {
+          const kept = modKept[m.mixed_id]
+          if (kept !== undefined) {
+            m._checked = kept.includes(m.path)
+          }
+        }
+      }
+    }
+
     // Check if there are existing results to enable "View Results" button
     if (lastSummary?.timestamp) {
       canViewResults.value = true
@@ -597,6 +620,10 @@ async function startCompute() {
           computeMessage.value = `✅ 计算完成：${treesCount} 棵树，${mappingCount} 个映射`
           computeSuccess.value = true
           canViewResults.value = true
+
+          // Populate forest store for visualization
+          forestStore.trees = (result.data.trees as any[]) || []
+          forestStore.finalMapping = (result.data.final_mapping as any[]) || []
 
           // Save results to workspace
           const dbName = databaseSelectorRef.value?.selectedDatabase ?? 'default'
