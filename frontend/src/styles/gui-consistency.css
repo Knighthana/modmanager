@@ -6,7 +6,12 @@
   --gui-button-radius: 8px;
 }
 
-/* ElMessage 始终浮于视口顶部，不随布局容器偏移 */
+/* 去掉浏览器默认 margin，确保 100vh 容器贴顶，fixed 元素坐标正确 */
+body {
+  margin: 0;
+}
+
+/* ElMessage 始终浮于视口顶部 */
 .el-message {
   top: 20px !important;
 }
