@@ -1,0 +1,33 @@
+{
+  "whitelist_version": "1",
+  "entries": [
+    {
+      "module": "forest",
+      "purpose": "compute_svg",
+      "description": "Forest visualization SVG generation - compute new or cached",
+      "added_date": "2026-05-16",
+      "status": "active"
+    },
+    {
+      "module": "forest",
+      "purpose": "list_cached_forests",
+      "description": "Enumerate and inspect cached forest SVGs",
+      "added_date": "2026-05-16",
+      "status": "active"
+    },
+    {
+      "module": "forest",
+      "purpose": "delete_cached_forest",
+      "description": "Delete cached forest by svg_id",
+      "added_date": "2026-05-16",
+      "status": "active"
+    },
+    {
+      "module": "forest",
+      "purpose": "read_cached_svg",
+      "description": "Read SVG file content for rendering",
+      "added_date": "2026-05-16",
+      "status": "active"
+    }
+  ]
+}
