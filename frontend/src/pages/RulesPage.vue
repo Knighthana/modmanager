@@ -27,7 +27,7 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { apiPost } from '../api/client'
+import { apiPost } from '../api/transport'
 import { STR } from '../locales/zh-CN'
 
 interface RuleFile {

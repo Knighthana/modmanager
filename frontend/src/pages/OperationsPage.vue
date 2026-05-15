@@ -106,7 +106,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { streamSse, type SseProgress } from '../api/sse'
+import { streamSse, type SseProgress } from '../api/transport'
 import { useForestStore } from '../stores/forest'
 import { generateBackupDir } from '../stores/forest'
 // workspace state now from forest store

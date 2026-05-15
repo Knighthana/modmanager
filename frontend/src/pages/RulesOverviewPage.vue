@@ -188,7 +188,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { FolderOpened } from '@element-plus/icons-vue'
-import { apiPost } from '../api/client'
+import { apiPost } from '../api/transport'
 import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
 

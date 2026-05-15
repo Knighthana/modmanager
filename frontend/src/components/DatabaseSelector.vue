@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { apiPost } from '../api/client'
+import { apiPost } from '../api/transport'
 
 interface DatabaseOption {
   label: string

@@ -250,7 +250,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { apiPost } from '../api/client'
+import { apiPost } from '../api/transport'
 // workspace localStorage no longer used — backend/config API handles persistence
 import { STR } from '../locales/zh-CN'
 

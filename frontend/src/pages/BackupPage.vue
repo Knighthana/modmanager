@@ -130,9 +130,9 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { apiPost } from '../api/client'
-import { streamSse } from '../api/sse'
-import type { SseProgress } from '../api/sse'
+import { apiPost } from '../api/transport'
+import { streamSse } from '../api/transport'
+import type { SseProgress } from '../api/transport'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
 

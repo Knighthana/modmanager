@@ -101,7 +101,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { apiPost } from '../api/client'
+import { apiPost } from '../api/transport'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)

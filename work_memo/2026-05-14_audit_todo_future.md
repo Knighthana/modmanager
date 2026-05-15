@@ -64,6 +64,6 @@ UI 状态分散在多个 persistence key（`datasource-libraryVisibility`、`dat
 > 不是当前阻塞项，但建议尽早做薄封装，降低后续迁移成本。余地：现在做（P1）还是 Tauri 前做。先抽象 apiPost 与 streamSse 的统一入口，组件层不再直接绑定传输细节。
 
 ### 待执行
-- [ ] 创建 `src/api/transport.ts`——`invoke<T>(path, payload)` + `onProgress` 接口
-- [ ] 将 `apiPost` 和 `streamSse` 收敛到 transport 接口之后
-- [ ] 组件层不再直接 import `apiPost` / `streamSse`
+- [x] 创建 `src/api/transport.ts`——`apiPost` + `streamSse` + 类型 统一导出入口（2026-05-16 实施）
+- [x] 将 `apiPost` 和 `streamSse` 收敛到 transport 接口之后（14 个文件 import 路径统一）
+- [x] 组件层不再直接 import `apiPost` / `streamSse`（通过 transport.ts 间接引用）

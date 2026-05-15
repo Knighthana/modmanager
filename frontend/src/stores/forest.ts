@@ -1,10 +1,10 @@
 import { STR } from '../locales/zh-CN'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { streamSse } from '../api/sse'
-import { apiPost } from '../api/client'
+import { streamSse } from '../api/transport'
+import { apiPost } from '../api/transport'
 // persistence no longer needed in forest store
-import type { SseProgress } from '../api/sse'
+import type { SseProgress } from '../api/transport'
 import type { TreeNode, Changerequest, ConflictItem, PipelineParams, DiscoverParams } from '../types'
 
 export interface MappingEntry {

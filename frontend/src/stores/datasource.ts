@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { streamSse } from '../api/sse'
-import type { SseProgress } from '../api/sse'
+import { streamSse } from '../api/transport'
+import type { SseProgress } from '../api/transport'
 import type {
   DiscoverMode,
   LibraryRow,
