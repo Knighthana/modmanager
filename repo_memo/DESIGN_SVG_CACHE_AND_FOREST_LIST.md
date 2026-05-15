@@ -1,12 +1,13 @@
 # SVG 缓存与森林列表设计
 
-> Status: stable (初版冻结)
-> Authority: authoritative
-> Read-Tier: always
-> Purpose: 规范 SVG 缓存、森林列表页、资源白名单的设计，为前后端实现提供完整契约
-
-创建：2026-05-16
-实现状态：待实现
+> Status: **superseded**（已被 DESIGN_WORKSPACE_MODEL.md 替代）
+> Authority: archived
+> Read-Tier: none
+> Purpose: 本文档的核心前提（快照是计算后产物）已被推翻，白名单归属错误（应为独立外部资源模型，非工作区模型的一部分），端点命名错误（`/api/svg/compute` 应为 `/api/workspace/{id}/pipeline/compute`）。本文档保留为历史参考，**不作为当前实现依据**。
+> 替代文档：`DESIGN_WORKSPACE_MODEL.md`
+>
+> 创建：2026-05-16
+> 归档：2026-05-16
 
 ---
 

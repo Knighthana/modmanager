@@ -170,7 +170,11 @@ export async function streamSse(
 - flush 策略：每个修改 action 结束时立即 `saveWorkspace()`
 
 #### 2.2 useDataSourceStore
-**职责**：本次扫描会话的数据（不持久化）
+**职责**：DataSourcePage 的扫描会话数据与 UI 状态
+
+**特点**：
+- 扫描结果（libraries, games, mods）仅在 Pinia 内存中，刷新后通过 `POST /api/database/read` 重新加载
+- 可见性偏好（libraryVisibility, gameVisibility）持久化到 `sessionStorage['modmanager:uiState:datasource']`（主读）+ `localStorage`（留档）
 
 **状态**
 ```typescript
@@ -189,19 +193,18 @@ export async function streamSse(
 **生命周期**：
 - DataSourcePage 初始化时创建
 - 调用 `POST /api/database/generate` 填充数据
-- 页面卸载或重新扫描时清空（不保存到 localStorage）
-- 刷新页面即重置
+- 可见性偏好改动时同步写入 sessionStorage + localStorage
+- 刷新后：database 数据通过 API 重新加载；可见性从 sessionStorage 恢复
 
 #### 2.3 useComputeStore
-**职责**：本次计算会话的结果（不持久化）
+**职责**：当前工作区的计算会话状态（Pinia 内存，刷新后从后端工作区目录恢复）
 
 **状态**
 ```typescript
 {
   trees: TreeNode[]
   finalMapping: MappingEntry[]
-  aggregatedRuleSet: RuleSet  // 内存持有，从 selectedRulePaths 聚合得来
-  branchDecisions: Record<string, string>  // 同步到 workspace store
+  aggregatedRuleSet: RuleSet  // 内存持有，从工作区 aggregated_rule.json 加载
   errors: string[]
   warnings: string[]
   progress: SseProgress
@@ -209,9 +212,9 @@ export async function streamSse(
 ```
 
 **生命周期**：
-- ComputePrepPage 调用 `POST /api/pipeline/compute` 填充
-- 结果摘要（summary）同步回 workspace store 作为缓存
-- 页面卸载或重新计算时清空（完整结果不保存，仅保存摘要）
+- ComputePrepPage 调用 `POST /api/workspace/{id}/pipeline/compute` → 结果写入工作区目录
+- ForestPage 通过 `GET /api/workspace/{id}/forest/mapping` 从后端恢复
+- 刷新后：从工作区目录重新加载，无需重新 compute
 
 ### 特点
 

@@ -143,18 +143,18 @@ ConflictsPage → 决策
   └── 用户确认 → 写 workspace.perDatabase[name].decisions.branch_decisions
 
 OperationsPage → 执行
-  ├── 从 workspace.perDatabase[name].results 读摘要
-  └── 按钮 → POST /api/pipeline/backup | apply | restore
+  ├── 从工作区目录读 mapping（`GET /api/workspace/{id}/forest/mapping`）
+  └── 按钮 → POST /api/workspace/{id}/pipeline/backup | apply
 ```
 
 ### 3.4 刷新页面时的状态恢复
 
 | 页面 | 恢复来源 |
 |------|---------|
-| DataSourcePage | persistence（discoveryMode, manualPaths, 可见性）；扫描结果不缓存；`workspace.lastDatabase` 恢复下拉选中 |
-| ForestPage | `workspace.perDatabase[name].results` 恢复摘要；database 由 orchestrator 内部获取 |
-| ConflictsPage | `workspace.perDatabase[name].decisions.branch_decisions` |
-| OperationsPage | `workspace.perDatabase[name].results` 摘要 |
+| DataSourcePage | `sessionStorage['modmanager:uiState:datasource']` 恢复可见性/表单；扫描结果通过 API 重新加载 |
+| ForestPage | `GET /api/workspace/{id}/forest/mapping` 从工作区目录恢复完整 trees/mapping |
+| ConflictsPage | `GET /api/workspace/{id}/decisions/load` 从工作区目录恢复 decisions |
+| ComputePrepPage | `sessionStorage['modmanager:uiState:{id}']` 恢复可见性；`GET /api/workspace/{id}/rules/aggregated` 恢复规则集 |
 | SettingsPage | `POST /api/config/discover` → user_config |
 | RulesOverviewPage | `POST /api/config/discover` → user_config.rule_sources → `/api/rules/scan` |
 
@@ -164,7 +164,7 @@ OperationsPage → 执行
 
 清退完成后，以下条件必须成立：
 
-1. `localStorage` 中 **不存在** `modmanager:datasource`、`modmanager:datasource-db`、`modmanager:forest-store` 三个 key
+1. `localStorage` 和 `sessionStorage` 中**不存在** `modmanager:workspace`、`modmanager:lastDatabase`、`modmanager:decisions:*`、`modmanager:results:*`
 2. `datasource.ts` 中 **不存在** `saveToCache`、`loadFromCache`、`clearCache` 方法
 3. `forest.ts` 中 **不存在** `savePersistentState`、`loadPersistentState` 方法及 `watch` 自动持久化
 4. 任何 pinia store 的 `ref` / `reactive` 初始化时不得从 localStorage 读取业务数据
@@ -177,8 +177,8 @@ OperationsPage → 执行
 | 验收项 | 条件 |
 |-------|------|
 | 静态检查 | `grep -r "datasource-db\|forest-store\|saveToCache\|loadFromCache\|savePersistentState\|loadPersistentState" frontend/src/` 返回空（不含注释） |
-| 动态检查 | 启动应用 → 打开 DevTools → Application > Local Storage → 仅存在 UI 状态 key（tab/sidebar/visibility/表单输入），无业务数据 |
-| 功能检查 | 在 DataSourcePage 扫描 → 切换到 ForestPage → 刷新页面 → ForestPage 能从 workspace 恢复参数 |
+| 动态检查 | 启动应用 → 打开 DevTools → Application > Storage → Local Storage / Session Storage → 仅存在 `sidebarCollapsed`、`activeTab`、`currentWorkspaceId`、`uiState:*` 键，无业务数据 |
+| 功能检查 | 在 DataSourcePage 扫描 → 进入工作区 → compute → 切换 ForestPage → 刷新页面 → ForestPage 从工作区目录恢复完整数据 |
 | 测试 | `cd frontend && npm run test` 全部通过 |
 
 ---

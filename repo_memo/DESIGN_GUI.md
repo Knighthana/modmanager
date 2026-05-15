@@ -247,7 +247,7 @@
 
 **职责**：全屏 SVG 可视化 + 摘要查看。纯消费计算结果，不做计算触发。
 
-**数据来源**：`forestStore.trees`（Pinia 内存，compute 后填充）。刷新后 trees 丢失——需重新 compute。
+**数据来源**：工作区目录 `mapping.json`（`GET /api/workspace/{id}/forest/mapping`）。刷新后从后端恢复，无需重新 compute。
 
 #### 布局
 
@@ -283,10 +283,8 @@
 
 #### 结果有效性
 
-- Forest 加载时从 `forestStore.trees` 读取（同一会话内 compute 后可用）
-- 刷新后 trees 丢失——`lastComputeSummary` 仅存计数摘要
-- 刷新后需重新 compute（本地 compute 速度快，可接受）
-- **trees 不持久化**——体积大，仅在 Pinia 内存中跨页面传递
+- Forest 加载时从工作区目录读取 mapping（`GET /api/workspace/{id}/forest/mapping`）
+- 刷新后从后端恢复——工作区目录持久化，无需重新 compute
 
 ---
 
@@ -296,8 +294,8 @@
 
 - 表格展示 pending 树：目标路径 | Destin | 候选来源
 - 用户通过 radio 选择候选
-- [确认决策] 按钮 → 写 `localStorage.modmanager:workspace.perDatabase[name].decisions.branch_decisions`
-- [重新计算] → 从 localStorage 读 decisions → 携带参数 → `POST /api/pipeline/compute`
+- [确认决策] 按钮 → `POST /api/workspace/{id}/decisions/save` 写入工作区目录 `decisions.json`
+- [重新计算] → 工作区已存最新 decisions → 触发 compute 端点
 - 成功后显示提示 + [查看映射图 →] → 跳转 Forest
 
 **不做** managed_entries 相关的裁决（那是计算准备的职责）。
@@ -442,19 +440,18 @@
 ```
 POST /api/database/generate  → 返回 database (无 managed/warnings/errors)
 POST /api/rules/aggregate    → 返回 aggregated_rule_set
-POST /api/pipeline/compute   → 接受 managed_entries? + branch_decisions? 参数；database 由 orchestrator 内部加载
+POST /api/workspace/{id}/pipeline/compute   → 直接从工作区读取聚合规则和决策，计算结果写入工作区目录
 ```
 
 ### DatabaseSelector 组件
 
-database 下拉组件在各操作页面复用：
+database 下拉组件在 DataSourcePage 使用：
 
-- 下拉选中值 = 组件本地状态。不改 localStorage。不改后端文件。
-- 用户点操作按钮时，选中值作为 `database_name?` 参数传入请求
-- 下拉切换时检查 `workspace.perDatabase[新name]?.decisions` 是否存在 → 提示"恢复上次决策"或"无历史决策"
-- 刷新恢复：读 `localStorage.modmanager:workspace.lastDatabase` 恢复选中
+- 下拉选中值 = 组件本地状态。不改后端文件。
+- 用户点操作按钮时，选中值作为参数传入请求
+- 刷新恢复：无需恢复——DataSourcePage 为全局 database 管理页，每次进入默认展示列表即可
 
-详见 `DESIGN_GUI_WORKSPACE.md`。
+详见 `DESIGN_WORKSPACE_MODEL.md`。
 
 ---
 

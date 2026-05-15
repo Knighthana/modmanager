@@ -5,10 +5,12 @@
 > Read-Tier: task-scoped
 > Purpose: 约束 Web API 的接口形态、SSE 通信方式与 Web 层行为边界
 >
-> **冻结状态（2026-05-14）**：
-> - `POST /api/database/*`, `/api/config/*`, `/api/rules/*` (除 compute-scoped)，`/api/backups/*` → **STABLE**（不依赖 GUI 流程）
-> - `POST /api/pipeline/compute`, `/pipeline/backup`, `/pipeline/apply`, `/pipeline/run` → **EVOLVING**（参数与 GUI 决策流程耦合，等 DESIGN_GUI.md 稳定后重新冻结）
+> **冻结状态（2026-05-16）**：
+> - `POST /api/database/*`, `/api/config/*`, `/api/backups/*` → **STABLE**（全局操作，不依赖 GUI 流程）
+> - `POST /api/workspace/{id}/*` → **EVOLVING**（工作区模型初版落地，等稳定后重新冻结）
 > - SSE 协议、ApiResponse 格式、错误码 → **STABLE**（基础通信层）
+>
+> **2026-05-16 重大变更**：所有流水线和规则端点迁移到工作区 URL 前缀 `/api/workspace/{workspaceId}/...`。旧 `/api/pipeline/*` 和 `/api/rules/aggregate` 端点被替换为工作区感知版本。详见 `DESIGN_WORKSPACE_MODEL.md`。
 >
 > 涉及映射输出结构时，以 `repo_memo/DESIGN_FOREST_MODEL.md` 定义的现行输出契约为准；其余 Web API 行为约束以本文档为准。
 
@@ -36,9 +38,13 @@
 |--------|------|
 | STABLE ✅ | POST /api/database/generate, /read, /save |
 |           | POST /api/config/discover, /save |
-|           | POST /api/rules/scan, /read, /aggregate, /affected-entries |
+|           | POST /api/rules/scan, /read, /affected-entries |
 |           | POST /api/backups/list, /inspect |
-| EVOLVING ⚠️ | POST /api/pipeline/compute, /backup, /apply, /run |
+| EVOLVING ⚠️ | POST /api/workspace/{id}/rules/aggregate, /aggregated |
+|           | POST /api/workspace/{id}/pipeline/compute, /backup, /apply, /run |
+|           | POST /api/workspace/{id}/decisions/save, /load |
+|           | GET /api/workspace/{id}/forest/svg, /mapping |
+|           | POST /api/workspace/create, /delete; GET /api/workspace/list, /meta |
 
 ---
 
@@ -152,9 +158,13 @@ src/modmanager_web/
 ├── app.py               # FastAPI 应用工厂 + 路由注册
 ├── routes/
 │   ├── __init__.py
-│   ├── config.py        # discover_user_config 路由
+│   ├── config.py        # discover_user_config / save 路由
 │   ├── database.py      # generate_database 路由
-│   └── pipeline.py      # compute / backup / apply / run 路由
+│   ├── pipeline.py      # compute / backup / apply / run 路由（工作区上下文）
+│   ├── rules.py         # scan / read / affected-entries 路由
+│   └── workspace.py     # workspace CRUD + decisions + forest 路由
+├── core/
+│   └── workspacemanager.py  # 工作区生命周期管理（orchestrator 下属）
 ├── schemas.py           # Pydantic 请求/响应模型
 ├── adapters.py          # PipelineResult → ApiResponse 转换
 └── sse.py               # SSE 进度流式输出工具
@@ -203,21 +213,28 @@ web = [
 | `POST` | `/api/config/discover` | 加载 user_config.json | JSON |
 | `POST` | `/api/config/save` | 保存 user_config（含 rule_sources 路径归一化） | JSON |
 | `POST` | `/api/database/generate` | 扫描 Steam 库生成 database.json（纯数据，无 managed） | SSE |
-| `POST` | `/api/database/read` | 获取指定 database 的内容（由 database_name? 指定，不传则用默认） | JSON |
+| `POST` | `/api/database/read` | 获取指定 database 的内容 | JSON |
 | `POST` | `/api/database/save` | 保存 database（用于高级页编辑） | JSON |
-| `POST` | `/api/pipeline/compute` | ⚠️ 计算映射；接受 managed_entries? + branch_decisions? 参数；database 由 orchestrator 内部加载 | SSE |
-| `POST` | `/api/pipeline/backup` | ⚠️ 差异备份 | SSE |
-| `POST` | `/api/pipeline/apply` | ⚠️ 应用替换 | SSE |
-| `POST` | `/api/pipeline/run` | ⚠️ 全流水线（聚合→计算→备份→应用）；database 由 orchestrator 内部加载 | SSE |
-| `POST` | `/api/pipeline/restore` | 从备份恢复文件 | SSE |
-| `POST` | `/api/pipeline/visualize` | Forest JSON → SVG 可视化 | JSON |
 | `POST` | `/api/rules/scan` | 扫描目录列出 `*.kmmrule.json` 文件 | JSON |
 | `POST` | `/api/rules/read` | 读取单个 kmmrule 文件内容 | JSON |
-| `POST` | `/api/rules/aggregate` | 聚合选定规则文件 → aggregated_rule_set.json，并返回 metadata（output_path/hash/time） | JSON |
 | `POST` | `/api/rules/affected-entries` | 查询聚合规则影响的 game/mod（供计算准备页） | JSON |
-| `POST` | `/api/rules/load-aggregated` | 加载 aggregated_rule_set.json 原文（供高级页） | JSON |
 | `POST` | `/api/backups/list` | 列出备份目录摘要 | JSON |
 | `POST` | `/api/backups/inspect` | 查看备份详情 | JSON |
+| | | | |
+| `POST` | `/api/workspace/create` | ⚠️ 创建工作区。body: `{ name, database_name }` | JSON |
+| `POST` | `/api/workspace/{id}/delete` | ⚠️ 删除工作区 | JSON |
+| `GET` | `/api/workspace/list` | ⚠️ 列出所有工作区（按 updated_at 降序） | JSON |
+| `GET` | `/api/workspace/{id}/meta` | ⚠️ 获取工作区元信息 | JSON |
+| `POST` | `/api/workspace/{id}/rules/aggregate` | ⚠️ 聚合规则并存入工作区 | JSON |
+| `GET` | `/api/workspace/{id}/rules/aggregated` | ⚠️ 读取工作区中已聚合的规则集 | JSON |
+| `POST` | `/api/workspace/{id}/pipeline/compute` | ⚠️ 计算映射；从工作区读取规则+决策，结果写入工作区 | SSE |
+| `POST` | `/api/workspace/{id}/pipeline/backup` | ⚠️ 差异备份 | SSE |
+| `POST` | `/api/workspace/{id}/pipeline/apply` | ⚠️ 应用替换 | SSE |
+| `POST` | `/api/workspace/{id}/pipeline/run` | ⚠️ 全流水线（计算→备份→应用） | SSE |
+| `POST` | `/api/workspace/{id}/decisions/save` | ⚠️ 保存用户决策到工作区 | JSON |
+| `GET` | `/api/workspace/{id}/decisions/load` | ⚠️ 从工作区读取用户决策 | JSON |
+| `GET` | `/api/workspace/{id}/forest/svg` | ⚠️ 读取森林 SVG（Content-Type: image/svg+xml） | SVG |
+| `GET` | `/api/workspace/{id}/forest/mapping` | ⚠️ 读取最终映射结果 | JSON |
 
 ### 4.3 端点详设
 
@@ -323,26 +340,36 @@ data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
 }
 ```
 
-#### `POST /api/pipeline/compute` ⚠️
+#### `POST /api/workspace/{id}/pipeline/compute` ⚠️
 
-database 由 orchestrator 内部通过 bootstrap 获取。调用方传入 managed_entries 和 branch_decisions（来自前端 localStorage）。
+在工作区上下文中执行计算。聚合规则集和用户决策从工作区目录读取（由 workspacemanager 负责）。database 路径从工作区 meta.json 的 database_name 查 user_config 获取。计算结果（mapping + SVG + 指纹）写入工作区目录。
 
 ```json
 // ← Request
 {
-  "database_name": null,            // string | null，不传则用默认
-  "aggregated_rule_set": {},        // dict，聚合后的规则集（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
-  "managed_entries": null,          // dict | null，来自前端 localStorage
-  "branch_decisions": null,         // dict | null，来自前端 localStorage
   "action_orders": null             // dict | null
 }
 
 // → SSE stream  → event: progress ... → event: result
 ```
 
-#### `POST /api/rules/aggregate`
+#### `POST /api/workspace/{id}/pipeline/run` ⚠️
 
-聚合选定规则并写入 `aggregated_rule_set.json`。返回值包含聚合结果本体 + 恢复用 metadata。
+全流水线：计算 + 备份 + 应用。聚合规则集和用户决策从工作区目录读取。
+
+```json
+// ← Request
+{
+  "backup_dir": "/path/to/backup_dir",
+  "dry_run": false                  // true → 仅计算，跳过备份和应用
+}
+
+// → SSE stream
+```
+
+#### `POST /api/workspace/{id}/rules/aggregate` ⚠️
+
+在工作区上下文中聚合规则。聚合结果由 workspacemanager 存入工作区目录 `aggregated_rule.json`。
 
 ```json
 // ← Request
@@ -356,68 +383,73 @@ database 由 orchestrator 内部通过 bootstrap 获取。调用方传入 manage
     "data": {
         "schema_namespace": "KMM_RuleSet",
         "operation": [],
-        "output_path": "/home/user/.config/kmm/aggregated_rule_set.json",
         "aggregated_hash": "<sha256>",
-        "aggregated_at": "2026-05-15T00:00:00+00:00"
+        "aggregated_at": "2026-05-16T00:00:00+00:00"
     },
     "errors": [],
     "warnings": []
 }
 ```
 
-兼容性说明：新增字段为向后兼容扩展。旧客户端可忽略 `output_path / aggregated_hash / aggregated_at`。
-
-#### `POST /api/pipeline/run` ⚠️
-
-database 和 user_config 由 orchestrator 内部通过 bootstrap 获取。调用方不传入。
+#### `POST /api/workspace/{id}/decisions/save` ⚠️
 
 ```json
 // ← Request
 {
-  "database_name": null,            // string | null，不传则用默认
-  "aggregated_rule_set": {},        // dict，聚合后的规则集（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
-  "backup_dir": "/path/to/backup_dir",
-  "action_orders": null,
-  "branch_decisions": null,         // 来自前端 localStorage
-  "managed_entries": null,          // 来自前端 localStorage
-  "dry_run": false             // true → 仅聚合+计算，跳过 backup 和 apply（不碰磁盘）
+  "managed_entries": { "game": {...}, "mod": {...} },
+  "branch_decisions": { "root_path": "chosen_source_path" }
 }
+
+// → 200 { "ok": true, "data": null, "errors": [], "warnings": [] }
 ```
 
-> **dry_run 语义**：
-> - `false`（默认）：完整流水线：聚合 → 计算 → 备份 → 应用
-> - `true`：仅聚合+计算，**不执行备份和应用的任何磁盘 I/O**。适用于"先看看映射结果"的场景
-> - 若需要"仅备份不应用"，应分别调用 `/api/pipeline/compute` + `/api/pipeline/backup`
+#### `GET /api/workspace/{id}/decisions/load` ⚠️
 
 ```json
-// → SSE stream
-event: progress
-data: {"step":"aggregate","finished":0,"total":1,"message":"Aggregating rules..."}
-
-event: progress
-data: {"step":"aggregate","finished":1,"total":1,"message":"Rule aggregation complete"}
-
-event: progress
-data: {"step":"compute","finished":0,"total":1,"message":"Computing mapping..."}
-
-...
-
-event: result
-data: {
+// → 200
+{
   "ok": true,
   "data": {
-    "trees": [...],
-    "final_mapping": [...],
-    "stats": {
-      "backed_up": 42,
-      "applied": 42,
-      "skipped": 0
-    }
+    "managed_entries": { ... },
+    "branch_decisions": { ... }
   },
   "errors": [],
   "warnings": []
 }
 ```
+
+#### `GET /api/workspace/{id}/forest/svg` ⚠️
+
+读取森林 SVG 文件。Content-Type: `image/svg+xml`。
+
+#### `GET /api/workspace/{id}/forest/mapping` ⚠️
+
+```json
+// → 200
+{
+  "ok": true,
+  "data": { /* mapping.json 内容 */ },
+  "errors": [],
+  "warnings": []
+}
+```
+
+### 已删除的端点
+
+以下端点随工作区模型重构而移除：
+
+| 旧端点 | 移除原因 |
+|------|----------|
+| `POST /api/pipeline/compute`（旧路径） | 迁移到 `/api/workspace/{id}/pipeline/compute`，参数从工作区读取 |
+| `POST /api/pipeline/run`（旧路径） | 同上 |
+| `POST /api/pipeline/restore` | 迁移到 `/api/workspace/{id}/pipeline/restore`（后续实现） |
+| `POST /api/pipeline/visualize` | 功能由 `GET /api/workspace/{id}/forest/svg` 替代 |
+| `POST /api/rules/aggregate`（旧路径） | 迁移到 `/api/workspace/{id}/rules/aggregate` |
+| `POST /api/rules/load-aggregated` | 功能由 `GET /api/workspace/{id}/rules/aggregated` 替代 |
+| `POST /api/workspace/save-inputs` | 旧 workspace 模型（方案 B 裁定已删除，若仍残留则清除） |
+| `POST /api/workspace/save-decisions` | 同上 |
+| `POST /api/workspace/save-results` | 同上 |
+| `GET /api/workspace/status` | 同上 |
 
 ---
 
@@ -501,16 +533,12 @@ from ..sse import stream_with_progress
 
 router = APIRouter()
 
-@router.post("/run")
-async def pipeline_run(req: RunRequest):
+@router.post("/api/workspace/{workspace_id}/pipeline/run")
+async def pipeline_run(workspace_id: str, req: RunRequest):
     def do_work(on_progress):
         return orch_run(
-            database_name=req.database_name,
-            aggregated_rule_set=req.aggregated_rule_set,
+            workspace_id=workspace_id,
             backup_dir=req.backup_dir,
-            action_orders=req.action_orders,
-            branch_decisions=req.branch_decisions,
-            managed_entries=req.managed_entries,
             dry_run=req.dry_run,
             on_progress=on_progress,
         )
@@ -561,12 +589,8 @@ class SaveDatabaseRequest(BaseModel):
     database: dict[str, Any]              # database dict
     database_name: str | None = None      # 不传则用默认
 
-# ── pipeline ──
+# ── pipeline（工作区上下文内）──
 class ComputeRequest(BaseModel):
-    database_name: str | None = None
-    aggregated_rule_set: dict[str, Any]        # 聚合后的规则集 dict（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
-    managed_entries: dict[str, dict[str, list[str]]] | None = None
-    branch_decisions: dict[str, str] | None = None
     action_orders: dict[str, int] | None = None
 
 class BackupRequest(BaseModel):
@@ -579,13 +603,22 @@ class ApplyRequest(BaseModel):
     dry_run: bool = False
 
 class RunRequest(BaseModel):
-    database_name: str | None = None
-    aggregated_rule_set: dict[str, Any]        # 聚合后的规则集 dict（必填）。compute 只接受 dict，文件是备份产物不是 compute 输入
     backup_dir: str | None = None
+    dry_run: bool = False
+
+# ── workspace ──
+class CreateWorkspaceRequest(BaseModel):
+    name: str
+    database_name: str
+
+# ── rules（工作区上下文内）──
+class AggregateRulesRequest(BaseModel):
+    paths: list[str]
+
+# ── decisions（工作区上下文内）──
+class SaveDecisionsRequest(BaseModel):
     managed_entries: dict[str, dict[str, list[str]]] | None = None
     branch_decisions: dict[str, str] | None = None
-    action_orders: dict[str, int] | None = None
-    dry_run: bool = False
 ```
 
 ---
@@ -661,7 +694,7 @@ def adapt_error(message: str) -> dict:
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import config, database, pipeline, rules
+from .routes import config, database, pipeline, rules, workspace
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -686,7 +719,9 @@ def create_app() -> FastAPI:
 
     app.include_router(config.router, prefix="/api/config", tags=["config"])
     app.include_router(database.router, prefix="/api/database", tags=["database"])
-    app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
+    app.include_router(rules.router, prefix="/api", tags=["rules"])
+    app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"])
+    app.include_router(pipeline.router, prefix="/api", tags=["pipeline"])
 
     return app
 ```
@@ -713,9 +748,13 @@ if __name__ == "__main__":
 
 | 模块 | 改动 |
 |------|------|
-| `modmanager/*` | **无改动** |
-| `pyproject.toml` | 新增 `web` extras + `modmanager-web` 入口 |
-| `__init__.py` | 已在 Phase 1 更新，无需再改 |
+| `modmanager/*` | orchestrator 集成 workspacemanager；compute/run 签名改为 workspace_id |
+| `modmanager_web/routes/workspace.py` | **新增**：工作区 CRUD + decisions + forest 端点 |
+| `modmanager_web/core/workspacemanager.py` | **新增**：工作区生命周期管理 |
+| `modmanager_web/routes/pipeline.py` | URL 加 workspace_id 前缀；参数精简 |
+| `modmanager_web/routes/rules.py` | aggregate 端点迁移到 workspace 下 |
+| `modmanager_web/schemas.py` | 新增 workspace 相关 schema；精简 pipeline schema |
+| `pyproject.toml` | 无新增改动 |
 
 ### pyproject.toml 改动
 
@@ -832,7 +871,7 @@ CORS 配置的目的仅为阻断此类场景，不是访问控制手段。
 | `routes/rules.py` `/read` | `req.path` | `resolve_file_path` |
 | `routes/rules.py` `/scan` | `req.dir` | `resolve_directory_path` |
 | `routes/backups.py` `/list` | `req.dir` | `resolve_directory_path` |
-| `routes/pipeline.py` `/compute` `/run` | — | 不再接收文件路径参数；compute 只接受 `aggregated_rule_set` dict |
+| `routes/pipeline.py` `/compute` `/run` | — | 不再接收文件路径参数；聚合规则和决策从工作区目录读取 |
 
 写类入口（目标不一定存在，不走 `path_resolver`）：
 
