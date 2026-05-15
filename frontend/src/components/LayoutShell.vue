@@ -80,6 +80,9 @@ const workspaceId = computed(() => {
 })
 
 function showWorkspaceHint() {
-  ElMessage.info('请先在"📂 工作区"页面创建或选择一个工作区')
+  ElMessage.info({
+    message: '请先在"📂 工作区"页面创建或选择一个工作区',
+    duration: 5000,
+  })
 }
 </script>
