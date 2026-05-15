@@ -1,5 +1,5 @@
 <template>
-  <el-container style="height: 100vh; overflow: hidden;">
+  <el-container style="height: 100vh;">
     <el-aside width="200px">
       <div style="padding: 16px 12px; border-bottom: 1px solid var(--el-border-color-light); margin-bottom: 4px;">
         <div style="font-weight: 800; font-size: 14px; line-height: 1.4; word-break: break-word; color: var(--el-text-color-primary);">

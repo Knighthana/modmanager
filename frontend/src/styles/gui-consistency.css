@@ -6,6 +6,11 @@
   --gui-button-radius: 8px;
 }
 
+/* ElMessage 始终浮于视口顶部，不随布局容器偏移 */
+.el-message {
+  top: 20px !important;
+}
+
 .gui-page h2 {
   margin: var(--gui-title-margin);
   font-size: var(--gui-title-size);
