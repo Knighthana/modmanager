@@ -2,11 +2,13 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import { router } from './router'
-import { useAppStore } from './stores/app'
+import { migrateOldWorkspace } from './utils/persistence'
 import './styles/gui-consistency.css'
 
 async function bootstrap() {
-  useAppStore().init()
+  // One-time cleanup of old localStorage workspace key (before Pinia init)
+  migrateOldWorkspace()
+
   if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({ onUnhandledRequest: 'bypass' })
