@@ -98,7 +98,7 @@ async function loadWorkspaces() {
 
 async function loadDatabases() {
   try {
-    const res = await apiPost<{ config: Record<string, unknown> }>('/api/config/discover', {})
+    const res = await apiPost<{ config: Record<string, unknown> }>('/config/discover', {})
     if (res.ok && res.data) {
       const cfg = res.data as Record<string, unknown>
       const dbs = cfg.databases as Record<string, { path: string }> | undefined
@@ -145,7 +145,7 @@ async function confirmDelete(ws: WorkspaceMeta) {
       cancelButtonText: '取消',
     })
     const res = await apiPost<{ deleted: string }>(
-      `/api/workspace/${ws.workspace_id}/delete`,
+      `/workspace/${ws.workspace_id}/delete`,
       {}
     )
     if (res.ok) {
