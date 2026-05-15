@@ -32,9 +32,12 @@ import { useForestStore } from '../../stores/forest'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/compute-prep', name: 'compute-prep', component: { template: '<div />' } },
-    { path: '/rules-overview', name: 'rules-overview', component: { template: '<div />' } },
-    { path: '/forest', name: 'forest', component: { template: '<div />' } },
+    { path: '/workspace/:workspaceId/compute', name: 'workspace-compute', component: { template: '<div />' } },
+    { path: '/workspace/:workspaceId/forest', name: 'workspace-forest', component: { template: '<div />' } },
+    { path: '/workspace/:workspaceId/rules', name: 'workspace-rules', component: { template: '<div />' } },
+    { path: '/compute-prep', name: 'compute-prep', redirect: '/' },
+    { path: '/rules-overview', name: 'rules-overview', redirect: '/' },
+    { path: '/forest', name: 'forest', redirect: '/' },
   ],
 })
 
@@ -145,6 +148,7 @@ describe('ComputePrepPage', () => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
     localStorage.clear()
+    sessionStorage.clear()
     
     // Setup default localStorage workspace data for loadWorkspace() to use
     const defaultWorkspace = {
@@ -559,10 +563,10 @@ describe('ComputePrepPage', () => {
       modRowClass: (data: { row: { has_duplicate: boolean } }) => string
     }
 
-    expect(comp.gameRowClass({ row: { has_duplicate: true } })).toBe('duplicate-row')
-    expect(comp.gameRowClass({ row: { has_duplicate: false } })).toBe('')
-    expect(comp.modRowClass({ row: { has_duplicate: true } })).toBe('duplicate-row')
-    expect(comp.modRowClass({ row: { has_duplicate: false } })).toBe('')
+    expect(comp.gameRowClass({ row: { _checked: true, appid: '270150', has_duplicate: true } })).toBe('duplicate-row')
+    expect(comp.gameRowClass({ row: { _checked: true, appid: '107410', has_duplicate: false } })).toBe('')
+    expect(comp.modRowClass({ row: { _checked: true, mixed_id: '270150:2606099273', has_duplicate: true } })).toBe('duplicate-row')
+    expect(comp.modRowClass({ row: { _checked: true, mixed_id: '107410:2890123456', has_duplicate: false } })).toBe('')
   })
 
   // ── Managed entries construction ─────────────────────────────────────
@@ -675,6 +679,7 @@ describe('ComputePrepPage', () => {
 
   it('viewResults navigates to /forest', async () => {
     const pushSpy = vi.spyOn(router, 'push')
+    await router.push('/workspace/test-ws-1/compute')
 
     const wrapper = mount(ComputePrepPage, {
       global: { plugins: [router], stubs: elStubs },
@@ -684,7 +689,7 @@ describe('ComputePrepPage', () => {
     const comp = vm as { viewResults: () => void }
     comp.viewResults()
 
-    expect(pushSpy).toHaveBeenCalledWith('/forest')
+    expect(pushSpy).toHaveBeenLastCalledWith('/workspace/test-ws-1/forest')
   })
 
   it('canViewResults is true when status has results.timestamp', async () => {
@@ -704,7 +709,7 @@ describe('ComputePrepPage', () => {
           selectedRulePaths: [],
           managedEntries: { game: {}, mod: {} },
           branchDecisions: {},
-          results: { timestamp: '2026-05-13T12:00:00Z', trees_count: 1, mapping_count: 10, warnings: [], errors: [], stats: {}, inputs_hash: 'abc123' },
+          lastComputeSummary: { timestamp: '2026-05-13T12:00:00Z', trees_count: 1, mapping_count: 10, warnings: [], errors: [], stats: {}, inputs_hash: 'abc123' },
         },
       },
       aggregatedRuleSet: null,

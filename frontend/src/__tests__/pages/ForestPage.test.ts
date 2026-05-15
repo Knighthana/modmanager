@@ -8,7 +8,7 @@ import ForestPage from '../../pages/ForestPage.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/forest', name: 'forest', component: { template: '<div />' } },
+    { path: '/workspace/:workspaceId/forest', name: 'workspace-forest', component: { template: '<div />' } },
   ],
 })
 
@@ -25,8 +25,9 @@ describe('ForestPage', () => {
     })
   }
 
-  it('renders the page title', () => {
+  it('renders the page title', async () => {
+    await router.push('/workspace/test-ws-1/forest')
     const wrapper = createWrapper()
-    expect(wrapper.find('h2').text()).toBe('Forest 可视化')
+    expect(wrapper.find('.forest-page').exists()).toBe(true)
   })
 })

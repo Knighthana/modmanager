@@ -72,7 +72,7 @@ function setWorkspaceInStorage(overrides?: Partial<{
     const ws = {
       lastDatabase: 'default',
       perDatabase: {
-        default: { decisions: {}, results: null },
+        default: { decisions: {}, lastComputeSummary: null },
       },
       aggregatedRuleSet: null,
       aggregatedRuleHash: '',
@@ -95,7 +95,7 @@ function setWorkspaceInStorage(overrides?: Partial<{
     perDatabase: {
       default: {
         decisions: {},
-        results,
+        lastComputeSummary: results,
       },
     },
     aggregatedRuleSet: null,
@@ -136,6 +136,7 @@ describe('OperationsPage', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   // ── Empty state ─────────────────────────────────────────────────────

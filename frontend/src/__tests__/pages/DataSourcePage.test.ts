@@ -84,15 +84,17 @@ describe('DataSourcePage', () => {
     })
     const store = useDataSourceStore()
 
-    // Initially no button
-    expect(wrapper.text()).not.toContain('确认并进入规则概览')
+    // Button is always visible but disabled when no lastResult
+    const confirmBtn = wrapper.findAll('.el-button-stub').find(b => b.text().includes('确认并进入规则概览'))
+    expect(confirmBtn?.attributes('disabled')).toBeDefined()
 
     // Set lastResult
     store.lastResult = { steamlib: [], game: [], mod: [] }
     await wrapper.vm.$nextTick()
 
-    // Apply button should appear
-    expect(wrapper.text()).toContain('确认并进入规则概览')
+    // Button should now be enabled
+    const confirmBtn2 = wrapper.findAll('.el-button-stub').find(b => b.text().includes('确认并进入规则概览'))
+    expect(confirmBtn2?.attributes('disabled')).toBeUndefined()
   })
 
   it('setLibraryVisibility toggles library visibility via store', () => {

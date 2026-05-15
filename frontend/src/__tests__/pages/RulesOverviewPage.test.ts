@@ -283,10 +283,9 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('前往设置页管理')
-    const settingsLink = wrapper.find('.el-btn-stub')
-    expect(settingsLink.exists()).toBe(true)
-    expect(settingsLink.text()).toContain('前往设置页管理')
+    expect(wrapper.text()).toContain('前往设置面板管理')
+    const settingsLinks = wrapper.findAll('.el-btn-stub').filter(b => b.text().includes('前往设置面板管理'))
+    expect(settingsLinks.length).toBeGreaterThan(0)
   })
 
   // ── Expand / collapse ────────────────────────────────────────────────
@@ -358,6 +357,19 @@ describe('RulesOverviewPage', () => {
       if (path === '/config/discover') return mockConfigResponse
       if (path === '/rules/scan') return mockScanResponse
       if (path === '/rules/read') return mockReadResponse
+      if (path === '/database/read') {
+        return {
+          ok: true,
+          data: {
+            game: [
+              { appid: '270150', name: 'RWR' },
+              { appid: '107410', name: 'Arma3' },
+            ],
+          },
+          errors: [],
+          warnings: [],
+        }
+      }
       return { ok: true, data: null, errors: [], warnings: [] }
     })
 
@@ -544,6 +556,19 @@ describe('RulesOverviewPage', () => {
       if (path === '/config/discover') return mockConfigResponse
       if (path === '/rules/scan') return mockScanResponse
       if (path === '/rules/read') return mockReadResponse
+      if (path === '/database/read') {
+        return {
+          ok: true,
+          data: {
+            game: [
+              { appid: '270150', name: 'RWR' },
+              { appid: '107410', name: 'Arma3' },
+            ],
+          },
+          errors: [],
+          warnings: [],
+        }
+      }
       return { ok: true, data: null, errors: [], warnings: [] }
     })
 
