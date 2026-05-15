@@ -16,7 +16,7 @@
 |-----|------|
 | Q1 | 独立包 `ext_resource`，位于 `src/ext_resource/`，与 `modmanager` 同级 |
 | Q2 | 前端不传文件路径——传后端给的索引符（`rule_id` + `mixed_id` + `index`） |
-| Q3 | 只做端点级白名单（module:purpose 门禁），不做路径级门禁 |
+| Q3 | 白名单用于**通用文件请求端点**（如未来的 `/ext-resource/file`），不用于业务特异性端点（preview/readme 自身就是门禁） |
 | Q4 | MVP 阶段 `rule_id` = 文件路径（功能不变），前端视其为不透明字符串 |
 | Q5 | 文档先行，TODO-66/67 后续实现 |
 
@@ -104,7 +104,6 @@ Content-Type: image/png (或 image/jpeg，后端根据文件头判断)
 错误：
 404 — 资源不存在
 400 — 参数缺失
-403 — (未来) 白名单拒绝
 ```
 
 ### 3.2 README 文本
@@ -167,57 +166,11 @@ def resolve_resource_path(
     """
 ```
 
-### 4.2 白名单验证
+### 4.2 白名单验证（不用于 preview/readme 端点）
 
-```python
-# ext_resource/whitelist.py
+preview 和 readme 端点**自身就是门禁**——它们只能从 kmmrule 文件 + database 解析资源，其他模块无法通过这两个端点获取任意文件。**不需要白名单验证。**
 
-class ResourceWhitelist:
-    def __init__(self, path: str = "repo_spec/resource_whitelist.json"):
-        # 加载白名单，索引为 {(module, purpose): entry}
-        ...
-
-    def validate(self, module: str, purpose: str) -> bool:
-        """检查 (module, purpose) 是否在白名单中且状态为 active"""
-```
-
-白名单定义：
-
-```json
-{
-  "whitelist_version": "1",
-  "entries": [
-    {
-      "module": "ext-resource",
-      "purpose": "preview",
-      "description": "Serve kmmrule preview image files",
-      "added_date": "2026-05-16",
-      "status": "active"
-    },
-    {
-      "module": "ext-resource",
-      "purpose": "readme",
-      "description": "Serve kmmrule readme text files",
-      "added_date": "2026-05-16",
-      "status": "active"
-    }
-  ]
-}
-```
-
-### 4.3 路由层入口
-
-```python
-# modmanager_web/routes/ext_resource.py
-
-from ext_resource.whitelist import ResourceWhitelist, whitelist
-
-@router.post("/preview")
-async def ext_resource_preview(req: ExtResourceRequest):
-    if not whitelist.validate("ext-resource", "preview"):
-        raise HTTPException(status_code=403)
-    # manager.resolve(...) → 读文件 → 返回 Response
-```
+白名单机制保留给未来的**通用文件请求端点**（如 `/ext-resource/file`），该端点接受任意模块提交的文件路径请求，必须通过白名单的 `(module, purpose)` 门禁确保开发过程不失控。
 
 ---
 
@@ -239,15 +192,40 @@ async def ext_resource_preview(req: ExtResourceRequest):
 
 ## 6. 白名单机制
 
-### 6.1 设计目的
+### 6.1 适用范围
 
-防止内部模块滥用外部资源接口。路径级门禁在本地单人应用无意义，端点级门禁已足够。
+白名单**不用于** preview 和 readme 端点——这两个端点自身就是门禁（只能解析 kmmrule 文件 + database 中的路径，无法被滥用于任意文件访问）。
 
-### 6.2 新增端点时的流程
+白名单用于未来的**通用文件请求端点**（如 `POST /api/ext-resource/file`），该端点接受任意模块提交的文件路径请求。每个调用方必须提供 `(module, purpose)`，后端比对白名单放行。
+
+### 6.2 设计目的
+
+**不是保护用户本地文件**——本地单人应用不存在越权访问问题。
+
+**是开发纪律**——有了白名单机制后，每个新增的文件请求场景都需要在白名单中新增条目。这迫使开发者审视"调用模块是否合理""用途是否正当"，防止内部模块随意添加文件读取逻辑导致架构失控。
+
+### 6.3 白名单文件
+
+```json
+{
+  "whitelist_version": "1",
+  "entries": [
+    {
+      "module": "rules-overview",
+      "purpose": "read_kmmrule_file",
+      "description": "Read raw kmmrule file content for display",
+      "added_date": "2026-05-16",
+      "status": "active"
+    }
+  ]
+}
+```
+
+### 6.4 新增端点时的流程
 
 1. 在 `repo_spec/resource_whitelist.json` 新增 `(module, purpose)` 条目
-2. 在路由层加 `whitelist.validate(...)` 调用
-3. 测试文件加 `test_whitelist_no_orphan_endpoints`——确保所有 validate 调用的 (module, purpose) 都在白名单中
+2. 在路由层加 `whitelist.validate(module, purpose)` 调用
+3. 测试文件验证：所有 `validate` 调用的 `(module, purpose)` 都在白名单中
 
 ---
 
