@@ -4,13 +4,14 @@ import { ElMessage } from 'element-plus'
  * 纯 UI 状态持久化层 + workspace 数据聚合。
  *
  * 职责边界：
- * - UI 状态：tab 位置、sidebar 折叠、可见性 toggle、表单输入（无后端参与）
+ * - UI 状态：已合并进 workspace.uiState（不再使用独立的 localStorage key）
  * - workspace 数据：单一 ``modmanager:workspace`` key 下聚合
  *   - ``workspace.lastDatabase``：用户最近选择的 database name
  *   - ``workspace.perDatabase[name].decisions``：managedEntries + branchDecisions
  *   - ``workspace.perDatabase[name].lastComputeSummary``：trees_count、mapping_count 等摘要
  *   - ``workspace.aggregatedRuleSet``：聚合后的规则集 dict
  *   - ``workspace.aggregatedRuleHash``：规则集的哈希值
+ *   - ``workspace.uiState.*``：UI 状态（表单输入、可见性 toggle 等）
  * - 不存 database 扫描结果（由后端按 name 管理）
  *
  * Current implementation uses ``localStorage`` with a ``modmanager:`` prefix.
@@ -63,7 +64,9 @@ export type { PersistenceAdapter }
 
 // ── Workspace helpers ────────────────────────────────────────────────────
 // These replace the previous scattered key pattern (lastDatabase, decisions:*,
-// results:*, aggregatedRuleSet) with a single ``modmanager:workspace`` key.
+// results:*, aggregatedRuleSet, datasource-*) with a single
+// ``modmanager:workspace`` key. UI state is now stored under
+// workspace.uiState.* rather than separate keys.
 
 import type { WorkspaceData } from '../types'
 
@@ -74,6 +77,19 @@ function defaultWorkspace(): WorkspaceData {
     aggregatedRuleSet: null,
     aggregatedRuleHash: '',
     aggregatedRuleMeta: null,
+    uiState: {
+      sidebarCollapsed: false,
+      datasource: {
+        discoveryMode: 'all',
+        manualPaths: [],
+        greedyParsing: false,
+        libraryVisibility: {},
+        gameVisibility: {},
+      },
+      computePrep: {
+        libraryVisibility: {},
+      },
+    },
   }
 }
 

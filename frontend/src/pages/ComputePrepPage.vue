@@ -404,6 +404,16 @@ async function loadData() {
       recalcLibraryState(lib.index)
     }
 
+    // Restore library visibility from workspace.uiState.computePrep.libraryVisibility
+    const savedVis = ws.uiState?.computePrep?.libraryVisibility
+    if (savedVis) {
+      for (const lib of libraries.value) {
+        if (savedVis[lib.index] !== undefined) {
+          lib._visible = savedVis[lib.index]
+        }
+      }
+    }
+
     // Check if there are existing results to enable "View Results" button
     if (lastSummary?.timestamp) {
       canViewResults.value = true
@@ -477,9 +487,19 @@ function onChildChange(libIndex: number) {
 
 function toggleLibraryVisibility(libIndex: number) {
   const lib = libraries.value.find((l) => l.index === libIndex)
-  if (lib) {
-    lib._visible = !lib._visible
+  if (!lib) return
+  lib._visible = !lib._visible
+
+  // Persist visibility state to workspace.uiState.computePrep.libraryVisibility
+  const vis: Record<number, boolean> = {}
+  for (const l of libraries.value) {
+    vis[l.index] = l._visible
   }
+  const ws = loadWorkspace()
+  if (!ws.uiState) ws.uiState = {}
+  if (!ws.uiState.computePrep) ws.uiState.computePrep = {}
+  ws.uiState.computePrep.libraryVisibility = vis
+  saveWorkspace(ws)
 }
 
 // ── Build managedEntries from checkbox state ──────────────────────────────

@@ -141,4 +141,18 @@ export interface WorkspaceData {
     aggregated_at: string
     selected_rule_paths: string[]
   } | null
+  /** UI state merged into workspace (see TODO-uiState-workspace.md). Optional for backward compat. */
+  uiState?: {
+    sidebarCollapsed?: boolean
+    datasource?: {
+      discoveryMode?: string
+      manualPaths?: string[]
+      greedyParsing?: boolean
+      libraryVisibility?: Record<number, boolean>
+      gameVisibility?: Record<number, boolean>
+    }
+    computePrep?: {
+      libraryVisibility?: Record<number, boolean>
+    }
+  }
 }

@@ -313,7 +313,7 @@ import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { apiPost } from '../api/client'
-import { createPersistence, loadWorkspace, saveWorkspace } from '../utils/persistence'
+import { loadWorkspace, saveWorkspace } from '../utils/persistence'
 import { scrollintotabitem } from '../utils/scroll'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
@@ -321,8 +321,6 @@ import type { DiscoverMode, LibraryRow, GameRow, ModRow } from '../types'
 import { showPopup } from '../utils/notify'
 import { getDescription, extractCode } from '../utils/errorCodes'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
-
-const pers = createPersistence()
 
 const store = useDataSourceStore()
 const forestStore = useForestStore()
@@ -483,25 +481,27 @@ const isDiscoverDisabled = computed(() => {
 
 // 恢复 UI 状态（仅表单输入 + 可见性开关，不含扫描结果）
 function loadUiState() {
-  const savedDiscoveryMode = pers.load<DiscoverMode>('datasource-discoveryMode')
-  if (savedDiscoveryMode) store.discoveryMode = savedDiscoveryMode
-  const savedManualPaths = pers.load<string[]>('datasource-manualPaths')
-  if (savedManualPaths) store.manualPaths = savedManualPaths
-  const savedGreedyParsing = pers.load<boolean>('datasource-greedyParsing')
-  if (savedGreedyParsing !== null) store.greedyParsing = savedGreedyParsing
-  const savedLibVisibility = pers.load<Record<number, boolean>>('datasource-libraryVisibility')
-  if (savedLibVisibility) store.libraryVisibility = savedLibVisibility
-  const savedGameVisibility = pers.load<Record<number, boolean>>('datasource-gameVisibility')
-  if (savedGameVisibility) store.gameVisibility = savedGameVisibility
+  const ws = loadWorkspace()
+  const ds = ws.uiState?.datasource
+  if (!ds) return
+  if (ds.discoveryMode) store.discoveryMode = ds.discoveryMode as DiscoverMode
+  if (ds.manualPaths) store.manualPaths = ds.manualPaths
+  if (ds.greedyParsing !== undefined) store.greedyParsing = ds.greedyParsing
+  if (ds.libraryVisibility) store.libraryVisibility = ds.libraryVisibility
+  if (ds.gameVisibility) store.gameVisibility = ds.gameVisibility
 }
 
 // 保存 UI 状态（仅表单输入 + 可见性开关）
 function saveUiState() {
-  pers.save('datasource-discoveryMode', store.discoveryMode)
-  pers.save('datasource-manualPaths', store.manualPaths)
-  pers.save('datasource-greedyParsing', store.greedyParsing)
-  pers.save('datasource-libraryVisibility', store.libraryVisibility)
-  pers.save('datasource-gameVisibility', store.gameVisibility)
+  const ws = loadWorkspace()
+  if (!ws.uiState) ws.uiState = {}
+  if (!ws.uiState.datasource) ws.uiState.datasource = {}
+  ws.uiState.datasource.discoveryMode = store.discoveryMode
+  ws.uiState.datasource.manualPaths = [...store.manualPaths]
+  ws.uiState.datasource.greedyParsing = store.greedyParsing
+  ws.uiState.datasource.libraryVisibility = { ...store.libraryVisibility }
+  ws.uiState.datasource.gameVisibility = { ...store.gameVisibility }
+  saveWorkspace(ws)
 }
 
 onMounted(async () => {

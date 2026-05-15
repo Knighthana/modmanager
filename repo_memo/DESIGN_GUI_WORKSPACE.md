@@ -55,6 +55,19 @@ modmanager:workspace
     }
   },
   "selectedRulePaths": ["/rules/r1.kmmrule.json"],
+  "uiState": {
+    "sidebarCollapsed": false,
+    "datasource": {
+      "discoveryMode": "all",
+      "manualPaths": [],
+      "greedyParsing": false,
+      "libraryVisibility": {},
+      "gameVisibility": {}
+    },
+    "computePrep": {
+      "libraryVisibility": {}
+    }
+  },
   "aggregatedRuleMeta": {
     "output_path": "/home/user/.config/kmm/aggregated_rule_set.json",
     "aggregatedRuleHash": "abc123",
@@ -71,6 +84,7 @@ modmanager:workspace
 | `selectedRulePaths` | `string[]` | 是 | 用户勾选的规则文件路径列表（刷新后恢复用） |
 | `perDatabase` | `object` | 是 | 按 database name 索引的 decisions 和 lastComputeSummary |
 | `aggregatedRuleMeta` | `object \| null` | 是 | 聚合缓存 metadata（output_path/hash/time），用于刷新后恢复 |
+| `uiState` | `object \| null` | 否 | UI 状态聚合（见 2.6 节），包括 datasource 表单、可见性 toggle 等 |
 
 ### 2.3 `perDatabase[name].decisions`
 
@@ -106,6 +120,22 @@ modmanager:workspace
 | `timestamp` | `string \| null` | 上次计算时间（ISO 8601） |
 
 > **不存储完整 trees / mapping**。完整数据体积大，完整 trees 由前端 Pinia 内存持有（跨 tab 不丢，刷新后重新 compute）。
+
+### 2.6 `uiState` — UI 状态聚合
+
+`uiState` 存放原本分散在独立 localStorage key 中的 UI 状态。刷新后自动恢复。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `sidebarCollapsed` | `boolean` | sidebar 折叠状态（当前未实现） |
+| `datasource` | `object \| null` | DataSourcePage 状态 |
+| `datasource.discoveryMode` | `string` | 扫描模式（all/auto/manual） |
+| `datasource.manualPaths` | `string[]` | 手动路径列表 |
+| `datasource.greedyParsing` | `boolean` | 贪婪解析开关 |
+| `datasource.libraryVisibility` | `object` | 库可见性 `{ index: boolean }` |
+| `datasource.gameVisibility` | `object` | 游戏可见性 `{ index: boolean }` |
+| `computePrep` | `object \| null` | ComputePrepPage 状态 |
+| `computePrep.libraryVisibility` | `object` | 库可见性 `{ index: boolean }` |
 
 ### 2.5 `aggregatedRuleMeta.aggregatedRuleHash` 校验逻辑
 
