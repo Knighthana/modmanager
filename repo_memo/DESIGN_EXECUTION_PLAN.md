@@ -15,8 +15,8 @@
 |  | database.json | 前端 localStorage | user_config.json | compute 参数 |
 |--|:---:|:---:|:---:|:---:|
 | **磁盘描述** | steamlib[], game[], mod[]（纯扫描数据） | — | — | — |
-| **用户决策** | — | `modmanager:workspace.perDatabase[name].decisions` (managed_entries + branch_decisions) | bakprefix, bakignore, output_paths | ✅ |
-| **计算结果** | — | `modmanager:workspace.perDatabase[name].lastComputeSummary`（摘要 + inputs_hash） | — | — |
+| **用户决策** | — | 工作区目录 `decisions.json` (managed_entries + branch_decisions) | bakprefix, bakignore, output_paths | ✅ |
+| **计算结果** | — | 工作区目录 `mapping.json`（完整 trees + final_mapping） | — | — |
 | **路径元数据** | OS.workingPathstyle | — | — | — |
 
 ### managed_entries 格式（方案 B：路径列表）
@@ -135,7 +135,7 @@ POST /api/config/discover          → 返回 user_config
 2. **不可回退边界**：Phase 1/2 完成后，database.json 不再含 managed；localStorage 不再含业务数据。任何试图恢复旧行为的代码视为违规
 3. **文档先行**：Phase 1.1 开工前，Phase 0 设计文档必须全部就位
 4. **归档不删**：修改已有设计文档时，旧版移入 `repo_memo/archive/`
-5. **workspace 状态**：decisions/results 存前端 localStorage，多 database 各自独立
+5. **workspace 状态**：decisions/mapping 存后端工作区目录 `~/.cache/kmm/workspace/{id}/`（详见 `DESIGN_WORKSPACE_MODEL.md`）
 
 ---
 
@@ -145,6 +145,6 @@ POST /api/config/discover          → 返回 user_config
 |---|------|------|
 | D1 | managed 归属 | 前端 localStorage（`modmanager:decisions:{name}.managed_entries`），compute 时作为参数传入 |
 | D6 | compute 端点 database 参数 | 不接收完整 database dict。orchestrator 内部通过 bootstrap 获取。接收 `database_name?` 选择目标 database |
-| D7 | workspace 模式 | 前端 localStorage（decisions/results） |
+| D7 | workspace 模式（2026-05-16 更新） | 后端工作区目录（decisions/mapping/SVG）— 详见 `DESIGN_WORKSPACE_MODEL.md` |
 | D12 | decisions 范围 | managed_entries + branch_decisions 存前端 localStorage，compute 时作为参数传入 orchestrator |
 | D13 | results 存储粒度 | 仅摘要 + inputs_hash；不存完整 trees/mapping |

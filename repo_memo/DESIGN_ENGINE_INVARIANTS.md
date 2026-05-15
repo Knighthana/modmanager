@@ -39,8 +39,8 @@
 
 以下错误码由 `database_ops.py` 在扫描过程中产生，非引擎产生：
 
-- `E_DUPLICATE_APPID` — 同一 appid 在多个 Steam 库中被发现，存在重复的 game 条目。重复条目全部保留在 database.json 中，用户通过 workspace.managed_entries 解决冲突
-- `E_DUPLICATE_MIXED_ID` — 同一 mixed_id（appid:modid）在数据库中存在多个条目。同上，通过 workspace.managed_entries 解决
+- `E_DUPLICATE_APPID` — 同一 appid 在多个 Steam 库中被发现，存在重复的 game 条目。重复条目全部保留在 database.json 中，用户通过工作区的 decisions.json 中 managed_entries 解决冲突
+- `E_DUPLICATE_MIXED_ID` — 同一 mixed_id（appid:modid）在数据库中存在多个条目。同上，通过工作区的 decisions.json 中 managed_entries 解决
 
 ## 重复条目过滤（orchestrator 职责，非 engine）
 
