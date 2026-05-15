@@ -92,7 +92,8 @@ Content-Type: application/json
 {
   "rule_id": "the_opaque_rule_id",
   "mixed_id": "270150:3426079135",
-  "index": 0
+  "index": 0,
+  "database_name": "default"
 }
 
 响应：
@@ -116,7 +117,8 @@ Content-Type: application/json
 {
   "rule_id": "the_opaque_rule_id",
   "mixed_id": "270150:3426079135",
-  "index": 0
+  "index": 0,
+  "database_name": "default"
 }
 
 响应：
