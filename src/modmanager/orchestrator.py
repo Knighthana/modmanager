@@ -14,7 +14,10 @@ Provides:
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -496,7 +499,14 @@ def compute_ws(
 
     # ── Write results back to workspace ───────────────────────────────
     wm.write_mapping(workspace_id, result.mapping_result)
-    wm.write_fingerprints(workspace_id, {})  # TODO: real fingerprints
+
+    # Compute and write data fingerprints for cache invalidation
+    fingerprints = {
+        "kmmrule": _sha256_dict(aggregated_rule_set),
+        "database": _sha256_dict(database),
+        "computed_at": _utcnow(),
+    }
+    wm.write_fingerprints(workspace_id, fingerprints)
 
     # Generate and write SVG
     if result.trees:
@@ -596,3 +606,17 @@ def run_ws(
         apply_result=apply_result,
         backup_dir=resolved_backup_dir,
     )
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────
+
+
+def _sha256_dict(data: dict[str, Any]) -> str:
+    """SHA256 hash of a dict (sorted keys, canonical JSON)."""
+    payload = json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def _utcnow() -> str:
+    """ISO 8601 timestamp in UTC."""
+    return datetime.now(timezone.utc).isoformat()
