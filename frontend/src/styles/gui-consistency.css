@@ -39,3 +39,14 @@ body {
 .gui-page .el-table {
   --el-table-row-height: 40px;
 }
+
+/* 页面内跳转提示按钮：无边框、浅蓝文字、悬浮阴影 */
+.subtle-link {
+  color: var(--el-color-primary-light-3) !important;
+  font-weight: 500;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+.subtle-link:hover {
+  color: var(--el-color-primary) !important;
+  text-shadow: 0 0 6px var(--el-color-primary-light-5);
+}

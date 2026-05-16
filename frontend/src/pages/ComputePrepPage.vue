@@ -5,7 +5,7 @@
     <template v-if="noRulesSelected">
       <el-card shadow="never">
         <el-empty description="请先在规则概览选择规则">
-          <el-button size="small" text @click="$router.push(`/workspace/${$route.params.workspaceId}/rules`)">前往规则概览</el-button>
+          <el-button size="small" text class="subtle-link" @click="$router.push(`/workspace/${$route.params.workspaceId}/rules`)">前往规则概览</el-button>
         </el-empty>
       </el-card>
     </template>

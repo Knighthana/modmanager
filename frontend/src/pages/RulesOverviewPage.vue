@@ -19,7 +19,7 @@
         </div>
         <div class="source-hint">
           <span class="hint-text">规则来源来自 user_config，可在设置页中管理。</span>
-          <el-button size="small" type="primary" plain @click="$router.push('/settings')">前往设置面板管理</el-button>
+          <el-button size="small" text class="subtle-link" @click="$router.push('/settings')">前往设置面板管理</el-button>
         </div>
       </template>
     </el-card>
