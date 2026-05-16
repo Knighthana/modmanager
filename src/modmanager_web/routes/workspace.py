@@ -15,7 +15,7 @@ from modmanager.orchestrator import compute_ws, run_ws
 from modmanager.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
-from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest
+from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest
 from ..sse import stream_with_progress
 from modmanager.rule_aggregator import aggregate as rule_aggregate
 import hashlib
@@ -167,9 +167,8 @@ async def get_forest_mapping(workspace_id: str):
 
 
 @router.post("/{workspace_id}/rules/aggregate")
-async def workspace_aggregate_rules(workspace_id: str, req: "RulesAggregateRequest"):
+async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateRequest):
     """Aggregate rules and store the result in the workspace."""
-    from ..schemas import RulesAggregateRequest as _RAR
 
     try:
         wm = _get_workspace_manager()

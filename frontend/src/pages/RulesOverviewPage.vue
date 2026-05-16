@@ -446,7 +446,10 @@ async function saveSelection() {
     })
 
     if (!aggResp.ok) {
-      const errs = aggResp.errors as string[] | undefined
+      // FastAPI 422 returns { detail: [...] } not { errors: [...] }
+      const rawResp = aggResp as unknown as Record<string, unknown>
+      const details = rawResp.detail as Array<{ msg: string }> | undefined
+      const errs = (aggResp.errors as string[] | undefined) || details?.map((d: { msg: string }) => d.msg)
       const raw = (errs && errs.length > 0) ? errs.join('；') : '聚合规则失败'
       const desc = describeErrors(errs)
       const msg = desc ? `${desc}（${raw}）` : raw
