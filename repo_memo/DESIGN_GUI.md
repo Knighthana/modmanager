@@ -246,6 +246,13 @@
 - 有结果 → 按钮亮起（橙色），可点击跳转到森林可视页
 - 无结果 → 按钮灰色 `disabled`
 
+**加载时复选框行为**：
+- 数据填充阶段：所有 game/mod 复选框初始为**未选中**（避免短暂的全选+重复高亮闪烁）
+- decisions 加载完成后按规则设置勾选：
+  - 有 decisions：不在 `managed_entries` 中的条目 → 勾上；在其中的 → 仅 kept 路径勾上
+  - 无 decisions（首次使用）：全部勾上
+- decisions 恢复后 → 库表 checkbox 重算三态
+
 **库表全选 checkbox**：
 - 联动该库下所有 game + mod
 - 刷新后：decisions 从工作区加载并恢复 game/mod 勾选 → 库表 checkbox 重新计算三态
