@@ -155,7 +155,7 @@ function enterWorkspace(ws: WorkspaceMeta) {
 async function confirmDelete(ws: WorkspaceMeta) {
   try {
     await ElMessageBox.confirm(`确定删除工作区"${ws.name}"？所有数据将被清除。`, '确认删除', {
-      type: 'error',
+      confirmButtonType: 'danger',
       confirmButtonText: '🗑 确认删除',
       cancelButtonText: '✖ 取消',
     })

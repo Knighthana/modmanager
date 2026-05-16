@@ -205,7 +205,7 @@ async function confirmRestore() {
     await ElMessageBox.confirm(
       STR.operationsPage.confirmRestoreMsg,
       STR.operationsPage.confirmRestoreTitle,
-      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'error' },
+      { confirmButtonType: 'danger', confirmButtonText: '确认', cancelButtonText: '取消' },
     )
     await doRestore()
   } catch {
