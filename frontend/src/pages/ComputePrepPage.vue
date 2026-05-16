@@ -375,10 +375,10 @@ async function loadData() {
 
     const data = entriesResp.data
 
-    // Populate libraries with frontend state
+    // Populate libraries with frontend state (default unchecked — recalc after decisions)
     libraries.value = data.libraries.map((lib) => ({
       ...lib,
-      _checked: true,
+      _checked: false,
       _indeterminate: false,
       _visible: true,
     }))
