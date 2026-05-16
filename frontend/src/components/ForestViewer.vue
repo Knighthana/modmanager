@@ -228,7 +228,7 @@ watch(() => store.svgContent, async (newVal) => {
   await new Promise(resolve => requestAnimationFrame(resolve))
 
   initPanZoom()
-})
+}, { immediate: true })
 
 let ro: ResizeObserver | null = null
 
