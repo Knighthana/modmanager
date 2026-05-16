@@ -392,21 +392,56 @@ async function loadData() {
         }
       }
     }
-    // Populate games with frontend state (default checked)
+    // Populate games with frontend state (default unchecked — restored from decisions below)
     games.value = data.games.map((g) => ({
       ...g,
-      _checked: true,
+      _checked: false,
     }))
 
-    // Populate mods with frontend state (default checked)
+    // Populate mods with frontend state (default unchecked — restored from decisions below)
     mods.value = data.mods.map((m) => ({
       ...m,
-      _checked: true,
+      _checked: false,
     }))
 
-    // Recalculate library tri-state after population
-    for (const lib of libraries.value) {
-      recalcLibraryState(lib.index)
+    // Load decisions from workspace API and restore checkbox state
+    try {
+      const decisionsResp = await apiGet<{ managed_entries: { game: Record<string, string[]>; mod: Record<string, string[]> } }>(
+        `/workspace/${workspaceId.value}/decisions/load`
+      )
+      if (decisionsResp.ok && decisionsResp.data?.managed_entries) {
+        const { game: gameKept, mod: modKept } = decisionsResp.data.managed_entries
+        const hasGameKept = gameKept && Object.keys(gameKept).length > 0
+        const hasModKept = modKept && Object.keys(modKept).length > 0
+
+        if (hasGameKept) {
+          for (const g of games.value) {
+            const kept = gameKept[g.appid]
+            g._checked = kept === undefined || kept.includes(g.basepath)
+          }
+        } else {
+          // No game decisions → default all checked
+          for (const g of games.value) g._checked = true
+        }
+
+        if (hasModKept) {
+          for (const m of mods.value) {
+            const kept = modKept[m.mixed_id]
+            m._checked = kept === undefined || kept.includes(m.path)
+          }
+        } else {
+          // No mod decisions → default all checked
+          for (const m of mods.value) m._checked = true
+        }
+      } else {
+        // No decisions yet → default all checked
+        for (const g of games.value) g._checked = true
+        for (const m of mods.value) m._checked = true
+      }
+    } catch {
+      // Decisions API not available → default all checked
+      for (const g of games.value) g._checked = true
+      for (const m of mods.value) m._checked = true
     }
 
     // Load decisions from workspace API and restore checkbox state
