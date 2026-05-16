@@ -16,12 +16,12 @@
 # 工作状态
 
 ## FINISHED
-- [x] 修复 _ensure_steamapps 尾部斜杠 bug
-- [x] DataSourcePage 手动模式 radio 切换
+- [x] TASK2605-0x1F [user] 修复 _ensure_steamapps 尾部斜杠 bug
+- [x] TASK2605-0x20 [user] DataSourcePage 手动模式 radio 切换
 
 ## TODO
-- [ ] 空输入校验
-- [ ] BackupPage GUI 审查
+- [ ] (PENDING)TASK2605-0x1 [user] 空输入校验
+- [ ] TASK2605-0x21 [arch] BackupPage GUI 审查
 ```
 
 ## 日志流程

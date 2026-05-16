@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ComputeMappingOutput",
-  "description": "Schema for the dict returned by modmanager_cli.engine.compute_mapping().",
+  "description": "Schema for the dict returned by modmanager.engine.compute_mapping().",
   "type": "object",
   "required": ["warnings", "errors", "trees", "final_mapping"],
   "additionalProperties": false,

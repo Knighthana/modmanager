@@ -9,17 +9,17 @@
     {
       "description": "本机kmmrule存储位置1",
       "path_handle": "rule_base_path_1",
-      "path_target": "/home/knighthana/workspace/modmanager_cli/"
+      "path_target": "/home/knighthana/workspace/modmanager/"
     },
     {
       "description": "本机kmmrule存储位置2",
       "path_handle": "rule_base_path_2",
-      "path_target": "/home/knighthana/workspace/modmanager_cli/description/"
+      "path_target": "/home/knighthana/workspace/modmanager/description/"
     },
     {
       "description": "本机kmmrule存储位置3",
       "path_handle": "rule_base_path_3",
-      "path_target": "/home/knighthana/workspace/modmanager_cli/description/rules/"
+      "path_target": "/home/knighthana/workspace/modmanager/description/rules/"
     }
   ],
   "bakprefix": "kmmbackup_",

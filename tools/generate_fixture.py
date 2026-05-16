@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-modmanager_cli 测试 Fixture 生成器
+modmanager 测试 Fixture 生成器
 从用户真实的 Windows Steam 游戏目录镜像生成 mock 测试环境。
 
 两种模式:
@@ -411,7 +411,7 @@ def mode_hot(output_dir: Path, clean: bool) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="modmanager_cli 测试 Fixture 生成器",
+        description="modmanager 测试 Fixture 生成器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
  模式说明:
