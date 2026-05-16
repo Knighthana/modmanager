@@ -262,5 +262,11 @@ export const STR = {
     E_TREE_CONFLICT_TARGET_DRIFT: '目标文件内容与备份不一致',
     E_DUPLICATE_APPID: '同一 appid 在多个 Steam 库中重复出现。由于无法自动判断应对哪个库中的游戏进行操作，请在游戏表中为每个重复的 appid 在"选择"列中勾选一个单选按钮，保留需要管理的库。',
     E_DUPLICATE_MIXED_ID: '同一 mixed_id（appid:modid）存在多个条目。由于无法自动判断应使用哪个路径下的 MOD，请在 MOD 表中为每个重复的 mixed_id 在"选择"列中勾选一个单选按钮，保留需要使用的条目。',
+    // Aggregator errors
+    E_KMM_RULE_LOAD_FAILED: '规则文件加载失败，可能是文件不存在或权限不足',
+    E_KMM_RULE_INVALID: '规则文件格式无效，请检查 JSON 结构是否完整',
+    E_PERMISSION_DENIED_BASE: '规则操作的目标路径越权，被安全策略拦截',
+    E_PERMISSION_DENIED_SUB: '规则操作的子路径越权，被安全策略拦截',
+    E_OUTPUT_WRITE_FAILED: '聚合结果写入失败，检查磁盘空间和权限',
   },
 }

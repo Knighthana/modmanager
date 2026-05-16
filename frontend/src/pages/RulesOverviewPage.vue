@@ -191,6 +191,7 @@ import { FolderOpened } from '@element-plus/icons-vue'
 import { apiPost, apiGet } from '../api/transport'
 import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
+import { getDescription } from '../utils/errorCodes'
 
 const route = useRoute()
 const appStore = useAppStore()
@@ -445,7 +446,9 @@ async function saveSelection() {
     })
 
     if (!aggResp.ok) {
-      ElMessage.error(aggResp.errors?.join('; ') ?? '聚合规则失败')
+      const raw = (aggResp.errors as string[])?.join('; ') ?? '聚合规则失败'
+      const desc = describeErrors(aggResp.errors as string[] | undefined)
+      ElMessage.error({ message: desc || raw, duration: 8000 })
       saving.value = false
       return
     }
@@ -501,6 +504,21 @@ function formatAuthors(authors: Author[]): string {
   return authors
     .map((a) => a.nickname ?? '佚名')
     .join(', ')
+}
+
+/** Translate backend error codes to human-readable Chinese descriptions. */
+function describeErrors(errors: string[] | undefined): string | null {
+  if (!errors || errors.length === 0) return null
+  const descriptions = errors
+    .map((msg) => {
+      const desc = getDescription(msg)
+      if (desc) return desc
+      // Extract code from message for the fallback
+      const codeMatch = msg.match(/^(E_\w+)/)
+      return codeMatch ? msg : msg
+    })
+    .filter(Boolean)
+  return descriptions.join('；')
 }
 </script>
 
