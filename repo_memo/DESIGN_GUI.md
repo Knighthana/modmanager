@@ -59,25 +59,25 @@
 | 页面 | 路由 | 职责 | 写入操作 |
 |------|------|------|---------|
 | DataSourcePage | `/datasource` | 扫描 Steam 库 → 三张表纯展示（lib/game/mod）；可见性筛选 | `POST /api/database/generate`（后端写 database.json） |
-| RulesOverviewPage | `/rules-overview` | 展示所有可用 rule 文件 + 详情；用户勾选 + [保存规则选择] → 后端聚合 | `POST /api/rules/aggregate`（后端写 aggregated_rule_set.json） |
-| 计算准备 | `/compute-prep` | 展示受影响 game/mod；重复条目柔和高亮；可选预选（checkbox）；[▶ 开始计算] | `POST /api/pipeline/compute`；成功→ [查看结果] 亮起 |
-| ForestPage | `/forest` | 全屏 SVG 可视化；摘要抽屉；警告面板；小地图；结果过期检测 | 无（纯消费计算结果） |
-| ConflictsPage | `/conflicts` | 分支冲突表格 + radio 选择；[确认决策] → 写 branch_decisions 到 workspace | 写 `localStorage.modmanager:workspace.perDatabase[name].decisions.branch_decisions` |
-| OperationsPage | `/operations` | 映射摘要 + backup/apply/restore 按钮 | `POST /api/pipeline/backup` / `apply` / `restore` |
+| RulesOverviewPage | `/workspace/{id}/rules` | 展示所有可用 rule 文件 + 详情；用户勾选 + [保存规则选择] → 后端聚合 | `POST /api/workspace/{id}/rules/aggregate` → 聚合结果存入工作区目录 |
+| 计算准备 | `/workspace/{id}/compute` | 展示受影响 game/mod；重复条目柔和高亮；可选预选（checkbox）；[▶ 开始计算] | `POST /api/workspace/{id}/pipeline/compute` |
+| ForestPage | `/workspace/{id}/forest` | 全屏 SVG 可视化；摘要抽屉；警告面板；小地图；结果过期检测 | 无（纯消费计算结果，从工作区读取） |
+| ConflictsPage | `/workspace/{id}/conflicts` | 分支冲突表格 + radio 选择 | `POST /api/workspace/{id}/decisions/save` |
 
 ### Vue Router
 
 | 路由 | 页面 | 说明 |
 |------|------|------|
-| `/` | 重定向 | → `/datasource` |
+| `/` | WorkspaceListPage | 工作区中枢 |
+| `/workspace/{id}/rules` | RulesOverviewPage | 规则选择 + 聚合 |
+| `/workspace/{id}/compute` | ComputePrepPage | 可选预选 + 触发计算 |
+| `/workspace/{id}/forest` | ForestPage | SVG 可视化 |
+| `/workspace/{id}/conflicts` | ConflictsPage | 分支裁决 |
 | `/datasource` | DataSourcePage | 数据源扫描 + 展示 |
-| `/rules-overview` | RulesOverviewPage | 规则选择 + 聚合 |
-| `/compute-prep` | 计算准备 | 可选预选 + 触发计算 |
-| `/forest` | ForestPage | SVG 可视化 |
-| `/conflicts` | ConflictsPage | 分支裁决 |
-| `/operations` | OperationsPage | 备份/应用/恢复 |
 | `/settings` | SettingsPage | user_config 表单编辑 |
 | `/advanced` | AdvancedPage | 数据文件 JSON 监控 |
+| `/rule-editor` | RuleEditorPage | 规则制定 |
+| `/operations`、`/rules-overview`、`/forest`、`/compute-prep`、`/conflicts` | (重定向) | → `/` |
 
 ---
 
@@ -106,7 +106,7 @@
 - DataSourcePage 仅展示扫描结果。重复条目客观展示，不做裁决。裁决在计算准备页完成。
 - 可见性筛选（库/游戏 toggle，👀可见 / 🙈隐藏）为 UI 状态，通过 persistence.ts 持久化
 - "扫描 Steam 库"按钮 → `POST /api/database/generate` → 后端扫描并写入 database → 返回数据。**每次均重新扫描，不走缓存。**
-- "确认并进入规则概览"按钮：扫描结果存在时彩色可点击，否则灰色不可点击。点击后保存 database 并跳转。
+- "确认并进入规则概览"按钮（已废弃——DataSourcePage 降为纯 database 管理，跳转逻辑已移除）
 - ~~"保存当前选择"按钮已删除~~——扫描已顺带保存，无需独立保存按钮。
 - **database 下拉组件**：用户选择要操作的目标 database。选项来自 `user_config.databases`。选中值仅作为组件本地状态——不改 localStorage、不改后端文件。操作时作为 `database_name?` 参数传入请求。**DataSourcePage 上不显示"有历史决策"标签。**
 - 重复 appid/mixed_id 条目自然展示，无额外处理
@@ -155,14 +155,16 @@
 - **预加载**：所有规则文件的详情在页面加载时并行获取（`/api/rules/read`），展开前即可显示 `rulename | filename`
 - 规则文件行格式：**`rulename`**（加粗深色） + `|` + `filename`（浅色细体），div 可横向滚动
 - `rule_meta_tag` 显示为 **"规则文件元信息"**
-- author：每位独立按钮，点击弹出 popover 遍历展示所有字段（键含义和展示方式待后续规定）
-- 游戏名从 `/api/database/read` 的 `game[].name` 获取（非硬编码映射）
+- author：每位独立按钮，点击弹出 popover 遍历展示所有字段
+- 游戏名从 `/api/database/read` 的 `game[].name` 获取
 - 文件夹图标可点击：调 `/api/rules/read` → 弹出对话框以 JSON 格式化展示源文件内容
 - 每个 rule 可展开查看详情
 - 用户通过 checkbox 勾选/取消 rule
-- [💾 保存规则选择] → `POST /api/rules/aggregate { paths: [已选文件路径] }` → 结果存 localStorage workspace.aggregatedRuleSet + selectedRulePaths
-- [✅ 进入计算准备]：聚合完成后亮起可点击（`savedCount !== null`），否则灰色不可点击
-- **autoRestoreAggregated**：页面加载时比对当前规则文件路径与 workspace.selectedRulePaths——一致则自动恢复聚合结果，按钮亮起
+- [💾 保存规则选择] → `POST /api/workspace/{id}/rules/aggregate { paths: [已选文件路径] }` → 结果存入工作区目录 `aggregated_rule.json`
+- [✅ 进入计算准备]：聚合完成后亮起可点击（`savedCount !== null`）
+- **错误提示**：聚合失败时显示中文错误描述（如"规则文件加载失败"）+ 原始错误码（`E_KMM_RULE_LOAD_FAILED: /path: ...`），持续 8 秒
+- **跳转链接**：`[前往设置面板管理]` 使用 `.subtle-link` 样式——无边框、浅蓝文字、悬浮光晕，不突兀
+- **autoRestoreAggregated**：页面加载时从工作区 `GET /api/workspace/{id}/rules/aggregated` 恢复聚合结果
 
 **不展示**聚合后的冲突分析——留给计算准备页。
 - preview 图片加载和 README 文件查看见 TODO-66/67（需新增后端端点）
