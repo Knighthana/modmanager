@@ -383,6 +383,15 @@ async function loadData() {
       _visible: true,
     }))
 
+    // Restore library visibility from uiState (keyed by library.index)
+    const savedVis = appStore.loadUiStateFor<Record<number, boolean>>(`computePrep.visibility.${workspaceId.value}`)
+    if (savedVis) {
+      for (const lib of libraries.value) {
+        if (savedVis[lib.index] !== undefined) {
+          lib._visible = savedVis[lib.index]
+        }
+      }
+    }
     // Populate games with frontend state (default checked)
     games.value = data.games.map((g) => ({
       ...g,
@@ -398,16 +407,6 @@ async function loadData() {
     // Recalculate library tri-state after population
     for (const lib of libraries.value) {
       recalcLibraryState(lib.index)
-    }
-
-    // Restore library visibility from uiState
-    const savedVis = appStore.loadUiStateFor<Record<number, boolean>>(`computePrep.visibility.${workspaceId.value}`)
-    if (savedVis) {
-      for (const lib of libraries.value) {
-        if (savedVis[lib.index] !== undefined) {
-          lib._visible = savedVis[lib.index]
-        }
-      }
     }
 
     // Load decisions from workspace API and restore checkbox state
