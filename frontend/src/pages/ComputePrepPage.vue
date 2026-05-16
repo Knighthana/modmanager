@@ -438,6 +438,16 @@ async function loadData() {
       // Decisions API not available — all entries remain checked (default)
     }
 
+    // Check if workspace already has computed results
+    try {
+      const mappingResp = await apiGet<Record<string, unknown>>(
+        `/workspace/${workspaceId.value}/forest/mapping`
+      )
+      if (mappingResp.ok && mappingResp.data && (mappingResp.data.trees || mappingResp.data.final_mapping)) {
+        canViewResults.value = true
+      }
+    } catch { /* ignore — no results yet */ }
+
     // Check if there are existing results to enable "View Results" button
     if (forestStore.trees.length > 0 || forestStore.finalMapping.length > 0) {
       canViewResults.value = true
