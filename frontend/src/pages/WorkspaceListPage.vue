@@ -2,7 +2,7 @@
   <div style="padding: 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <h2 style="margin: 0;">📂 工作区</h2>
-      <el-button type="primary" @click="showCreateDialog = true">新建工作区</el-button>
+      <el-button type="primary" @click="showCreateDialog = true">➕ 新建工作区</el-button>
     </div>
 
     <el-empty v-if="!loading && workspaces.length === 0" :description="'暂无工作区，点击\u201C新建工作区\u201D开始'" />
@@ -29,11 +29,24 @@
             </div>
           </div>
           <div style="display: flex; gap: 8px;">
-            <el-button size="small" type="primary" @click="enterWorkspace(ws)">
-              进入
+            <el-popover
+              v-if="ws.workspace_id === justCreatedId"
+              :visible="true"
+              placement="top"
+              :width="220"
+              content="创建成功！请点击进入按钮开始安排工作"
+            >
+              <template #reference>
+                <el-button size="small" type="primary" @click="enterWorkspace(ws)">
+                  ▶ 进入
+                </el-button>
+              </template>
+            </el-popover>
+            <el-button v-else size="small" type="primary" @click="enterWorkspace(ws)">
+              ▶ 进入
             </el-button>
             <el-button size="small" type="danger" plain @click="confirmDelete(ws)">
-              删除
+              🗑 删除
             </el-button>
           </div>
         </div>
@@ -81,6 +94,7 @@ const showCreateDialog = ref(false)
 const creating = ref(false)
 const newName = ref('')
 const newDatabase = ref('')
+const justCreatedId = ref('')
 
 async function loadWorkspaces() {
   loading.value = true
@@ -121,7 +135,7 @@ async function doCreate() {
       showCreateDialog.value = false
       newName.value = ''
       await loadWorkspaces()
-      enterWorkspace(res.data.meta)
+      justCreatedId.value = res.data.workspace_id
     } else {
       ElMessage.error(res.errors?.[0] || '创建工作区失败')
     }
@@ -133,6 +147,7 @@ async function doCreate() {
 }
 
 function enterWorkspace(ws: WorkspaceMeta) {
+  justCreatedId.value = ''
   appStore.setCurrentWorkspaceId(ws.workspace_id)
   router.push(`/workspace/${ws.workspace_id}/rules`)
 }
