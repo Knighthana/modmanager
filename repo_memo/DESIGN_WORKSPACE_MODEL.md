@@ -442,9 +442,11 @@ URL 是导航权威，store 只是缓存。这样即使 store 持有旧值，进
 
 这覆盖了"用户在另一个 Tab 或列表页删除了当前工作区"的场景。
 
-#### 防护三：无工作区时重定向
+#### 防护三：无工作区时导航栏提示
 
-`store.currentWorkspaceId === null` 时，用户点击导航栏中工作区相关项（"规则概览""计算准备""森林可视"），跳转到 WorkspaceListPage 并显示提示"请先创建或选择一个工作区"。
+`store.currentWorkspaceId === null` 时，侧栏中工作区相关项（"规则概览""计算准备""森林可视""冲突裁决"）灰显。文本仅保留 emoji + 名称（如 `📋 规则概览`），无过长说明文字。点击灰显项弹出 `el-popover` 气泡提示"请先在 📂 工作区 页面创建或选择一个工作区"。
+
+用户创建/进入工作区后，菜单项恢复正常路由链接。
 
 #### 多 Tab 隔离：`sessionStorage`
 
@@ -563,34 +565,42 @@ DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsin
 ### 7.1 职责
 
 1. 调用 `GET /api/workspace/list` 获取所有工作区
-2. 展示工作区卡片列表，按 `updated_at` 降序（最新在最上面）
+2. 展示工作区卡片列表，按 `updated_at` 降序（最新在最上面），标记 `最新` 标签
 3. 提供交互：
-   - **新建**：弹出对话框，输入名称 + 选择 database → `POST /api/workspace/create`
-   - **进入**：跳转到对应工作区
-   - **删除**：`POST /api/workspace/{id}/delete` → 刷新列表
+   - **新建**：弹出对话框，输入名称 + 选择 database → `POST /api/workspace/create`。创建成功后**不自动跳转**——停留在列表页，在新卡片上弹出一次性 popover 提示"创建成功！请点击进入按钮开始安排工作"，用户自行决定何时进入
+   - **进入**：跳转到对应工作区（默认进入规则概览页）
+   - **删除**：弹出确认对话框 → `POST /api/workspace/{id}/delete` → 刷新列表
    - **刷新**：重新 GET 列表
+4. 创建对话框中的 database 下拉选项来自 `user_config.databases` 的 keys
 
-### 7.2 UI 结构
+### 7.2 UI 规范
+
+**按钮**（语义色区分操作危险性）：
+
+| 按钮 | 类型 | 大小 | 文字 |
+|------|------|:--:|------|
+| 新建工作区 | `type="primary"`（蓝） | default | `➕ 新建工作区` |
+| 进入 | `type="success"`（绿） | small | `▶ 进入` |
+| 删除 | `type="danger"`（红） | small | `🗑 删除` |
+
+**删除确认对话框**：`confirmButtonType='danger'`（红），按钮文字 `🗑 确认删除` / `✖ 取消`。
+
+**卡片**：
 
 ```
 ┌──────────────────────────────────────────────┐
-│  工作区                              [新建]   │
+│  📂 工作区                        [➕ 新建]   │
 ├──────────────────────────────────────────────┤
 │  ┌─────────────────────────────────────┐     │
 │  │ 📋 我的第一次实验                     │     │
 │  │ 🗄 database: default                 │     │
 │  │ 🕐 2026-05-16 10:30   🆕 最新       │     │
-│  │ [进入] [删除]                        │     │
+│  │              [▶ 进入] [🗑 删除]      │     │
 │  └─────────────────────────────────────┘     │
-│  ┌─────────────────────────────────────┐     │
-│  │ 📋 尝试不同规则                      │     │
-│  │ 🗄 database: HOSTB_SSD               │     │
-│  │ 🕐 2026-05-15 18:00                 │     │
-│  │ [进入] [删除]                        │     │
-│  └─────────────────────────────────────┘     │
-│  ...                                         │
 └──────────────────────────────────────────────┘
 ```
+
+**创建成功提示**：新卡片上显示 `el-popover`（`placement="top"`），内容为"创建成功！请点击进入按钮开始安排工作"。用户点击进入后自动清除。此提示仅出现在刚创建的工作区卡片上，切换页面后不残留。
 
 ### 7.3 扩展预留
 
@@ -610,8 +620,8 @@ DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsin
 | TODO-70（森林图展示打磨） | 森林可视页的纯展示优化——小地图比例、滚动条、放缩数值。独立任务，与工作区模型无关 |
 | `force_compute` 参数 | compute 端点的缓存跳过标志，MVP 后可加 |
 | 外部资源端点（preview/README） | TODO-66/67 范畴 |
-| `useAppStore` 唯一写者 | 组件通过 Pinia `useAppStore` 读写浏览器存储，不直接 import persistence.ts。Tauri 迁移时仅改 persistence 底层 |
-| 前端 Transport Abstraction | `audit_todo_future.md` 第 3 项，可延后 |
+| `useAppStore` 唯一写者 | ✅ 已完成。组件通过 Pinia `useAppStore` 读写浏览器存储，不直接 import persistence.ts。Tauri 迁移时仅改 persistence 底层 |
+| API 调用规则 | ✅ 已完成。`API_ENDPOINTS` 常量不含 `API_BASE`，路径为相对路径；`apiPost`/`apiGet`/`streamSse` 内部拼接 `API_BASE + path`。详见 `DESIGN_FRONTEND_LAYER_INDEPENDENCE.md` §1 |
 
 ---
 
