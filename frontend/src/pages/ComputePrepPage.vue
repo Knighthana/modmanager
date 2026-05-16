@@ -41,10 +41,10 @@
             :disabled="computing"
             @click="startComputeAndView"
           >
-            🚀 计算并查看
+            🚀 计算查看
           </el-button>
           <el-button
-            type="info"
+            type="warning"
             :disabled="!canViewResults"
             @click="viewResults"
           >
@@ -651,12 +651,9 @@ async function doCompute(): Promise<boolean> {
   }
 }
 
-/** "▶️ 开始计算" — compute then navigate to workspace list */
+/** "▶️ 开始计算" — compute and stay on page */
 async function startCompute() {
-  const ok = await doCompute()
-  if (ok) {
-    router.push('/')
-  }
+  await doCompute()
 }
 
 /** "🚀 计算并查看" — compute then navigate to forest visualization */
