@@ -437,6 +437,11 @@ async function loadData() {
       // Decisions API not available — all entries remain checked (default)
     }
 
+    // Recalculate library checkbox states after decisions restored
+    for (const lib of libraries.value) {
+      recalcLibraryState(lib.index)
+    }
+
     // Check if workspace already has computed results
     try {
       const mappingResp = await apiGet<Record<string, unknown>>(
