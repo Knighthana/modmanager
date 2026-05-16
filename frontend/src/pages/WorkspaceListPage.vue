@@ -37,12 +37,12 @@
               content="创建成功！请点击进入按钮开始安排工作"
             >
               <template #reference>
-                <el-button size="small" type="primary" @click="enterWorkspace(ws)">
+                <el-button size="small" type="success" @click="enterWorkspace(ws)">
                   ▶ 进入
                 </el-button>
               </template>
             </el-popover>
-            <el-button v-else size="small" type="primary" @click="enterWorkspace(ws)">
+            <el-button v-else size="small" type="success" @click="enterWorkspace(ws)">
               ▶ 进入
             </el-button>
             <el-button size="small" type="danger" plain @click="confirmDelete(ws)">
