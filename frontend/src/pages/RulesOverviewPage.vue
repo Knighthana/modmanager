@@ -446,9 +446,11 @@ async function saveSelection() {
     })
 
     if (!aggResp.ok) {
-      const raw = (aggResp.errors as string[])?.join('; ') ?? '聚合规则失败'
-      const desc = describeErrors(aggResp.errors as string[] | undefined)
-      ElMessage.error({ message: desc || raw, duration: 8000 })
+      const errs = aggResp.errors as string[] | undefined
+      const raw = (errs && errs.length > 0) ? errs.join('；') : '聚合规则失败'
+      const desc = describeErrors(errs)
+      const msg = desc ? `${desc}（${raw}）` : raw
+      ElMessage.error({ message: msg, duration: 8000 })
       saving.value = false
       return
     }
