@@ -182,7 +182,9 @@
 ```
 ┌ 计算准备 ───────────────────────────────────────────────────────────────────┐
 │                                                                              │
-│  [▶️ 开始计算] [👁️ 查看结果]  [✅ 计算完成：42棵树，15个映射]                   │
+│  [前往规则概览]                                                              │
+│  [▶️ 开始计算] [🚀 计算查看] [👁️ 查看结果]                                      │
+│  [✅ 计算完成：42棵树，15个映射]                                                │
 │                                                                              │
 │  覆盖 2 个库，5 个游戏 (2 个有多个入口)，12 个 MOD (3 个有多个入口)             │
 │ ─────────────────────────────────────────────────────────────────────────── │
@@ -214,6 +216,15 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+**按钮规范**：
+
+| 按钮 | 类型 | 大小 | 文字 | 行为 |
+|------|------|:--:|------|------|
+| 前往规则概览 | `.subtle-link`（无边框/浅蓝文字/悬浮光晕） | small | `前往规则概览` | 跳转到 `/workspace/{id}/rules` |
+| ▶️ 开始计算 | `type="primary"`（蓝） | default | `▶️ 开始计算` | 执行 compute，**保持在当前页** |
+| 🚀 计算查看 | `type="success"`（绿） | default | `🚀 计算查看` | 执行 compute → 直接跳转到森林可视页 |
+| 👁️ 查看结果 | `type="warning"`（橙） | default | `👁️ 查看结果` | 跳转到森林可视页。无结果时灰色 `disabled` |
+
 **checkbox 行为**：
 - 默认：全部选中（不干预 = 全留给 engine）
 - **重复高亮**：前端动态计算——统计当前勾选行中同一 appid/mixed_id 出现次数，>1 则高亮
@@ -226,11 +237,18 @@
 - 库表全选 checkbox 联动该库下所有 game + mod
 
 **[▶️ 开始计算]**：
-- 从 localStorage workspace 读 decisions
 - 收集 checkbox 状态 → 构建 managed_entries
-- `POST /api/pipeline/compute { database_name, aggregated_rule_set, managed_entries, branch_decisions }`
-- 成功后 → 写 workspace → [👁️ 查看结果] 亮起
-- 计算完成消息与按钮同行，不挤占表格空间
+- `POST /api/workspace/{id}/pipeline/compute` → 结果写入工作区目录
+- 成功后 → [👁️ 查看结果] 亮起（橙色），页面保持在计算准备页
+
+**[👁️ 查看结果]**：
+- 页面加载时 `GET /api/workspace/{id}/forest/mapping` 检查后端工作区是否已有计算结果
+- 有结果 → 按钮亮起（橙色），可点击跳转到森林可视页
+- 无结果 → 按钮灰色 `disabled`
+
+**库表全选 checkbox**：
+- 联动该库下所有 game + mod
+- 刷新后：decisions 从工作区加载并恢复 game/mod 勾选 → 库表 checkbox 重新计算三态
 
 **MOD 名称**：从 aggregated_rule_set.operation[].nickname 获取（非 database 的 mod 条目）
 
