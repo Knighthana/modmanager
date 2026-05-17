@@ -9,7 +9,7 @@ import LayoutShell from './components/LayoutShell.vue'
 const isMockMode =
   import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK === 'true'
 
-// Phase 3: workspace 已移除 — onMounted 不再做 workspace status check
+// Phase 3: 旧 onMounted 中的 workspace status check 已移除（已迁移到 workspace 模型）
 </script>
 
 <style scoped>

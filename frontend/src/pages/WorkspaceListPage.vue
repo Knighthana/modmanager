@@ -1,7 +1,7 @@
 <template>
-  <div style="padding: 16px;">
+  <div class="workspace-list-page gui-page">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h2 style="margin: 0;">📂 工作区</h2>
+      <h2>📂 工作区</h2>
       <el-button type="primary" @click="showCreateDialog = true">➕ 新建工作区</el-button>
     </div>
 
@@ -186,3 +186,10 @@ onMounted(() => {
   loadDatabases()
 })
 </script>
+
+<style scoped>
+.workspace-list-page {
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+</style>

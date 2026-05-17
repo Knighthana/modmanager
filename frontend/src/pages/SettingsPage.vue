@@ -1,5 +1,5 @@
 <template>
-  <div class="gui-page">
+  <div class="settings-page gui-page">
     <h2>{{ STR.settingsPage.title }}</h2>
 
     <el-card shadow="never" style="margin-top: 16px;">
@@ -508,6 +508,10 @@ function cancelEditDbKey() {
 </script>
 
 <style scoped>
+.settings-page {
+  margin: 0 auto;
+  padding: 16px 24px;
+}
 .section-subtitle {
   font-weight: 600;
   font-size: 14px;

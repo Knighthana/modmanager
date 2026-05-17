@@ -1,6 +1,6 @@
 <template>
-  <div class="gui-page">
-    <h2>高级 — 数据文件 JSON 查看</h2>
+  <div class="advanced-page gui-page">
+    <h2>👨‍💻 进阶用户</h2>
 
     <div style="margin-bottom: 16px;">
       <DatabaseSelector ref="databaseSelectorRef" />
@@ -285,6 +285,10 @@ watch(activeTab, (newVal) => {
 </script>
 
 <style scoped>
+.advanced-page {
+  margin: 0 auto;
+  padding: 16px 24px;
+}
 .file-meta {
   font-size: 13px;
   color: #606266;

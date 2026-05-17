@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="conflicts-page gui-page">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <h2>{{ STR.conflictsPage.title }}</h2>
       <div style="display: flex; gap: 8px;">
@@ -136,3 +136,10 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.conflicts-page {
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+</style>

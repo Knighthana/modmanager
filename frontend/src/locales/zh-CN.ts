@@ -50,7 +50,7 @@ export const STR = {
 
   // ── ConflictsPage ─────────────────────────────────────────────────────
   conflictsPage: {
-    title: '冲突裁决',
+    title: '⚔️ 冲突裁决',
     resetDecisions: '重置决策',
     recalculate: '重新计算',
     tooltipText: '请先在 Forest 页面执行计算',
@@ -170,14 +170,14 @@ export const STR = {
 
   // ── SettingsPage ──────────────────────────────────────────────────────
   settingsPage: {
-    title: '设置',
+    title: '⚙️ 设置面板',
     saveBtn: '保存设置',
     databaseJsonAdvanced: 'Database JSON（高级）',
   },
 
   // ── LayoutShell ───────────────────────────────────────────────────────
   layoutShell: {
-    title: "🔧 Knighthana's<br/>Mod Manager",
+    title: "Knighthana's<br/>Mod Manager",
     navDatasource: '📡 数据来源',
     navRulesOverview: '📋 规则概览',
     navSettings: '⚙️ 设置面板',
@@ -188,12 +188,12 @@ export const STR = {
     navComputePrep: '🧮 计算准备',
     navRules: '📋 规则管理',
     navBackup: '🗄️ 备份恢复',
-    navAdvanced: '🔧 进阶用户',
+    navAdvanced: '👨‍💻 进阶用户',
   },
 
   // ── OperationsPage ────────────────────────────────────────────────────
   operationsPage: {
-    title: '文件操作',
+    title: '💾 文件操作',
     summaryTitle: '📊 本次映射摘要',
     optionsTitle: '⚙️ 执行选项',
     dryRunLabel: 'dry run（仅预览，不实际写文件）',

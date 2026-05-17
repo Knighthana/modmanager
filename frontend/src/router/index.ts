@@ -28,6 +28,11 @@ const routes = [
     name: 'workspace-conflicts',
     component: () => import('../pages/ConflictsPage.vue'),
   },
+  {
+    path: '/workspace/:workspaceId/operations',
+    name: 'workspace-operations',
+    component: () => import('../pages/OperationsPage.vue'),
+  },
   // ── Global pages (no workspace context) ──
   {
     path: '/datasource',

@@ -1,5 +1,5 @@
 <template>
-  <div class="gui-page">
+  <div class="operations-page gui-page">
     <h2>{{ STR.operationsPage.title }}</h2>
 
     <!-- DatabaseSelector -->
@@ -291,3 +291,10 @@ async function doRestore() {
   })
 }
 </script>
+
+<style scoped>
+.operations-page {
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+</style>

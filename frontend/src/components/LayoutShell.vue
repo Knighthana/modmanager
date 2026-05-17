@@ -2,8 +2,12 @@
   <el-container style="height: 100vh; overflow: hidden;">
     <el-aside width="200px">
       <div style="padding: 16px 12px; border-bottom: 1px solid var(--el-border-color-light); margin-bottom: 4px;">
-        <div style="font-weight: 800; font-size: 14px; line-height: 1.4; word-break: break-word; color: var(--el-text-color-primary);">
-          <span v-html="STR.layoutShell.title"></span>
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <span style="font-size: 28px; line-height: 1; flex-shrink: 0;">🧩</span>
+          <div
+            style="font-weight: 800; font-size: 14px; line-height: 1.4; word-break: break-word; color: var(--el-text-color-primary);"
+            v-html="STR.layoutShell.title"
+          />
         </div>
       </div>
       <el-menu :default-active="currentRoute" router>
@@ -23,6 +27,9 @@
           <el-menu-item :index="`/workspace/${workspaceId}/conflicts`">
             <span>⚔️ 冲突裁决</span>
             <el-badge v-if="store.unresolvedCount > 0" :value="store.unresolvedCount" />
+          </el-menu-item>
+          <el-menu-item :index="`/workspace/${workspaceId}/operations`">
+            <span>💾 文件操作</span>
           </el-menu-item>
         </template>
         <template v-else>
@@ -47,6 +54,13 @@
               </el-menu-item>
             </template>
           </el-popover>
+          <el-popover placement="right" :width="200" trigger="click" content="请先在 📂 工作区 页面创建或选择一个工作区">
+            <template #reference>
+              <el-menu-item index="">
+                <span style="color: var(--el-text-color-placeholder);">💾 文件操作</span>
+              </el-menu-item>
+            </template>
+          </el-popover>
         </template>
         <el-menu-item index="/datasource">
           <span>📡 数据来源</span>
@@ -58,7 +72,7 @@
           <span>⚙️ 设置面板</span>
         </el-menu-item>
         <el-menu-item index="/advanced">
-          <span>🔧 进阶用户</span>
+          <span>👨‍💻 进阶用户</span>
         </el-menu-item>
       </el-menu>
     </el-aside>

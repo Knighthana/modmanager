@@ -21,10 +21,11 @@ vi.mock('element-plus', async (importOriginal) => {
 // Mock the API client
 vi.mock('../../api/client', () => ({
   apiPost: vi.fn(),
+  apiGet: vi.fn(),
 }))
 
 import ComputePrepPage from '../../pages/ComputePrepPage.vue'
-import { apiPost } from '../../api/client'
+import { apiPost, apiGet } from '../../api/client'
 import { ElMessage } from 'element-plus'
 import type { ApiResponse } from '../../api/client'
 import { useForestStore } from '../../stores/forest'
@@ -64,6 +65,7 @@ const elStubs = {
 }
 
 const mockedApiPost = vi.mocked(apiPost)
+const mockedApiGet = vi.mocked(apiGet)
 
 // Helper to get vm as any for accessing internal component state
 function vmAny(wrapper: VueWrapper): Record<string, unknown> {
@@ -222,7 +224,7 @@ describe('ComputePrepPage', () => {
 
     await router.push('/workspace/test-ws-1/compute')
 
-    mockedApiPost.mockImplementation(async (path: string) => {
+    mockedApiGet.mockImplementation(async (path: string) => {
       if (path === '/workspace/test-ws-1/rules/aggregated') {
         return {
           ok: true,
@@ -231,6 +233,9 @@ describe('ComputePrepPage', () => {
           warnings: [],
         }
       }
+      return { ok: true, data: null, errors: [], warnings: [] }
+    })
+    mockedApiPost.mockImplementation(async (path: string) => {
       if (path === '/rules/affected-entries') {
         return mockAffectedEntries
       }
@@ -246,9 +251,10 @@ describe('ComputePrepPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
 
-    const apiPaths = mockedApiPost.mock.calls.map((c) => c[0])
-    expect(apiPaths).toContain('/workspace/test-ws-1/rules/aggregated')
-    expect(apiPaths).toContain('/rules/affected-entries')
+    const apiGetPaths = mockedApiGet.mock.calls.map((c) => c[0])
+    const apiPostPaths = mockedApiPost.mock.calls.map((c) => c[0])
+    expect(apiGetPaths).toContain('/workspace/test-ws-1/rules/aggregated')
+    expect(apiPostPaths).toContain('/rules/affected-entries')
     expect(wrapper.text()).not.toContain('请先在规则概览选择规则')
   })
 

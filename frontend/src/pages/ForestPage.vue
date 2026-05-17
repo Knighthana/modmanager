@@ -31,7 +31,9 @@
     </div>
 
     <!-- ForestViewer -->
-    <ForestViewer ref="forestViewerRef" :empty-message="emptyMessage" />
+    <div class="forest-viewer-wrap">
+      <ForestViewer ref="forestViewerRef" :empty-message="emptyMessage" />
+    </div>
 
     <!-- Drawer -->
     <el-drawer v-model="showDrawer" title="摘要" direction="rtl" size="360px">
@@ -155,5 +157,17 @@ function onMessageClick(msg: string, e: MouseEvent) {
 .forest-top-bar .status-text {
   font-size: 13px;
   color: var(--el-text-color-secondary);
+}
+.forest-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;           /* 新增 */
+}
+.forest-viewer-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;              /* 新增 */
+  flex-direction: column;     /* 新增 */
 }
 </style>
