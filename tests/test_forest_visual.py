@@ -263,7 +263,7 @@ class ForestVisualTests(unittest.TestCase):
         self.assertIn("/dst/a.txt", out)
 
     def test_ref_edges_in_dot(self) -> None:
-        """Reference edges render as dashed lines in DOT output."""
+        """Reference edges render as dashed lines in DOT output (single tree, no pack)."""
         payload = {
             "trees": [
                 {
@@ -272,14 +272,6 @@ class ForestVisualTests(unittest.TestCase):
                         {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"}
                     ],
                     "refs": ["/dst/b.txt"],
-                    "resolved_state": "kept",
-                },
-                {
-                    "root_path": "/dst/b.txt",
-                    "changerequest": [
-                        {"path": "/src/b.txt", "action": "replace", "mixed_id": "270150:101", "hashtype": "sha256", "hashvalue": "def"}
-                    ],
-                    "refs": [],
                     "resolved_state": "kept",
                 },
             ]

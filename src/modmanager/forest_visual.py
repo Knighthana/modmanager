@@ -207,8 +207,21 @@ def _dot_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
-def _render_dot(model: GraphModel, show_m1_details: bool = False) -> str:
-    lines: list[str] = ["digraph Forest {", "  bgcolor=transparent;", "  rankdir=LR;"]
+def _render_dot(model: GraphModel, show_m1_details: bool = False, aspect_ratio: float = 16 / 9, pack_enabled: bool = False) -> str:
+    tree_count = len(model.nodes)
+
+    lines: list[str] = [
+        "digraph Forest {",
+        "  bgcolor=transparent;",
+        "  rankdir=LR;",
+    ]
+
+    # ── pack 模式：二维网格排列 ──
+    if pack_enabled and tree_count > 1:
+        columns = max(1, round((tree_count * aspect_ratio) ** 0.5))
+        lines.append("  pack=true;")
+        lines.append(f'  packmode="array_c{columns}";')
+
     target_ids: dict[str, str] = {}
     source_ids: dict[str, str] = {}
 
@@ -243,13 +256,22 @@ def _render_dot(model: GraphModel, show_m1_details: bool = False) -> str:
         lines.append(f"  {nid} [{', '.join(attrs)}];")
 
     # Render operation edges
+    edge_counter = 0
     for edge in model.edges:
         if edge.edge_type == "reference":
             continue
 
         src = edge.source_path if edge.source_path else "(unknown source)"
         src_label = "DELETE(!)" if src == "!" else src
-        sid = source_id(src)
+
+        # pack 模式：每个 source 独立 ID，保证树之间断开
+        # 非 pack 模式：按路径去重（原始行为）
+        if pack_enabled:
+            sid = f"s{edge_counter}"
+            edge_counter += 1
+        else:
+            sid = source_id(src)
+
         shape = "diamond" if src == "!" else "ellipse"
         lines.append(f"  {sid} [label=\"{_dot_escape(src_label)}\", shape={shape}];")
 
@@ -295,13 +317,16 @@ def _render_dot(model: GraphModel, show_m1_details: bool = False) -> str:
         else:
             lines.append(f"  {sid} -> {tid};")
 
-    # Render reference edges (dashed, between tree nodes)
-    for edge in model.edges:
-        if edge.edge_type != "reference":
-            continue
-        sid = target_id(edge.source_path)
-        tid = target_id(edge.target_path)
-        lines.append(f'  {sid} -> {tid} [style="dashed" color="#94a3b8" label="ref"];')
+    # Render reference edges.
+    # pack 模式下跳过（引用边会把不连通的树连成一个大组件）。
+    # 单树时始终渲染（无 pack 需求）。
+    if not pack_enabled or tree_count <= 1:
+        for edge in model.edges:
+            if edge.edge_type != "reference":
+                continue
+            sid = target_id(edge.source_path)
+            tid = target_id(edge.target_path)
+            lines.append(f'  {sid} -> {tid} [style="dashed" color="#94a3b8" label="ref"];')
 
     lines.append("}")
     return "\n".join(lines)
@@ -938,7 +963,7 @@ def _render_html(payload: Any, model: GraphModel, show_m1_details: bool = False)
 """
 
 
-def visualize_payload(payload: Any, output_format: str, show_m1_details: bool = False) -> str:
+def visualize_payload(payload: Any, output_format: str, show_m1_details: bool = False, aspect_ratio: float = 16 / 9, pack_enabled: bool = False) -> str:
     fmt = output_format.strip().lower()
     forest = _extract_forest(payload)
     model = _build_graph_model(forest)
@@ -946,10 +971,10 @@ def visualize_payload(payload: Any, output_format: str, show_m1_details: bool = 
     if fmt == "ascii":
         return _render_ascii(model, show_m1_details=show_m1_details)
     if fmt == "dot":
-        return _render_dot(model, show_m1_details=show_m1_details)
+        return _render_dot(model, show_m1_details=show_m1_details, aspect_ratio=aspect_ratio, pack_enabled=pack_enabled)
     if fmt == "svg":
         return _render_svg_from_dot(
-            _render_dot(model, show_m1_details=show_m1_details),
+            _render_dot(model, show_m1_details=show_m1_details, aspect_ratio=aspect_ratio, pack_enabled=pack_enabled),
             model=model,
         )
     if fmt == "html":

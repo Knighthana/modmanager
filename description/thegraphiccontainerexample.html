@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>严格边界约束的几何小地图</title>
+    <!-- 引入底层核心平移缩放库 -->
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #f1f5f9; }
+        .title { padding: 20px; font-size: 1.2rem; color: #1e293b; font-weight: bold; }
+
+        /* ==========================================
+           1. 承载 SVG 的容器（大小为变量，相对定位）
+           ========================================== */
+        #main-container { 
+            width: 80vw;           
+            height: 65vh;          
+            margin: 0 auto;
+            border: 2px solid #cbd5e1;
+            background: #ffffff; 
+            position: relative; /* 必须为相对定位，作为小地图的绝对定位基准 */
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ==========================================
+           2. 小地图样式：绑定并悬浮在容器内部左上角
+           ========================================== */
+        #minimap-container {
+            display: none; 
+            position: absolute;
+            top: 20px;       
+            left: 20px;      
+            
+            /* --- 核心修改：尺寸完全由 JS 动态注入，CSS 绝不插手干扰 --- */
+            background: #e2e8f0;       
+            border: 1px solid #94a3b8;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+            cursor: pointer;
+            z-index: 999;    
+        }
+        /* 主容器的大图部分 */
+        #main-container svg {
+            /* 默认状态下，鼠标在画布空隙处显示为“可抓取”的手掌抓手 */
+            cursor: grab; 
+        }
+
+        /* 当用户按住鼠标正在拖拽画布时，变成“抓紧”的手势 */
+        #main-container.dragging svg {
+            cursor: grabbing !important;
+        }
+
+        /* 核心技巧：保护 SVG 内部的文本和链接 */
+        #main-container svg text, 
+        #main-container svg a {
+            /* 当鼠标悬浮在文字或超链接上时，强制恢复为系统默认的“文本 I 型光标”或“手指光标” */
+            cursor: text !important; 
+            
+            /* 显式允许文本被框选 */
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+
+        #main-container svg a {
+            cursor: pointer !important;
+        }
+        /* 小地图红框滑块 */
+        #minimap-locator {
+            position: absolute;
+            top: 0; left: 0;
+            border: 2px solid #327fe4; /* 蓝色框 */
+            background: rgba(138, 246, 250, 0.507); /* 半透明蓝色 */
+            pointer-events: none; 
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="title">容器内有界联动</div>
+
+    <!-- 主视图容器 -->
+    <div id="main-container">
+        <!-- 小地图视图：直接写在容器内部，实现左上角绝对绑定 -->
+        <div id="minimap-container">
+            <div id="minimap-locator"></div>
+        </div>
+    </div>
+
+    <script>
+        const SVG_URL = 'https://raw.githubusercontent.com/ducksoupdev/svg-example/refs/heads/master/freesample.svg';
+        let panZoomInstance = null;
+
+        async function init() {
+            try {
+                const res = await fetch(SVG_URL);
+                let svgText = await res.text();
+                const container = document.getElementById('main-container');
+                
+                // --- 1. 超大 SVG 预处理（先缩小再进场的核心） ---
+                // 创建一个临时解析器，提取并规范化 SVG 的几何属性
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(svgText, 'image/svg+xml');
+                const svgElement = doc.querySelector('svg');
+
+                if (!svgElement) {
+                    throw new Error("未找到有效的 SVG 标签");
+                }
+
+                // A. 获取大图最原始的绝对像素宽高
+                let originalWidth = parseFloat(svgElement.getAttribute('width'));
+                let originalHeight = parseFloat(svgElement.getAttribute('height'));
+                let hasViewBox = svgElement.hasAttribute('viewBox');
+
+                // B. 如果原图只有 viewBox 没有 width/height，反向提取
+                if ((isNaN(originalWidth) || isNaN(originalHeight)) && hasViewBox) {
+                    const vb = svgElement.getAttribute('viewBox').split(/[\s,]+/);
+                    if (vb.length === 4) {
+                        originalWidth = parseFloat(vb[2]);
+                        originalHeight = parseFloat(vb[3]);
+                    }
+                }
+
+                // C. 核心防御：如果原图极其不规范，既没有宽高也没有 viewBox，尝试设定兜底值
+                if (isNaN(originalWidth) || isNaN(originalHeight)) {
+                    originalWidth = 2000;  // 假定一个大图兜底宽
+                    originalHeight = 2000; // 假定一个大图兜底高
+                }
+
+                // D. 强制重写 viewBox：不论图多大，有了标准的视口比例，库才能精准缩放
+                if (!hasViewBox) {
+                    svgElement.setAttribute('viewBox', `0 0 ${originalWidth} ${originalHeight}`);
+                }
+
+                // E. 彻底剥离硬编码的绝对像素宽高，防止其撑破 80vw * 65vh 的外壳
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', '100%');
+
+                // 将规范化后的预缩小 SVG 塞入页面
+                container.insertAdjacentElement('beforeend', svgElement);
+                document.getElementById('minimap-container').style.display = 'block';
+
+                // --- 2. 初始化平移缩放组件 ---
+                panZoomInstance = svgPanZoom(svgElement, {
+                    panEnabled: false, // 依然使用我们写好的完美全局拖拽
+                    zoomEnabled: true,
+                    controlIconsEnabled: false, 
+                    
+                    // 开启自适应收纳
+                    fit: true,
+                    center: true,
+                    
+                    // 限制最小缩放：禁止用户把已经缩小的图继续缩小到比容器还小
+                    minZoom: 1, 
+                    maxZoom: 80, // 超大图建议调大 maxZoom，方便用户无限放大看细节
+
+                    onZoom: updateMinimap,
+                    onPan: updateMinimap,
+
+                    // 严格边界保护函数（保持不变）
+                    beforePan: function(oldPan, newPan) {
+                        const sizes = this.getSizes();
+                        const renderedWidth = sizes.viewBox.width * sizes.realZoom;
+                        const renderedHeight = sizes.viewBox.height * sizes.realZoom;
+
+                        let targetX = newPan.x;
+                        let targetY = newPan.y;
+
+                        if (renderedWidth > sizes.width) {
+                            const minX = sizes.width - renderedWidth;
+                            targetX = Math.max(minX, Math.min(0, newPan.x));
+                        } else {
+                            targetX = (sizes.width - renderedWidth) / 2;
+                        }
+
+                        if (renderedHeight > sizes.height) {
+                            const minY = sizes.height - renderedHeight;
+                            targetY = Math.max(minY, Math.min(0, newPan.y));
+                        } else {
+                            targetY = (sizes.height - renderedHeight) / 2;
+                        }
+
+                        return { x: targetX, y: targetY };
+                    }
+                });
+
+                // --- 3. 强力刷新触发首帧收纳 ---
+                // 这一步能彻底规避由于网络加载延迟导致初始化时获取容器尺寸为 0 的 Bug
+                setTimeout(() => {
+                    if (panZoomInstance) {
+                        panZoomInstance.resize();
+                        panZoomInstance.fit();
+                        panZoomInstance.center();
+                        updateMinimap();
+                    }
+                }, 60);
+
+                window.addEventListener('resize', () => {
+                    panZoomInstance.resize();
+                    panZoomInstance.fit();
+                    panZoomInstance.center();
+                    updateMinimap();
+                });
+
+            } catch (err) {
+                console.error("自适应加载失败：", err);
+            }
+        }
+
+        // ==========================================
+        // 核心逻辑：基于纯几何坐标映射小地图滑块
+        // ==========================================
+function updateMinimap() {
+    if (!panZoomInstance) return;
+
+    const sizes = panZoomInstance.getSizes();
+    const pan = panZoomInstance.getPan();
+
+    const svgOriginalWidth = sizes.viewBox.width;
+    const svgOriginalHeight = sizes.viewBox.height;
+    const svgAspectRatio = svgOriginalHeight / svgOriginalWidth; // 你的图这里大概是 21
+
+    const minimapWrap = document.getElementById('minimap-container');
+    const container = document.getElementById('main-container');
+    
+    const containerW = container.clientWidth;
+    const containerH = container.clientHeight;
+
+    // --- 【核心算法升级】 ---
+    // 1. 规定小地图在视口中，高度最大不能超过主容器的 40%（比如容器高500px，小地图最高200px）
+    //    同时限制它的绝对最大像素高度为 250px
+    const maxMapH = Math.min(250, containerH * 0.40);
+
+    // 2. 根据大图比例，以最大高度为基准，计算出绝对等比例的宽度
+    let mapH = maxMapH;
+    let mapW = mapH / svgAspectRatio;
+
+    // 3. 【极端长图防御机制】如果算出来的宽度太窄了（比如小于 40px），
+    //    那它作为小地图就失去可读性了。我们强制给它一个 50px 的保底宽度！
+    if (mapW < 50) {
+        mapW = 50;
+        // 宽度保底后，高度重新按比例计算，确保比例死不走样
+        mapH = mapW * svgAspectRatio;
+    }
+
+    // 4. 双向安全锁：如果保底后的高度反过来不小心超过了容器高度，则强行死锁在容器高度以内
+    if (mapH > containerH - 40) {
+        mapH = containerH - 40;
+        mapW = mapH / svgAspectRatio;
+    }
+
+    // 5. 由 JS 100% 绝对掌控赋值，此时 CSS 没有任何限制，会完美呈现
+    minimapWrap.style.width = mapW + 'px';
+    minimapWrap.style.height = mapH + 'px';
+    // --- 【算法结束】 ---
+
+
+    // 6. 计算红框滑块位置（保持不变）
+    const renderedWidth = svgOriginalWidth * sizes.realZoom;
+    const renderedHeight = svgOriginalHeight * sizes.realZoom;
+
+    const leftPercent = -pan.x / renderedWidth;
+    const topPercent = -pan.y / renderedHeight;
+    const widthPercent = sizes.width / renderedWidth;
+    const heightPercent = sizes.height / renderedHeight;
+
+    const locator = document.getElementById('minimap-locator');
+    
+    locator.style.left = Math.max(0, leftPercent * mapW) + 'px';
+    locator.style.top = Math.max(0, topPercent * mapH) + 'px';
+    
+    locator.style.width = Math.min(mapW, widthPercent * mapW) + 'px';
+    locator.style.height = Math.min(mapH, heightPercent * mapH) + 'px';
+}
+
+        // ==========================================
+        // 升级版反向控制：长按、拖拽小地图，大图丝滑联动
+        // ==========================================
+        (function() {
+            const minimap = document.getElementById('minimap-container');
+            let isDragging = false; 
+
+            function moveMainView(clientX, clientY) {
+                if (!panZoomInstance) return;
+
+                const rect = minimap.getBoundingClientRect();
+                let mouseX = clientX - rect.left;
+                let mouseY = clientY - rect.top;
+                mouseX = Math.max(0, Math.min(rect.width, mouseX));
+                mouseY = Math.max(0, Math.min(rect.height, mouseY));
+
+                const pctX = mouseX / rect.width;
+                const pctY = mouseY / rect.height;
+
+                const sizes = panZoomInstance.getSizes();
+                const renderedWidth = sizes.viewBox.width * sizes.realZoom;
+                const renderedHeight = sizes.viewBox.height * sizes.realZoom;
+
+                const newPanX = (sizes.width / 2) - (pctX * renderedWidth);
+                const newPanY = (sizes.height / 2) - (pctY * renderedHeight);
+
+                panZoomInstance.pan({ x: newPanX, y: newPanY });
+            }
+
+            minimap.addEventListener('mousedown', function(e) {
+                e.preventDefault(); 
+                isDragging = true;
+                moveMainView(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                moveMainView(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+        })();
+
+        // ==========================================
+        // 🔥 全新加入：完美保护原生选中/点击的主画布全局拖拽逻辑
+        // ==========================================
+        (function() {
+            const container = document.getElementById('main-container');
+            let isMainDragging = false; // 是否真正进入拖拽状态
+            let isPointerDown = false;  // 鼠标是否按下锁
+            let startX = 0, startY = 0; // 按下时的初始坐标
+            let lastX = 0, lastY = 0;   // 移动时上一帧的坐标
+
+            // A. 主画布上按下：这里不调用任何 e.preventDefault()，完全保留浏览器原生选中文本/点击链接行为
+            container.addEventListener('mousedown', function(e) {
+                // 如果点到了小地图，直接跳过不处理
+                if (document.getElementById('minimap-container').contains(e.target)) return;
+
+                isPointerDown = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            });
+
+            // B. 全局鼠标移动：不论鼠标飘到网页的哪个角落，都能持续追踪，永远不会卡死
+            window.addEventListener('mousemove', function(e) {
+                if (!isPointerDown || !panZoomInstance) return;
+
+                // 1. 如果还没有被标记为“正在拖拽”，需要通过位移差阈值进行判定
+                if (!isMainDragging) {
+                    const moveDistance = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
+                    
+                    // 只有当鼠标移动距离超过了 3 像素，我们才认为用户是真的想拖动画布，而不是想“单纯点击”
+                    if (moveDistance > 3) {
+                        // 2. 判定为拖拽后，我们进一步做安全筛选：
+                        // 如果用户是在文本域 text、tspan 或超链接 a 上长按并开始拖动的，证明其意图是【选中文本】或【拖动链接】。
+                        // 此时我们选择不介入，直接退出，把控制权还给系统。
+                        const targetTag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
+                        if (targetTag === 'text' || targetTag === 'tspan' || targetTag === 'a' || e.target.closest('a')) {
+                            isPointerDown = false; // 放弃本次拖拽劫持，转由系统原生处理文本选中
+                            return;
+                        }
+                        
+                        // 3. 符合拖拽条件，正式激活拖拽状态锁
+                        isMainDragging = true;
+                        container.classList.add('dragging');
+                    }
+                }
+
+                // 4. 执行真正的平移计算
+                if (isMainDragging) {
+                    // 阻止可能产生的文本蓝色阴影，保证画面干净
+                    e.preventDefault(); 
+
+                    const deltaX = e.clientX - lastX;
+                    const deltaY = e.clientY - lastY;
+
+                    const currentPan = panZoomInstance.getPan();
+                    
+                    // 增量式响应：把鼠标这一帧产生的位移直接丢给底层的 beforePan 去约束和平移
+                    panZoomInstance.pan({
+                        x: currentPan.x + deltaX,
+                        y: currentPan.y + deltaY
+                    });
+
+                    // 覆盖上一帧的坐标基准
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                }
+            });
+
+            // C. 全局鼠标抬起：释放所有的状态锁，彻底解决出框松手后移回产生的“粘连抖动”问题
+            window.addEventListener('mouseup', function() {
+                isPointerDown = false;
+                isMainDragging = false;
+                container.classList.remove('dragging');
+            });
+        })();
+
+        init();
+    </script>
+</body>
+</html>

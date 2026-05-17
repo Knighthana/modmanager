@@ -5,6 +5,19 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ForestViewer from '../../components/ForestViewer.vue'
 import { useForestStore } from '../../stores/forest'
 
+vi.mock('svg-pan-zoom', () => ({
+  default: () => ({
+    resize: vi.fn(),
+    fit: vi.fn(),
+    center: vi.fn(),
+    destroy: vi.fn(),
+    pan: vi.fn(),
+    getPan: () => ({ x: 0, y: 0 }),
+    getZoom: () => 1,
+    getSizes: () => ({ width: 800, height: 600, realZoom: 1, viewBox: { width: 100, height: 100 } }),
+  }),
+}))
+
 /**
  * Helper: find a DOM element by its data-tree-node attribute value.
  * Uses native DOM querySelectorAll + filter, because attribute values may contain
@@ -55,7 +68,7 @@ const elCardStub = {
 }
 
 describe('ForestViewer', () => {
-  it('renders SVG content via v-html', () => {
+  it('renders SVG content', async () => {
     setActivePinia(createPinia())
     const store = useForestStore()
     store.svgContent = '<svg><g id="test"><text>Hello SVG</text></g></svg>'
@@ -69,6 +82,7 @@ describe('ForestViewer', () => {
       },
     })
 
+    await wrapper.vm.$nextTick()
     expect(wrapper.find('.forest-container').exists()).toBe(true)
     expect(wrapper.html()).toContain('Hello SVG')
   })

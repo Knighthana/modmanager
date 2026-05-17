@@ -1,8 +1,5 @@
 # 工作状态
 
-## FINISHED
-- [x] TASK2605-0x8 [user] 森林图展示打磨 — 方案见 `ENHANCE-forest-viewer-layout-and-minimap.md`；假图模型+弹性链条修正已落地；已迁移到 `vue-svg-pan-zoom`，手写小地图代码全部删除
-
 ## 存量待办
 
 - [ ] (pending)TASK2605-0x1 [user] 前端空输入校验，“待后端端点均符合预期后再开展”
