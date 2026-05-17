@@ -43,6 +43,7 @@
 | `DESIGN_GUI_DATASOURCE_TAB.md` | GUI 数据源页 |
 | `DESIGN_GUI_EXECUTION_PROTOCOL.md` | GUI 任务流验收、切片交付、字段归属决策卡 |
 | `DESIGN_GUI_GAP_CLOSURE.md` | GUI 缺口补齐与后续收敛 |
+| `FRONTEND_INTEGRATION_CONSTRAINTS.md` | 前端第三方集成约束与参数约定 |
 
 ### 非默认输入
 
@@ -50,6 +51,7 @@
 |---|---|
 | `archive/` | 历史设计、阶段决策、同步记录；默认不读，追溯时按需读取 |
 | `further/` | 已确认但当前不执行的未来方案；默认不读，不作为当前实现依据 |
+| `repo_bkgd/` | 背景解释与机制推导；默认不读，仅允许按索引点读具体文件 |
 | `repo_logs/` | 工作日志冷备份；仅用于历史追溯 |
 | `work_memo/` | 当前工作现场状态；仅供排障，不作契约裁决 |
 

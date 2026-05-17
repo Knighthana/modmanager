@@ -22,6 +22,7 @@
 - `Tier 1 / task-scoped`：按模块或任务读取的权威设计文档；仅在任务涉及对应子系统时读取
 - `archive/`：历史设计、阶段决策、同步记录；默认不作为当前实现依据，仅在追溯时按需读取
 - `further/`：已确认但当前轮次不执行的未来方案；默认不作为当前实现依据
+- `repo_bkgd/`：背景解释与机制推导目录；默认忽略，仅允许通过索引点读具体文件
 
 ### Tier 0（每次必读）
 - `README.md`
@@ -44,6 +45,13 @@
 - `DESIGN_GUI.md`
 - `DESIGN_GUI_DATASOURCE_TAB.md`
 - `DESIGN_GUI_GAP_CLOSURE.md`
+- `FRONTEND_INTEGRATION_CONSTRAINTS.md`
+
+## repo_bkgd 读取门禁
+- `repo_bkgd/` 不得作为目录被主动读取或批量扫描。
+- 实现任务不得将 `repo_bkgd/` 作为默认上下文来源。
+- 仅允许通过 `repo_memo/` 中的索引链接点读具体背景文件。
+- 若背景说明与 `repo_memo/` 权威规范冲突，始终以 `repo_memo/` 为准。
 
 ## 冲突解决
 - `repo_memo/` 与 `description/` 冲突 → 以 `repo_memo/` 为准

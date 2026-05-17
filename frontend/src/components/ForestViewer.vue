@@ -77,6 +77,8 @@ let dragStartY = 0
 let dragLastX = 0
 let dragLastY = 0
 
+const MIN_ZOOM_RELATIVE_TO_FIT = 1
+
 function parseSvgViewBox(svg: string): { w: number; h: number } | null {
   const m = svg.match(/viewBox=["']([^"']+)["']/)
   if (!m) return null
@@ -176,7 +178,11 @@ function initPanZoom() {
   const vb = parseSvgViewBox(store.svgContent)
   const cw = containerRef.value?.clientWidth || 800
   const ch = containerRef.value?.clientHeight || 600
-  const fitZoom = vb ? Math.min(cw / vb.w, ch / vb.h) : 0.5
+  // Diagnostic only: do not pass this absolute value into minZoom/maxZoom.
+  const originalViewportZoomDiagnostic = vb ? Math.min(cw / vb.w, ch / vb.h) : 0.5
+  if (import.meta.env.DEV) {
+    console.debug('Diagnostic original viewport zoom (do not use for config):', originalViewportZoomDiagnostic)
+  }
 
   panZoomInstance = svgPanZoom(svgEl, {
     panEnabled: false,
@@ -184,7 +190,8 @@ function initPanZoom() {
     controlIconsEnabled: false,
     fit: true,
     center: true,
-    minZoom: fitZoom,
+    // Keep lower bound at fitted state. See repo_memo/FRONTEND_INTEGRATION_CONSTRAINTS.md.
+    minZoom: MIN_ZOOM_RELATIVE_TO_FIT,
     maxZoom: 80,
     onZoom: updateMinimap,
     onPan: updateMinimap,

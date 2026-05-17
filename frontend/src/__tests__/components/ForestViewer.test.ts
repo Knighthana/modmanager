@@ -5,8 +5,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ForestViewer from '../../components/ForestViewer.vue'
 import { useForestStore } from '../../stores/forest'
 
-vi.mock('svg-pan-zoom', () => ({
-  default: () => ({
+const { svgPanZoomMock } = vi.hoisted(() => ({
+  svgPanZoomMock: vi.fn(() => ({
     resize: vi.fn(),
     fit: vi.fn(),
     center: vi.fn(),
@@ -15,7 +15,11 @@ vi.mock('svg-pan-zoom', () => ({
     getPan: () => ({ x: 0, y: 0 }),
     getZoom: () => 1,
     getSizes: () => ({ width: 800, height: 600, realZoom: 1, viewBox: { width: 100, height: 100 } }),
-  }),
+  })),
+}))
+
+vi.mock('svg-pan-zoom', () => ({
+  default: svgPanZoomMock,
 }))
 
 /**
@@ -68,6 +72,29 @@ const elCardStub = {
 }
 
 describe('ForestViewer', () => {
+  it('uses minZoom=1 to lock zoom-out lower bound at fit baseline', async () => {
+    setActivePinia(createPinia())
+    const store = useForestStore()
+    store.svgContent = '<svg viewBox="0 0 2000 2000"><g id="test"><text>Hello SVG</text></g></svg>'
+    svgPanZoomMock.mockClear()
+
+    const wrapper = mount(ForestViewer, {
+      global: {
+        plugins: [router],
+        stubs: {
+          'el-card': elCardStub,
+        },
+      },
+    })
+
+    await wrapper.vm.$nextTick()
+    await new Promise(resolve => setTimeout(resolve, 80))
+
+    expect(svgPanZoomMock).toHaveBeenCalled()
+    const firstCall = svgPanZoomMock.mock.calls[0] as unknown as [unknown, { minZoom?: number }]
+    expect(firstCall[1].minZoom).toBe(1)
+  })
+
   it('renders SVG content', async () => {
     setActivePinia(createPinia())
     const store = useForestStore()
