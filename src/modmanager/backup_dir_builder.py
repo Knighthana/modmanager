@@ -56,14 +56,14 @@ def build_backup_dirs(
     Args:
         final_mapping: mapping 条目列表，每项含 "path" 键
         database: 含 "game" 列表
-        user_config: 含 "bakprefix" 等
+        user_config: 含 "baksuffix" 等
 
     Returns:
         ({backup_dir: [file_paths]}, warnings)
         - backup_dir → 属于该目录的文件绝对路径列表
         - warnings: 稳定性检查中被跳过的 contentid 警告信息
     """
-    bakprefix = str(user_config.get("bakprefix", "kmmbackup_"))
+    baksuffix = str(user_config.get("baksuffix", "kmmbackup"))
 
     # ── 1. 收集所有目标路径 ──────────────────────────────────────────
     targets: list[str] = []
@@ -156,7 +156,7 @@ def build_backup_dirs(
             warnings.append(err)
             continue
         backup_dir = normalize_posix(
-            f"{info['basepath']}/{bakprefix}{appid}_{hex_id}/"
+            f"{info['basepath']}/{appid}.{hex_id}.{baksuffix}/"
         )
         result[backup_dir] = info["files"]
 
@@ -169,7 +169,7 @@ def build_backup_dirs(
             warnings.append(err)
             continue
         backup_dir = normalize_posix(
-            f"{info['modpath']}/{contentid}/{bakprefix}{contentid}_{hex_id}/"
+            f"{info['modpath']}/{contentid}/{contentid}.{hex_id}.{baksuffix}/"
         )
         result[backup_dir] = info["files"]
 
@@ -196,7 +196,7 @@ def load_bakignore_rules(
 ) -> list[str]:
     """合并 user_config.bakignore 与 .kmmbakignore。
 
-    1. 从 user_config 读 bakignore（list[str]），默认 ["kmmbackup_"]
+    1. 从 user_config 读 bakignore（list[str]），默认 [".kmmbackup"]
     2. 检查 backup_dir / ".kmmbakignore" 是否存在
     3. 若存在，逐行读取：跳过空行和 # 开头的行（strip 后），其余加入列表
     4. 合并去重，返回规则列表
@@ -217,7 +217,7 @@ def load_bakignore_rules(
             if isinstance(item, str) and item.strip():
                 rules.append(item.strip())
     if not rules:
-        rules.append("kmmbackup_")
+        rules.append(".kmmbackup")
 
     # 2-3. 从 .kmmbakignore 文件读取
     ignore_file = Path(backup_dir) / ".kmmbakignore"

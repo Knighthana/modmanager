@@ -19,9 +19,9 @@
 
       <el-form label-width="220px" @submit.prevent>
         <div class="section-subtitle">基本设置</div>
-        <!-- 备份目录前缀 -->
-        <el-form-item label="备份目录名前缀">
-          <el-input v-model="form.bakprefix" placeholder="kmmbackup_" />
+        <!-- 备份目录后缀 -->
+        <el-form-item label="备份目录名后缀">
+          <el-input v-model="form.baksuffix" placeholder="kmmbackup" />
         </el-form-item>
 
         <!-- 备份忽略模式 -->
@@ -260,7 +260,7 @@ interface DbEntry {
 }
 
 interface SettingsForm {
-  bakprefix: string
+  baksuffix: string
   bakignore: string[]
   databases: DbEntry[]
   aggregatedOutputPath: string
@@ -272,7 +272,7 @@ interface SettingsForm {
 const DEFAULT_DB_PATH = '~/.local/share/kmm/database.json'
 
 const form = ref<SettingsForm>({
-  bakprefix: 'kmmbackup_',
+  baksuffix: 'kmmbackup',
   bakignore: [],
   databases: [{ key: 'default', value: DEFAULT_DB_PATH }],
   aggregatedOutputPath: '',
@@ -304,7 +304,7 @@ onMounted(async () => {
     const result = await apiPost<Record<string, unknown>>('/config/discover', {})
     if (result.ok && result.data) {
       const uc = result.data as Record<string, unknown>
-      form.value.bakprefix = (uc.bakprefix as string) || 'kmmbackup_'
+      form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
       form.value.bakignore = (uc.bakignore as string[]) || []
       const dbs = uc.databases as Record<string, { path: string }> | undefined
       if (dbs && typeof dbs === 'object') {
@@ -340,7 +340,7 @@ async function onSaveConfig() {
 
     const result = await apiPost('/config/save', {
       config: {
-        bakprefix: form.value.bakprefix,
+        baksuffix: form.value.baksuffix,
         bakignore: form.value.bakignore,
         databases,
         aggregated_ruleset_output_path: form.value.aggregatedOutputPath || null,

@@ -1,5 +1,5 @@
 {
-  "bakprefix": "kmmbackup_",
+  "baksuffix": "kmmbackup",
   "bakignore": ["*.tmp", ".git/"],
   "databases": {
     "default": {

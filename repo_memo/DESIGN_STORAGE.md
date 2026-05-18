@@ -19,7 +19,7 @@
 | **磁盘扫描数据** | 工具扫描磁盘产生的客观数据 | `database.json` |
 | **工作区** | 用户创建的任务容器，内含规则/决策/结果/SVG | `~/.cache/kmm/workspace/{id}/` |
 | **运行产出** | 流水线运行的中间文件 | `aggregated_rule_set.json` |
-| **备份产物** | 文件替换前的安全副本，不可自动丢弃 | `kmmbackup_*` 目录 |
+| **备份产物** | 文件替换前的安全副本，不可自动丢弃 | `*.kmmbackup` 目录 |
 | **前端浏览器存储** | 纯 UI 偏好 + Tab 级导航状态 | `localStorage:uiState` / `sessionStorage:currentWorkspaceId` |
 
 ---
@@ -97,7 +97,7 @@
 
 | 字段 | 类型 | 必需 | 说明 |
 |------|------|:--:|------|
-| `bakprefix` | `string` | 否 | 备份目录名前缀，默认 `"kmmbackup_"` |
+| `baksuffix` | `string` | 否 | 备份目录名后缀，默认 `"kmmbackup"` |
 | `bakignore` | `string[]` | 否 | 备份扫描忽略模式列表 |
 | `aggregated_ruleset_output_path` | `string \| null` | 否 | `aggregated_rule_set.json` 输出路径。`null` 时使用默认位置 |
 | `rule_sources` | `string[]` | 否 | 规则文件来源列表。目录以 `/` 结尾（后端自动扫描 `*.kmmrule.json`），或以 `.kmmrule.json` 结尾的文件直接加载。后端保存时自动归一化：检测到目录路径缺 `/` 则补齐 |

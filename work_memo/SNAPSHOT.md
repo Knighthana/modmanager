@@ -76,9 +76,9 @@
 
 ### 前端 dry_run 表格对 apply 的支持
 当前表格 columns 针对 backup 设计（`backup_path` 主列 + `path` 源路径列）。apply 的字段名是 `target`/`source`，列渲染依赖 `row.backup_path || row.target || row.path` 的 fallback —— apply 条件下 `backup_path` 不存在时回退到 `target`，逻辑正确但未经充分测试。
+### `_HARDCODED_BACKUP_SKIP_SUFFIX` 与 baksuffix 不一致
 
-### `harcodecoded_backup_skip_prefix` 与 bakprefix 不一致
-`backup_ops.py` 硬编码 `_HARDCODED_BACKUP_SKIP_PREFIX = "kmmbackup_"`，但 bakprefix 现在从 user_config 读取。如果用户改了 bakprefix，硬编码防护会失效。
+`backup_ops.py` 硬编码 `_HARDCODED_BACKUP_SKIP_SUFFIX = ".kmmbackup"`，但 baksuffix 现在从 user_config 读取。如果用户改了 baksuffix，硬编码防护会失效。
 
 ---
 
@@ -86,7 +86,7 @@
 
 1. **每个 contentid 独立备份**：各自在自己的根目录下创建 backup dir，backup_id 各算各的
 2. **path prefix 匹配决定归属**：不依赖 appid 计数，"选择匹配数最多的 appid"逻辑已废弃
-3. **bakprefix 从 user_config 严格读取**：不硬编码，照抄原值（包括 `_` 数量）
+3. **baksuffix 从 user_config 严格读取**：不硬编码，照抄原值
 4. **app backup_id**：StateFlags ∈ {4} → buildid → hex
 5. **contentid backup_id**：T_local ≥ T_remote → T_remote → hex；T_local < T_remote → 不稳定跳过
 6. **apply gate check per-dir FIFO**：不阻塞，一个失败不阻止其他

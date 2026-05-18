@@ -308,7 +308,7 @@ await streamSse(`/workspace/${workspaceId.value}/pipeline/restore`, {}, { ... })
 2. 若 `StateFlags` 不在允许列表（当前 `{4}`，`4` = StateFullyInstalled）中 → **不稳定，跳过此 app 的备份**，记录警告
 3. 若在允许列表中 → 读取 `AppState.buildid`
 4. `backup_id` = `format(int(buildid), 'x')` （小写 hex ascii）
-5. 备份根目录：`{basepath}/kmmbackup_{appid}_{backup_id}/`
+5. 备份根目录：`{basepath}/{appid}.{backup_id}.{baksuffix}/`
 
 #### contentid（Workshop MOD，走 modpath）
 
@@ -318,11 +318,11 @@ await streamSse(`/workspace/${workspaceId.value}/pipeline/restore`, {}, { ... })
 2. 读取 `AppWorkshop.WorkshopItemDetails.{contentid}.latest_timeupdated` → T_remote
 3. 若 T_local ≥ T_remote → 稳定，`backup_id` = `format(int(T_remote), 'x')`
 4. 若 T_local < T_remote → **不稳定，跳过此 contentid 的备份**，记录警告
-5. 备份根目录：`{modpath}/{contentid}/kmmbackup_{contentid}_{backup_id}/`
+5. 备份根目录：`{modpath}/{contentid}/{contentid}.{backup_id}.{baksuffix}/`
 
-#### 备份前缀（bakprefix）
+#### 备份后缀（baksuffix）
 
-**从 user_config 读取**，不使用硬编码默认值。`user_config.bakprefix` 写什么就用什么（包括 `_` 的数量），严格照抄。
+**从 user_config 读取**，不使用硬编码默认值。`user_config.baksuffix` 写什么就用什么，严格照抄。
 
 #### 多库同名 contentid
 

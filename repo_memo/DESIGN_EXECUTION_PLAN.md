@@ -15,7 +15,7 @@
 |  | database.json | 前端 localStorage | user_config.json | compute 参数 |
 |--|:---:|:---:|:---:|:---:|
 | **磁盘描述** | steamlib[], game[], mod[]（纯扫描数据） | — | — | — |
-| **用户决策** | — | 工作区目录 `decisions.json` (managed_entries + branch_decisions) | bakprefix, bakignore, output_paths | ✅ |
+| **用户决策** | — | 工作区目录 `decisions.json` (managed_entries + branch_decisions) | baksuffix, bakignore, output_paths | ✅ |
 | **计算结果** | — | 工作区目录 `mapping.json`（完整 trees + final_mapping） | — | — |
 | **路径元数据** | OS.workingPathstyle | — | — | — |
 

@@ -24,7 +24,7 @@ from .paths import normalize_posix
 
 
 # ── Hard-coded loop protection ──────────────────────────────────────────────
-_HARDCODED_BACKUP_SKIP_PREFIX = "kmmbackup_"
+_HARDCODED_BACKUP_SKIP_SUFFIX = ".kmmbackup"
 
 
 # ── Phase 7: Version check ────────────────────────────────────────────────────
@@ -157,8 +157,8 @@ def build_filefoldertree_with_hashes(
             for child in sorted(path.iterdir()):
                 if child.name in skip_names:
                     continue
-                # Loop protection: skip kmmbackup_* sub-directories
-                if child.name.startswith(_HARDCODED_BACKUP_SKIP_PREFIX):
+                # Loop protection: skip *.kmmbackup sub-directories
+                if child.name.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX):
                     continue
                 children.append(_scan(child))
         except PermissionError:
@@ -204,8 +204,8 @@ def _collect_backup_original_paths(backup_dir: str) -> list[str]:
         if not bak_file.is_file() or bak_file.name == "backupinfo.json":
             continue
         rel = bak_file.relative_to(backup_path)
-        # Loop protection: skip files inside kmmbackup_* directories
-        if any(part.startswith(_HARDCODED_BACKUP_SKIP_PREFIX) for part in rel.parts):
+        # Loop protection: skip files inside *.kmmbackup directories
+        if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
             continue
         original = Path("/") / rel
         originals.append(_normalized(str(original)))
@@ -667,7 +667,7 @@ def restore_from_backup(
         bak_files = sorted([f for f in backup_path.rglob("*") if f.is_file() and f.name != "backupinfo.json"])
         for i, bak_file in enumerate(bak_files):
             rel = bak_file.relative_to(backup_path)
-            if any(part.startswith(_HARDCODED_BACKUP_SKIP_PREFIX) for part in rel.parts):
+            if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
                 continue
             original = Path("/") / rel
             orig_norm = normalize_posix(str(original))
@@ -722,8 +722,8 @@ def restore_from_backup(
         if on_progress:
             on_progress("restore", i + 1, len(bak_files), str(bak_file))
         rel = bak_file.relative_to(backup_path)
-        # Loop protection: skip files inside kmmbackup_* directories
-        if any(part.startswith(_HARDCODED_BACKUP_SKIP_PREFIX) for part in rel.parts):
+        # Loop protection: skip files inside *.kmmbackup directories
+        if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
             continue
         original = Path("/") / rel
         orig_norm = normalize_posix(str(original))

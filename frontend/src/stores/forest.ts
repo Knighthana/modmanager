@@ -52,7 +52,6 @@ export const useForestStore = defineStore('forest', () => {
   const pipelineForm = ref({
     databaseName: 'default',
     rulesPaths: '',
-    backupDir: '',
     dryRun: true,
     greedyParsing: false,
     discoveryMode: 'auto' as 'auto' | 'manual',

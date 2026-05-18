@@ -91,8 +91,8 @@ describe('BackupPage', () => {
       ok: true,
       data: {
         backups: [
-          { name: 'kmmbackup_001', path: '/backups/kmmbackup_001', file_count: 5 },
-          { name: 'kmmbackup_002', path: '/backups/kmmbackup_002', file_count: 3 },
+          { name: '001.kmmbackup', path: '/backups/001.kmmbackup', file_count: 5 },
+          { name: '002.kmmbackup', path: '/backups/002.kmmbackup', file_count: 3 },
         ],
       },
       errors: [],
@@ -117,14 +117,14 @@ describe('BackupPage', () => {
     // Verify internal ref was updated (access via vm for the ref array)
     const backupDirs = (vm as unknown as { backupDirs: Array<{ name: string }> }).backupDirs
     expect(backupDirs.length).toBe(2)
-    expect(backupDirs[0].name).toBe('kmmbackup_001')
+    expect(backupDirs[0].name).toBe('001.kmmbackup')
   })
 
   it('onInspect calls /backups/inspect API and updates inspectResult', async () => {
     // First scan
     const scanResp: ApiResponse<{ backups: Array<{ name: string; path: string; file_count: number }> }> = {
       ok: true,
-      data: { backups: [{ name: 'kmmbackup_test', path: '/bak/kmmbackup_test', file_count: 2 }] },
+      data: { backups: [{ name: 'test.kmmbackup', path: '/bak/test.kmmbackup', file_count: 2 }] },
       errors: [],
       warnings: [],
     }
@@ -150,7 +150,7 @@ describe('BackupPage', () => {
     }> = {
       ok: true,
       data: {
-        path: '/bak/kmmbackup_test',
+        path: '/bak/test.kmmbackup',
         file_count: 2,
         files: [{ relpath: 'mnt/d/test.txt', hash: 'abc123' }],
         dirty: { dirty: false, errors: [], partial_files: [] },
@@ -166,13 +166,13 @@ describe('BackupPage', () => {
       onInspect: (row: { name: string; path: string; file_count: number }) => Promise<void>
       inspectResult: { path: string; dirty: { dirty: boolean }; conflicts: { clean: boolean } } | null
     }
-    await page.onInspect({ name: 'kmmbackup_test', path: '/bak/kmmbackup_test', file_count: 2 })
+    await page.onInspect({ name: 'test.kmmbackup', path: '/bak/test.kmmbackup', file_count: 2 })
     await wrapper.vm.$nextTick()
 
-    expect(mockedApiPost).toHaveBeenCalledWith('/backups/inspect', { path: '/bak/kmmbackup_test' })
+    expect(mockedApiPost).toHaveBeenCalledWith('/backups/inspect', { path: '/bak/test.kmmbackup' })
     // Verify internal ref was updated
     expect(page.inspectResult).not.toBeNull()
-    expect(page.inspectResult!.path).toBe('/bak/kmmbackup_test')
+    expect(page.inspectResult!.path).toBe('/bak/test.kmmbackup')
     expect(page.inspectResult!.dirty.dirty).toBe(false)
     expect(page.inspectResult!.conflicts.clean).toBe(true)
   })
@@ -188,11 +188,11 @@ describe('BackupPage', () => {
       restoreDialogVisible: boolean
       restoreTargetPath: string
     }
-    await page.confirmRestore({ name: 'kmmbackup_test', path: '/bak/kmmbackup_test' })
+    await page.confirmRestore({ name: 'test.kmmbackup', path: '/bak/test.kmmbackup' })
     await wrapper.vm.$nextTick()
 
     expect(page.restoreDialogVisible).toBe(true)
-    expect(page.restoreTargetPath).toBe('/bak/kmmbackup_test')
+    expect(page.restoreTargetPath).toBe('/bak/test.kmmbackup')
   })
 
   it('doRestore calls /pipeline/restore via SSE', async () => {
@@ -210,13 +210,14 @@ describe('BackupPage', () => {
       restoreTargetPath: string
       doRestore: () => Promise<void>
     }
-    page.restoreTargetPath = '/bak/kmmbackup_test'
+    page.restoreTargetPath = '/bak/test.kmmbackup'
+
     await page.doRestore()
     await wrapper.vm.$nextTick()
 
     expect(mockedStreamSse).toHaveBeenCalledWith(
       '/pipeline/restore',
-      { backup_dir: '/bak/kmmbackup_test', target_files: null },
+      { backup_dir: '/bak/test.kmmbackup', target_files: null },
       expect.any(Object),
     )
   })

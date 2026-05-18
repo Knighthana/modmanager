@@ -57,7 +57,7 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
 
 // Mock config data matching the API response
 const mockConfigData = {
-  bakprefix: 'mybackup_',
+  baksuffix: 'mybackup',
   bakignore: ['*.log', 'node_modules/'],
   databases: {
     'default': { path: '/custom/path/database.json' },
@@ -100,7 +100,7 @@ describe('SettingsPage', () => {
     const vm = vmAny(wrapper)
     const form = vm.form as Record<string, unknown>
 
-    expect(form.bakprefix).toBe('mybackup_')
+    expect(form.baksuffix).toBe('mybackup')
     expect(form.bakignore).toEqual(['*.log', 'node_modules/'])
     // Verify databases loaded correctly
     expect((form.databases as any)[0]?.key).toBe('default')
@@ -126,7 +126,8 @@ describe('SettingsPage', () => {
     const vm = vmAny(wrapper)
     const form = vm.form as Record<string, unknown>
     // Pre-populate form
-    form.bakprefix = 'testprefix_'
+    form.baksuffix = 'testsuffix'
+
     form.bakignore = ['*.tmp']
     form.databases = [{ key: 'default', value: '/test/db.json' }]
     form.aggregatedOutputPath = '/test/agg.json'
@@ -138,7 +139,7 @@ describe('SettingsPage', () => {
     // onMounted calls /api/config/discover first, then onSaveConfig calls save
     expect(mockedApiPost).toHaveBeenLastCalledWith('/config/save', {
       config: {
-        bakprefix: 'testprefix_',
+        baksuffix: 'testsuffix',
         bakignore: ['*.tmp'],
         databases: { 'default': { path: '/test/db.json' } },
         aggregated_ruleset_output_path: '/test/agg.json',

@@ -323,7 +323,7 @@ def run(
         aggregated_rule_set: Pre-aggregated rule set dict. When ``None``,
             returns an error.
         user_config: User configuration dict (for auto-derivation fallback).
-            When ``None``, defaults to ``{"bakprefix": "kmmbackup_"}``.
+            When ``None``, defaults to ``{"baksuffix": "kmmbackup"}``.
         action_orders: Optional ``{mixed_id: int}`` overrides.
         branch_decisions: Optional explicit branch decisions.
         managed_entries: Optional dict to filter database entries before
@@ -370,7 +370,7 @@ def run(
         resolved_backup_dirs, _dir_warnings = build_backup_dirs(
             compute_result.final_mapping,
             database,
-            user_config or {"bakprefix": "kmmbackup_"},
+            user_config or {"baksuffix": "kmmbackup"},
         )
     first_dir = next(iter(resolved_backup_dirs.keys()), None) if resolved_backup_dirs else None
 

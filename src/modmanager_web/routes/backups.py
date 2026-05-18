@@ -19,12 +19,12 @@ from ..schemas import BackupListRequest, BackupInspectRequest
 
 router = APIRouter()
 
-BACKUP_PREFIX = "kmmbackup_"
+BACKUP_SUFFIX = ".kmmbackup"
 
 
 @router.post("/list")
 async def backups_list(req: BackupListRequest):
-    """List all ``kmmbackup_*`` sub-directories under *dir*.
+    """List all ``*.kmmbackup`` sub-directories under *dir*.
 
     Returns an ``ApiResponse`` with ``{ backups: [{ name, path, file_count,
     created_at }] }``.
@@ -47,7 +47,7 @@ async def backups_list(req: BackupListRequest):
 
     backups: list[dict] = []
     for name in sorted(entries):
-        if not name.startswith(BACKUP_PREFIX):
+        if not name.endswith(BACKUP_SUFFIX):
             continue
         full_path = str(Path(scan_dir) / name)
         try:
