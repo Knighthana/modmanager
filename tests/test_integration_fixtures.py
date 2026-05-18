@@ -736,9 +736,9 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
             self.assertEqual(result["errors"], [])
             self.assertEqual(len(result["final_mapping"]), 3)
             targets = {entry["path"] for entry in result["final_mapping"]}
-            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src1") for path in targets))
-            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src2") for path in targets))
-            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src3") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src1/") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src2/") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src3/") for path in targets))
 
     def test_two_actions_cover_cp_r_src_star_dest(self):
         with tempfile.TemporaryDirectory() as td:
@@ -777,8 +777,8 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
 
             self.assertEqual(result["errors"], [])
             targets = {entry["path"] for entry in result["final_mapping"]}
-            self.assertTrue(any(path.endswith("/dest/dir1") for path in targets))
-            self.assertTrue(any(path.endswith("/dest/dir2") for path in targets))
+            self.assertTrue(any(path.endswith("/dest/dir1/") for path in targets))
+            self.assertTrue(any(path.endswith("/dest/dir2/") for path in targets))
             self.assertTrue(any(path.endswith("/dest/root.txt") for path in targets))
 
 

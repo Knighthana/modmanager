@@ -106,10 +106,12 @@ def _target_for(
     into_type: str = "path",
 ) -> str:
     dest = Path(dest_root) / normalize_posix(into_expr)
+    # 尾 / 仅在目标本身是目录时保留（from_type="path" 或 delete），不传播到目录内文件
+    trailing_slash = "/" if (into_type == "path" and into_expr.endswith("/") and from_type == "path") else ""
     if from_type == "path" and into_type == "path":
-        return str(dest / Path(source_file).name)
+        return str(dest / Path(source_file).name) + trailing_slash
     name = nwname if nwname else Path(source_file).name
-    return str(dest / name)
+    return str(dest / name) + trailing_slash
 
 
 def _check_filefoldertree_transition(old_tree: dict[str, Any], new_tree: dict[str, Any]) -> list[str]:
@@ -327,6 +329,8 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 into_type = item.get("into_type", "path")
                 for into_target in into_list:
                     target = _norm(str(Path(dest_root) / _norm(into_target)))
+                    if str(into_target).endswith("/"):
+                        target += "/"
                     mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
                     mapping[target]["changerequest"].append(
                         _build_change_request(

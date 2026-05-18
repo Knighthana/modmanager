@@ -760,9 +760,9 @@ class EngineTests(unittest.TestCase):
 
             self.assertEqual(result["errors"], [])
             targets = {entry["path"] for entry in result["final_mapping"]}
-            self.assertIn(str(tmp_path / "game" / "maps" / "src1").replace("\\", "/"), targets)
-            self.assertIn(str(tmp_path / "game" / "maps" / "src2").replace("\\", "/"), targets)
-            self.assertIn(str(tmp_path / "game" / "maps" / "src3").replace("\\", "/"), targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src1").replace("\\", "/") + "/", targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src2").replace("\\", "/") + "/", targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src3").replace("\\", "/") + "/", targets)
 
     def test_file_glob_does_not_pull_directories(self) -> None:
         with tempfile.TemporaryDirectory() as td:
