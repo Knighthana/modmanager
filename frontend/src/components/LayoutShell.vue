@@ -57,6 +57,13 @@
           <el-popover placement="right" :width="200" trigger="click" content="请先在 📂 工作区 页面创建或选择一个工作区">
             <template #reference>
               <el-menu-item index="">
+                <span style="color: var(--el-text-color-placeholder);">⚔️ 冲突裁决</span>
+              </el-menu-item>
+            </template>
+          </el-popover>
+          <el-popover placement="right" :width="200" trigger="click" content="请先在 📂 工作区 页面创建或选择一个工作区">
+            <template #reference>
+              <el-menu-item index="">
                 <span style="color: var(--el-text-color-placeholder);">💾 文件操作</span>
               </el-menu-item>
             </template>
