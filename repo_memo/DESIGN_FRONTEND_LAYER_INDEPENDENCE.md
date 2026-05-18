@@ -251,7 +251,7 @@ Component → Pinia store → API client
 **示例：ComputePrepPage**
 ```typescript
 // ❌ 禁止
-const { data } = await apiPost('/api/pipeline/compute', {...})
+const { data } = await apiPost('/api/workspace/{id}/pipeline/compute', {...})
 
 // ✅ 正确
 const store = useComputeStore()

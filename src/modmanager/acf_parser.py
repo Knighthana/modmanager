@@ -144,30 +144,25 @@ def find_appworkshop_acf_files(steamapps_path: str) -> dict[str, str]:
     raise NotImplementedError("To be implemented in M1.1")
 
 
-def get_workshop_timeupdated(steamapps_path: str, appid: str) -> str:
+def get_workshop_timeupdated(steamapps_path: str, appid: str, contentid: str | None = None) -> str:
     """从 appworkshop_{appid}.acf 读取 timeupdated 字段并返回字符串。
 
-    appworkshop ACF 的结构（实际格式可能因 Steam 版本而异，需兼容两种）：
-    格式A（键值对在顶层）:
-      "WorkshopItemsInstalled" {
-          "<appid>" {
-              "timeupdated" "1234567890"
-          }
-      }
-    格式B（键值对嵌套在子项中）:
-      "WorkshopItemDetails" {
-          "0" {
-              "publishedfileid" "..."
-              "timeupdated" "1234567890"
-          }
-      }
+    ACF 文件位于 ``steamapps_path/workshop/`` 子目录下。
 
-    需要检查这两种结构。若文件不存在或 timeupdated 缺失 → 返回 "0"。
+    若传入 contentid，则优先在 WorkshopItemsInstalled 和 WorkshopItemDetails
+    中查找指定 contentid 的 timeupdated，找到即返回（不降级到其他策略）。
+
+    若 contentid 为 None，使用原有策略（按优先级）:
+    1. ``AppWorkshop.TimeLastUpdated`` 顶层时间戳
+    2. ``AppWorkshop.WorkshopItemsInstalled.*.timeupdated``
+    3. ``AppWorkshop.WorkshopItemDetails.*.timeupdated`` 取最大值
+
+    若文件不存在或所有字段缺失 → 返回 "0"。
 
     Returns:
         timeupdated 的字符串（数字字符串），或 "0"
     """
-    acf_path = Path(steamapps_path) / f"appworkshop_{appid}.acf"
+    acf_path = Path(steamapps_path) / "workshop" / f"appworkshop_{appid}.acf"
     if not acf_path.exists():
         return "0"
 
@@ -180,11 +175,47 @@ def get_workshop_timeupdated(steamapps_path: str, appid: str) -> str:
     if not isinstance(data, dict):
         return "0"
 
+    # Unwrap the top-level "AppWorkshop" key
+    app_ws = data.get("AppWorkshop")
+    if isinstance(app_ws, dict):
+        ws_data = app_ws
+    else:
+        ws_data = data
+
+    # If a specific contentid is requested, do targeted lookup first
+    if contentid is not None:
+        # WorkshopItemsInstalled -> contentid -> timeupdated
+        try:
+            installed = ws_data.get("WorkshopItemsInstalled")
+            if isinstance(installed, dict):
+                app_entry = installed.get(contentid)
+                if isinstance(app_entry, dict):
+                    tu = app_entry.get("timeupdated")
+                    if tu is not None:
+                        return str(tu)
+        except (ValueError, TypeError):
+            pass
+
+        # WorkshopItemDetails -> contentid -> timeupdated (fallback)
+        try:
+            details = ws_data.get("WorkshopItemDetails")
+            if isinstance(details, dict):
+                entry = details.get(contentid)
+                if isinstance(entry, dict):
+                    tu = entry.get("timeupdated")
+                    if tu is not None:
+                        return str(tu)
+        except (ValueError, TypeError):
+            pass
+
+        return "0"
+
+    # ── contentid is None: use legacy multi-source strategy ──────────────
     timestamps: list[int] = []
 
-    # 格式A：WorkshopItemsInstalled -> <appid> -> timeupdated
+    # 1. WorkshopItemsInstalled -> <appid> -> timeupdated
     try:
-        installed = data.get("WorkshopItemsInstalled")
+        installed = ws_data.get("WorkshopItemsInstalled")
         if isinstance(installed, dict):
             app_entry = installed.get(appid)
             if isinstance(app_entry, dict):
@@ -194,9 +225,9 @@ def get_workshop_timeupdated(steamapps_path: str, appid: str) -> str:
     except (ValueError, TypeError):
         pass
 
-    # 格式B：WorkshopItemDetails -> <index> -> timeupdated
+    # 2. WorkshopItemDetails -> <index> -> timeupdated
     try:
-        details = data.get("WorkshopItemDetails")
+        details = ws_data.get("WorkshopItemDetails")
         if isinstance(details, dict):
             for _key, entry in details.items():
                 if isinstance(entry, dict):
@@ -208,7 +239,57 @@ def get_workshop_timeupdated(steamapps_path: str, appid: str) -> str:
 
     if timestamps:
         return str(max(timestamps))
+
+    # 3. Fallback: top-level TimeLastUpdated (e.g. "1778139487")
+    try:
+        tlu = ws_data.get("TimeLastUpdated")
+        if tlu is not None:
+            return str(int(str(tlu)))
+    except (ValueError, TypeError):
+        pass
+
     return "0"
+
+
+def get_workshop_latest_timeupdated(steamapps_path: str, appid: str, contentid: str) -> str:
+    """从 appworkshop_{appid}.acf 读取特定 contentid 的 latest_timeupdated。
+
+    读取 ``steamapps_path/workshop/appworkshop_{appid}.acf``，
+    解包 AppWorkshop，查 WorkshopItemDetails.{contentid}.latest_timeupdated。
+
+    Returns:
+        latest_timeupdated 的字符串，或 "0"
+    """
+    acf_path = Path(steamapps_path) / "workshop" / f"appworkshop_{appid}.acf"
+    if not acf_path.exists():
+        return "0"
+
+    try:
+        with open(acf_path, "r", encoding="utf-8") as f:
+            data = vdf.load(f)
+    except Exception:
+        return "0"
+
+    if not isinstance(data, dict):
+        return "0"
+
+    app_ws = data.get("AppWorkshop")
+    if not isinstance(app_ws, dict):
+        return "0"
+
+    details = app_ws.get("WorkshopItemDetails")
+    if not isinstance(details, dict):
+        return "0"
+
+    entry = details.get(contentid)
+    if not isinstance(entry, dict):
+        return "0"
+
+    ltu = entry.get("latest_timeupdated")
+    if ltu is None:
+        return "0"
+
+    return str(ltu)
 
 
 __all__ = [
@@ -217,4 +298,5 @@ __all__ = [
     "find_appmanifest_acf_files",
     "find_appworkshop_acf_files",
     "get_workshop_timeupdated",
+    "get_workshop_latest_timeupdated",
 ]

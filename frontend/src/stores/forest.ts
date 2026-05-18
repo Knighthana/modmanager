@@ -34,11 +34,6 @@ export interface DatabaseSummary {
   mods: number
 }
 
-export function generateBackupDir(): string {
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  return `/tmp/modmanager_backup_${ts}`
-}
-
 export const useForestStore = defineStore('forest', () => {
   // ── state ──
   const aggregatedRuleSet = ref<Record<string, unknown> | null>(null)

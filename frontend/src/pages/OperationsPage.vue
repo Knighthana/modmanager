@@ -2,16 +2,31 @@
   <div class="operations-page gui-page">
     <h2>{{ STR.operationsPage.title }}</h2>
 
-    <!-- DatabaseSelector -->
-    <div style="margin-bottom: 16px;">
-      <DatabaseSelector ref="databaseSelectorRef" />
+    <!-- Loading state -->
+    <div v-if="loadState === 'loading'" style="text-align: center; padding: 60px 0;">
+      <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+      <p style="margin-top: 12px; color: var(--el-text-color-secondary); font-size: 14px;">
+        正在加载工作区映射数据...
+      </p>
     </div>
+
+    <!-- Error state -->
+    <el-empty
+      v-else-if="loadState === 'error'"
+      :description="loadError || '数据加载失败'"
+    >
+      <el-button @click="loadMappingFromWorkspace">重试</el-button>
+    </el-empty>
 
     <!-- Empty state: 无计算结果 -->
     <el-empty
-      v-if="!hasResults"
+      v-else-if="!hasResults"
       :description="STR.operationsPage.emptyState"
-    />
+    >
+      <el-button type="primary" @click="router.push(`/workspace/${workspaceId}/compute`)">
+        前往计算准备
+      </el-button>
+    </el-empty>
 
     <!-- Main content -->
     <template v-else>
@@ -20,31 +35,50 @@
         <template #header>
           {{ STR.operationsPage.summaryTitle }}
         </template>
-        <el-descriptions :column="4" border>
-          <el-descriptions-item :label="STR.operationsPage.treesCount">
-            {{ localResults.trees_count }}
-          </el-descriptions-item>
+        <el-descriptions class="summary-table" :column="4" border size="small">
           <el-descriptions-item :label="STR.operationsPage.mappingCount">
             {{ localResults.mapping_count }}
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.statAdded">
-            {{ getStat('added') }}
+            {{ mappingStats.added }}
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.statOverwritten">
-            {{ getStat('overwritten') }}
+            {{ mappingStats.overwritten }}
           </el-descriptions-item>
           <el-descriptions-item :label="STR.operationsPage.statDeleted">
-            {{ getStat('deleted') }}
+            {{ mappingStats.deleted }}
           </el-descriptions-item>
-          <el-descriptions-item :label="STR.operationsPage.warnings">
-            <el-badge :value="localResults.warnings.length" type="warning">
-              <span style="padding: 0 4px;">{{ localResults.warnings.length }}</span>
-            </el-badge>
+          <el-descriptions-item :label="STR.operationsPage.mappingWarnings">
+            <template v-if="localResults.warnings.length > 0">
+              <el-badge :value="localResults.warnings.length" type="warning">
+                <span style="padding: 0 4px; cursor: pointer;" @click="showMappingWarningsDialog = true">{{ localResults.warnings.length }}</span>
+              </el-badge>
+            </template>
+            <span v-else style="padding: 0 4px; color: var(--el-text-color-placeholder);">0</span>
           </el-descriptions-item>
-          <el-descriptions-item :label="STR.operationsPage.errors">
-            <el-badge :value="localResults.errors.length" type="danger">
-              <span style="padding: 0 4px;">{{ localResults.errors.length }}</span>
-            </el-badge>
+          <el-descriptions-item :label="STR.operationsPage.mappingErrors">
+            <template v-if="localResults.errors.length > 0">
+              <el-badge :value="localResults.errors.length" type="danger">
+                <span style="padding: 0 4px; cursor: pointer;" @click="showMappingErrorsDialog = true">{{ localResults.errors.length }}</span>
+              </el-badge>
+            </template>
+            <span v-else style="padding: 0 4px; color: var(--el-text-color-placeholder);">0</span>
+          </el-descriptions-item>
+          <el-descriptions-item :label="STR.operationsPage.operationWarnings">
+            <template v-if="operationWarnings.length > 0">
+              <el-badge :value="operationWarnings.length" type="warning">
+                <span style="padding: 0 4px; cursor: pointer;" @click="showOpWarningsDialog = true">{{ operationWarnings.length }}</span>
+              </el-badge>
+            </template>
+            <span v-else style="padding: 0 4px; color: var(--el-text-color-placeholder);">0</span>
+          </el-descriptions-item>
+          <el-descriptions-item :label="STR.operationsPage.operationErrors">
+            <template v-if="operationErrors.length > 0">
+              <el-badge :value="operationErrors.length" type="danger">
+                <span style="padding: 0 4px; cursor: pointer;" @click="showOpErrorsDialog = true">{{ operationErrors.length }}</span>
+              </el-badge>
+            </template>
+            <span v-else style="padding: 0 4px; color: var(--el-text-color-placeholder);">0</span>
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
@@ -99,18 +133,98 @@
           {{ progress.message || '处理中...' }}
         </p>
       </el-card>
+
+      <!-- dry-run 文件列表 -->
+      <el-card v-if="dryRunEntries.length > 0" shadow="never" style="margin-top: 16px;">
+        <template #header>
+          <span>[dry-run] {{ operationLabel(dryRunOperation) }} — 共 {{ dryRunEntries.length }} 个文件</span>
+          <el-button size="small" style="float: right;" @click="dryRunEntries = []">清除列表</el-button>
+        </template>
+        <el-table :data="dryRunEntries" size="small" max-height="400" border stripe>
+          <el-table-column prop="path" label="路径" min-width="300">
+            <template #default="{ row }">{{ row.path || row.target }}</template>
+          </el-table-column>
+          <el-table-column label="大小" width="100" align="right">
+            <template #default="{ row }">{{ formatSize(row.size as number) }}</template>
+          </el-table-column>
+          <el-table-column label="修改时间" width="180">
+            <template #default="{ row }">{{ formatMtime(row.mtime as number) }}</template>
+          </el-table-column>
+          <el-table-column label="类型" width="80" align="center">
+            <template #default="{ row }">{{ row.is_dir ? '目录' : '文件' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.action === 'delete'" type="danger" size="small">删除</el-tag>
+              <el-tag v-else-if="row.action === 'create'" type="success" size="small">创建</el-tag>
+              <el-tag v-else-if="row.action === 'replace'" type="warning" size="small">替换</el-tag>
+              <el-tag v-else-if="!row.action" type="info" size="small">备份</el-tag>
+              <el-tag v-else size="small">{{ row.action }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="dryRunOperation === 'apply'" prop="source" label="源路径" min-width="200" />
+        </el-table>
+      </el-card>
+
+      <!-- 映射警告 dialog -->
+      <el-dialog v-model="showMappingWarningsDialog" title="映射警告详情" width="600px">
+        <div v-if="localResults.warnings.length === 0" style="color: var(--el-text-color-placeholder);">无警告</div>
+        <el-table v-else :data="localResults.warnings.map((w, i) => ({ index: i + 1, message: w }))" size="small" max-height="400">
+          <el-table-column prop="index" label="#" width="50" />
+          <el-table-column prop="message" label="警告内容" />
+        </el-table>
+        <template #footer>
+          <el-button @click="showMappingWarningsDialog = false">关闭</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 映射错误 dialog -->
+      <el-dialog v-model="showMappingErrorsDialog" title="映射错误详情" width="600px">
+        <div v-if="localResults.errors.length === 0" style="color: var(--el-text-color-placeholder);">无错误</div>
+        <el-table v-else :data="localResults.errors.map((e, i) => ({ index: i + 1, message: e }))" size="small" max-height="400">
+          <el-table-column prop="index" label="#" width="50" />
+          <el-table-column prop="message" label="错误内容" />
+        </el-table>
+        <template #footer>
+          <el-button @click="showMappingErrorsDialog = false">关闭</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 操作警告 dialog -->
+      <el-dialog v-model="showOpWarningsDialog" title="操作警告详情" width="600px">
+        <div v-if="operationWarnings.length === 0" style="color: var(--el-text-color-placeholder);">无警告</div>
+        <el-table v-else :data="operationWarnings.map((w, i) => ({ index: i + 1, message: w }))" size="small" max-height="400">
+          <el-table-column prop="index" label="#" width="50" />
+          <el-table-column prop="message" label="警告内容" />
+        </el-table>
+        <template #footer>
+          <el-button @click="showOpWarningsDialog = false">关闭</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 操作错误 dialog -->
+      <el-dialog v-model="showOpErrorsDialog" title="操作错误详情" width="600px">
+        <div v-if="operationErrors.length === 0" style="color: var(--el-text-color-placeholder);">无错误</div>
+        <el-table v-else :data="operationErrors.map((e, i) => ({ index: i + 1, message: e }))" size="small" max-height="400">
+          <el-table-column prop="index" label="#" width="50" />
+          <el-table-column prop="message" label="错误内容" />
+        </el-table>
+        <template #footer>
+          <el-button @click="showOpErrorsDialog = false">关闭</el-button>
+        </template>
+      </el-dialog>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { streamSse, type SseProgress } from '../api/transport'
+import { Loading } from '@element-plus/icons-vue'
+import { streamSse, apiGet, type SseProgress } from '../api/transport'
 import { useForestStore } from '../stores/forest'
-import { generateBackupDir } from '../stores/forest'
-// workspace state now from forest store
-import DatabaseSelector from '../components/DatabaseSelector.vue'
+import { useAppStore } from '../stores/app'
 import { STR } from '../locales/zh-CN'
 
 // ── types ──────────────────────────────────────────────────────────────
@@ -125,29 +239,61 @@ interface LocalResults {
   timestamp?: string
 }
 
+// ── router & stores ────────────────────────────────────────────────────
+
+const router = useRouter()
+const route = useRoute()
+const store = useForestStore()
+const appStore = useAppStore()
+
 // ── state ──────────────────────────────────────────────────────────────
 
-const store = useForestStore()
-
-const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
+const workspaceId = computed(() => route.params.workspaceId as string)
 const dryRun = ref(true)
 const operating = ref<string | null>(null) // 'backup' | 'apply' | 'restore'
 const progress = ref<SseProgress>({ step: '', finished: 0, total: -1, message: '' })
+const loadState = ref<'loading' | 'loaded' | 'error'>('loading')
+const loadError = ref('')
+const showMappingWarningsDialog = ref(false)
+const showMappingErrorsDialog = ref(false)
+const showOpWarningsDialog = ref(false)
+const showOpErrorsDialog = ref(false)
+/** 最近一次操作产生的警告/错误，持久显示直到下次操作覆盖 */
+const operationWarnings = ref<string[]>([])
+const operationErrors = ref<string[]>([])
+/** dry-run 结果文件列表，操作完成后显示在页面下方 */
+const dryRunEntries = ref<Array<Record<string, unknown>>>([])
+const dryRunOperation = ref('') // 'backup' | 'apply' | 'restore'
 
 // ── computed ───────────────────────────────────────────────────────────
 
-const selectedDb = computed(() => databaseSelectorRef.value?.selectedDatabase ?? 'default')
-
 /** 是否有有效的计算结果 */
-const localResults = computed<LocalResults>(() => ({
-  trees_count: store.trees.length,
-  mapping_count: store.finalMapping.length,
-  warnings: store.warnings,
-  errors: store.errors,
-  stats: store.stats,
-}))
+const localResults = ref<LocalResults>({
+  trees_count: 0,
+  mapping_count: 0,
+  warnings: [],
+  errors: [],
+  stats: {},
+})
 
-const hasResults = computed(() => localResults.value.trees_count > 0)
+const hasResults = computed(
+  () => localResults.value.trees_count > 0 || localResults.value.mapping_count > 0,
+)
+
+/** 从映射数据统计新增/覆盖/删除数量 */
+const mappingStats = computed(() => {
+  const stats = { added: 0, overwritten: 0, deleted: 0 }
+  // Use the rawMapping data that populateResults stored
+  const mapping = (localResults.value as any)._rawMapping as any[] | undefined
+  if (!mapping) return stats
+  for (const entry of mapping) {
+    const action = entry?.request?.action
+    if (action === 'create') stats.added++
+    else if (action === 'replace') stats.overwritten++
+    else if (action === 'delete') stats.deleted++
+  }
+  return stats
+})
 
 /** 进度百分比 */
 const progressPct = computed(() => {
@@ -168,9 +314,85 @@ function operationLabel(op: string): string {
 
 // ── helpers ────────────────────────────────────────────────────────────
 
-function getStat(key: string): number {
-  return (localResults.value.stats?.[key] as number) ?? 0
+function formatSize(bytes: number): string {
+  if (!bytes || bytes === 0) return '-'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1048576).toFixed(1) + ' MB'
 }
+
+function formatMtime(mtime: number): string {
+  if (!mtime || mtime === 0) return '-'
+  return new Date(mtime * 1000).toLocaleString()
+}
+
+function populateResults(data: Record<string, unknown>) {
+  const trees = Array.isArray(data.trees) ? data.trees : []
+  const mapping = Array.isArray(data.final_mapping) ? data.final_mapping : []
+  const warnings = Array.isArray(data.warnings) ? data.warnings : []
+  const errors = Array.isArray(data.errors) ? data.errors : []
+
+  localResults.value = {
+    trees_count: trees.length,
+    mapping_count: mapping.length,
+    warnings: warnings as string[],
+    errors: errors as string[],
+    stats: {},
+    _rawMapping: mapping as any, // for mappingStats computed
+  } as any
+
+  // Also populate forest store for consistency
+  if (trees.length > 0) store.trees = trees as any[]
+  if (mapping.length > 0) store.finalMapping = mapping as any[]
+}
+
+/** Load mapping results from workspace, falling back to forest store */
+async function loadMappingFromWorkspace() {
+  const wid = workspaceId.value
+  if (!wid) {
+    loadState.value = 'error'
+    loadError.value = '未找到工作区 ID，请从工作区列表进入'
+    return
+  }
+
+  loadState.value = 'loading'
+
+  // 1. Try workspace API
+  try {
+    const resp = await apiGet<Record<string, unknown>>(`/workspace/${wid}/forest/mapping`)
+    if (resp.ok && resp.data) {
+      populateResults(resp.data)
+      loadState.value = 'loaded'
+      return
+    }
+    // API returned ok:false — likely "mapping not yet computed"
+    // fall through to forest store
+  } catch {
+    // network error — fall through to forest store
+  }
+
+  // 2. Fallback to forest store in-memory data
+  if (store.trees.length > 0 || store.finalMapping.length > 0) {
+    localResults.value = {
+      trees_count: store.trees.length,
+      mapping_count: store.finalMapping.length,
+      warnings: store.warnings,
+      errors: store.errors,
+      stats: store.stats,
+    }
+  }
+
+  loadState.value = 'loaded'
+}
+
+// ── lifecycle ──────────────────────────────────────────────────────────
+
+onMounted(async () => {
+  if (workspaceId.value) {
+    appStore.setCurrentWorkspaceId(workspaceId.value)
+  }
+  await loadMappingFromWorkspace()
+})
 
 // ── 操作确认 & 执行 ────────────────────────────────────────────────────
 
@@ -218,21 +440,35 @@ async function doBackup() {
   operating.value = 'backup'
   progress.value = { step: 'backup', finished: 0, total: -1, message: '准备中...' }
 
-  const backupDir = store.pipelineForm.backupDir || generateBackupDir()
-
-  await streamSse('/pipeline/backup', {
-    mapping_result: store.storedMappingResult,
-    backup_dir: backupDir,
-    database_name: selectedDb.value,
+  await streamSse(`/workspace/${workspaceId.value}/pipeline/backup`, {
+    dry_run: dryRun.value,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p
     },
-    onResult() {
-      ElMessage.success(STR.operationsPage.operationSuccess)
+    onResult(data: unknown) {
+      const result = data as Record<string, any>
+      const backedUp = result?.data?.backed_up || []
+      const skipped = result?.data?.backup_skipped || []
+      const errs: string[] = result?.data?.backup_errors || result?.errors || []
+      const warns: string[] = result?.warnings || []
+      const isDry = result?.data?.dry_run
+      operationWarnings.value = warns
+      operationErrors.value = errs
+      if (isDry && backedUp.length > 0) {
+        dryRunEntries.value = backedUp
+        dryRunOperation.value = 'backup'
+      }
+      const prefix = isDry ? '[dry-run] ' : ''
+      if (errs.length > 0) {
+        ElMessage.warning(`${prefix}备份完成：${backedUp.length} 个文件备份，${skipped.length} 个跳过，${errs.length} 个错误`)
+      } else {
+        ElMessage.success(`${prefix}备份完成：${backedUp.length} 个文件备份，${skipped.length} 个跳过`)
+      }
       operating.value = null
     },
     onError(msg: string) {
+      operationErrors.value = [msg]
       ElMessage.error(`${STR.operationsPage.operationFailed}: ${msg}`)
       operating.value = null
     },
@@ -244,22 +480,35 @@ async function doApply() {
   operating.value = 'apply'
   progress.value = { step: 'apply', finished: 0, total: -1, message: '准备中...' }
 
-  const backupDir = store.pipelineForm.backupDir || generateBackupDir()
-
-  await streamSse('/pipeline/apply', {
-    final_mapping: store.finalMapping,
-    backup_dir: backupDir,
+  await streamSse(`/workspace/${workspaceId.value}/pipeline/apply`, {
     dry_run: dryRun.value,
-    database_name: selectedDb.value,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p
     },
-    onResult() {
-      ElMessage.success(STR.operationsPage.operationSuccess)
+    onResult(data: unknown) {
+      const result = data as Record<string, any>
+      const applied = result?.data?.applied || []
+      const skipped = result?.data?.apply_skipped || []
+      const errs: string[] = result?.data?.apply_errors || result?.errors || []
+      const warns: string[] = result?.warnings || []
+      const isDry = result?.data?.dry_run
+      operationWarnings.value = warns
+      operationErrors.value = errs
+      if (isDry && applied.length > 0) {
+        dryRunEntries.value = applied
+        dryRunOperation.value = 'apply'
+      }
+      const prefix = isDry ? '[dry-run] ' : ''
+      if (errs.length > 0) {
+        ElMessage.warning(`${prefix}应用完成：${applied.length} 个操作，${skipped.length} 个跳过，${errs.length} 个错误`)
+      } else {
+        ElMessage.success(`${prefix}应用完成：${applied.length} 个操作，${skipped.length} 个跳过`)
+      }
       operating.value = null
     },
     onError(msg: string) {
+      operationErrors.value = [msg]
       ElMessage.error(`${STR.operationsPage.operationFailed}: ${msg}`)
       operating.value = null
     },
@@ -271,20 +520,35 @@ async function doRestore() {
   operating.value = 'restore'
   progress.value = { step: 'restore', finished: 0, total: -1, message: '准备中...' }
 
-  const backupDir = store.pipelineForm.backupDir || generateBackupDir()
-
-  await streamSse('/pipeline/restore', {
-    backup_dir: backupDir,
-    target_files: null, // restore all files
+  await streamSse(`/workspace/${workspaceId.value}/pipeline/restore`, {
+    dry_run: dryRun.value,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p
     },
-    onResult() {
-      ElMessage.success(STR.operationsPage.operationSuccess)
+    onResult(data: unknown) {
+      const result = data as Record<string, any>
+      const restored = result?.data?.restored || []
+      const skipped = result?.data?.skipped || []
+      const errs: string[] = result?.errors || []
+      const warns: string[] = result?.warnings || []
+      const isDry = result?.data?.dry_run
+      operationWarnings.value = warns
+      operationErrors.value = errs
+      if (isDry && restored.length > 0) {
+        dryRunEntries.value = restored
+        dryRunOperation.value = 'restore'
+      }
+      const prefix = isDry ? '[dry-run] ' : ''
+      if (errs.length > 0) {
+        ElMessage.warning(`${prefix}恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
+      } else {
+        ElMessage.success(`${prefix}恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过`)
+      }
       operating.value = null
     },
     onError(msg: string) {
+      operationErrors.value = [msg]
       ElMessage.error(`${STR.operationsPage.operationFailed}: ${msg}`)
       operating.value = null
     },
@@ -296,5 +560,19 @@ async function doRestore() {
 .operations-page {
   margin: 0 auto;
   padding: 16px 24px;
+}
+
+/* 映射摘要表格：统一标签列宽度，外表格固定布局让四列均分 */
+.summary-table :deep(table) {
+  table-layout: fixed;
+  width: 100%;
+}
+.summary-table :deep(.el-descriptions__label) {
+  width: 80px;
+  min-width: 80px;
+  text-align: right;
+}
+.summary-table :deep(.el-descriptions__content) {
+  text-align: center;
 }
 </style>

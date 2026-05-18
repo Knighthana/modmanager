@@ -178,6 +178,22 @@ class CreateWorkspaceRequest(BaseModel):
     database_name: str
 
 
+class WorkspaceApplyRequest(BaseModel):
+    """Request body for ``POST /api/workspace/{id}/pipeline/apply``."""
+
+    dry_run: bool = False
+
+
+class WorkspaceBackupRequest(BaseModel):
+    """Request body for ``POST /api/workspace/{id}/pipeline/backup``."""
+    dry_run: bool = False
+
+
+class WorkspaceRestoreRequest(BaseModel):
+    """Request body for ``POST /api/workspace/{id}/pipeline/restore``."""
+    dry_run: bool = False
+
+
 class SaveDecisionsRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/decisions/save``."""
 

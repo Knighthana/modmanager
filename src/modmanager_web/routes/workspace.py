@@ -9,13 +9,14 @@ from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import Response, StreamingResponse
+from modmanager.backup_ops import restore_from_backup
 from modmanager.bootstrap import discover_user_config
 from modmanager.core.workspacemanager import WorkspaceManager
-from modmanager.orchestrator import compute_ws, run_ws
+from modmanager.orchestrator import backup_ws, apply_ws, compute_ws, run_ws
 from modmanager.path_resolver import expand_path
 
-from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
-from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest
+from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result, adapt_restore_result
+from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
 from ..sse import stream_with_progress
 from modmanager.rule_aggregator import aggregate as rule_aggregate
 import hashlib
@@ -271,6 +272,97 @@ async def workspace_run(workspace_id: str):
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+# ── Pipeline: backup / apply / restore (workspace-aware) ────────────────────
+
+
+@router.post("/{workspace_id}/pipeline/backup")
+async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest):
+    """Run differential backup in workspace context.
+
+    Reads mapping from the workspace, auto-derives backup_dir, and
+    streams progress via SSE.
+
+    SSE events:
+      - ``progress`` — backup phase updates
+      - ``result``   — backup result in ``ApiResponse`` format
+      - ``error``    — exception information
+    """
+
+    def do_work(*, on_progress):
+        return backup_ws(
+            workspace_id=workspace_id,
+            dry_run=req.dry_run,
+            on_progress=on_progress,
+        )
+
+    return StreamingResponse(
+        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.post("/{workspace_id}/pipeline/apply")
+async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
+    """Apply final mapping to disk in workspace context.
+
+    Reads mapping and stored backup_dir from the workspace, streams
+    progress via SSE.
+
+    SSE events:
+      - ``progress`` — apply phase updates
+      - ``result``   — apply result in ``ApiResponse`` format
+      - ``error``    — exception information
+    """
+
+    def do_work(*, on_progress):
+        return apply_ws(
+            workspace_id=workspace_id,
+            dry_run=req.dry_run,
+            on_progress=on_progress,
+        )
+
+    return StreamingResponse(
+        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.post("/{workspace_id}/pipeline/restore")
+async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
+    """Restore files from a backup directory in workspace context.
+
+    Reads the stored backup_dir from workspace meta and restores all files.
+
+    SSE events:
+      - ``progress`` — per-file restore progress
+      - ``result``   — restore result in ``ApiResponse`` format
+      - ``error``    — exception information
+    """
+    wm = _get_workspace_manager()
+    if not wm.exists(workspace_id):
+        return adapt_error(f"workspace '{workspace_id}' not found")
+
+    backup_dir = wm.read_backup_dir(workspace_id)
+    if not backup_dir:
+        return adapt_error("no backup_dir stored in workspace — run backup first")
+
+    def do_work(*, on_progress):
+        return restore_from_backup(
+            backup_dir=backup_dir,
+            target_files=None,
+            dry_run=req.dry_run,
+            on_progress=on_progress,
+        )
+
+    return StreamingResponse(
+        stream_with_progress(do_work, result_adapter=adapt_restore_result),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

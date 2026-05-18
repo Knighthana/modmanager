@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .backup_ops import get_game_backup_id, get_workshop_backup_id
+from .backup_ops import get_game_backup_id, get_workshop_timestamphex
 from .paths import normalize_posix
 
 
@@ -43,42 +43,29 @@ def get_custom_backup_id(source_paths: list[str]) -> str:
     return format(max_mtime, "x")
 
 
-def build_backup_dir(
+def build_backup_dirs(
     final_mapping: list[dict[str, Any]],
     database: dict[str, Any],
     user_config: dict[str, Any],
-) -> str:
-    """自动推导 backup_dir 路径。
+) -> tuple[dict[str, list[str]], list[str]]:
+    """为 final_mapping 中的每个 app / contentid 构建各自的 backup_dir。
 
-    算法：
-    1. 读取 bakprefix（默认 "kmmbackup_"）
-    2. 收集 final_mapping 中所有目标路径（entry["path"]）
-    3. 对每个目标路径，在 database["game"] 中匹配：
-       - 若目标路径以 game["basepath"] 开头 → 标记为 common 区域
-       - 若目标路径以 game["modpath"] 开头 → 标记为 workshop 区域
-    4. 统计各 appid 命中的目标数，选最多的
-    5. 根据区域选 backup_id 源：
-       - common → get_game_backup_id(steamlib_path, appid)
-       - workshop → get_workshop_backup_id(steamapps_path, appid)
-    6. 拼接路径（绝对路径）：
-       - common: basepath目录 + "/" + bakprefix + appid + "_" + hex + "/"
-       - workshop: modpath目录下 + "/" + bakprefix + appid + "_" + hex + "/"
-    7. 若无法匹配 appid → raise ValueError("E_BACKUP_DIR_BUILD_NO_APPID")
+    每个 contentid 独立备份：在各自的根目录下创建 backup dir，
+    backup_id 从对应的 ACF 文件获取。
 
     Args:
-        final_mapping: final_mapping 列表，每项含 "path" 键
-        database: 含 "game" 列表，每项含 "appid", "basepath", "modpath"
-        user_config: 用户配置，可含 "bakprefix"
+        final_mapping: mapping 条目列表，每项含 "path" 键
+        database: 含 "game" 列表
+        user_config: 含 "bakprefix" 等
 
     Returns:
-        备份目录的绝对路径字符串
-
-    Raises:
-        ValueError: 无法匹配 appid
+        ({backup_dir: [file_paths]}, warnings)
+        - backup_dir → 属于该目录的文件绝对路径列表
+        - warnings: 稳定性检查中被跳过的 contentid 警告信息
     """
     bakprefix = str(user_config.get("bakprefix", "kmmbackup_"))
 
-    # 2. 收集所有目标路径
+    # ── 1. 收集所有目标路径 ──────────────────────────────────────────
     targets: list[str] = []
     for entry in final_mapping:
         p = entry.get("path")
@@ -88,13 +75,8 @@ def build_backup_dir(
     if not targets:
         raise ValueError("E_BACKUP_DIR_BUILD_NO_APPID: final_mapping has no paths")
 
-    # 3-4. 统计各 (appid, region) 匹配数
-    from collections import Counter
-
-    pair_counts: Counter[tuple[str, str]] = Counter()  # (appid, region)
-
+    # ── 2. 构建 game_entries 索引 ─────────────────────────────────────
     games = database.get("game", [])
-    # Normalize game paths once
     game_entries: list[dict[str, Any]] = []
     for g in games:
         if not isinstance(g, dict):
@@ -108,50 +90,104 @@ def build_backup_dir(
             basepath = normalize_posix(basepath)
         if modpath:
             modpath = normalize_posix(modpath)
-        game_entries.append({"appid": appid, "basepath": basepath, "modpath": modpath, "orig": g})
+        game_entries.append({
+            "appid": appid,
+            "basepath": basepath,
+            "modpath": modpath,
+        })
+
+    # ── 3. 对每个 target，找到匹配的 game entry，分类 ──────────────────
+    # app_hits: {appid: {basepath, files: [paths], steamapps_path}}
+    # content_hits: {(appid, contentid): {modpath, contentid, files: [paths], steamapps_path}}
+    from collections import defaultdict
+
+    app_hits: dict[str, dict] = {}
+    content_hits: dict[tuple[str, str], dict] = {}
+    warnings: list[str] = []
 
     for target in targets:
+        matched = False
         for ge in game_entries:
+            # Check basepath (game app, modid==0)
             if ge["basepath"] and target.startswith(ge["basepath"]):
-                pair_counts[(ge["appid"], "common")] += 1
-            elif ge["modpath"] and target.startswith(ge["modpath"]):
-                pair_counts[(ge["appid"], "workshop")] += 1
+                appid = ge["appid"]
+                if appid not in app_hits:
+                    steamapps = normalize_posix(str(Path(ge["basepath"]).parent.parent))
+                    app_hits[appid] = {
+                        "basepath": ge["basepath"],
+                        "files": [],
+                        "steamapps_path": steamapps,
+                    }
+                app_hits[appid]["files"].append(target)
+                matched = True
+                break
 
-    if not pair_counts:
-        raise ValueError("E_BACKUP_DIR_BUILD_NO_APPID: no matching game entry")
+            # Check modpath (workshop contentid)
+            if ge["modpath"] and target.startswith(ge["modpath"]):
+                # Extract contentid from path: .../content/{appid}/{contentid}/...
+                appid = ge["appid"]
+                rel = target[len(ge["modpath"]):].lstrip("/")
+                parts = rel.split("/")
+                contentid = parts[0] if parts else ""
+                if contentid:
+                    key = (appid, contentid)
+                    if key not in content_hits:
+                        steamapps = normalize_posix(str(Path(ge["modpath"]).parent.parent.parent))
+                        content_hits[key] = {
+                            "modpath": ge["modpath"],
+                            "contentid": contentid,
+                            "files": [],
+                            "steamapps_path": steamapps,
+                        }
+                    content_hits[key]["files"].append(target)
+                    matched = True
+                    break
 
-    # 5. 选最多的 (appid, region)
-    (best_appid, best_region), _best_count = pair_counts.most_common(1)[0]
+        if not matched:
+            warnings.append(f"W_BACKUP_DIR_BUILD_NO_MATCH: {target}")
 
-    # Find matching original game entry
-    game_entry: dict[str, Any] | None = None
-    for ge in game_entries:
-        if ge["appid"] == best_appid:
-            game_entry = ge["orig"]
-            break
+    # ── 4. 构建 backup_dirs ───────────────────────────────────────────
+    result: dict[str, list[str]] = {}
 
-    if game_entry is None:
-        raise ValueError(f"E_BACKUP_DIR_BUILD_NO_APPID: appid {best_appid} not found")
+    # App backups
+    for appid, info in app_hits.items():
+        ok, hex_id, err = get_game_backup_id(info["steamapps_path"], appid)
+        if not ok:
+            warnings.append(err)
+            continue
+        backup_dir = normalize_posix(
+            f"{info['basepath']}/{bakprefix}{appid}_{hex_id}/"
+        )
+        result[backup_dir] = info["files"]
 
-    # Derive steamapps path and build backup_id + directory path
-    if best_region == "common":
-        basepath = str(game_entry.get("basepath", ""))
-        if not basepath:
-            raise ValueError(f"E_BACKUP_DIR_BUILD_NO_APPID: common appid {best_appid} has no basepath")
-        basepath_norm = normalize_posix(basepath)
-        steamapps = normalize_posix(str(Path(basepath_norm).parent.parent))
-        backup_id = get_game_backup_id(steamapps, best_appid)
-        backup_dir = f"{basepath_norm}/{bakprefix}{best_appid}_{backup_id}/"
-    else:
-        modpath = str(game_entry.get("modpath", ""))
-        if not modpath:
-            raise ValueError(f"E_BACKUP_DIR_BUILD_NO_APPID: workshop appid {best_appid} has no modpath")
-        modpath_norm = normalize_posix(modpath)
-        steamapps = normalize_posix(str(Path(modpath_norm).parent.parent.parent))
-        backup_id = get_workshop_backup_id(steamapps, best_appid)
-        backup_dir = f"{modpath_norm}/{bakprefix}{best_appid}_{backup_id}/"
+    # Content backups
+    for (appid, contentid), info in content_hits.items():
+        ok, hex_id, err = get_workshop_timestamphex(
+            info["steamapps_path"], appid, contentid
+        )
+        if not ok:
+            warnings.append(err)
+            continue
+        backup_dir = normalize_posix(
+            f"{info['modpath']}/{contentid}/{bakprefix}{contentid}_{hex_id}/"
+        )
+        result[backup_dir] = info["files"]
 
-    return normalize_posix(backup_dir)
+    if not result:
+        raise ValueError("E_BACKUP_DIR_BUILD_NO_APPID: no stable app/contentid found for backup")
+
+    return result, warnings
+
+
+# Keep old function as compatibility wrapper
+def build_backup_dir(
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
+) -> str:
+    """兼容旧接口：调用 build_backup_dirs 并返回第一个 backup_dir。"""
+    dirs, _warnings = build_backup_dirs(final_mapping, database, user_config)
+    return next(iter(dirs.keys()))
 
 
 def load_bakignore_rules(
@@ -209,7 +245,8 @@ def load_bakignore_rules(
 
 __all__ = [
     "get_custom_backup_id",
-    "get_workshop_backup_id",
+    "get_workshop_timestamphex",
     "build_backup_dir",
+    "build_backup_dirs",
     "load_bakignore_rules",
 ]

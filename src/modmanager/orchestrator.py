@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
-from .backup_dir_builder import build_backup_dir
+from .backup_dir_builder import build_backup_dir, build_backup_dirs
 from .backup_ops import apply_final_mapping, run_differential_backup
 from .bootstrap import discover_user_config
 from .core.workspacemanager import WorkspaceManager
@@ -39,6 +39,8 @@ __all__ = [
     "run",
     "compute_ws",
     "run_ws",
+    "backup_ws",
+    "apply_ws",
 ]
 
 
@@ -215,38 +217,54 @@ def compute(
 
 def backup(
     mapping_result: dict[str, Any],
-    backup_dir: str,
+    backup_dirs: dict[str, list[str]],
     *,
+    dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    """Run differential backup for files in the mapping result.
-
-    Extracts the list of file paths from ``final_mapping`` within
-    *mapping_result* and passes them to ``run_differential_backup``.
+    """对 final_mapping 中的文件执行差异备份。
 
     Args:
         mapping_result: The raw result dict from ``compute_mapping``.
-        backup_dir: Target backup directory.
+        backup_dirs: {backup_dir: [file_paths]} 从 build_backup_dirs 获取
+        dry_run: When ``True`` only report what would be backed up.
         on_progress: Optional progress callback.
 
     Returns:
         The result dict from ``run_differential_backup``.
     """
-    final_mapping_list: list[dict[str, Any]] = mapping_result.get("final_mapping", [])
-    files_to_backup = [entry["path"] for entry in final_mapping_list if entry.get("path")]
+    all_backed_up: list[str] = []
+    all_skipped: list[str] = []
+    all_errors: list[str] = []
+    total_files = sum(len(files) for files in backup_dirs.values())
+    processed = 0
 
-    if not files_to_backup:
-        return {"ok": True, "backed_up": [], "skipped": [], "errors": []}
+    for backup_dir, files in backup_dirs.items():
+        if not files:
+            continue
+        if on_progress is not None:
+            on_progress("backup", processed, total_files, backup_dir)
+
+        result = run_differential_backup(
+            backup_dir, files,
+            on_progress=None,
+            dry_run=dry_run,
+        )
+        all_backed_up.extend(result.get("backed_up", []))
+        all_skipped.extend(result.get("skipped", []))
+        all_errors.extend(result.get("errors", []))
+        processed += len(files)
 
     if on_progress is not None:
-        on_progress("backup", 0, len(files_to_backup), "Starting differential backup...")
+        on_progress("backup", processed, total_files, "Backup complete")
 
-    result = run_differential_backup(backup_dir, files_to_backup)
-
-    if on_progress is not None:
-        on_progress("backup", len(files_to_backup), len(files_to_backup), "Backup complete")
-
-    return result
+    return {
+        "ok": not all_errors,
+        "backed_up": all_backed_up,
+        "skipped": all_skipped,
+        "errors": all_errors,
+        "dry_run": dry_run,
+    }
 
 
 def apply(
@@ -272,7 +290,7 @@ def apply(
     if on_progress is not None:
         on_progress("apply", 0, 1, "Applying final mapping...")
 
-    result = apply_final_mapping(final_mapping, backup_dir, dry_run=dry_run)
+    result = apply_final_mapping(final_mapping, backup_dir, dry_run=dry_run, on_progress=on_progress)
 
     if on_progress is not None:
         on_progress("apply", 1, 1, "Apply complete")
@@ -342,19 +360,24 @@ def run(
             apply_result=None,
         )
 
-    # ── Step 1.5: Auto-derive backup_dir if not provided ────────────────
-    resolved_backup_dir = backup_dir
-    if resolved_backup_dir is None:
-        resolved_backup_dir = build_backup_dir(
+    # ── Step 1.5: Auto-derive backup_dirs if not provided ────────────────
+    resolved_backup_dirs: dict[str, list[str]] | None = None
+    if backup_dir is not None:
+        # Old single backup_dir provided — wrap into dict (all files in one dir)
+        files = [e["path"] for e in compute_result.final_mapping if e.get("path")]
+        resolved_backup_dirs = {backup_dir: files}
+    else:
+        resolved_backup_dirs, _dir_warnings = build_backup_dirs(
             compute_result.final_mapping,
             database,
             user_config or {"bakprefix": "kmmbackup_"},
         )
+    first_dir = next(iter(resolved_backup_dirs.keys()), None) if resolved_backup_dirs else None
 
     # ── Step 2: Backup ────────────────────────────────────────────────────
     backup_result = backup(
         compute_result.mapping_result,
-        resolved_backup_dir,
+        resolved_backup_dirs,
         on_progress=on_progress,
     )
 
@@ -378,7 +401,7 @@ def run(
     # ── Step 3: Apply ─────────────────────────────────────────────────────
     apply_result = apply(
         compute_result.final_mapping,
-        resolved_backup_dir,
+        first_dir,
         dry_run=dry_run,
         on_progress=on_progress,
     )
@@ -412,7 +435,7 @@ def run(
         mapping_result=compute_result.mapping_result,
         backup_result=backup_result,
         apply_result=apply_result,
-        backup_dir=resolved_backup_dir,
+        backup_dir=first_dir,
     )
 
 
@@ -550,24 +573,28 @@ def run_ws(
     if dry_run:
         return compute_result
 
-    # ── Resolve backup dir ────────────────────────────────────────────
+    # ── Resolve backup dirs ───────────────────────────────────────────
     user_config = discover_user_config()
     wm = _get_workspace_manager(user_config)
     meta = wm.read_meta(workspace_id)
     database = _resolve_database(meta["database_name"], user_config)
 
-    resolved_backup_dir = backup_dir
-    if resolved_backup_dir is None:
-        resolved_backup_dir = build_backup_dir(
+    resolved_backup_dirs: dict[str, list[str]] | None = None
+    if backup_dir is not None:
+        files = [e["path"] for e in compute_result.final_mapping if e.get("path")]
+        resolved_backup_dirs = {backup_dir: files}
+    else:
+        resolved_backup_dirs, _dir_warnings = build_backup_dirs(
             compute_result.final_mapping,
             database,
             user_config,
         )
+    first_dir = next(iter(resolved_backup_dirs.keys()), None) if resolved_backup_dirs else None
 
     # ── Backup ────────────────────────────────────────────────────────
     backup_result = backup(
         compute_result.mapping_result,
-        resolved_backup_dir,
+        resolved_backup_dirs,
         on_progress=on_progress,
     )
 
@@ -588,7 +615,7 @@ def run_ws(
     # ── Apply ─────────────────────────────────────────────────────────
     apply_result = apply(
         compute_result.final_mapping,
-        resolved_backup_dir,
+        first_dir,
         dry_run=dry_run,
         on_progress=on_progress,
     )
@@ -604,7 +631,173 @@ def run_ws(
         mapping_result=compute_result.mapping_result,
         backup_result=backup_result,
         apply_result=apply_result,
-        backup_dir=resolved_backup_dir,
+        backup_dir=first_dir,
+    )
+
+
+def backup_ws(
+    workspace_id: str,
+    *,
+    dry_run: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> PipelineResult:
+    """Run differential backup in a workspace context.
+
+    Reads mapping from the workspace, auto-derives backup_dir, runs
+    differential backup, and stores the backup_dir back to the workspace.
+
+    Args:
+        workspace_id: Target workspace identifier.
+        dry_run: When ``True`` only report what would be backed up.
+        on_progress: Optional progress callback.
+
+    Returns:
+        A ``PipelineResult``.
+    """
+    user_config = discover_user_config()
+    wm = _get_workspace_manager(user_config)
+
+    if not wm.exists(workspace_id):
+        return PipelineResult(
+            ok=False,
+            errors=[f"workspace '{workspace_id}' not found"],
+        )
+
+    # ── Load workspace context ────────────────────────────────────────
+    meta = wm.read_meta(workspace_id)
+    database_name = meta["database_name"]
+
+    if not wm.has_mapping(workspace_id):
+        return PipelineResult(
+            ok=False,
+            errors=["no mapping in workspace — compute first"],
+        )
+    mapping_result = wm.read_mapping(workspace_id)
+
+    # ── Resolve and load database ─────────────────────────────────────
+    try:
+        database = _resolve_database(database_name, user_config)
+    except Exception as exc:
+        return PipelineResult(ok=False, errors=[str(exc)])
+
+    # ── Auto-derive backup_dirs ───────────────────────────────────────
+    final_mapping = mapping_result.get("final_mapping", [])
+    try:
+        backup_dirs, dir_warnings = build_backup_dirs(final_mapping, database, user_config)
+    except ValueError as exc:
+        return PipelineResult(ok=False, errors=[str(exc)])
+
+    # ── Run backup ────────────────────────────────────────────────────
+    backup_result = backup(
+        mapping_result=mapping_result,
+        backup_dirs=backup_dirs,
+        dry_run=dry_run,
+        on_progress=on_progress,
+    )
+
+    # ── Collect warnings ──────────────────────────────────────────────
+    all_warnings = list(dir_warnings)
+    if isinstance(backup_result.get("warnings"), list):
+        all_warnings.extend(backup_result["warnings"])
+
+    # ── Store first backup_dir in workspace for restore ────────────────
+    first_dir = next(iter(backup_dirs.keys()), None) if backup_dirs else None
+    if first_dir and backup_result.get("ok"):
+        wm.write_backup_dir(workspace_id, first_dir)
+
+    return PipelineResult(
+        ok=backup_result.get("ok", False),
+        errors=backup_result.get("errors", []),
+        warnings=all_warnings,
+        final_mapping=final_mapping,
+        mapping_result=mapping_result,
+        backup_result=backup_result,
+        backup_dir=first_dir,
+    )
+
+
+def apply_ws(
+    workspace_id: str,
+    *,
+    dry_run: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> PipelineResult:
+    """Apply the final mapping to disk in a workspace context.
+
+    Reads mapping and stored backup_dir from the workspace, then applies
+    the final mapping to disk.  When *dry_run* is ``True`` only the gate
+    check is performed without modifying files.
+
+    Args:
+        workspace_id: Target workspace identifier.
+        dry_run: When ``True`` skip actual file modifications.
+        on_progress: Optional progress callback.
+
+    Returns:
+        A ``PipelineResult``.
+    """
+    user_config = discover_user_config()
+    wm = _get_workspace_manager(user_config)
+
+    if not wm.exists(workspace_id):
+        return PipelineResult(
+            ok=False,
+            errors=[f"workspace '{workspace_id}' not found"],
+        )
+
+    if not wm.has_mapping(workspace_id):
+        return PipelineResult(
+            ok=False,
+            errors=["no mapping in workspace — compute first"],
+        )
+    mapping_result = wm.read_mapping(workspace_id)
+
+    # ── Resolve backup_dir ────────────────────────────────────────────
+    backup_dir = wm.read_backup_dir(workspace_id)
+    if backup_dir is None:
+        # auto-derive if not stored (backup may not have run)
+        meta = wm.read_meta(workspace_id)
+        database_name = meta["database_name"]
+        try:
+            database = _resolve_database(database_name, user_config)
+        except Exception as exc:
+            return PipelineResult(ok=False, errors=[str(exc)])
+        final_mapping = mapping_result.get("final_mapping", [])
+        try:
+            dirs, _warnings = build_backup_dirs(final_mapping, database, user_config)
+            backup_dir = next(iter(dirs.keys()))
+        except ValueError as exc:
+            return PipelineResult(ok=False, errors=[str(exc)])
+
+    # ── Run apply ─────────────────────────────────────────────────────
+    final_mapping = mapping_result.get("final_mapping", [])
+    apply_result = apply(
+        final_mapping=final_mapping,
+        backup_dir=backup_dir,
+        dry_run=dry_run,
+        on_progress=on_progress,
+    )
+
+    if not apply_result.get("ok"):
+        errors = apply_result.get("errors", [])
+        if not isinstance(errors, list):
+            errors = [str(errors)]
+        return PipelineResult(
+            ok=False,
+            errors=errors,
+            warnings=[],
+            final_mapping=final_mapping,
+            mapping_result=mapping_result,
+            apply_result=apply_result,
+        )
+
+    return PipelineResult(
+        ok=True,
+        errors=[],
+        warnings=[],
+        final_mapping=final_mapping,
+        mapping_result=mapping_result,
+        apply_result=apply_result,
     )
 
 

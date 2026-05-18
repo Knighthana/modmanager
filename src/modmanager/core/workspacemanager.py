@@ -159,6 +159,22 @@ class WorkspaceManager:
     def has_mapping(self, workspace_id: str) -> bool:
         return (self._dir(workspace_id) / self._MAPPING).is_file()
 
+    # -- backup_dir ----------------------------------------------------
+
+    def write_backup_dir(self, workspace_id: str, backup_dir: str) -> None:
+        """Write backup_dir into meta.json and update updated_at."""
+        ws_dir = self._dir(workspace_id)
+        meta_path = ws_dir / self._META
+        meta = load_json_file(meta_path)
+        meta["backup_dir"] = backup_dir
+        meta["updated_at"] = _utcnow()
+        write_json_file(meta_path, meta)
+
+    def read_backup_dir(self, workspace_id: str) -> str | None:
+        """Read backup_dir from meta.json, return None if absent."""
+        meta = self.read_meta(workspace_id)
+        return meta.get("backup_dir")
+
     # -- SVG -----------------------------------------------------------
 
     def write_svg(self, workspace_id: str, svg_content: str) -> None:

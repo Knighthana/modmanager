@@ -134,7 +134,7 @@ RulesOverviewPage → 浏览
 ForestPage → 计算
   ├── 从 workspace.perDatabase[name].decisions 读 decisions
   ├── 从 workspace.aggregatedRuleSet 读聚合规则 dict
-  ├── POST /api/pipeline/compute { database_name, aggregated_rule_set, managed_entries, branch_decisions }
+  ├── POST /api/workspace/{id}/pipeline/compute（参数从工作区读取）
   │   └── orchestrator 内部获取 database
   └── 计算完成 → 前端写 workspace.perDatabase[name].results
 

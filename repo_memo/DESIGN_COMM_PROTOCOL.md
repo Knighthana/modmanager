@@ -82,17 +82,17 @@
 | `POST` | `/api/database/generate` | SSE | 扫描 Steam 库生成 database |
 | `POST` | `/api/database/read` | — | 读取指定 database 内容 |
 | `POST` | `/api/database/save` | — | 保存 database |
-| `POST` | `/api/pipeline/compute` | SSE | 聚合 + 计算映射 |
-| `POST` | `/api/pipeline/backup` | SSE | 差异备份 |
-| `POST` | `/api/pipeline/apply` | SSE | 应用映射到磁盘 |
-| `POST` | `/api/pipeline/restore` | SSE | 从备份恢复文件 |
-| `POST` | `/api/pipeline/run` | SSE | 全流水线（聚合→计算→备份→应用） |
 | `POST` | `/api/pipeline/visualize` | — | Forest JSON → SVG/ASCII/DOT |
+| `POST` | `/api/workspace/{id}/pipeline/compute` | SSE | 工作区上下文内计算映射 |
+| `POST` | `/api/workspace/{id}/pipeline/backup` | SSE | 工作区上下文内差异备份 |
+| `POST` | `/api/workspace/{id}/pipeline/apply` | SSE | 工作区上下文内应用映射 |
+| `POST` | `/api/workspace/{id}/pipeline/restore` | SSE | 工作区上下文内恢复备份 |
+| `POST` | `/api/workspace/{id}/pipeline/run` | SSE | 工作区上下文内全流水线 |
 | `POST` | `/api/rules/scan` | — | 扫描目录列出 kmm_rule 文件 |
 | `POST` | `/api/rules/read` | — | 读取单个 kmm_rule 文件内容 |
-| `POST` | `/api/rules/aggregate` | SSE | 聚合选定规则文件 |
+| `POST` | `/api/workspace/{id}/rules/aggregate` | SSE | 工作区上下文内聚合规则 |
 | `POST` | `/api/rules/affected-entries` | — | 查询聚合规则影响的 game/mod |
-| `POST` | `/api/rules/load-aggregated` | — | 加载 aggregated_rule_set.json 原文 |
+| `GET` | `/api/workspace/{id}/rules/aggregated` | — | 读取工作区已聚合规则 |
 | `POST` | `/api/backups/list` | — | 列出备份目录摘要 |
 | `POST` | `/api/backups/inspect` | — | 查看备份详情 |
 
@@ -105,7 +105,7 @@
 ```
 Client                              Server
   │                                    │
-  ├── POST /api/pipeline/run ─────────→│  (JSON body)
+  ├── POST /api/workspace/{id}/pipeline/run ─→│  (JSON body)
   │                                    │
   │←── event: progress ────────────────┤  (N 次，直至完成)
   │    data: {"type":"progress", ...}   │
@@ -121,7 +121,7 @@ Client                              Server
 ```
 Client                              Server
   │                                    │
-  ├── POST /api/pipeline/run ─────────→│
+  ├── POST /api/workspace/{id}/pipeline/run ─→│
   │                                    │
   │←── event: progress ────────────────┤
   │←── event: error ───────────────────┤  (1 次，终止)

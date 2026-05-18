@@ -13,32 +13,39 @@ from modmanager.orchestrator import PipelineResult
 
 def adapt_pipeline_result(pr: PipelineResult) -> dict:
     """Convert a ``PipelineResult`` into an ``ApiResponse``-shaped dict."""
-    stats: dict | None = None
-    if pr.backup_result is not None or pr.apply_result is not None:
-        stats = {
-            "backed_up": (
-                len(pr.backup_result.get("backed_up", []))
-                if pr.backup_result
-                else 0
-            ),
-            "applied": (
-                len(pr.apply_result.get("applied", []))
-                if pr.apply_result
-                else 0
-            ),
-            "skipped": (
-                len(pr.apply_result.get("skipped", []))
-                if pr.apply_result
-                else 0
-            ),
-        }
-
     data: dict[str, Any] = {
         "trees": pr.trees,
         "final_mapping": pr.final_mapping,
         "mapping_result": pr.mapping_result,
-        "stats": stats,
     }
+
+    # ── Include backup_result fields when present ──────────────────────
+    if pr.backup_result:
+        data["backed_up"] = pr.backup_result.get("backed_up", [])
+        data["backup_skipped"] = pr.backup_result.get("skipped", [])
+        data["backup_errors"] = pr.backup_result.get("errors", [])
+        if pr.backup_result.get("dry_run"):
+            data["dry_run"] = True
+
+    # ── Include apply_result fields when present ───────────────────────
+    if pr.apply_result:
+        data["applied"] = pr.apply_result.get("applied", [])
+        data["apply_skipped"] = pr.apply_result.get("skipped", [])
+        data["apply_errors"] = pr.apply_result.get("errors", [])
+        if pr.apply_result.get("dry_run"):
+            data["dry_run"] = True
+
+    # ── Stats summary ──────────────────────────────────────────────────
+    stats: dict[str, int] = {}
+    if pr.backup_result:
+        stats["backed_up"] = len(pr.backup_result.get("backed_up", []))
+        stats["backup_skipped"] = len(pr.backup_result.get("skipped", []))
+    if pr.apply_result:
+        stats["applied"] = len(pr.apply_result.get("applied", []))
+        stats["apply_skipped"] = len(pr.apply_result.get("skipped", []))
+    if stats:
+        data["stats"] = stats
+
     if pr.backup_dir:
         data["backup_dir"] = pr.backup_dir
 
@@ -91,13 +98,16 @@ def adapt_dict_result(data: dict) -> dict:
 def adapt_restore_result(result: dict) -> dict:
     """Convert the dict returned by ``restore_from_backup()`` into an
     ``ApiResponse``-shaped dict."""
+    data: dict[str, Any] = {
+        "restored": result.get("restored", []),
+        "skipped": result.get("skipped", []),
+        "orphans": result.get("orphans", []),
+    }
+    if result.get("dry_run"):
+        data["dry_run"] = True
     return {
         "ok": result.get("ok", False),
-        "data": {
-            "restored": result.get("restored", []),
-            "skipped": result.get("skipped", []),
-            "orphans": result.get("orphans", []),
-        },
+        "data": data,
         "errors": result.get("errors", []),
         "warnings": result.get("warnings", []),
     }

@@ -34,7 +34,7 @@
 ```
 POST /api/database/generate        → 返回: { database(无managed), warnings, errors }
 POST /api/database/read            → 返回指定 database 内容
-POST /api/pipeline/compute         → 接受 managed_entries?, branch_decisions?, database_name?；orchestrator 自行加载 database
+POST /api/workspace/{id}/pipeline/compute → 参数从工作区读取；orchestrator 自行加载 database
 POST /api/config/discover          → 返回 user_config
 ```
 
