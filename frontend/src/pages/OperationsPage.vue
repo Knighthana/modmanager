@@ -141,8 +141,23 @@
           <el-button size="small" style="float: right;" @click="dryRunEntries = []">清除列表</el-button>
         </template>
         <el-table :data="dryRunEntries" size="small" max-height="400" border stripe>
-          <el-table-column prop="path" label="路径" min-width="300">
-            <template #default="{ row }">{{ row.path || row.target }}</template>
+          <el-table-column label="操作" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.action === 'delete'" type="danger" size="small">删除</el-tag>
+              <el-tag v-else-if="row.action === 'create'" type="success" size="small">创建</el-tag>
+              <el-tag v-else-if="row.action === 'replace'" type="warning" size="small">替换</el-tag>
+              <el-tag v-else-if="row.action === 'copy'" type="info" size="small">拷贝</el-tag>
+              <el-tag v-else size="small">{{ row.action || '—' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="类型" width="80" align="center">
+            <template #default="{ row }">{{ row.is_dir ? '目录' : '文件' }}</template>
+          </el-table-column>
+          <el-table-column label="备份位置" min-width="300">
+            <template #default="{ row }">{{ row.backup_path || row.target || row.path }}</template>
+          </el-table-column>
+          <el-table-column v-if="dryRunOperation !== 'restore'" label="源路径" min-width="200">
+            <template #default="{ row }">{{ row.path || row.source }}</template>
           </el-table-column>
           <el-table-column label="大小" width="100" align="right">
             <template #default="{ row }">{{ formatSize(row.size as number) }}</template>
@@ -150,19 +165,6 @@
           <el-table-column label="修改时间" width="180">
             <template #default="{ row }">{{ formatMtime(row.mtime as number) }}</template>
           </el-table-column>
-          <el-table-column label="类型" width="80" align="center">
-            <template #default="{ row }">{{ row.is_dir ? '目录' : '文件' }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag v-if="row.action === 'delete'" type="danger" size="small">删除</el-tag>
-              <el-tag v-else-if="row.action === 'create'" type="success" size="small">创建</el-tag>
-              <el-tag v-else-if="row.action === 'replace'" type="warning" size="small">替换</el-tag>
-              <el-tag v-else-if="!row.action" type="info" size="small">备份</el-tag>
-              <el-tag v-else size="small">{{ row.action }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="dryRunOperation === 'apply'" prop="source" label="源路径" min-width="200" />
         </el-table>
       </el-card>
 

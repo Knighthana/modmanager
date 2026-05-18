@@ -402,17 +402,23 @@ def run_differential_backup(
                 on_progress("backup", i + 1, len(files_to_backup), target)
             src = Path(target)
             if src.exists():
+                norm = normalize_posix(str(src))
+                rel = norm.lstrip("/")
                 try:
                     st = src.stat()
                     would_backup.append({
+                        "action": "copy",
                         "path": target,
+                        "backup_path": rel,
                         "size": st.st_size,
                         "mtime": st.st_mtime,
                         "is_dir": src.is_dir(),
                     })
                 except OSError:
                     would_backup.append({
+                        "action": "copy",
                         "path": target,
+                        "backup_path": rel,
                         "size": 0,
                         "mtime": 0,
                         "is_dir": False,
