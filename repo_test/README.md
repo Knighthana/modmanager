@@ -15,8 +15,7 @@ tests/                    # Python 后端测试（pytest）
   test_*.py               # 命名强制 test_ 前缀，由 pytest 收集
 frontend/src/__tests__/   # TypeScript 前端测试（Vitest）
   **/*.test.ts            # 命名强制 .test.ts 后缀
-tools/                    # 工具脚本 — 不参与测试收集
-  文件名不带 test_ 前缀   # 防止被 pytest 误收集
+tools/                    # 工具脚本
 ```
 
 ## 二、pytest 配置
@@ -81,5 +80,4 @@ testpaths = ["tests"]
 1. Python 测试文件命名 `test_*.py`，放 `tests/` 下
 2. 前端测试文件命名 `*.test.ts`，放 `frontend/src/__tests__/` 下
 3. `pyproject.toml` 必须配 `testpaths = ["tests"]`
-4. `tools/` 下脚本禁止 `test_` 前缀——防止 pytest 误收集
-5. 新增引擎函数必须同步添加测试
+4. 新增引擎函数必须同步添加测试
