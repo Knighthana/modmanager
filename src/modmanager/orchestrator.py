@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
-from .backup_dir_builder import build_backup_dirs
+from .backup_dir_builder import build_backup_dirs, load_dir_suffixes
 from .backup_ops import (
     _flatten_tree_file_hashes,
     _sha256_file,
@@ -57,6 +57,90 @@ __all__ = [
     "restore_ws",
     "run_ws",
 ]
+
+
+# ── bakignore helpers ─────────────────────────────────────────────────────────
+
+_ignore_cache: dict[str, object] = {}
+
+
+def _parse_gitignore_file(path: str):
+    """用 gitignore-parser 解析 .kmmbakignore，返回判定函数。"""
+    import gitignore_parser
+    return gitignore_parser.parse_gitignore_file(path)
+
+
+def _any_path_component_ends_with(file_path: str, suffixes: list[str]) -> bool:
+    """检查路径的任何一个目录组件是否以指定后缀结尾。"""
+    parts = Path(normalize_posix(file_path)).parts
+    return any(part.endswith(s) for s in suffixes for part in parts)
+
+
+def _should_ignore(file_abs: str, contentid_root: str, dir_suffixes: list[str]) -> bool:
+    """判定 file_abs 是否应被忽略。
+
+    1. 目录级检查：路径任意组件以 dir_suffixes 中任一后缀结尾 → 忽略
+    2. gitignore 级联：从文件目录向上走到 contentid_root，
+       每层 .kmmbakignore 用 gitignore-parser 解析并缓存。
+       子目录规则覆盖父目录（git 语义：后匹配优先）。
+    """
+    # 目录级
+    if _any_path_component_ends_with(file_abs, dir_suffixes):
+        return True
+
+    # gitignore 级联
+    file_path = Path(file_abs)
+    current = file_path.parent
+    content_root_path = Path(contentid_root)
+    matched = False
+    while current != content_root_path.parent:
+        ig = current / ".kmmbakignore"
+        if ig.is_file():
+            ig_str = str(ig)
+            rules = _ignore_cache.get(ig_str)
+            if rules is None:
+                try:
+                    rules = _parse_gitignore_file(ig_str)
+                except Exception:
+                    rules = lambda _: False
+                _ignore_cache[ig_str] = rules
+            try:
+                rel = str(file_path.relative_to(current))
+            except ValueError:
+                rel = file_path.name
+            result = rules(rel)
+            if result is True:
+                matched = True
+            elif result is False:  # ! 否定
+                matched = False
+        if current == content_root_path:
+            break
+        current = current.parent
+
+    return matched
+
+
+def _copy_kmmbakignore_chain(file_abs: str, contentid_root: str, backup_dir_str: str,
+                             copied: set[str]) -> None:
+    """从 file_abs 所在目录往上走到 contentid_root，
+    每层 .kmmbakignore 拷贝进 backup_dir 对应位置。已拷贝的跳过。
+    """
+    file_path = Path(file_abs)
+    current = file_path.parent
+    content_root_path = Path(contentid_root)
+    backup_path = Path(backup_dir_str)
+
+    while current != content_root_path.parent:
+        ig = current / ".kmmbakignore"
+        if ig.is_file() and str(ig) not in copied:
+            copied.add(str(ig))
+            rel = ig.relative_to(content_root_path)
+            dest = backup_path / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(ig), str(dest))
+        if current == content_root_path:
+            break
+        current = current.parent
 
 
 # ── Managed entries filter ────────────────────────────────────────────────────
@@ -270,8 +354,29 @@ def backup(
         if on_progress is not None:
             on_progress("backup", processed, total_files, backup_dir_str)
 
+        # ── Apply bakignore filters ─────────────────────────────────────
+        dir_suffixes = load_dir_suffixes(user_config)
+        # Derive source contentid root from backup_dir_str
+        # backup_dir_str format: {root}/{contentid}.{hex}.{baksuffix}/
+        backup_path_obj = Path(backup_dir_str)
+        contentid_dir = backup_path_obj.parent  # the contentid directory
+        source_root = str(contentid_dir)
+
+        filtered_files = []
+        copied_ignores: set[str] = set()
+        for f in files:
+            if _should_ignore(f, source_root, dir_suffixes):
+                all_skipped.append(f)
+                continue
+            filtered_files.append(f)
+            _copy_kmmbakignore_chain(f, source_root, backup_dir_str, copied_ignores)
+
+        if not filtered_files:
+            processed += len(files)
+            continue
+
         result = run_differential_backup(
-            backup_dir_str, files,
+            backup_dir_str, filtered_files,
             on_progress=on_progress,
             dry_run=dry_run,
         )
@@ -338,6 +443,9 @@ def apply(
         if not dir_entries:
             continue
 
+        backup_path_obj = Path(backup_dir_str)
+        contentid_dir = backup_path_obj.parent
+
         result = apply_final_mapping(
             dir_entries, backup_dir_str,
             dry_run=dry_run,
@@ -346,6 +454,16 @@ def apply(
         all_applied.extend(result.get("applied", []))
         all_skipped.extend(result.get("skipped", []))
         all_errors.extend(result.get("errors", []))
+
+        # ── Restore .kmmbakignore from backup_dir back to source ─────
+        for ig_path in backup_path_obj.rglob(".kmmbakignore"):
+            try:
+                rel = ig_path.relative_to(backup_path_obj)
+                dest = contentid_dir / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(ig_path), str(dest))
+            except (OSError, ValueError):
+                pass
 
     return {
         "ok": not all_errors,

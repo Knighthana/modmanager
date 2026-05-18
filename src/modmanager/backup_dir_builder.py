@@ -190,57 +190,23 @@ def build_backup_dir(
     return next(iter(dirs.keys()))
 
 
-def load_bakignore_rules(
-    user_config: dict[str, Any],
-    backup_dir: str,
-) -> list[str]:
-    """合并 user_config.bakignore 与 .kmmbakignore。
+def load_dir_suffixes(user_config: dict[str, Any]) -> list[str]:
+    """合并硬编码底线 + user_config.bakignore，去重返回目录名后缀列表。
 
-    1. 从 user_config 读 bakignore（list[str]），默认 [".kmmbackup"]
-    2. 检查 backup_dir / ".kmmbakignore" 是否存在
-    3. 若存在，逐行读取：跳过空行和 # 开头的行（strip 后），其余加入列表
-    4. 合并去重，返回规则列表
-
-    Args:
-        user_config: 用户配置字典，可含 "bakignore" 列表
-        backup_dir: 备份目录路径
-
-    Returns:
-        合并后的规则列表（去重）
+    硬编码底线 ``".kmmbackup"`` 始终在列表中。
+    user_config.bakignore 中的条目自动补前导 ``.``（若缺失）。
     """
-    rules: list[str] = []
-
-    # 1. 从 user_config 读取
+    suffixes = [".kmmbackup"]
     config_ignore = user_config.get("bakignore")
     if isinstance(config_ignore, list):
         for item in config_ignore:
             if isinstance(item, str) and item.strip():
-                rules.append(item.strip())
-    if not rules:
-        rules.append(".kmmbackup")
-
-    # 2-3. 从 .kmmbakignore 文件读取
-    ignore_file = Path(backup_dir) / ".kmmbakignore"
-    if ignore_file.exists():
-        try:
-            with open(ignore_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    stripped = line.strip()
-                    if not stripped or stripped.startswith("#"):
-                        continue
-                    rules.append(stripped)
-        except OSError:
-            pass
-
-    # 4. 合并去重（保持顺序）
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for r in rules:
-        if r not in seen:
-            seen.add(r)
-            deduped.append(r)
-
-    return deduped
+                s = item.strip()
+                if not s.startswith("."):
+                    s = "." + s
+                if s not in suffixes:
+                    suffixes.append(s)
+    return suffixes
 
 
 __all__ = [
@@ -248,5 +214,5 @@ __all__ = [
     "get_workshop_timestamphex",
     "build_backup_dir",
     "build_backup_dirs",
-    "load_bakignore_rules",
+    "load_dir_suffixes",
 ]
