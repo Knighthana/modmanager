@@ -6,6 +6,7 @@
 > Purpose: 规定前端 GUI 的总体架构、页面流、交互边界与页面级设计原则
 > 创建：2026-05-08
 > 更新：2026-05-13 — 【重大改版】六页面流重定义；Forest 全屏 SVG 布局；DataSource 缩减为纯展示；新增计算准备页；managed_entries 改为可选预选 + compute 参数传入；移除前端业务数据持久化
+> 更新：2026-05-18 — §3.6 OperationsPage 适配工作区模式：数据从工作区 API 加载，端点为 workspace-scoped，移除 DatabaseSelector
 > 来源：2026-05-13 讨论（mock-first 策略、localStorage 清退、managed 语义迁移、workspace 状态设计）
 
 ---
@@ -331,14 +332,15 @@
 
 ### 3.6 OperationsPage — 文件操作
 
-**职责**：展示映射摘要 + 执行文件操作。
+**职责**：展示映射摘要 + 执行文件操作。**工作区感知**——从路由提取 `workspaceId`，通过工作区 API 加载映射数据、执行备份/应用/恢复。
 
 ```
 ┌ 文件操作 ────────────────────────────────────────────────────┐
 │                                                              │
-│  📊 本次映射摘要（从 localStorage.results 读取）                │
-│  总文件数: 15    新增: 3    覆盖: 10    删除: 2               │
-│  警告: 3    错误: 0                                          │
+│  📊 本次映射摘要（从工作区 mapping.json 加载）                    │
+│  映射文件数: 925   新增: 3   覆盖: 10   删除: 2                │
+│  映射警告: 3    映射错误: 0                                    │
+│  操作警告: 0    操作错误: 2                                    │
 │                                                              │
 │  ⚙️ 执行选项                                                 │
 │  [x] dry run（仅预览，不实际写文件）                            │
@@ -348,9 +350,12 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- 仅消费 Forest 计算结果，不负责计算
-- 按钮触发对应 `POST /api/pipeline/backup` / `apply` / `restore`
-- dry run 开关在此页面管理
+- 页面通过路由参数 `workspaceId` 绑定当前工作区
+- 映射数据优先从 `GET /workspace/{id}/forest/mapping` 加载，回退到 forestStore 内存态
+- 按钮触发工作区端点 `POST /workspace/{id}/pipeline/backup` / `apply` / `restore`
+- dry run 开关对三种操作均生效，返回结构化文件列表
+- 警告/错误可点击查看详情列表
+- 不包含 `DatabaseSelector`（数据库由工作区绑定）
 
 ---
 

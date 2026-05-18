@@ -7,6 +7,7 @@
 
 > 来源：DESIGN_BOOTSTRAP_ORCHESTRATOR.md（orchestrator 部分）
 > 更新：2026-05-16 — 新增 workspacemanager 下属；compute/run 接收 workspace_id 参数，从工作区读取规则与决策
+> 更新：2026-05-18 — backup() 函数签名新增 dry_run 参数；新增 backup_ws / apply_ws 工作区感知函数；on_progress 支持逐文件进度回调
 > 实现状态：已落地并持续生效
 
 ---
@@ -103,9 +104,11 @@ def backup(
     mapping_result: dict[str, Any],
     backup_dir: str,
     *,
+    dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    """对 final_mapping 中的文件执行差异备份。"""
+    """对 final_mapping 中的文件执行差异备份。
+    dry_run=True 时不执行文件 I/O，仅返回预期操作列表。"""
 ```
 
 ### apply()

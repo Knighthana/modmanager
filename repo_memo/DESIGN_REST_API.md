@@ -12,6 +12,8 @@
 >
 > **2026-05-16 重大变更**：所有流水线和规则端点迁移到工作区 URL 前缀 `/api/workspace/{workspaceId}/...`。旧 `/api/pipeline/*` 和 `/api/rules/aggregate` 端点被替换为工作区感知版本。详见 `DESIGN_WORKSPACE_MODEL.md`。
 >
+> **2026-05-18 更新**：restore 端点已实现（移除"后续实现"标记）；BackupRequest/ApplyRequest 全局 schema 已废弃，替换为 WorkspaceBackupRequest / WorkspaceApplyRequest / WorkspaceRestoreRequest（仅含 dry_run 字段，mapping 从工作区读取）
+>
 > 涉及映射输出结构时，以 `repo_memo/DESIGN_FOREST_MODEL.md` 定义的现行输出契约为准；其余 Web API 行为约束以本文档为准。
 
 创建：2026-04-30
@@ -442,7 +444,7 @@ data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
 |------|----------|
 | `POST /api/pipeline/compute`（旧路径） | 迁移到 `/api/workspace/{id}/pipeline/compute`，参数从工作区读取 |
 | `POST /api/pipeline/run`（旧路径） | 同上 |
-| `POST /api/pipeline/restore` | 迁移到 `/api/workspace/{id}/pipeline/restore`（后续实现） |
+| `POST /api/pipeline/restore` | 迁移到 `/api/workspace/{id}/pipeline/restore` |
 | `POST /api/pipeline/visualize` | 功能由 `GET /api/workspace/{id}/forest/svg` 替代 |
 | `POST /api/rules/aggregate`（旧路径） | 迁移到 `/api/workspace/{id}/rules/aggregate` |
 | `POST /api/rules/load-aggregated` | 功能由 `GET /api/workspace/{id}/rules/aggregated` 替代 |
@@ -593,18 +595,21 @@ class SaveDatabaseRequest(BaseModel):
 class ComputeRequest(BaseModel):
     action_orders: dict[str, int] | None = None
 
-class BackupRequest(BaseModel):
-    mapping_result: dict[str, Any]        # compute_mapping 的原始输出
-    backup_dir: str | None = None         # 为空时 orchestrator 从 user_config 和 database 推导
-
-class ApplyRequest(BaseModel):
-    final_mapping: list[dict[str, Any]]
-    backup_dir: str | None = None
+# 以下 workspace 请求体已在工作区模式下简化：
+# backup / apply / restore 的 mapping 数据从工作区目录读取，无需在请求体中传递。
+class WorkspaceBackupRequest(BaseModel):
     dry_run: bool = False
 
-class RunRequest(BaseModel):
-    backup_dir: str | None = None
+class WorkspaceApplyRequest(BaseModel):
     dry_run: bool = False
+
+class WorkspaceRestoreRequest(BaseModel):
+    dry_run: bool = False
+
+# 旧全局管线的 schema（仅保留引用，全局端点已废弃）
+# class BackupRequest(BaseModel): ...  # 已废弃，使用 WorkspaceBackupRequest
+# class ApplyRequest(BaseModel): ...   # 已废弃，使用 WorkspaceApplyRequest
+# class RunRequest(BaseModel): ...     # 已废弃
 
 # ── workspace ──
 class CreateWorkspaceRequest(BaseModel):
