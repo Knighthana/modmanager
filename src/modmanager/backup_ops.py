@@ -407,6 +407,7 @@ def run_differential_backup(
     if not content_root:
         content_root = str(Path(backup_dir).parent)
     cr = normalize_posix(content_root)
+    dir_basename = Path(backup_dir).name  # e.g. "270150.15dcbe1.kmmbackup"
 
     if dry_run:
         would_backup: list[dict[str, Any]] = []
@@ -425,7 +426,7 @@ def run_differential_backup(
                     would_backup.append({
                         "action": "copy",
                         "path": target + trail,
-                        "backup_path": rel + trail,
+                        "backup_path": f"{dir_basename}/{rel}{trail}",
                         "size": st.st_size,
                         "mtime": st.st_mtime,
                         "is_dir": is_dir,
@@ -434,7 +435,7 @@ def run_differential_backup(
                     would_backup.append({
                         "action": "copy",
                         "path": target + trail,
-                        "backup_path": rel + trail,
+                        "backup_path": f"{dir_basename}/{rel}{trail}",
                         "size": 0,
                         "mtime": 0,
                         "is_dir": is_dir,
