@@ -25,6 +25,13 @@
 | `apply_final_mapping` dry_run：目录路径尾 `/` | `backup_ops.py` |
 | 进度回报：`run_differential_backup` / `apply_final_mapping` / `restore_from_backup` 全部支持逐文件 `on_progress` | `backup_ops.py` |
 | `restore` 端点遍历全部 backup_dirs | `routes/workspace.py` |
+| 引擎函数重写：`backup()`/`apply()`/`restore()`/`run()` KISS 签名，内部调 `build_backup_dirs` | `orchestrator.py` |
+| `_ws` 函数简化：退化为翻译工作区语境 + 委托引擎 | `orchestrator.py` |
+| `restore_ws()` 新增 | `orchestrator.py` |
+| `WorkspaceRestoreRequest`: `dry_run` → `force` | `schemas.py` |
+| bakprefix → baksuffix 全量迁移（命名格式 + user_config + 文档） | 17 个文件 |
+| 硬编码防护 `startswith("kmmbackup_")` → `endswith(".kmmbackup")` | `backup_ops.py` |
+| `gitignore-parser` 依赖加入 `pyproject.toml` | `pyproject.toml` |
 
 ### 前端
 
@@ -62,23 +69,21 @@
 
 ## 待实现 / 未完成
 
-### apply() 签名未适配多目录
-`apply()` 仍用单个 `backup_dir: str` 参数，未像 `backup()` 那样改为 dict。目前 `apply_ws` 通过循环调用 `apply()` 绕过，但 `apply()` 自身签名与 `backup()` 不一致。
+### 硬编码后缀与可配置 baksuffix 不一致
+`backup_ops.py` 硬编码 `_HARDCODED_BACKUP_SKIP_SUFFIX = ".kmmbackup"`。用户可通过 `user_config.baksuffix` 修改后缀，硬编码不会跟随变化。但同时设计约定是引擎内部**写死**忽略 `.kmmbackup`——这是有意为之的安全底线。当前行为符合设计。
 
-### run() / run_ws() 未适配 build_backup_dirs
-全局管线 `run()` 和 `run_ws()` 仍使用旧的 `build_backup_dir()` 兼容 wrapper（返回单一路径），未适配多目录输出。
-
-### restore 仍使用第一个 backup_dir
-虽然 restore 端点已改为遍历所有 backup_dirs，但 `backup_dirs.json` 中存的是 `{dir: [files]}`，restore 只用到 dir 的 keys。文件级映射在 restore 中未使用，目前只是串行恢复所有目录。
-
-### backup dry_run 进度被丢弃
-`backup()` 第 250 行原本 `on_progress=None`，已修复为透传。需验证前端进度条在备份 dry_run 时是否正常逐文件更新。
+### bakignore 规则未接入引擎
+- `load_bakignore_rules` 仍是死代码——定义了但从未被 `backup()`/`apply()`/`restore()` 调用
+- `gitignore-parser` 已安装为依赖，但未在引擎流程中接线
+- `.kmmbakignore` 拷贝逻辑（backup 拷入、apply 拷出）未实现
 
 ### 前端 dry_run 表格对 apply 的支持
-当前表格 columns 针对 backup 设计（`backup_path` 主列 + `path` 源路径列）。apply 的字段名是 `target`/`source`，列渲染依赖 `row.backup_path || row.target || row.path` 的 fallback —— apply 条件下 `backup_path` 不存在时回退到 `target`，逻辑正确但未经充分测试。
-### `_HARDCODED_BACKUP_SKIP_SUFFIX` 与 baksuffix 不一致
+apply 的字段名是 `target`/`source`，列渲染依赖 `row.backup_path || row.target || row.path` 的 fallback。逻辑正确但未经端到端验证。
 
-`backup_ops.py` 硬编码 `_HARDCODED_BACKUP_SKIP_SUFFIX = ".kmmbackup"`，但 baksuffix 现在从 user_config 读取。如果用户改了 baksuffix，硬编码防护会失效。
+### 文档待更新
+- `DESIGN_ORCHESTRATOR.md`：引擎函数签名已全面重写，文档未同步
+- `DESIGN_BACKUP.md` §6：未补 `restore()` / `restore_ws()` 签名
+- `DESIGN_REST_API.md`：restore 端点已更新但文档可能未同步
 
 ---
 
@@ -92,6 +97,11 @@
 6. **apply gate check per-dir FIFO**：不阻塞，一个失败不阻止其他
 7. **apply 不比对 hash**：只查"有无"
 8. **同步模型**：不引入 async，避免染色传染
+9. **引擎函数自给自足**：接受 `(final_mapping, database, user_config, flags)`，内部调 `build_backup_dirs`，不依赖外部传入 backup_dirs
+10. **_ws 只做翻译**：工作区语境 → 消费品 → 委托引擎，不代引擎做决策
+11. **restore 独立原语**：与 backup 解耦，自己从 final_mapping 推导 backup_dir，不依赖 backup_ws 存储的映射
+12. **备份目录命名**：点分后缀格式 `{id}.{hex}.{baksuffix}/`，baksuffix 从 user_config 读取
+13. **硬编码防护底线**：引擎内部写死忽略 `.kmmbackup` 后缀目录，不受 user_config 影响
 
 ---
 
@@ -103,4 +113,7 @@
 7d31579 feat: dry_run output spec — add action+backup_path fields
 7e6416b fix: directory paths in dry_run output must end with trailing /
 a6e7e7b fix: per-backup_dir gate check in apply_ws, store full mapping
+7940c8c docs: session snapshot
+ae9461b refactor: bakprefix → baksuffix — suffix naming, hardcoded skip, gitignore-parser
+3bc0869 feat: engine/_ws separation — KISS engine functions, simplified _ws delegates
 ```
