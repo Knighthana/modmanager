@@ -46,6 +46,7 @@ class WorkspaceManager:
     _MAPPING = "mapping.json"
     _SVG = "forest.svg"
     _FINGERPRINTS = "fingerprints.json"
+    _BACKUP_DIRS = "backup_dirs.json"
 
     def __init__(self, workspace_dir: str | Path) -> None:
         """*workspace_dir* – absolute path to the workspace root directory."""
@@ -161,19 +162,17 @@ class WorkspaceManager:
 
     # -- backup_dir ----------------------------------------------------
 
-    def write_backup_dir(self, workspace_id: str, backup_dir: str) -> None:
-        """Write backup_dir into meta.json and update updated_at."""
-        ws_dir = self._dir(workspace_id)
-        meta_path = ws_dir / self._META
-        meta = load_json_file(meta_path)
-        meta["backup_dir"] = backup_dir
-        meta["updated_at"] = _utcnow()
-        write_json_file(meta_path, meta)
+    def write_backup_dirs(self, workspace_id: str, backup_dirs: dict[str, list[str]]) -> None:
+        """Write the backup_dir → file_paths mapping into the workspace."""
+        write_json_file(self._dir(workspace_id) / self._BACKUP_DIRS, backup_dirs)
+        self._touch(workspace_id)
 
-    def read_backup_dir(self, workspace_id: str) -> str | None:
-        """Read backup_dir from meta.json, return None if absent."""
-        meta = self.read_meta(workspace_id)
-        return meta.get("backup_dir")
+    def read_backup_dirs(self, workspace_id: str) -> dict[str, list[str]]:
+        """Read the backup_dir → file_paths mapping, or {} if absent."""
+        p = self._dir(workspace_id) / self._BACKUP_DIRS
+        if not p.is_file():
+            return {}
+        return load_json_file(p)
 
     # -- SVG -----------------------------------------------------------
 

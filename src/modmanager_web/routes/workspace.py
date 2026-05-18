@@ -349,17 +349,31 @@ async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
     if not wm.exists(workspace_id):
         return adapt_error(f"workspace '{workspace_id}' not found")
 
-    backup_dir = wm.read_backup_dir(workspace_id)
-    if not backup_dir:
+    backup_dirs = wm.read_backup_dirs(workspace_id)
+    if not backup_dirs:
         return adapt_error("no backup_dir stored in workspace — run backup first")
 
     def do_work(*, on_progress):
-        return restore_from_backup(
-            backup_dir=backup_dir,
-            target_files=None,
-            dry_run=req.dry_run,
-            on_progress=on_progress,
-        )
+        errors: list[str] = []
+        restored_all: list[str] = []
+        skipped_all: list[str] = []
+        for backup_dir in backup_dirs:
+            result = restore_from_backup(
+                backup_dir=backup_dir,
+                target_files=None,
+                dry_run=req.dry_run,
+                on_progress=on_progress,
+            )
+            restored_all.extend(result.get("restored", []))
+            skipped_all.extend(result.get("skipped", []))
+            errors.extend(result.get("errors", []))
+        return {
+            "ok": not errors,
+            "restored": restored_all,
+            "skipped": skipped_all,
+            "errors": errors,
+            "dry_run": req.dry_run,
+        }
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_restore_result),

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from .backup_dir_builder import build_backup_dir, build_backup_dirs
-from .backup_ops import apply_final_mapping, run_differential_backup
+from .backup_ops import apply_final_mapping, check_backup_gate, run_differential_backup
 from .bootstrap import discover_user_config
 from .core.workspacemanager import WorkspaceManager
 from .engine import compute_mapping
@@ -247,7 +247,7 @@ def backup(
 
         result = run_differential_backup(
             backup_dir, files,
-            on_progress=None,
+            on_progress=on_progress,
             dry_run=dry_run,
         )
         all_backed_up.extend(result.get("backed_up", []))
@@ -700,10 +700,11 @@ def backup_ws(
     if isinstance(backup_result.get("warnings"), list):
         all_warnings.extend(backup_result["warnings"])
 
-    # ── Store first backup_dir in workspace for restore ────────────────
+    # ── Store backup_dirs mapping in workspace for apply / restore ────
+    if backup_result.get("ok") and not dry_run:
+        wm.write_backup_dirs(workspace_id, backup_dirs)
+
     first_dir = next(iter(backup_dirs.keys()), None) if backup_dirs else None
-    if first_dir and backup_result.get("ok"):
-        wm.write_backup_dir(workspace_id, first_dir)
 
     return PipelineResult(
         ok=backup_result.get("ok", False),
@@ -752,9 +753,9 @@ def apply_ws(
         )
     mapping_result = wm.read_mapping(workspace_id)
 
-    # ── Resolve backup_dir ────────────────────────────────────────────
-    backup_dir = wm.read_backup_dir(workspace_id)
-    if backup_dir is None:
+    # ── Resolve backup_dirs mapping ───────────────────────────────────
+    backup_dirs = wm.read_backup_dirs(workspace_id)
+    if not backup_dirs:
         # auto-derive if not stored (backup may not have run)
         meta = wm.read_meta(workspace_id)
         database_name = meta["database_name"]
@@ -764,40 +765,56 @@ def apply_ws(
             return PipelineResult(ok=False, errors=[str(exc)])
         final_mapping = mapping_result.get("final_mapping", [])
         try:
-            dirs, _warnings = build_backup_dirs(final_mapping, database, user_config)
-            backup_dir = next(iter(dirs.keys()))
+            backup_dirs, _warnings = build_backup_dirs(final_mapping, database, user_config)
         except ValueError as exc:
             return PipelineResult(ok=False, errors=[str(exc)])
 
-    # ── Run apply ─────────────────────────────────────────────────────
+    # ── Run apply per backup_dir (FIFO, independent gate check) ────────
     final_mapping = mapping_result.get("final_mapping", [])
-    apply_result = apply(
-        final_mapping=final_mapping,
-        backup_dir=backup_dir,
-        dry_run=dry_run,
-        on_progress=on_progress,
-    )
+    all_applied: list[str] = []
+    all_skipped: list[str] = []
+    all_errors: list[str] = []
+    all_warnings: list[str] = []
 
-    if not apply_result.get("ok"):
-        errors = apply_result.get("errors", [])
-        if not isinstance(errors, list):
-            errors = [str(errors)]
-        return PipelineResult(
-            ok=False,
-            errors=errors,
-            warnings=[],
-            final_mapping=final_mapping,
-            mapping_result=mapping_result,
-            apply_result=apply_result,
+    for backup_dir, dir_files in backup_dirs.items():
+        # Gate check for this backup_dir
+        gate_errors = check_backup_gate(backup_dir)
+        if gate_errors:
+            all_warnings.append(f"W_BACKUP_GATE_FAILED: {backup_dir}: {'; '.join(gate_errors)}")
+            continue
+
+        # Filter final_mapping entries belonging to this backup_dir
+        path_set = set(dir_files)
+        dir_entries = [e for e in final_mapping if e.get("path") in path_set]
+
+        if not dir_entries:
+            continue
+
+        apply_result = apply(
+            final_mapping=dir_entries,
+            backup_dir=backup_dir,
+            dry_run=dry_run,
+            on_progress=on_progress,
         )
 
+        all_applied.extend(apply_result.get("applied", []))
+        all_skipped.extend(apply_result.get("skipped", []))
+        all_errors.extend(apply_result.get("errors", []))
+
+    ok = not all_errors
     return PipelineResult(
-        ok=True,
-        errors=[],
-        warnings=[],
+        ok=ok,
+        errors=all_errors,
+        warnings=all_warnings,
         final_mapping=final_mapping,
         mapping_result=mapping_result,
-        apply_result=apply_result,
+        apply_result={
+            "ok": ok,
+            "applied": all_applied,
+            "skipped": all_skipped,
+            "errors": all_errors,
+            "dry_run": dry_run,
+        },
     )
 
 
