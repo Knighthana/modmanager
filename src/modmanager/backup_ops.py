@@ -598,7 +598,10 @@ def apply_final_mapping(
             t = Path(target)
             if t.exists():
                 try:
-                    t.unlink()
+                    if t.is_dir():
+                        shutil.rmtree(str(t))
+                    else:
+                        t.unlink()
                     applied.append(target)
                 except OSError as exc:
                     errors.append(f"E_DELETE_FAILED: {target}: {exc}")
