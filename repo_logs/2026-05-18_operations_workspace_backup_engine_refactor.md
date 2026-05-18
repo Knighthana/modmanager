@@ -52,11 +52,11 @@
 
 | 文件 | 说明 |
 |------|------|
-| `work_memo/2026-05-18_PLAN_operations_workspace_adapt.md` | 文件操作页面改造方案 |
-| `work_memo/2026-05-18_PLAN_dry_run_output_spec.md` | dry_run 输出字段规范 |
-| `work_memo/2026-05-18_PLAN_engine_ws_separation.md` | 引擎/_ws 职责分离 |
-| `work_memo/2026-05-18_PLAN_bakignore_integration.md` | bakignore 接入引擎 |
-| `work_memo/2026-05-18_SNAPSHOT.md` | 全量已完成 / 悬空问题 / 架构决策 / 提交记录 |
+| `2026-05-18_PLAN_operations_workspace_adapt.md` | 文件操作页面改造方案 |
+| `2026-05-18_PLAN_dry_run_output_spec.md` | dry_run 输出字段规范 |
+| `2026-05-18_PLAN_engine_ws_separation.md` | 引擎/_ws 职责分离 |
+| `2026-05-18_PLAN_bakignore_integration.md` | bakignore 接入引擎 |
+| `2026-05-18_SNAPSHOT.md` | 全量已完成 / 悬空问题 / 架构决策 / 提交记录 |
 
 ## 背景文档
 
