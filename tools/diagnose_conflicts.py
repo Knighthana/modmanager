@@ -13,12 +13,12 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from modmanager.rule_aggregator import aggregate
 from modmanager.engine import compute_mapping
 
-KMM_RULE_PATH = str(Path(__file__).parent / "description" / "kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example")
+KMM_RULE_PATH = str(Path(__file__).parent.parent / "description" / "kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example")
 STEAM_WORKSHOP = "/mnt/d/Games/steamapps/workshop/content/270150"
 GAME_BASEPATH = "/mnt/d/Games/steamapps/common/RunningWithRifles"
 
