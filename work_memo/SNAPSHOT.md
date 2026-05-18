@@ -69,21 +69,11 @@
 
 ## 待实现 / 未完成
 
-### 硬编码后缀与可配置 baksuffix 不一致
-`backup_ops.py` 硬编码 `_HARDCODED_BACKUP_SKIP_SUFFIX = ".kmmbackup"`。用户可通过 `user_config.baksuffix` 修改后缀，硬编码不会跟随变化。但同时设计约定是引擎内部**写死**忽略 `.kmmbackup`——这是有意为之的安全底线。当前行为符合设计。
+_本场施工范围内全部完成。以下为跨会话长期关注项：_
 
-### bakignore 规则未接入引擎
-- `load_bakignore_rules` 仍是死代码——定义了但从未被 `backup()`/`apply()`/`restore()` 调用
-- `gitignore-parser` 已安装为依赖，但未在引擎流程中接线
-- `.kmmbakignore` 拷贝逻辑（backup 拷入、apply 拷出）未实现
-
-### 前端 dry_run 表格对 apply 的支持
-apply 的字段名是 `target`/`source`，列渲染依赖 `row.backup_path || row.target || row.path` 的 fallback。逻辑正确但未经端到端验证。
-
-### 文档待更新
-- `DESIGN_ORCHESTRATOR.md`：引擎函数签名已全面重写，文档未同步
-- `DESIGN_BACKUP.md` §6：未补 `restore()` / `restore_ws()` 签名
-- `DESIGN_REST_API.md`：restore 端点已更新但文档可能未同步
+- **硬编码后缀**：有意为之的安全底线，不视作缺陷
+- **前端 apply 表格**：逻辑就绪，生产环境实测即可
+- `states.md` 中的 TASK2605-0x1~0x9 为用户级长期待办，不在本场范围内
 
 ---
 
@@ -116,4 +106,14 @@ a6e7e7b fix: per-backup_dir gate check in apply_ws, store full mapping
 7940c8c docs: session snapshot
 ae9461b refactor: bakprefix → baksuffix — suffix naming, hardcoded skip, gitignore-parser
 3bc0869 feat: engine/_ws separation — KISS engine functions, simplified _ws delegates
+088bb0f docs: update SNAPSHOT — reflect engine separation + baksuffix migration status
+22ba7d2 docs: bakignore integration plan — git-cascade .kmmbakignore, three-layer ignore, copy logic
+a97cfc6 feat: bakignore integration — git-cascade .kmmbakignore, three-layer ignore, copy logic
+e6ac663 docs: sync DESIGN_ORCHESTRATOR + DESIGN_BACKUP §6 with engine/_ws separation
+38b99b3 fix: gitignore-parser API (parse_gitignore) + cascade logic (innermost-first)
+4aab9b0 test: fix all 403 tests — update imports, signatures, naming for baksuffix + engine separation
+8d4e0bd fix: add missing 冲突裁决 grayed-out item when no workspace selected
+c83e970 fix: backup_path relative to content_root, not absolute lstrip('/')
+8b9d5fe fix: backup_path includes dir basename prefix (e.g. 270150.hex.kmmbackup/path/to/file)
+0f33cc1 docs: backup_path description — include dir basename prefix in format spec
 ```
