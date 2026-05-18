@@ -16,7 +16,7 @@
 |---|---|---|
 | `action` | `"copy"` | 操作类型，备份均为拷贝 |
 | `path` | `str` | 源文件绝对路径 |
-| `backup_path` | `str` | 文件在备份目录内的相对路径（去除路径前导 `/` 的规范化路径） |
+| `backup_path` | `str` | 文件在备份目录内的完整相对路径，格式 `{dir_basename}/{rel}`。例：`2606099273.69fc415f.kmmbackup/some/file.mod` |
 | `size` | `int` | 文件字节数 |
 | `mtime` | `float` | 修改时间（unix timestamp） |
 | `is_dir` | `bool` | 是否为目录 |
