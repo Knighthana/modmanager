@@ -247,6 +247,36 @@ def build_backup_dir(
     """兼容旧接口：调用 build_backup_dirs 并返回第一个 backup_dir。"""
 ```
 
+### `restore()` — 引擎函数
+
+```python
+def restore(
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
+    *,
+    force: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
+    """独立原语，与 backup 解耦。内部调 build_backup_dirs 推导备份目录，
+    读 backupinfo.json 比对 HASH（force=True 时跳过比对），从备份恢复文件。
+    """
+```
+
+### `restore_ws()` — 工作区函数
+
+```python
+def restore_ws(workspace_id: str, *, force: bool = False, on_progress=None) -> PipelineResult:
+    """加载工作区 mapping + database + user_config → restore()。"""
+```
+
+### `load_dir_suffixes()`
+
+```python
+def load_dir_suffixes(user_config: dict[str, Any]) -> list[str]:
+    """合并硬编码底线 ".kmmbackup" + user_config.bakignore，去重返回后缀列表。"""
+```
+
 ---
 
 ## 七、错误码

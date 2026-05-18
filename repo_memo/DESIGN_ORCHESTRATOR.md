@@ -7,7 +7,7 @@
 
 > 来源：DESIGN_BOOTSTRAP_ORCHESTRATOR.md（orchestrator 部分）
 > 更新：2026-05-16 — 新增 workspacemanager 下属；compute/run 接收 workspace_id 参数，从工作区读取规则与决策
-> 更新：2026-05-18 — backup() 函数签名新增 dry_run 参数；新增 backup_ws / apply_ws 工作区感知函数；on_progress 支持逐文件进度回调
+> 更新：2026-05-18 — engine/_ws 职责分离：引擎函数接收消费品 (final_mapping, database, user_config, flags)，内部调 build_backup_dirs；_ws 函数翻译工作区语境 → 委托引擎；新增 restore() / restore_ws()
 > 实现状态：已落地并持续生效
 
 ---
@@ -78,121 +78,177 @@ class PipelineResult:
     mapping_result: dict[str, Any]          # compute_mapping 原始输出
     backup_result: dict[str, Any] | None    # 来自 run_differential_backup
     apply_result: dict[str, Any] | None     # 来自 apply_final_mapping
+    restore_result: dict[str, Any] | None   # 来自 restore_from_backup
+    backup_dir: str | None = None
 ```
 
-### compute()
+### 引擎函数（纯逻辑，不感知工作区）
+
+引擎函数接收消费品 `(final_mapping, database, user_config, flags)`。需要 backup_dir 时内部调 `build_backup_dirs`，不依赖外部传入。
+
+#### compute()
 
 ```python
 def compute(
-    workspace_id: str,
+    database: dict,
     *,
+    aggregated_rule_set: dict | None = None,
     action_orders: dict[str, int] | None = None,
+    branch_decisions: dict[str, str] | None = None,
+    managed_entries: dict | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> PipelineResult:
-    """在工作区上下文中执行计算映射。
-    聚合规则集和用户决策从 workspacemanager 的工作区目录读取。
-    database 路径从工作区 meta.json 的 database_name 查 user_config 获取。
-    计算结果（mapping + SVG + 指纹）由 workspacemanager 写入工作区目录。
-    返回 PipelineResult（backup_result 和 apply_result 为 None）。
-    """
+    """计算文件映射。"""
 ```
 
-### backup()
+#### backup()
 
 ```python
 def backup(
-    mapping_result: dict[str, Any],
-    backup_dir: str,
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
     *,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    """对 final_mapping 中的文件执行差异备份。
-    dry_run=True 时不执行文件 I/O，仅返回预期操作列表。"""
+    """差异备份。内部调 build_backup_dirs 推导目录，逐目录过滤 bakignore 后执行。"""
 ```
 
-### apply()
+#### apply()
 
 ```python
 def apply(
     final_mapping: list[dict[str, Any]],
-    backup_dir: str,
+    database: dict[str, Any],
+    user_config: dict[str, Any],
     *,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    """执行 final_mapping 的磁盘替换。"""
+    """应用映射。内部调 build_backup_dirs 推导目录，逐目录 gate check 后执行。"""
 ```
 
-### run() — 全流水线
+#### restore()
+
+```python
+def restore(
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
+    *,
+    force: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
+    """恢复文件。独立原语，与 backup 解耦。内部调 build_backup_dirs 推导目录，
+    读 backupinfo.json 比对 HASH（force=True 时跳过比对）。"""
+```
+
+#### run()
 
 ```python
 def run(
-    workspace_id: str,
-    backup_dir: str,
+    database: dict,
+    aggregated_rule_set: dict,
+    managed_entries: dict | None,
+    branch_decisions: dict[str, str] | None,
+    user_config: dict[str, Any],
     *,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> PipelineResult:
-    """全流水线：计算 → 备份 → 应用。
-    聚合规则集和用户决策从 workspacemanager 的工作区目录读取。
-    database 路径从工作区 meta.json 的 database_name 查 user_config 获取。
-    等价于依次调用 compute() + backup() + apply()。
-    """
+    """全流水线：compute → backup → apply。"""
+```
+
+### 工作区函数（翻译工作区语境 → 委托引擎）
+
+`_ws` 函数的唯一职责：从工作区加载 mapping / database / user_config，转为消费品后委托引擎。不传 backup_dirs，不代引擎做决策。
+
+#### compute_ws()
+
+```python
+def compute_ws(workspace_id: str, *, on_progress=None) -> PipelineResult:
+    """加载聚合规则 + 决策 + database → compute() → 写 mapping/SVG 回工作区。"""
+```
+
+#### backup_ws()
+
+```python
+def backup_ws(workspace_id: str, *, dry_run=False, on_progress=None) -> PipelineResult:
+    """加载 mapping + database + user_config → build_backup_dirs → backup()。"""
+```
+
+#### apply_ws()
+
+```python
+def apply_ws(workspace_id: str, *, dry_run=False, on_progress=None) -> PipelineResult:
+    """加载 mapping + database + user_config → apply()。"""
+```
+
+#### restore_ws()
+
+```python
+def restore_ws(workspace_id: str, *, force=False, on_progress=None) -> PipelineResult:
+    """加载 mapping + database + user_config → restore()。"""
+```
+
+#### run_ws()
+
+```python
+def run_ws(workspace_id: str, *, dry_run=False, on_progress=None) -> PipelineResult:
+    """加载工作区全部上下文 → run()。"""
 ```
 
 ---
 
 ## 四、内部流程
 
+### run() 引擎函数
+
 ```
-run(workspace_id, backup_dir, *, dry_run=False, ...)
+run(database, aggregated_rule_set, managed_entries, branch_decisions, user_config, dry_run, on_progress)
   │
-  ├─ 0. 环境初始化
-  │     ws = workspacemanager
-  │     meta = ws.read_meta(workspace_id)
-  │     bootstrap 获取 user_config + database（通过 meta.database_name）
-  │     on_progress("bootstrap", 1, 1)
+  ├─ compute(database, aggregated_rule_set, managed_entries, branch_decisions, on_progress)
   │
-  ├─ 1. 读取工作区数据
-  │     aggregated_rule_set = ws.read_aggregated_rule(workspace_id)
-  │     decisions = ws.read_decisions(workspace_id)
-  │     on_progress("load", 1, 1)
+  ├─ [dry_run?] → 返回 compute 结果（跳过备份和应用）
   │
-  ├─ 2. 计算映射
-  │     database = _apply_managed_filter(database, decisions.managed_entries)
-  │     mapping_result = compute_mapping(aggregated_rule_set, database, decisions.branch_decisions)
-  │     on_progress("compute", 1, 1)
+  ├─ backup(final_mapping, database, user_config, dry_run, on_progress)
+  │     ├─ build_backup_dirs(final_mapping, database, user_config)
+  │     ├─ 逐目录：bakignore 过滤 → run_differential_backup
+  │     └─ 拷贝 .kmmbakignore 进 backup_dir
   │
-  ├─ [dry_run?] ─────────────────────────────────────────────────────────────
-  │     是 → ws.write_mapping(workspace_id, mapping_result)
-  │           ws.write_fingerprints(workspace_id, {...})
-  │           直接返回 compute 结果（跳过备份和应用）
-  │     否 → 继续
-  │
-  ├─ 3. 写入结果
-  │     ws.write_mapping(workspace_id, mapping_result)
-  │     ws.write_svg(workspace_id, svg)
-  │     ws.write_fingerprints(workspace_id, {...})
-  │
-  ├─ 4. 差异备份
-  │     backup_result = run_differential_backup(backup_dir, files)
-  │     on_progress("backup", i, total)
-  │
-  └─ 5. 应用替换
-        apply_result = apply_final_mapping(final_mapping, backup_dir, dry_run)
-        on_progress("apply", i, total)
+  └─ apply(final_mapping, database, user_config, dry_run, on_progress)
+        ├─ build_backup_dirs(final_mapping, database, user_config)
+        ├─ 逐目录：gate check → apply_final_mapping
+        └─ 拷贝 .kmmbakignore 回源目录
 ```
 
-**dry_run 语义**：当 `dry_run=True` 时，步骤 1-2 正常执行（聚合+计算），步骤 3-4 全部跳过。这意味着 dry_run 完全不触碰磁盘——不备份、不替换。
+### _ws 函数流程
+
+```
+run_ws(workspace_id, dry_run, on_progress)
+  │
+  ├─ compute_ws(workspace_id, on_progress)
+  │     └─ ws.read_aggregated_rule / ws.read_decisions
+  │        → compute(database, ...) → ws.write_mapping / ws.write_svg
+  │
+  ├─ backup_ws(workspace_id, dry_run, on_progress)
+  │     └─ ws.read_mapping / _resolve_database
+  │        → build_backup_dirs → backup(...) → ws.write_backup_dirs
+  │
+  └─ apply_ws(workspace_id, dry_run, on_progress)
+        └─ ws.read_mapping / _resolve_database
+           → apply(...)
+```
 
 ---
 
 ## 五、错误处理
 
 - 任一步骤失败（errors 非空）→ 停止后续步骤，返回当前状态
-- `backup()` 和 `apply()` 需要 `backup_dir` 参数——由调用方（CLI/GUI）决定目录路径
-- orchestrator 不负责生成 `backup_dir` 命名（那是 `backup_dir_builder` 的职责）
+- engine 函数不负责生成 `backup_dir` 命名——内部调 `backup_dir_builder.build_backup_dirs`
+- `_ws` 函数不传 backup_dirs——引擎自己算
+- gate check 失败不阻塞其他 backup_dir 的处理
 
 ---
 
