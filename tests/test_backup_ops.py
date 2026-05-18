@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import TestCase
 
 from modmanager.backup_ops import (
-    _HARDCODED_BACKUP_SKIP_PREFIX,
+    _HARDCODED_BACKUP_SKIP_SUFFIX,
     _collect_backup_original_paths,
     apply_final_mapping,
     build_filefoldertree_with_hashes,
@@ -29,27 +29,42 @@ from modmanager.backup_ops import (
 
 class TestGetGameBackupId(TestCase):
     def test_returns_hex_for_valid_acf(self):
+        """ACF with StateFlags=4 and valid buildid → returns (True, hex, "")."""
         with tempfile.TemporaryDirectory() as tmp:
             acf = Path(tmp) / "appmanifest_270150.acf"
-            acf.write_text('"AppState"\n{\n"appid" "270150"\n"LastUpdated" "1700000000"\n}\n')
-            result = get_game_backup_id(tmp, "270150")
-            self.assertEqual(result, format(1700000000, "x"))
+            acf.write_text('"AppState"\n{\n"appid" "270150"\n"StateFlags" "4"\n"buildid" "22924257"\n}\n')
+            ok, hex_id, warn = get_game_backup_id(tmp, "270150")
+            self.assertTrue(ok)
+            self.assertEqual(hex_id, format(22924257, "x"))
+            self.assertEqual(warn, "")
 
-    def test_returns_zero_for_missing_acf(self):
+    def test_returns_failure_for_missing_acf(self):
+        """Missing ACF → returns (False, None, error)."""
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(get_game_backup_id(tmp, "270150"), "0")
+            ok, hex_id, warn = get_game_backup_id(tmp, "270150")
+            self.assertFalse(ok)
+            self.assertIsNone(hex_id)
+            self.assertIn("E_BACKUP_STATE_UNSTABLE", warn)
 
-    def test_returns_zero_for_missing_field(self):
+    def test_returns_failure_for_missing_stateflags(self):
+        """ACF without StateFlags → returns (False, None, error)."""
         with tempfile.TemporaryDirectory() as tmp:
             acf = Path(tmp) / "appmanifest_270150.acf"
-            acf.write_text('"AppState"\n{\n"appid" "270150"\n}\n')
-            self.assertEqual(get_game_backup_id(tmp, "270150"), "0")
+            acf.write_text('"AppState"\n{\n"appid" "270150"\n"buildid" "22924257"\n}\n')
+            ok, hex_id, warn = get_game_backup_id(tmp, "270150")
+            self.assertFalse(ok)
+            self.assertIsNone(hex_id)
+            self.assertIn("StateFlags", warn)
 
-    def test_returns_zero_for_non_numeric_field(self):
+    def test_returns_failure_for_missing_buildid(self):
+        """ACF without buildid → returns (False, None, error)."""
         with tempfile.TemporaryDirectory() as tmp:
             acf = Path(tmp) / "appmanifest_270150.acf"
-            acf.write_text('"AppState"\n{\n"LastUpdated" "not_a_number"\n}\n')
-            self.assertEqual(get_game_backup_id(tmp, "270150"), "0")
+            acf.write_text('"AppState"\n{\n"appid" "270150"\n"StateFlags" "4"\n}\n')
+            ok, hex_id, warn = get_game_backup_id(tmp, "270150")
+            self.assertFalse(ok)
+            self.assertIsNone(hex_id)
+            self.assertIn("buildid", warn)
 
 
 # ── Phase 8: build_filefoldertree_with_hashes ─────────────────────────────────
@@ -555,7 +570,7 @@ class TestPhase13Governance(TestCase):
 
 class TestLoopProtectionCollectPaths(TestCase):
     def test_loop_protection_collect_paths(self):
-        """_collect_backup_original_paths skips kmmbackup_* directories."""
+        """_collect_backup_original_paths skips *.kmmbackup directories."""
         with tempfile.TemporaryDirectory() as tmp:
             bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
@@ -565,13 +580,13 @@ class TestLoopProtectionCollectPaths(TestCase):
             normal_file = bdir_path / "normal.txt"
             normal_file.write_bytes(b"normal")
 
-            # File inside kmmbackup_* dir that should be skipped
-            skip_dir = bdir_path / f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc"
+            # File inside *.kmmbackup dir that should be skipped
+            skip_dir = bdir_path / f"270150.abc.{_HARDCODED_BACKUP_SKIP_SUFFIX}"
             skip_dir.mkdir()
             (skip_dir / "skipped.txt").write_bytes(b"skipped")
 
-            # Nested kmmbackup_ dir deeper in path
-            nested = bdir_path / "some" / f"{_HARDCODED_BACKUP_SKIP_PREFIX}other"
+            # Nested *.kmmbackup dir deeper in path
+            nested = bdir_path / "some" / f"other.{_HARDCODED_BACKUP_SKIP_SUFFIX}"
             nested.mkdir(parents=True)
             (nested / "nested_skip.txt").write_bytes(b"nested")
 
@@ -583,18 +598,18 @@ class TestLoopProtectionCollectPaths(TestCase):
             self.assertNotIn(f"/some/{nested.name}/nested_skip.txt", paths)
 
     def test_loop_protection_tree_build(self):
-        """build_filefoldertree_with_hashes skips kmmbackup_* sub-directories."""
+        """build_filefoldertree_with_hashes skips *.kmmbackup sub-directories."""
         with tempfile.TemporaryDirectory() as tmp:
             # Normal content
             normal = Path(tmp) / "normal.txt"
             normal.write_bytes(b"normal")
 
-            # kmmbackup_ directory that should be skipped entirely
-            skip_dir = Path(tmp) / f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc"
+            # *.kmmbackup directory that should be skipped entirely
+            skip_dir = Path(tmp) / f"270150.abc.{_HARDCODED_BACKUP_SKIP_SUFFIX}"
             skip_dir.mkdir()
             (skip_dir / "skip.txt").write_bytes(b"skip")
 
-            # Nested kmmbackup_ directory
+            # Normal subdirectory
             nested = Path(tmp) / "subdir" / "keep.txt"
             nested.parent.mkdir(parents=True)
             nested.write_bytes(b"keep")
@@ -604,10 +619,10 @@ class TestLoopProtectionCollectPaths(TestCase):
 
             self.assertIn("normal.txt", child_names)
             self.assertIn("subdir", child_names)
-            self.assertNotIn(f"{_HARDCODED_BACKUP_SKIP_PREFIX}270150_abc", child_names)
+            self.assertNotIn(f"270150.abc.{_HARDCODED_BACKUP_SKIP_SUFFIX}", child_names)
 
     def test_loop_protection_restore_skips_kmmbackup(self):
-        """restore_from_backup skips files inside kmmbackup_* directories."""
+        """restore_from_backup skips files inside *.kmmbackup directories."""
         with tempfile.TemporaryDirectory() as tmp:
             # Create original file to back up
             orig = Path(tmp) / "target" / "file.txt"
@@ -617,25 +632,25 @@ class TestLoopProtectionCollectPaths(TestCase):
             bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
-            # Now add a kmmbackup_ dir inside the backup (simulating nested backup)
+            # Now add a *.kmmbackup dir inside the backup (simulating nested backup)
             bak_path = Path(bdir)
-            rogue = bak_path / f"{_HARDCODED_BACKUP_SKIP_PREFIX}extra" / "rogue.txt"
+            rogue = bak_path / f"extra.{_HARDCODED_BACKUP_SKIP_SUFFIX}" / "rogue.txt"
             rogue.parent.mkdir(parents=True)
             rogue.write_bytes(b"rogue")
 
-            # Also add a kmmbackup_ dir in the original target area
-            rogue_orig = Path(tmp) / "target" / f"{_HARDCODED_BACKUP_SKIP_PREFIX}stuff"
+            # Also add a *.kmmbackup dir in the original target area
+            rogue_orig = Path(tmp) / "target" / f"stuff.{_HARDCODED_BACKUP_SKIP_SUFFIX}"
             rogue_orig.mkdir()
             (rogue_orig / "inner.txt").write_bytes(b"inner")
 
-            # Restore should only restore the original file, skipping kmmbackup_ paths
+            # Restore should only restore the original file, skipping *.kmmbackup paths
             result = restore_from_backup(bdir)
             self.assertTrue(result["ok"])
 
-            # The rogue file inside kmmbackup_ dir should NOT be in restored list
+            # The rogue file inside *.kmmbackup dir should NOT be in restored list
             restored = [r for r in result.get("restored", [])]
             for r in restored:
-                self.assertNotIn(_HARDCODED_BACKUP_SKIP_PREFIX, r)
+                self.assertNotIn(_HARDCODED_BACKUP_SKIP_SUFFIX, r)
 
             # The original file should be restorable
             orig.write_bytes(b"modified")

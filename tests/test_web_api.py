@@ -1005,13 +1005,13 @@ class TestBackupsListApi:
     def test_backups_list_returns_kmmbackup_dirs(
         self, client: TestClient, tmp_path: Path
     ) -> None:
-        """list returns directories with kmmbackup_ prefix."""
-        d1 = tmp_path / "kmmbackup_001"
+        """list returns directories with .kmmbackup suffix."""
+        d1 = tmp_path / "001.kmmbackup"
         d1.mkdir()
         (d1 / "backupinfo.json").write_text("{}")
         (d1 / "somefile.txt").write_text("data")
 
-        d2 = tmp_path / "kmmbackup_002"
+        d2 = tmp_path / "002.kmmbackup"
         d2.mkdir()
         (d2 / "file.bin").write_text("binary")
 
@@ -1023,8 +1023,8 @@ class TestBackupsListApi:
         body = resp.json()
         assert body["ok"] is True
         names = [b["name"] for b in body["data"]["backups"]]
-        assert "kmmbackup_001" in names
-        assert "kmmbackup_002" in names
+        assert "001.kmmbackup" in names
+        assert "002.kmmbackup" in names
         assert "other_dir" not in names
 
     def test_backups_list_dir_not_found(self, client: TestClient) -> None:

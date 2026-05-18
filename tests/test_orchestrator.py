@@ -80,29 +80,27 @@ class TestBackup(TestCase):
     """Tests for backup()."""
 
     def test_backup_no_files(self) -> None:
-        """Empty final_mapping should return ok result with empty backed_up."""
-        result = backup(
-            mapping_result={"final_mapping": []},
-            backup_dir="/nonexistent/backup",
-        )
-        self.assertTrue(result.get("ok"))
-        self.assertEqual(result.get("backed_up"), [])
-        self.assertEqual(result.get("skipped"), [])
+        """Empty final_mapping should raise ValueError (no paths to backup)."""
+        with self.assertRaises(ValueError):
+            backup(
+                final_mapping=[],
+                database={},
+                user_config={},
+            )
 
 
 class TestApply(TestCase):
     """Tests for apply()."""
 
-    def test_apply_dry_run_missing_backup_dir(self) -> None:
-        """Dry-run apply without backup gate should fail."""
-        with tempfile.TemporaryDirectory() as td:
-            result = apply(
+    def test_apply_dry_run_empty_mapping(self) -> None:
+        """Empty final_mapping should raise ValueError (no paths to apply)."""
+        with self.assertRaises(ValueError):
+            apply(
                 final_mapping=[],
-                backup_dir=str(Path(td) / "nonexistent") + "/",
+                database={},
+                user_config={},
                 dry_run=False,
             )
-            self.assertFalse(result.get("ok"))
-            self.assertTrue(len(result.get("errors", [])) > 0)
 
 
 class TestRun(TestCase):
@@ -112,7 +110,6 @@ class TestRun(TestCase):
         """Run pipeline without aggregated_rule_set should return failed PipelineResult."""
         result = run(
             database={},
-            backup_dir="/tmp",
         )
         self.assertFalse(result.ok)
         self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
@@ -122,7 +119,6 @@ class TestRun(TestCase):
         result = run(
             database={"game": [], "mod": []},
             aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
-            backup_dir="/tmp/",
             user_config={"bakprefix": "kmmbackup_"},
             dry_run=True,
         )
@@ -133,7 +129,6 @@ class TestRun(TestCase):
         """run() without aggregated_rule_set → explicit error."""
         result = run(
             database={},
-            backup_dir="/tmp",
         )
         self.assertFalse(result.ok)
         self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
@@ -364,7 +359,6 @@ class TestRunManagedEntries(TestCase):
         result = run(
             database={},
             aggregated_rule_set={},
-            backup_dir="/tmp",
             managed_entries={"game": {"270150": ["/fake/path/"]}},
         )
         self.assertIsNotNone(result)
@@ -374,7 +368,6 @@ class TestRunManagedEntries(TestCase):
         result = run(
             database={},
             aggregated_rule_set={},
-            backup_dir="/tmp",
             managed_entries=None,
         )
         self.assertIsNotNone(result)

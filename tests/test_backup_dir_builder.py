@@ -8,94 +8,83 @@ from unittest import TestCase
 
 from modmanager.backup_dir_builder import (
     build_backup_dir,
+    build_backup_dirs,
     get_custom_backup_id,
-    get_workshop_backup_id,
-    load_bakignore_rules,
+    load_dir_suffixes,
 )
+from modmanager.backup_ops import get_game_backup_id, get_workshop_timestamphex
 
 
-# ── P1-02: get_workshop_backup_id ────────────────────────────────────────────
+# ── P1-02: get_workshop_timestamphex ─────────────────────────────────────────
 
-class TestGetWorkshopBackupId(TestCase):
-    def test_get_workshop_backup_id_success(self):
-        """Format A: WorkshopItemsInstalled -> appid -> timeupdated"""
-        with self.subTest("format A"):
-            with tempfile() as tmp:
-                acf = Path(tmp) / "appworkshop_270150.acf"
-                acf.write_text(
-                    '"WorkshopItemsInstalled"\n'
-                    '{\n'
-                    '    "270150"\n'
-                    '    {\n'
-                    '        "timeupdated" "1700000000"\n'
-                    '    }\n'
-                    '}\n'
-                )
-                result = get_workshop_backup_id(tmp, "270150")
-                self.assertEqual(result, format(1700000000, "x"))
-
-    def test_get_workshop_backup_id_format_b(self):
-        """Format B: WorkshopItemDetails -> index -> timeupdated"""
+class TestGetWorkshopTimestamphex(TestCase):
+    def test_get_workshop_timestamphex_success(self):
+        """Format A: WorkshopItemsInstalled -> appid -> timeupdated, with AppWorkshop wrapper."""
         with tempfile() as tmp:
-            acf = Path(tmp) / "appworkshop_270150.acf"
+            ws = Path(tmp) / "workshop"
+            ws.mkdir()
+            acf = ws / "appworkshop_270150.acf"
             acf.write_text(
-                '"WorkshopItemDetails"\n'
+                '"AppWorkshop"\n'
                 '{\n'
-                '    "0"\n'
+                '    "WorkshopItemsInstalled"\n'
                 '    {\n'
-                '        "publishedfileid" "2606099273"\n'
-                '        "timeupdated" "1800000000"\n'
+                '        "2606099273"\n'
+                '        {\n'
+                '            "timeupdated" "1700000000"\n'
+                '        }\n'
+                '    }\n'
+                '    "WorkshopItemDetails"\n'
+                '    {\n'
+                '        "2606099273"\n'
+                '        {\n'
+                '            "latest_timeupdated" "1700000000"\n'
+                '        }\n'
                 '    }\n'
                 '}\n'
             )
-            result = get_workshop_backup_id(tmp, "270150")
-            self.assertEqual(result, format(1800000000, "x"))
+            ok, hex_id, warning = get_workshop_timestamphex(tmp, "270150", "2606099273")
+            self.assertTrue(ok)
+            self.assertEqual(hex_id, format(1700000000, "x"))
+            self.assertEqual(warning, "")
 
-    def test_get_workshop_backup_id_both_formats_max(self):
-        """Both formats present, should return max timeupdated."""
+    def test_get_workshop_timestamphex_missing(self):
+        """ACF file does not exist → returns failure."""
         with tempfile() as tmp:
-            acf = Path(tmp) / "appworkshop_270150.acf"
+            ok, hex_id, warning = get_workshop_timestamphex(tmp, "999999", "12345")
+            self.assertFalse(ok)
+            self.assertIsNone(hex_id)
+            self.assertIn("SKIPPED", warning)
+
+    def test_get_workshop_timestamphex_version_lagged(self):
+        """T_local < T_remote → unstable, skip."""
+        with tempfile() as tmp:
+            ws = Path(tmp) / "workshop"
+            ws.mkdir()
+            acf = ws / "appworkshop_270150.acf"
             acf.write_text(
-                '"WorkshopItemsInstalled"\n'
+                '"AppWorkshop"\n'
                 '{\n'
-                '    "270150"\n'
+                '    "WorkshopItemsInstalled"\n'
                 '    {\n'
-                '        "timeupdated" "1000000"\n'
+                '        "2606099273"\n'
+                '        {\n'
+                '            "timeupdated" "1000000"\n'
+                '        }\n'
                 '    }\n'
-                '}\n'
-                '"WorkshopItemDetails"\n'
-                '{\n'
-                '    "0"\n'
+                '    "WorkshopItemDetails"\n'
                 '    {\n'
-                '        "publishedfileid" "2606099273"\n'
-                '        "timeupdated" "2000000"\n'
+                '        "2606099273"\n'
+                '        {\n'
+                '            "latest_timeupdated" "2000000"\n'
+                '        }\n'
                 '    }\n'
                 '}\n'
             )
-            result = get_workshop_backup_id(tmp, "270150")
-            self.assertEqual(result, format(2000000, "x"))
-
-    def test_get_workshop_backup_id_missing(self):
-        """File does not exist → returns "0"."""
-        with tempfile() as tmp:
-            result = get_workshop_backup_id(tmp, "999999")
-            self.assertEqual(result, "0")
-
-    def test_get_workshop_backup_id_missing_field(self):
-        """File exists but no timeupdated field → returns "0"."""
-        with tempfile() as tmp:
-            acf = Path(tmp) / "appworkshop_270150.acf"
-            acf.write_text(
-                '"WorkshopItemDetails"\n'
-                '{\n'
-                '    "0"\n'
-                '    {\n'
-                '        "publishedfileid" "2606099273"\n'
-                '    }\n'
-                '}\n'
-            )
-            result = get_workshop_backup_id(tmp, "270150")
-            self.assertEqual(result, "0")
+            ok, hex_id, warning = get_workshop_timestamphex(tmp, "270150", "2606099273")
+            self.assertFalse(ok)
+            self.assertIsNone(hex_id)
+            self.assertIn("VERSION_LAGGED", warning)
 
 
 # ── P1-04: get_custom_backup_id ─────────────────────────────────────────────
@@ -161,7 +150,7 @@ class TestBuildBackupDir(TestCase):
 
             # Create appmanifest for backup_id
             (steamapps / "appmanifest_270150.acf").write_text(
-                '"AppState"\n{\n"appid" "270150"\n"LastUpdated" "1700000000"\n}\n'
+                '"AppState"\n{\n"appid" "270150"\n"StateFlags" "4"\n"buildid" "22924257"\n}\n'
             )
 
             database = {
@@ -171,7 +160,7 @@ class TestBuildBackupDir(TestCase):
             user_config = {}
 
             result = build_backup_dir(final_mapping, database, user_config)
-            expected = f"{common}/kmmbackup_270150_{format(1700000000, 'x')}/"
+            expected = f"{common}/270150.{format(22924257, 'x')}.kmmbackup/"
             self.assertEqual(result, expected)
 
     def test_build_backup_dir_workshop(self):
@@ -188,13 +177,23 @@ class TestBuildBackupDir(TestCase):
             common.mkdir(parents=True)
 
             # Create appworkshop for backup_id
-            (steamapps / "appworkshop_270150.acf").write_text(
-                '"WorkshopItemDetails"\n'
+            (steamapps / "workshop").mkdir(exist_ok=True)
+            (steamapps / "workshop" / "appworkshop_270150.acf").write_text(
+                '"AppWorkshop"\n'
                 '{\n'
-                '    "0"\n'
+                '    "WorkshopItemsInstalled"\n'
                 '    {\n'
-                '        "publishedfileid" "12345"\n'
-                '        "timeupdated" "1800000000"\n'
+                '        "12345"\n'
+                '        {\n'
+                '            "timeupdated" "1800000000"\n'
+                '        }\n'
+                '    }\n'
+                '    "WorkshopItemDetails"\n'
+                '    {\n'
+                '        "12345"\n'
+                '        {\n'
+                '            "latest_timeupdated" "1800000000"\n'
+                '        }\n'
                 '    }\n'
                 '}\n'
             )
@@ -206,7 +205,7 @@ class TestBuildBackupDir(TestCase):
             user_config = {}
 
             result = build_backup_dir(final_mapping, database, user_config)
-            expected = f"{modpath}/kmmbackup_270150_{format(1800000000, 'x')}/"
+            expected = f"{modpath}/12345/12345.{format(1800000000, 'x')}.kmmbackup/"
             self.assertEqual(result, expected)
 
     def test_build_backup_dir_no_appid(self):
@@ -230,7 +229,7 @@ class TestBuildBackupDir(TestCase):
         self.assertIn("E_BACKUP_DIR_BUILD_NO_APPID", str(ctx.exception))
 
     def test_build_backup_dir_custom_bakprefix(self):
-        """user_config provides custom bakprefix."""
+        """user_config provides custom baksuffix."""
         with tempfile() as tmp:
             steamapps = Path(tmp) / "steamapps"
             common = steamapps / "common" / "Game270150"
@@ -240,17 +239,17 @@ class TestBuildBackupDir(TestCase):
             target_file.write_bytes(b"x")
 
             (steamapps / "appmanifest_270150.acf").write_text(
-                '"AppState"\n{\n"appid" "270150"\n"LastUpdated" "1700000000"\n}\n'
+                '"AppState"\n{\n"appid" "270150"\n"StateFlags" "4"\n"buildid" "22924257"\n}\n'
             )
 
             database = {
                 "game": [_make_game("270150", str(common), str(steamapps / "workshop" / "content" / "270150"))]
             }
             final_mapping = [{"path": str(target_file)}]
-            user_config = {"bakprefix": "mybackup_"}
+            user_config = {"baksuffix": "mybackup"}
 
             result = build_backup_dir(final_mapping, database, user_config)
-            expected = f"{common}/mybackup_270150_{format(1700000000, 'x')}/"
+            expected = f"{common}/270150.{format(22924257, 'x')}.mybackup/"
             self.assertEqual(result, expected)
 
     def test_build_backup_dir_mixed_targets(self):
@@ -276,10 +275,10 @@ class TestBuildBackupDir(TestCase):
                 t.write_bytes(b"x")
 
             (steamapps / "appmanifest_270150.acf").write_text(
-                '"AppState"\n{\n"appid" "270150"\n"LastUpdated" "1700000000"\n}\n'
+                '"AppState"\n{\n"appid" "270150"\n"StateFlags" "4"\n"buildid" "22924257"\n}\n'
             )
             (steamapps / "appmanifest_892970.acf").write_text(
-                '"AppState"\n{\n"appid" "892970"\n"LastUpdated" "1600000000"\n}\n'
+                '"AppState"\n{\n"appid" "892970"\n"StateFlags" "4"\n"buildid" "19233942"\n}\n'
             )
 
             database = {
@@ -293,61 +292,29 @@ class TestBuildBackupDir(TestCase):
 
             result = build_backup_dir(final_mapping, database, user_config)
             # Should pick 270150 (2 matches vs 1)
-            expected = f"{common1}/kmmbackup_270150_{format(1700000000, 'x')}/"
+            expected = f"{common1}/270150.{format(22924257, 'x')}.kmmbackup/"
             self.assertEqual(result, expected)
 
 
-# ── P1-06: load_bakignore_rules ─────────────────────────────────────────────
+# ── P1-06: load_dir_suffixes ────────────────────────────────────────────────
 
-class TestLoadBakignoreRules(TestCase):
-    def test_load_bakignore_from_config(self):
-        """user_config contains bakignore list."""
-        user_config = {"bakignore": ["*.log", "temp/"]}
-        with tempfile() as tmp:
-            result = load_bakignore_rules(user_config, tmp)
-            self.assertEqual(result, ["*.log", "temp/"])
+class TestLoadDirSuffixes(TestCase):
+    def test_load_dir_suffixes_default(self):
+        result = load_dir_suffixes({})
+        self.assertEqual(result, [".kmmbackup"])
 
-    def test_load_bakignore_default(self):
-        """No bakignore in config → default ["kmmbackup_"]."""
-        with tempfile() as tmp:
-            result = load_bakignore_rules({}, tmp)
-            self.assertEqual(result, ["kmmbackup_"])
+    def test_load_dir_suffixes_with_custom(self):
+        user_config = {"bakignore": ["test", ".other", "test"]}
+        result = load_dir_suffixes(user_config)
+        self.assertIn(".kmmbackup", result)
+        self.assertIn(".test", result)
+        self.assertIn(".other", result)
+        self.assertEqual(len(result), 3)  # dedup
 
-    def test_load_bakignore_from_file(self):
-        """.kmmbakignore file is parsed correctly."""
-        with tempfile() as tmp:
-            ignore_file = Path(tmp) / ".kmmbakignore"
-            ignore_file.write_text(
-                "# kmm backup ignore rules\n"
-                "*.log\n"
-                "\n"
-                "__pycache__/\n"
-                "temp/\n"
-            )
-            result = load_bakignore_rules({}, tmp)
-            # default "kmmbackup_" from empty config + file rules, deduped
-            self.assertIn("kmmbackup_", result)
-            self.assertIn("*.log", result)
-            self.assertIn("__pycache__/", result)
-            self.assertIn("temp/", result)
-            self.assertEqual(len(result), 4)
-
-    def test_load_bakignore_combined(self):
-        """Config + file rules are merged and deduplicated."""
-        with tempfile() as tmp:
-            ignore_file = Path(tmp) / ".kmmbakignore"
-            ignore_file.write_text("*.log\nkmmbackup_\n")
-            user_config = {"bakignore": ["kmmbackup_", "temp/"]}
-            result = load_bakignore_rules(user_config, tmp)
-            # Both have kmmbackup_, should appear once
-            self.assertEqual(result, ["kmmbackup_", "temp/", "*.log"])
-
-    def test_load_bakignore_file_not_exists(self):
-        """.kmmbakignore missing → only config rules."""
-        with tempfile() as tmp:
-            user_config = {"bakignore": ["*.bak"]}
-            result = load_bakignore_rules(user_config, tmp)
-            self.assertEqual(result, ["*.bak"])
+    def test_load_dir_suffixes_auto_dot(self):
+        user_config = {"bakignore": ["nodot"]}
+        result = load_dir_suffixes(user_config)
+        self.assertIn(".nodot", result)
 
 
 # ── P1-09: loop protection in backup_dir_builder (indirect) ──────────────────
