@@ -67,7 +67,7 @@ _ignore_cache: dict[str, object] = {}
 def _parse_gitignore_file(path: str):
     """用 gitignore-parser 解析 .kmmbakignore，返回判定函数。"""
     import gitignore_parser
-    return gitignore_parser.parse_gitignore_file(path)
+    return gitignore_parser.parse_gitignore(path, base_dir=str(Path(path).parent))
 
 
 def _any_path_component_ends_with(file_path: str, suffixes: list[str]) -> bool:
@@ -88,11 +88,11 @@ def _should_ignore(file_abs: str, contentid_root: str, dir_suffixes: list[str]) 
     if _any_path_component_ends_with(file_abs, dir_suffixes):
         return True
 
-    # gitignore 级联
+    # gitignore 级联：从文件所在目录往上走，最近匹配优先
     file_path = Path(file_abs)
     current = file_path.parent
     content_root_path = Path(contentid_root)
-    matched = False
+
     while current != content_root_path.parent:
         ig = current / ".kmmbakignore"
         if ig.is_file():
@@ -102,22 +102,21 @@ def _should_ignore(file_abs: str, contentid_root: str, dir_suffixes: list[str]) 
                 try:
                     rules = _parse_gitignore_file(ig_str)
                 except Exception:
-                    rules = lambda _: False
+                    rules = lambda _: None
                 _ignore_cache[ig_str] = rules
             try:
-                rel = str(file_path.relative_to(current))
-            except ValueError:
-                rel = file_path.name
-            result = rules(rel)
+                result = rules(str(file_path))
+            except Exception:
+                result = None
             if result is True:
-                matched = True
-            elif result is False:  # ! 否定
-                matched = False
+                return True   # 子目录判定忽略 → 立即生效，不看父级
+            elif result is False:
+                return False  # 子目录否定忽略 → 立即生效，不看父级
         if current == content_root_path:
             break
         current = current.parent
 
-    return matched
+    return False
 
 
 def _copy_kmmbakignore_chain(file_abs: str, contentid_root: str, backup_dir_str: str,
