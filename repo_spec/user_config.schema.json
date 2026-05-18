@@ -16,15 +16,15 @@
             "description": "Schema version string.",
             "type": "string"
         },
-        "bakprefix": {
-            "description": "备份目录名前缀。默认值 'kmmbackup_'。",
+        "baksuffix": {
+            "description": "备份目录名后缀。默认值 'kmmbackup'。目录格式为 {id}.{hex}.{baksuffix}/。",
             "type": "string",
-            "default": "kmmbackup_"
+            "default": "kmmbackup"
         },
         "bakignore": {
-            "description": "备份扫描时忽略的路径/通配模式列表。",
+            "description": "备份扫描时忽略的目录名后缀列表（用于防循环备份）。",
             "type": "array",
-            "default": ["kmmbackup_"],
+            "default": [".kmmbackup"],
             "items": {
                 "type": "string"
             }

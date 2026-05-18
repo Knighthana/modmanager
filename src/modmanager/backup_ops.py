@@ -197,8 +197,16 @@ def _flatten_tree_file_hashes(node: dict[str, Any], prefix: str = "") -> dict[st
     return out
 
 
-def _collect_backup_original_paths(backup_dir: str) -> list[str]:
+def _collect_backup_original_paths(backup_dir: str, content_root: str = "") -> list[str]:
+    """Collect original paths for files in *backup_dir*.
+
+    *content_root* is the root directory under which files were backed up.
+    Defaults to the parent of *backup_dir* (matching ``run_differential_backup``).
+    """
+    if not content_root:
+        content_root = str(Path(backup_dir).parent)
     backup_path = Path(backup_dir)
+    cr = Path(content_root)
     originals: list[str] = []
     for bak_file in sorted(backup_path.rglob("*")):
         if not bak_file.is_file() or bak_file.name == "backupinfo.json":
@@ -207,7 +215,7 @@ def _collect_backup_original_paths(backup_dir: str) -> list[str]:
         # Loop protection: skip files inside *.kmmbackup directories
         if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
             continue
-        original = Path("/") / rel
+        original = cr / rel
         originals.append(_normalized(str(original)))
     return originals
 
@@ -382,11 +390,12 @@ def run_differential_backup(
     *,
     on_progress: Any = None,
     dry_run: bool = False,
+    content_root: str = "",
 ) -> dict[str, Any]:
     """Copy each file in *files_to_backup* (if it exists) into *backup_dir*.
 
-    Files are stored preserving their full absolute path under *backup_dir*
-    (e.g. ``/mnt/d/foo/bar.png`` → ``<backup_dir>/mnt/d/foo/bar.png``).
+    Files are stored relative to *content_root* under *backup_dir*
+    (e.g. ``/mnt/d/contentid/some/file.mod`` → ``<backup_dir>/some/file.mod``).
 
     Calls ``finalize_backup_dir`` after all copies to produce status=ready.
 
@@ -394,6 +403,11 @@ def run_differential_backup(
 
         {"ok": bool, "backed_up": [str], "skipped": [str], "errors": [str]}
     """
+    # Derive content_root from backup_dir if not explicitly given
+    if not content_root:
+        content_root = str(Path(backup_dir).parent)
+    cr = normalize_posix(content_root)
+
     if dry_run:
         would_backup: list[dict[str, Any]] = []
         would_skip: list[dict[str, Any]] = []
@@ -401,9 +415,9 @@ def run_differential_backup(
             if on_progress:
                 on_progress("backup", i + 1, len(files_to_backup), target)
             src = Path(target)
+            norm = normalize_posix(str(src))
+            rel = norm.removeprefix(cr).lstrip("/") if norm.startswith(cr) else norm.lstrip("/")
             if src.exists():
-                norm = normalize_posix(str(src))
-                rel = norm.lstrip("/")
                 is_dir = src.is_dir()
                 trail = "/" if is_dir else ""
                 try:
@@ -444,7 +458,7 @@ def run_differential_backup(
             skipped.append(target)
             continue
         norm = normalize_posix(str(src))
-        rel = norm.lstrip("/")
+        rel = norm.removeprefix(cr).lstrip("/") if norm.startswith(cr) else norm.lstrip("/")
         dest = backup_path / rel
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -623,10 +637,15 @@ def restore_from_backup(
     *,
     on_progress: Any = None,
     dry_run: bool = False,
+    content_root: str = "",
 ) -> dict[str, Any]:
     """Restore files from *backup_dir* back to their original locations.
 
     Files whose SHA256 already matches the backup copy are skipped (no I/O).
+
+    *content_root* is the root directory under which files were backed up
+    (matching ``run_differential_backup``).  Defaults to the parent of
+    *backup_dir* when not supplied.
 
     Args:
         backup_dir: Path to backup directory; gate must pass.
@@ -644,6 +663,10 @@ def restore_from_backup(
                     "warnings": [str],
                 }
     """
+    if not content_root:
+        content_root = str(Path(backup_dir).parent)
+    cr = Path(content_root)
+
     assert_directory_path(backup_dir, label="backup_dir")
     gate_errors = check_backup_gate(backup_dir)
     if gate_errors:
@@ -669,7 +692,7 @@ def restore_from_backup(
             rel = bak_file.relative_to(backup_path)
             if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
                 continue
-            original = Path("/") / rel
+            original = cr / rel
             orig_norm = normalize_posix(str(original))
             if target_set is not None and orig_norm not in target_set:
                 would_skip.append({"path": str(original), "reason": "not in target set"})
@@ -725,7 +748,7 @@ def restore_from_backup(
         # Loop protection: skip files inside *.kmmbackup directories
         if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
             continue
-        original = Path("/") / rel
+        original = cr / rel
         orig_norm = normalize_posix(str(original))
 
         if target_set is not None and orig_norm not in target_set:
@@ -745,7 +768,7 @@ def restore_from_backup(
         except OSError as exc:
             errors.append(f"E_RESTORE_COPY_FAILED: {original}: {exc}")
 
-    originals = _collect_backup_original_paths(backup_dir)
+    originals = _collect_backup_original_paths(backup_dir, content_root)
     orphans = _list_orphans(backup_dir, originals, target_set)
     warnings.extend([f"E_EXTERNAL_FILE_ORPHAN: {p}" for p in orphans])
 

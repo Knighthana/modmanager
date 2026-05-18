@@ -212,6 +212,8 @@ def test_backup_dry_run(fixture_dir, sample_database, sample_user_config, sample
     entry = result["backed_up"][0]
     assert entry["action"] == "copy"
     assert "backup_path" in entry
+    # backup_path should be relative to contentid root, not absolute
+    assert entry["backup_path"] == "some/file.mod"
     assert "size" in entry
     assert "mtime" in entry
     assert "is_dir" in entry

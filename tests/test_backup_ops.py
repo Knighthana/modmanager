@@ -276,8 +276,8 @@ class TestRunDifferentialBackup(TestCase):
             result = run_differential_backup(bdir, [str(src_dir)])
 
             self.assertTrue(result["ok"])
-            self.assertTrue((Path(bdir) / Path(str(src_dir)).as_posix().lstrip("/") / "a.txt").exists())
-            self.assertTrue((Path(bdir) / Path(str(src_dir)).as_posix().lstrip("/") / "nested" / "b.txt").exists())
+            self.assertTrue((Path(bdir) / "orig" / "dir1" / "a.txt").exists())
+            self.assertTrue((Path(bdir) / "orig" / "dir1" / "nested" / "b.txt").exists())
 
 
 # ── Phase 11: apply_final_mapping ────────────────────────────────────────────
@@ -532,7 +532,7 @@ class TestPhase13Governance(TestCase):
             bdir = str(Path(tmp) / "backup") + "/"
             run_differential_backup(bdir, [str(orig)])
 
-            mirrored = Path(bdir) / str(orig).lstrip("/")
+            mirrored = Path(bdir) / "orig" / "x.txt"
             mirrored.write_bytes(b"tampered")
 
             result = inspect_conflict(bdir)
@@ -593,9 +593,9 @@ class TestLoopProtectionCollectPaths(TestCase):
             result = _collect_backup_original_paths(bdir)
             paths = [p for p in result]
 
-            self.assertIn("/normal.txt", paths)
-            self.assertNotIn(f"/{skip_dir.name}/skipped.txt", paths)
-            self.assertNotIn(f"/some/{nested.name}/nested_skip.txt", paths)
+            self.assertIn(str(Path(tmp) / "normal.txt"), paths)
+            self.assertNotIn(str(Path(tmp) / skip_dir.name / "skipped.txt"), paths)
+            self.assertNotIn(str(Path(tmp) / "some" / nested.name / "nested_skip.txt"), paths)
 
     def test_loop_protection_tree_build(self):
         """build_filefoldertree_with_hashes skips *.kmmbackup sub-directories."""
