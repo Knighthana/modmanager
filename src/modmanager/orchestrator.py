@@ -6,8 +6,12 @@ Provides:
   - ``compute()``  — aggregate rules → compute mapping.
   - ``backup()``   — differential backup of mapped files.
   - ``apply()``    — apply the final mapping to disk.
+  - ``restore()``  — restore files from backup (engine primitive).
   - ``run()``      — full pipeline (aggregate → compute → backup → apply).
   - ``compute_ws()`` — workspace-aware compute (reads rules/decisions from workspace).
+  - ``backup_ws()``  — workspace-aware backup.
+  - ``apply_ws()``   — workspace-aware apply.
+  - ``restore_ws()`` — workspace-aware restore.
   - ``run_ws()``     — workspace-aware full pipeline.
 """
 
@@ -16,18 +20,27 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
-from .backup_dir_builder import build_backup_dir, build_backup_dirs
-from .backup_ops import apply_final_mapping, check_backup_gate, run_differential_backup
+from .backup_dir_builder import build_backup_dirs
+from .backup_ops import (
+    _flatten_tree_file_hashes,
+    _sha256_file,
+    apply_final_mapping,
+    check_backup_gate,
+    load_backup_info,
+    run_differential_backup,
+)
 from .bootstrap import discover_user_config
 from .core.workspacemanager import WorkspaceManager
 from .engine import compute_mapping
 from .iojson import load_json_file
 from .path_resolver import expand_path
+from .paths import normalize_posix
 
 
 __all__ = [
@@ -36,11 +49,13 @@ __all__ = [
     "compute",
     "backup",
     "apply",
+    "restore",
     "run",
     "compute_ws",
-    "run_ws",
     "backup_ws",
     "apply_ws",
+    "restore_ws",
+    "run_ws",
 ]
 
 
@@ -148,6 +163,7 @@ class PipelineResult:
     mapping_result: dict[str, Any] = field(default_factory=dict)
     backup_result: dict[str, Any] | None = None
     apply_result: dict[str, Any] | None = None
+    restore_result: dict[str, Any] | None = None
     backup_dir: str | None = None
 
 
@@ -216,37 +232,46 @@ def compute(
 
 
 def backup(
-    mapping_result: dict[str, Any],
-    backup_dirs: dict[str, list[str]],
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
     *,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """对 final_mapping 中的文件执行差异备份。
 
+    内部调用 ``build_backup_dirs`` 推导备份目录，遍历各目录
+    执行 ``run_differential_backup``，聚合结果。
+
     Args:
-        mapping_result: The raw result dict from ``compute_mapping``.
-        backup_dirs: {backup_dir: [file_paths]} 从 build_backup_dirs 获取
+        final_mapping: ``final_mapping`` list from ``compute_mapping``.
+        database: Game database dict.
+        user_config: User configuration dict.
         dry_run: When ``True`` only report what would be backed up.
         on_progress: Optional progress callback.
 
     Returns:
-        The result dict from ``run_differential_backup``.
+        Result dict with ``ok``, ``backed_up``, ``skipped``, ``errors``,
+        ``warnings``, ``dry_run``.
     """
+    backup_dirs, dir_warnings = build_backup_dirs(final_mapping, database, user_config)
+
     all_backed_up: list[str] = []
     all_skipped: list[str] = []
     all_errors: list[str] = []
+    all_warnings: list[str] = list(dir_warnings)
     total_files = sum(len(files) for files in backup_dirs.values())
     processed = 0
 
-    for backup_dir, files in backup_dirs.items():
+    for backup_dir_str, files in backup_dirs.items():
         if not files:
             continue
         if on_progress is not None:
-            on_progress("backup", processed, total_files, backup_dir)
+            on_progress("backup", processed, total_files, backup_dir_str)
 
         result = run_differential_backup(
-            backup_dir, files,
+            backup_dir_str, files,
             on_progress=on_progress,
             dry_run=dry_run,
         )
@@ -263,45 +288,174 @@ def backup(
         "backed_up": all_backed_up,
         "skipped": all_skipped,
         "errors": all_errors,
+        "warnings": all_warnings,
         "dry_run": dry_run,
     }
 
 
 def apply(
     final_mapping: list[dict[str, Any]],
-    backup_dir: str | None = None,
+    database: dict[str, Any],
+    user_config: dict[str, Any],
     *,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    """Apply the final mapping to disk.
+    """执行 final_mapping 的磁盘替换。
 
-    Calls ``apply_final_mapping`` after verifying the backup gate.
+    内部调用 ``build_backup_dirs`` 推导备份目录，对每个目录
+    独立做 gate check。gate 通过 → 滤出属于该目录的 mapping 条目
+    → ``apply_final_mapping``。gate 失败 → 跳过该目录，记录警告。
 
     Args:
-        final_mapping: The ``final_mapping`` list from ``compute_mapping``.
-        backup_dir: Path to the backup directory (gate check).
-        dry_run: When ``True`` only check the gate, do not modify files.
+        final_mapping: ``final_mapping`` list from ``compute_mapping``.
+        database: Game database dict.
+        user_config: User configuration dict.
+        dry_run: When ``True`` only check gates, do not modify files.
         on_progress: Optional progress callback.
 
     Returns:
-        The result dict from ``apply_final_mapping``.
+        Result dict with ``ok``, ``applied``, ``skipped``, ``errors``,
+        ``warnings``, ``dry_run``.
     """
-    if on_progress is not None:
-        on_progress("apply", 0, 1, "Applying final mapping...")
+    backup_dirs, dir_warnings = build_backup_dirs(final_mapping, database, user_config)
 
-    result = apply_final_mapping(final_mapping, backup_dir, dry_run=dry_run, on_progress=on_progress)
+    all_applied: list[str] = []
+    all_skipped: list[str] = []
+    all_errors: list[str] = []
+    all_warnings: list[str] = list(dir_warnings)
 
-    if on_progress is not None:
-        on_progress("apply", 1, 1, "Apply complete")
+    for backup_dir_str, dir_files in backup_dirs.items():
+        gate_errors = check_backup_gate(backup_dir_str)
+        if gate_errors:
+            all_warnings.append(
+                f"W_BACKUP_GATE_FAILED: {backup_dir_str}: {'; '.join(gate_errors)}"
+            )
+            continue
 
-    return result
+        path_set = set(dir_files)
+        dir_entries = [e for e in final_mapping if e.get("path") in path_set]
+        if not dir_entries:
+            continue
+
+        result = apply_final_mapping(
+            dir_entries, backup_dir_str,
+            dry_run=dry_run,
+            on_progress=on_progress,
+        )
+        all_applied.extend(result.get("applied", []))
+        all_skipped.extend(result.get("skipped", []))
+        all_errors.extend(result.get("errors", []))
+
+    return {
+        "ok": not all_errors,
+        "applied": all_applied,
+        "skipped": all_skipped,
+        "errors": all_errors,
+        "warnings": all_warnings,
+        "dry_run": dry_run,
+    }
+
+
+def restore(
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
+    *,
+    force: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
+    """根据 final_mapping 恢复文件。
+
+    独立原语，与 ``backup`` 解耦。内部调用 ``build_backup_dirs``
+    推导备份目录，对每个目录读 ``backupinfo.json`` 中的 filefoldertree，
+    按 force 标志决定是否比对 HASH。
+
+    Args:
+        final_mapping: ``final_mapping`` list from ``compute_mapping``.
+        database: Game database dict.
+        user_config: User configuration dict.
+        force: When ``True`` skip HASH comparison and overwrite unconditionally.
+        on_progress: Optional progress callback.
+
+    Returns:
+        Result dict with ``ok``, ``restored``, ``skipped``, ``errors``,
+        ``warnings``, ``force``.
+    """
+    backup_dirs, dir_warnings = build_backup_dirs(final_mapping, database, user_config)
+
+    all_restored: list[str] = []
+    all_skipped: list[str] = []
+    all_errors: list[str] = []
+    all_warnings: list[str] = list(dir_warnings)
+    total_files = sum(len(files) for files in backup_dirs.values())
+    processed = 0
+
+    for backup_dir_str, dir_files in backup_dirs.items():
+        if not dir_files:
+            continue
+
+        # Gate check
+        gate_errors = check_backup_gate(backup_dir_str)
+        if gate_errors:
+            all_warnings.append(
+                f"W_BACKUP_GATE_FAILED: {backup_dir_str}: {'; '.join(gate_errors)}"
+            )
+            processed += len(dir_files)
+            continue
+
+        # Load backup tree
+        info = load_backup_info(backup_dir_str)
+        tree = info.get("filefoldertree") if isinstance(info, dict) else None
+        flat_hashes = _flatten_tree_file_hashes(tree) if isinstance(tree, dict) else {}
+
+        for target in dir_files:
+            processed += 1
+            if on_progress:
+                on_progress("restore", processed, total_files, target)
+
+            norm = normalize_posix(target)
+            rel = norm.lstrip("/")
+            src = Path(target)
+            bak_file = Path(backup_dir_str) / rel
+
+            if not bak_file.exists():
+                all_skipped.append(target)
+                continue
+
+            if not force:
+                # Compare HASH — skip if identical
+                if src.exists():
+                    try:
+                        src_hash = _sha256_file(src)
+                        bak_hash = _sha256_file(bak_file)
+                        if src_hash == bak_hash and src_hash != "0":
+                            all_skipped.append(target)
+                            continue
+                    except Exception:
+                        pass
+
+            # Copy from backup to original location
+            try:
+                src.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(bak_file), str(src))
+                all_restored.append(target)
+            except OSError as exc:
+                all_errors.append(f"E_RESTORE_COPY_FAILED: {target}: {exc}")
+
+    return {
+        "ok": not all_errors,
+        "restored": all_restored,
+        "skipped": all_skipped,
+        "errors": all_errors,
+        "warnings": all_warnings,
+        "force": force,
+    }
 
 
 def run(
     database: dict,
     *,
-    backup_dir: str | None = None,
     aggregated_rule_set: dict | None = None,
     user_config: dict[str, Any] | None = None,
     action_orders: dict[str, int] | None = None,
@@ -318,12 +472,10 @@ def run(
 
     Args:
         database: Game database dict.
-        backup_dir: Target backup directory.  When ``None`` (default) the
-            path is automatically derived via ``build_backup_dir()``.
         aggregated_rule_set: Pre-aggregated rule set dict. When ``None``,
             returns an error.
-        user_config: User configuration dict (for auto-derivation fallback).
-            When ``None``, defaults to ``{"baksuffix": "kmmbackup"}``.
+        user_config: User configuration dict. When ``None``, defaults to
+            ``{"baksuffix": "kmmbackup"}``.
         action_orders: Optional ``{mixed_id: int}`` overrides.
         branch_decisions: Optional explicit branch decisions.
         managed_entries: Optional dict to filter database entries before
@@ -334,6 +486,8 @@ def run(
     Returns:
         A ``PipelineResult`` with all intermediate results populated.
     """
+    resolved_user_config = user_config or {"baksuffix": "kmmbackup"}
+
     # ── Step 1: Compute ───────────────────────────────────────────────────
     compute_result = compute(
         database,
@@ -360,24 +514,11 @@ def run(
             apply_result=None,
         )
 
-    # ── Step 1.5: Auto-derive backup_dirs if not provided ────────────────
-    resolved_backup_dirs: dict[str, list[str]] | None = None
-    if backup_dir is not None:
-        # Old single backup_dir provided — wrap into dict (all files in one dir)
-        files = [e["path"] for e in compute_result.final_mapping if e.get("path")]
-        resolved_backup_dirs = {backup_dir: files}
-    else:
-        resolved_backup_dirs, _dir_warnings = build_backup_dirs(
-            compute_result.final_mapping,
-            database,
-            user_config or {"baksuffix": "kmmbackup"},
-        )
-    first_dir = next(iter(resolved_backup_dirs.keys()), None) if resolved_backup_dirs else None
-
     # ── Step 2: Backup ────────────────────────────────────────────────────
     backup_result = backup(
-        compute_result.mapping_result,
-        resolved_backup_dirs,
+        compute_result.final_mapping,
+        database,
+        resolved_user_config,
         on_progress=on_progress,
     )
 
@@ -401,7 +542,8 @@ def run(
     # ── Step 3: Apply ─────────────────────────────────────────────────────
     apply_result = apply(
         compute_result.final_mapping,
-        first_dir,
+        database,
+        resolved_user_config,
         dry_run=dry_run,
         on_progress=on_progress,
     )
@@ -435,7 +577,6 @@ def run(
         mapping_result=compute_result.mapping_result,
         backup_result=backup_result,
         apply_result=apply_result,
-        backup_dir=first_dir,
     )
 
 
@@ -546,7 +687,6 @@ def compute_ws(
 def run_ws(
     workspace_id: str,
     *,
-    backup_dir: str | None = None,
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> PipelineResult:
@@ -557,14 +697,13 @@ def run_ws(
 
     Args:
         workspace_id: Target workspace identifier.
-        backup_dir: Target backup directory.  ``None`` → auto-derived.
         dry_run: When ``True`` skip actual file modifications.
         on_progress: Optional progress callback.
 
     Returns:
         A ``PipelineResult`` with all intermediate results populated.
     """
-    # ── Compute ───────────────────────────────────────────────────────
+    # ── Compute (workspace-aware, writes mapping + SVG) ───────────────
     compute_result = compute_ws(workspace_id=workspace_id, on_progress=on_progress)
 
     if not compute_result.ok:
@@ -573,28 +712,17 @@ def run_ws(
     if dry_run:
         return compute_result
 
-    # ── Resolve backup dirs ───────────────────────────────────────────
+    # ── Resolve database ──────────────────────────────────────────────
     user_config = discover_user_config()
     wm = _get_workspace_manager(user_config)
     meta = wm.read_meta(workspace_id)
     database = _resolve_database(meta["database_name"], user_config)
 
-    resolved_backup_dirs: dict[str, list[str]] | None = None
-    if backup_dir is not None:
-        files = [e["path"] for e in compute_result.final_mapping if e.get("path")]
-        resolved_backup_dirs = {backup_dir: files}
-    else:
-        resolved_backup_dirs, _dir_warnings = build_backup_dirs(
-            compute_result.final_mapping,
-            database,
-            user_config,
-        )
-    first_dir = next(iter(resolved_backup_dirs.keys()), None) if resolved_backup_dirs else None
-
     # ── Backup ────────────────────────────────────────────────────────
     backup_result = backup(
-        compute_result.mapping_result,
-        resolved_backup_dirs,
+        compute_result.final_mapping,
+        database,
+        user_config,
         on_progress=on_progress,
     )
 
@@ -615,23 +743,29 @@ def run_ws(
     # ── Apply ─────────────────────────────────────────────────────────
     apply_result = apply(
         compute_result.final_mapping,
-        first_dir,
+        database,
+        user_config,
         dry_run=dry_run,
         on_progress=on_progress,
     )
 
+    all_errors = list(compute_result.errors)
+    all_warnings = list(compute_result.warnings)
+    if apply_result:
+        ae = apply_result.get("errors", [])
+        all_errors.extend(ae if isinstance(ae, list) else [str(ae)])
+        aw = apply_result.get("warnings", [])
+        all_warnings.extend(aw if isinstance(aw, list) else [str(aw)])
+
     return PipelineResult(
-        ok=not any(
-            compute_result.errors
-        ),
-        errors=list(compute_result.errors),
-        warnings=list(compute_result.warnings),
+        ok=not any(all_errors),
+        errors=all_errors,
+        warnings=all_warnings,
         trees=compute_result.trees,
         final_mapping=compute_result.final_mapping,
         mapping_result=compute_result.mapping_result,
         backup_result=backup_result,
         apply_result=apply_result,
-        backup_dir=first_dir,
     )
 
 
@@ -643,8 +777,8 @@ def backup_ws(
 ) -> PipelineResult:
     """Run differential backup in a workspace context.
 
-    Reads mapping from the workspace, auto-derives backup_dir, runs
-    differential backup, and stores the backup_dir back to the workspace.
+    Reads mapping from the workspace, delegates to ``backup()`` engine,
+    and stores the backup dirs mapping back to the workspace.
 
     Args:
         workspace_id: Target workspace identifier.
@@ -680,17 +814,19 @@ def backup_ws(
     except Exception as exc:
         return PipelineResult(ok=False, errors=[str(exc)])
 
-    # ── Auto-derive backup_dirs ───────────────────────────────────────
     final_mapping = mapping_result.get("final_mapping", [])
+
+    # ── Derive backup_dirs for storage ────────────────────────────────
     try:
         backup_dirs, dir_warnings = build_backup_dirs(final_mapping, database, user_config)
     except ValueError as exc:
         return PipelineResult(ok=False, errors=[str(exc)])
 
-    # ── Run backup ────────────────────────────────────────────────────
+    # ── Delegate to engine ────────────────────────────────────────────
     backup_result = backup(
-        mapping_result=mapping_result,
-        backup_dirs=backup_dirs,
+        final_mapping,
+        database,
+        user_config,
         dry_run=dry_run,
         on_progress=on_progress,
     )
@@ -700,11 +836,9 @@ def backup_ws(
     if isinstance(backup_result.get("warnings"), list):
         all_warnings.extend(backup_result["warnings"])
 
-    # ── Store backup_dirs mapping in workspace for apply / restore ────
+    # ── Store backup_dirs mapping in workspace ────────────────────────
     if backup_result.get("ok") and not dry_run:
         wm.write_backup_dirs(workspace_id, backup_dirs)
-
-    first_dir = next(iter(backup_dirs.keys()), None) if backup_dirs else None
 
     return PipelineResult(
         ok=backup_result.get("ok", False),
@@ -713,7 +847,6 @@ def backup_ws(
         final_mapping=final_mapping,
         mapping_result=mapping_result,
         backup_result=backup_result,
-        backup_dir=first_dir,
     )
 
 
@@ -725,9 +858,7 @@ def apply_ws(
 ) -> PipelineResult:
     """Apply the final mapping to disk in a workspace context.
 
-    Reads mapping and stored backup_dir from the workspace, then applies
-    the final mapping to disk.  When *dry_run* is ``True`` only the gate
-    check is performed without modifying files.
+    Reads mapping from the workspace, delegates to ``apply()`` engine.
 
     Args:
         workspace_id: Target workspace identifier.
@@ -753,68 +884,80 @@ def apply_ws(
         )
     mapping_result = wm.read_mapping(workspace_id)
 
-    # ── Resolve backup_dirs mapping ───────────────────────────────────
-    backup_dirs = wm.read_backup_dirs(workspace_id)
-    if not backup_dirs:
-        # auto-derive if not stored (backup may not have run)
-        meta = wm.read_meta(workspace_id)
-        database_name = meta["database_name"]
-        try:
-            database = _resolve_database(database_name, user_config)
-        except Exception as exc:
-            return PipelineResult(ok=False, errors=[str(exc)])
-        final_mapping = mapping_result.get("final_mapping", [])
-        try:
-            backup_dirs, _warnings = build_backup_dirs(final_mapping, database, user_config)
-        except ValueError as exc:
-            return PipelineResult(ok=False, errors=[str(exc)])
+    # ── Resolve and load database ─────────────────────────────────────
+    meta = wm.read_meta(workspace_id)
+    try:
+        database = _resolve_database(meta["database_name"], user_config)
+    except Exception as exc:
+        return PipelineResult(ok=False, errors=[str(exc)])
 
-    # ── Run apply per backup_dir (FIFO, independent gate check) ────────
     final_mapping = mapping_result.get("final_mapping", [])
-    all_applied: list[str] = []
-    all_skipped: list[str] = []
-    all_errors: list[str] = []
-    all_warnings: list[str] = []
 
-    for backup_dir, dir_files in backup_dirs.items():
-        # Gate check for this backup_dir
-        gate_errors = check_backup_gate(backup_dir)
-        if gate_errors:
-            all_warnings.append(f"W_BACKUP_GATE_FAILED: {backup_dir}: {'; '.join(gate_errors)}")
-            continue
+    # ── Delegate to engine ────────────────────────────────────────────
+    apply_result = apply(
+        final_mapping,
+        database,
+        user_config,
+        dry_run=dry_run,
+        on_progress=on_progress,
+    )
 
-        # Filter final_mapping entries belonging to this backup_dir
-        path_set = set(dir_files)
-        dir_entries = [e for e in final_mapping if e.get("path") in path_set]
-
-        if not dir_entries:
-            continue
-
-        apply_result = apply(
-            final_mapping=dir_entries,
-            backup_dir=backup_dir,
-            dry_run=dry_run,
-            on_progress=on_progress,
-        )
-
-        all_applied.extend(apply_result.get("applied", []))
-        all_skipped.extend(apply_result.get("skipped", []))
-        all_errors.extend(apply_result.get("errors", []))
-
-    ok = not all_errors
     return PipelineResult(
-        ok=ok,
-        errors=all_errors,
-        warnings=all_warnings,
+        ok=apply_result.get("ok", False),
+        errors=apply_result.get("errors", []),
+        warnings=apply_result.get("warnings", []),
         final_mapping=final_mapping,
         mapping_result=mapping_result,
-        apply_result={
-            "ok": ok,
-            "applied": all_applied,
-            "skipped": all_skipped,
-            "errors": all_errors,
-            "dry_run": dry_run,
-        },
+        apply_result=apply_result,
+    )
+
+
+def restore_ws(
+    workspace_id: str,
+    *,
+    force: bool = False,
+    on_progress: ProgressCallback | None = None,
+) -> PipelineResult:
+    """从备份恢复文件（工作区感知）。
+
+    加载工作区上下文，委托 ``restore()`` 执行。
+
+    Args:
+        workspace_id: Target workspace identifier.
+        force: When ``True`` skip HASH comparison and overwrite unconditionally.
+        on_progress: Optional progress callback.
+
+    Returns:
+        A ``PipelineResult``.
+    """
+    user_config = discover_user_config()
+    wm = _get_workspace_manager(user_config)
+
+    if not wm.exists(workspace_id):
+        return PipelineResult(ok=False, errors=[f"workspace '{workspace_id}' not found"])
+    if not wm.has_mapping(workspace_id):
+        return PipelineResult(ok=False, errors=["no mapping in workspace — compute first"])
+
+    mapping_result = wm.read_mapping(workspace_id)
+    meta = wm.read_meta(workspace_id)
+    try:
+        database = _resolve_database(meta["database_name"], user_config)
+    except Exception as exc:
+        return PipelineResult(ok=False, errors=[str(exc)])
+
+    final_mapping = mapping_result.get("final_mapping", [])
+    restore_result = restore(
+        final_mapping, database, user_config,
+        force=force, on_progress=on_progress,
+    )
+
+    return PipelineResult(
+        ok=restore_result.get("ok", False),
+        errors=restore_result.get("errors", []),
+        warnings=restore_result.get("warnings", []),
+        final_mapping=final_mapping,
+        mapping_result=mapping_result,
+        restore_result=restore_result,
     )
 
 

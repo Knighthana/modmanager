@@ -523,7 +523,7 @@ async function doRestore() {
   progress.value = { step: 'restore', finished: 0, total: -1, message: '准备中...' }
 
   await streamSse(`/workspace/${workspaceId.value}/pipeline/restore`, {
-    dry_run: dryRun.value,
+    force: false,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p
@@ -532,20 +532,14 @@ async function doRestore() {
       const result = data as Record<string, any>
       const restored = result?.data?.restored || []
       const skipped = result?.data?.skipped || []
-      const errs: string[] = result?.errors || []
+      const errs: string[] = result?.errors || result?.data?.restore_errors || []
       const warns: string[] = result?.warnings || []
-      const isDry = result?.data?.dry_run
       operationWarnings.value = warns
       operationErrors.value = errs
-      if (isDry && restored.length > 0) {
-        dryRunEntries.value = restored
-        dryRunOperation.value = 'restore'
-      }
-      const prefix = isDry ? '[dry-run] ' : ''
       if (errs.length > 0) {
-        ElMessage.warning(`${prefix}恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
+        ElMessage.warning(`恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
       } else {
-        ElMessage.success(`${prefix}恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过`)
+        ElMessage.success(`恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过`)
       }
       operating.value = null
     },

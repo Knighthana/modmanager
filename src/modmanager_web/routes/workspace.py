@@ -9,13 +9,12 @@ from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import Response, StreamingResponse
-from modmanager.backup_ops import restore_from_backup
 from modmanager.bootstrap import discover_user_config
 from modmanager.core.workspacemanager import WorkspaceManager
-from modmanager.orchestrator import backup_ws, apply_ws, compute_ws, run_ws
+from modmanager.orchestrator import backup_ws, apply_ws, compute_ws, restore_ws, run_ws
 from modmanager.path_resolver import expand_path
 
-from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result, adapt_restore_result
+from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
 from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
 from ..sse import stream_with_progress
 from modmanager.rule_aggregator import aggregate as rule_aggregate
@@ -336,47 +335,26 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
 
 @router.post("/{workspace_id}/pipeline/restore")
 async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
-    """Restore files from a backup directory in workspace context.
+    """Restore files from backup in workspace context.
 
-    Reads the stored backup_dir from workspace meta and restores all files.
+    Delegates to ``restore_ws()`` which loads workspace context and
+    delegates to the ``restore()`` engine function.
 
     SSE events:
       - ``progress`` — per-file restore progress
       - ``result``   — restore result in ``ApiResponse`` format
       - ``error``    — exception information
     """
-    wm = _get_workspace_manager()
-    if not wm.exists(workspace_id):
-        return adapt_error(f"workspace '{workspace_id}' not found")
-
-    backup_dirs = wm.read_backup_dirs(workspace_id)
-    if not backup_dirs:
-        return adapt_error("no backup_dir stored in workspace — run backup first")
 
     def do_work(*, on_progress):
-        errors: list[str] = []
-        restored_all: list[str] = []
-        skipped_all: list[str] = []
-        for backup_dir in backup_dirs:
-            result = restore_from_backup(
-                backup_dir=backup_dir,
-                target_files=None,
-                dry_run=req.dry_run,
-                on_progress=on_progress,
-            )
-            restored_all.extend(result.get("restored", []))
-            skipped_all.extend(result.get("skipped", []))
-            errors.extend(result.get("errors", []))
-        return {
-            "ok": not errors,
-            "restored": restored_all,
-            "skipped": skipped_all,
-            "errors": errors,
-            "dry_run": req.dry_run,
-        }
+        return restore_ws(
+            workspace_id=workspace_id,
+            force=req.force,
+            on_progress=on_progress,
+        )
 
     return StreamingResponse(
-        stream_with_progress(do_work, result_adapter=adapt_restore_result),
+        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

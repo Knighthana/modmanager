@@ -46,6 +46,14 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
     if stats:
         data["stats"] = stats
 
+    # ── Include restore_result fields when present ──────────────────────
+    if pr.restore_result:
+        data["restored"] = pr.restore_result.get("restored", [])
+        data["skipped"] = pr.restore_result.get("skipped", [])
+        if pr.restore_result.get("force"):
+            data["force"] = True
+        data["restore_errors"] = pr.restore_result.get("errors", [])
+
     if pr.backup_dir:
         data["backup_dir"] = pr.backup_dir
 
