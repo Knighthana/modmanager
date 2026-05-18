@@ -404,24 +404,26 @@ def run_differential_backup(
             if src.exists():
                 norm = normalize_posix(str(src))
                 rel = norm.lstrip("/")
+                is_dir = src.is_dir()
+                trail = "/" if is_dir else ""
                 try:
                     st = src.stat()
                     would_backup.append({
                         "action": "copy",
-                        "path": target,
-                        "backup_path": rel,
+                        "path": target + trail,
+                        "backup_path": rel + trail,
                         "size": st.st_size,
                         "mtime": st.st_mtime,
-                        "is_dir": src.is_dir(),
+                        "is_dir": is_dir,
                     })
                 except OSError:
                     would_backup.append({
                         "action": "copy",
-                        "path": target,
-                        "backup_path": rel,
+                        "path": target + trail,
+                        "backup_path": rel + trail,
                         "size": 0,
                         "mtime": 0,
-                        "is_dir": False,
+                        "is_dir": is_dir,
                     })
             else:
                 would_skip.append({"path": target, "reason": "source not found"})
@@ -501,23 +503,25 @@ def apply_final_mapping(
                 continue
             if action == "delete":
                 t = Path(target)
+                is_dir = t.is_dir() if t.exists() else False
+                trail = "/" if is_dir else ""
                 if t.exists():
                     try:
                         st = t.stat()
                         would_apply.append({
                             "action": "delete",
-                            "target": target,
+                            "target": target + trail,
                             "size": st.st_size,
                             "mtime": st.st_mtime,
-                            "is_dir": t.is_dir(),
+                            "is_dir": is_dir,
                         })
                     except OSError:
                         would_apply.append({
                             "action": "delete",
-                            "target": target,
+                            "target": target + trail,
                             "size": 0,
                             "mtime": 0,
-                            "is_dir": False,
+                            "is_dir": is_dir,
                         })
                 else:
                     would_skip.append({"action": "delete", "target": target, "reason": "target not found"})
@@ -529,24 +533,26 @@ def apply_final_mapping(
             if not src_path.exists():
                 would_errors.append(f"E_SOURCE_NOT_FOUND: {source}")
                 continue
+            is_dir = src_path.is_dir()
+            trail = "/" if is_dir else ""
             try:
                 st = src_path.stat()
                 would_apply.append({
                     "action": action,
-                    "source": source,
-                    "target": target,
+                    "source": source + trail,
+                    "target": target + trail,
                     "size": st.st_size,
                     "mtime": st.st_mtime,
-                    "is_dir": src_path.is_dir(),
+                    "is_dir": is_dir,
                 })
             except OSError:
                 would_apply.append({
                     "action": action,
-                    "source": source,
-                    "target": target,
+                    "source": source + trail,
+                    "target": target + trail,
                     "size": 0,
                     "mtime": 0,
-                    "is_dir": False,
+                    "is_dir": is_dir,
                 })
         return {
             "ok": not would_errors,
