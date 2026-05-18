@@ -7,6 +7,7 @@
 > Last-Updated: 2026-05-18
 
 > 来源：DESIGN_P1_BACKUP.md + BACKUP_DIR_BUILDER_DESIGN.md（合并）
+> 背景：Steam 版本时间戳获取机制见 `repo_bkgd/MOD统一的TimeStamp如何拿到.md`
 > 实现状态：已落地并持续生效
 
 ---
