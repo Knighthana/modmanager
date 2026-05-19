@@ -6,7 +6,7 @@
 > Purpose: 定义工作区的核心模型——先行容器、生命周期、目录结构、前后端契约、页面流拓扑。本模型替代旧的"快照是计算后产物"设计与 localStorage 分散存储模型。
 
 创建：2026-05-16
-实现状态：待实现
+实现状态：已落地并持续生效
 来源裁定：`work_memo/2026-05-16_workspace_model_decisions.md`
 
 ---
@@ -298,10 +298,10 @@ async def compute(workspace_id: str):
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/workspace/{workspace_id}/pipeline/compute` | 执行计算。从工作区读取 aggregated_rule + decisions，执行 engine.compute，结果写入工作区。→ `{ ok, mapping, svg }` |
-| `POST` | `/api/workspace/{workspace_id}/pipeline/run` | 全流水线：计算 + 备份 + 应用。→ `PipelineResult` |
-| `POST` | `/api/workspace/{workspace_id}/pipeline/backup` | 备份操作。→ `{ ok, backup_dir }` |
-| `POST` | `/api/workspace/{workspace_id}/pipeline/apply` | 提交 apply 任务给后端编排。→ `{ ok, detailed }` |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/compute` | 执行计算；从工作区读取 `aggregated_rule` 与 `decisions`，调用引擎计算，结果（`mapping`、`svg`、`fingerprints`）写回工作区；通过 SSE 返回，最终事件包含经 `adapt_pipeline_result` 序列化的 `PipelineResult`。 |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/run` | 在工作区上下文执行全流水线（compute → backup → apply）；通过 SSE 返回 `PipelineResult`（由 `adapt_pipeline_result` 序列化）。 |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/backup` | 在工作区上下文执行差异备份；通过 SSE 返回 `PipelineResult`（含 `backup_result`、`backed_up` 等字段，序列化由 `adapt_pipeline_result` 完成）。 |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/apply` | 在工作区上下文提交 apply（调用 `orchestrate_apply`，最终由 `apply` 执行原语）；通过 SSE 返回 `PipelineResult`（含 `apply_result`、`applied`、`apply_warnings` 等）。 |
 
 #### 决策（工作区上下文内）
 

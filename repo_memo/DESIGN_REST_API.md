@@ -5,900 +5,126 @@
 > Read-Tier: task-scoped
 > Purpose: 约束 Web API 的接口形态、SSE 通信方式与 Web 层行为边界
 >
-> **冻结状态（2026-05-16）**：
-> - `POST /api/database/*`, `/api/config/*`, `/api/backups/*` → **STABLE**（全局操作，不依赖 GUI 流程）
-> - `POST /api/workspace/{id}/*` → **EVOLVING**（工作区模型初版落地，等稳定后重新冻结）
-> - SSE 协议、ApiResponse 格式、错误码 → **STABLE**（基础通信层）
+> Last update: 2026-05-20
 >
-> **2026-05-16 重大变更**：所有流水线和规则端点迁移到工作区 URL 前缀 `/api/workspace/{workspaceId}/...`。旧 `/api/pipeline/*` 和 `/api/rules/aggregate` 端点被替换为工作区感知版本。详见 `DESIGN_WORKSPACE_MODEL.md`。
->
-> **2026-05-18 更新**：restore 端点已实现（移除"后续实现"标记）；BackupRequest/ApplyRequest 全局 schema 已废弃，替换为 WorkspaceBackupRequest / WorkspaceApplyRequest / WorkspaceRestoreRequest（仅含 dry_run 字段，mapping 从工作区读取）
->
-> 涉及映射输出结构时，以 `repo_memo/DESIGN_FOREST_MODEL.md` 定义的现行输出契约为准；其余 Web API 行为约束以本文档为准。
+> 重要更新（2026-05-20）：本文件已对齐当前实现。
+> - 已删除的 generic 执行入口：`POST /api/pipeline/backup`、`POST /api/pipeline/apply`（这两条 generic 执行端点已从实现中移除，备份/应用主路径仅允许通过工作区 API）
+> - 保留的 generic pipeline 端点（仍对外提供）：`POST /api/pipeline/compute`、`POST /api/pipeline/run`、`POST /api/pipeline/visualize`、`POST /api/pipeline/restore`
+> - 工作区感知流水线：所有文件系统写入相关的主路径为 `POST /api/workspace/{workspace_id}/pipeline/*`（compute / backup / apply / restore / run）
 
-创建：2026-04-30
-实现状态：已落地并持续生效
-所有 7 个决策已确认
+## 1. 概览（要点）
+- 事实源（实现文件）：[src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)、[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)、[src/modmanager_web/app.py](src/modmanager_web/app.py)、[src/modmanager_web/routes/pipeline.py](src/modmanager_web/routes/pipeline.py)、[src/modmanager_web/routes/workspace.py](src/modmanager_web/routes/workspace.py)、[src/modmanager_web/sse.py](src/modmanager_web/sse.py)、[src/modmanager/orchestrator.py](src/modmanager/orchestrator.py)。
+- 原则：任何会写磁盘或执行备份/应用的执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 提供的是无工作区（非写盘）或供脚本化使用的端点，但不再负责 workspace-scoped backup/apply 执行。
 
----
-
-## 0. 前置决策汇总
-
-| Q# | 决策 |
-|-----|------|
-| Q1 | **FastAPI** — 现代异步，自动 OpenAPI 文档，Pydantic 校验 |
-| Q2 | **全部 6 个操作暴露** — discover_user_config / generate_database / compute / backup / apply / run |
-| Q3 | **纯本地 localhost** — 仅监听 127.0.0.1，无认证 |
-| Q4 | **全异步 I/O** — 长耗时操作通过 SSE 推送进度；UI 线程不阻塞 |
-| Q5 | **独立子包 `modmanager_web`** — 与 CLI 包解耦，可选 extras 安装 |
-| Q6 | **适配层** — PipelineResult 外裹 `ApiResponse`，REST 友好，便于扩展 |
-| Q7 | **方案 A（独立对等）** — CLI 和 Web 各自独立调用 orchestrator，共享内核模式，耦合度最低 |
-
-### 端点稳定性
-
-| 稳定性 | 端点 |
-|--------|------|
-| STABLE ✅ | POST /api/database/generate, /read, /save |
-|           | POST /api/config/discover, /save |
-|           | POST /api/rules/scan, /read, /affected-entries |
-|           | POST /api/backups/list, /inspect |
-| EVOLVING ⚠️ | POST /api/workspace/{id}/rules/aggregate, /aggregated |
-|           | POST /api/workspace/{id}/pipeline/compute, /backup, /apply, /run |
-|           | POST /api/workspace/{id}/decisions/save, /load |
-|           | GET /api/workspace/{id}/forest/svg, /mapping |
-|           | POST /api/workspace/create, /delete; GET /api/workspace/list, /meta |
-
----
-
-## 1. Q7: CLI 与 Web API 的关系分析
-
-### 方案 A: CLI 直接调 orchestrator，Web API 也直接调 orchestrator（独立对等）
-
-```
-                    ┌─────────────────────┐
-           CLI  →   │    orchestrator      │   ←  Web API / GUI
-                    │  (共享服务层)          │
-                    └──────────┬───────────┘
-                               │
-                    ┌──────────▼───────────┐
-                    │      bootstrap        │
-                    └──────────────────────┘
-```
-
-**优点**：
-1. CLI 零额外依赖——不引入 HTTP 客户端库，启动快，适合脚本化和 CI/CD
-2. 离线可用——不依赖 Web 服务运行，符合 CLI 工具的直觉
-3. orchestrator 作为共享服务层，行为一致性由它天然保证
-4. 改动局限于各自入口，互不影响
-
-**风险**：
-1. CLI 和 Web 的输出格式可能各自实现，长期可能分化
-2. 测试需覆盖两条调用路径（可以通过测试 orchestrator 本身来减轻）
-3. 如果未来引入会话/状态管理，需要在 orchestrator 层统一，而非在某一入口
-
-### 方案 B: CLI 改为调 Web API
-
-```
-         CLI  ──(HTTP)──→  Web API  ──→  orchestrator  ──→  ...
-         GUI  ──(HTTP)──→
-```
-
-**优点**：
-1. 单一后端——"怎么做"的逻辑只存在于 Web API 一处
-2. 远程管理成为可能——CLI 可操作另一台机器上的 modmanager
-3. 行为天然一致——CLI 和 Web GUI 走同一条 HTTP 路径
-
-**风险**：
-1. CLI 必须依赖 HTTP 服务运行 → **失去脚本/离线能力**
-2. 引入 HTTP 客户端依赖（httpx / requests），增加安装体积
-3. CLI 启动需等待服务可用，增加延迟和错误面
-4. 对于本机快速操作（如 compute），走 HTTP 是无谓的中间层
-5. **Web 服务挂了 → CLI 也挂了**
-
-### 方案 C: 混合 — CLI 默认直接调，可选 `--remote` 连 Web API
-
-**优点**：
-1. 两全其美：本地快 + 远程可管理
-2. 用户可根据场景选择
-
-**风险**：
-1. 实现复杂度最高——CLI 需维护两套调用路径 + 输出格式化
-2. 输出格式对齐成本高——直接调返回 dict，HTTP 返回 JSON，需统一适配
-3. 两套路径行为微差异难以发现和修复
-4. 对 Phase 2 目标（暴露 REST API）来说过度设计
-
-### 决策：方案 A（已确认 ✅）
-
-**耦合度分析**：
-- 方案 A 是**共享内核（Shared Kernel）**模式：CLI 和 Web API 各自独立消费 orchestrator
-- CLI ↔ Web API **零依赖**，互不知晓对方的存在
-- orchestrator 的 `PipelineResult` 是唯一契约，两边各自适配为自己的输出格式——这不构成耦合
-- 无需再拆分：orchestrator 只返回结构体（不负责格式化），业务逻辑已是单一真相源
-
-理由：
-- Phase 2 的目标是 **"把功能暴露为 REST API"**，而非重构 CLI
-- orchestrator 已提供完美共享服务层，两套入口共享同一套业务逻辑
-- CLI 和 Web 互不依赖，各自简单，符合 KISS
-- 未来若需要远程管理，可在 Phase 3 引入 `--remote`（彼时再评估方案 C）
-
----
-
-## 2. 架构总览
-
-```
-                            ┌──────────────────────────────────┐
-                            │        modmanager_web              │
-                            │  ┌────────────┐  ┌─────────────┐ │
-   浏览器 / Web GUI ──(HTTP)──→│  FastAPI    │  │   SSE       │ │
-                            │  │  routes     │  │  Progress   │ │
-                            │  └─────┬──────┘  │  Streaming   │ │
-                            │        │         └─────────────┘ │
-                            │  ┌─────▼──────┐                  │
-                            │  │  adapters   │  ApiResponse    │
-                            │  │  schemas    │  Pydantic       │
-                            │  └─────┬──────┘                  │
-                            └────────┼──────────────────────────┘
-                                     │  import
-                            ┌────────▼──────────────────────────┐
-                            │      modmanager                │
-                            │  orchestrator / bootstrap          │
-                            │  engine / aggregator / backup_ops  │
-                            └───────────────────────────────────┘
-```
-
-- **`modmanager_web`**：纯 HTTP 层。不做业务逻辑，仅做参数接收、格式适配、SSE 流式转发。
-- **`modmanager`**：底层模块无改动。orchestrator 和 bootstrap 的 `ProgressCallback` Protocol 已经为 SSE 桥接预留了接口。
-
----
-
-## 3. 包结构
-
-```
-src/modmanager_web/
-├── __init__.py          # 包声明，导出 create_app
-├── __main__.py          # uvicorn 启动入口: `python -m modmanager_web`
-├── app.py               # FastAPI 应用工厂 + 路由注册
-├── routes/
-│   ├── __init__.py
-│   ├── config.py        # discover_user_config / save 路由
-│   ├── database.py      # generate_database 路由
-│   ├── pipeline.py      # compute / backup / apply / run 路由（工作区上下文）
-│   ├── rules.py         # scan / read / affected-entries 路由
-│   └── workspace.py     # workspace CRUD + decisions + forest 路由
-├── core/
-│   └── workspacemanager.py  # 工作区生命周期管理（orchestrator 下属）
-├── schemas.py           # Pydantic 请求/响应模型
-├── adapters.py          # PipelineResult → ApiResponse 转换
-└── sse.py               # SSE 进度流式输出工具
-```
-
-### 依赖（optional extras）
-
-`pyproject.toml` 新增：
-```toml
-[project.scripts]
-modmanager-web = "modmanager_web.__main__:main"
-
-[project.optional-dependencies]
-web = [
-    "fastapi>=0.100",
-    "uvicorn[standard]>=0.23",
-]
-```
-
-安装方式：`pip install ".[web]"`
-
----
-
-## 4. REST API 端点设计
-
-### 4.1 响应格式（适配层）
-
-所有非 SSE 端点返回：
-
+## 2. 通用响应格式（ApiResponse）
+所有非 SSE 的 JSON 响应采用统一包封：
 ```json
 {
-  "ok": true,
-  "data": { ... },
-  "errors": [],
-  "warnings": []
+  "ok": true|false,
+  "data": {...} | null,
+  "errors": [...],
+  "warnings": [...]
 }
 ```
+SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 ApiResponse 的字典结构（由适配器 `adapt_pipeline_result` / `adapt_dict_result` / `adapt_restore_result` 序列化）。
 
-所有 SSE 端点：`text/event-stream`，最终事件包含同样的结构。
+## 3. 端点清单（摘要）
 
-### 4.2 端点清单
+全局 / 非工作区（generic）:
+- `GET /api/health` — 健康检查（JSON）
+- `POST /api/config/discover` — 发现并返回 `user_config`（JSON）
+- `POST /api/config/save` — 保存 `user_config`（JSON）
+- `POST /api/database/generate` — 生成 database（SSE）
+- `POST /api/database/read` — 读取 database（JSON）
+- `POST /api/database/save` — 保存 database（JSON）
+- `POST /api/rules/scan` — 扫描目录列出规则文件（JSON）
+- `POST /api/rules/read` — 读取单个规则文件（JSON）
+- `POST /api/rules/affected-entries` — 规则影响查询（JSON）
+- `POST /api/backups/list` — 列出备份摘要（JSON）
+- `POST /api/backups/inspect` — 检查备份详情（JSON）
+- `POST /api/pipeline/compute` — 计算映射（SSE） — 需在 body 提供 `aggregated_rule_set`
+- `POST /api/pipeline/run` — 全流水线（SSE） — 需在 body 提供 `aggregated_rule_set`（generic run）
+- `POST /api/pipeline/visualize` — 可视化（JSON）
+- `POST /api/pipeline/restore` — 恢复（SSE）
 
-| 方法 | 路径 | 说明 | 响应类型 |
-|------|------|------|----------|
-| `GET` | `/api/health` | 健康检查 | JSON |
-| `POST` | `/api/config/discover` | 加载 user_config.json | JSON |
-| `POST` | `/api/config/save` | 保存 user_config（含 rule_sources 路径归一化） | JSON |
-| `POST` | `/api/database/generate` | 扫描 Steam 库生成 database.json（纯数据，无 managed） | SSE |
-| `POST` | `/api/database/read` | 获取指定 database 的内容 | JSON |
-| `POST` | `/api/database/save` | 保存 database（用于高级页编辑） | JSON |
-| `POST` | `/api/rules/scan` | 扫描目录列出 `*.kmmrule.json` 文件 | JSON |
-| `POST` | `/api/rules/read` | 读取单个 kmmrule 文件内容 | JSON |
-| `POST` | `/api/rules/affected-entries` | 查询聚合规则影响的 game/mod（供计算准备页） | JSON |
-| `POST` | `/api/backups/list` | 列出备份目录摘要 | JSON |
-| `POST` | `/api/backups/inspect` | 查看备份详情 | JSON |
-| | | | |
-| `POST` | `/api/workspace/create` | ⚠️ 创建工作区。body: `{ name, database_name }` | JSON |
-| `POST` | `/api/workspace/{id}/delete` | ⚠️ 删除工作区 | JSON |
-| `GET` | `/api/workspace/list` | ⚠️ 列出所有工作区（按 updated_at 降序） | JSON |
-| `GET` | `/api/workspace/{id}/meta` | ⚠️ 获取工作区元信息 | JSON |
-| `POST` | `/api/workspace/{id}/rules/aggregate` | ⚠️ 聚合规则并存入工作区 | JSON |
-| `GET` | `/api/workspace/{id}/rules/aggregated` | ⚠️ 读取工作区中已聚合的规则集 | JSON |
-| `POST` | `/api/workspace/{id}/pipeline/compute` | ⚠️ 计算映射；从工作区读取规则+决策，结果写入工作区 | SSE |
-| `POST` | `/api/workspace/{id}/pipeline/backup` | ⚠️ 差异备份 | SSE |
-| `POST` | `/api/workspace/{id}/pipeline/apply` | ⚠️ 提交 apply 任务给后端编排（preflight + apply） | SSE |
-| `POST` | `/api/workspace/{id}/pipeline/run` | ⚠️ 全流水线（计算→备份→应用） | SSE |
-| `POST` | `/api/workspace/{id}/decisions/save` | ⚠️ 保存用户决策到工作区 | JSON |
-| `GET` | `/api/workspace/{id}/decisions/load` | ⚠️ 从工作区读取用户决策 | JSON |
-| `GET` | `/api/workspace/{id}/forest/svg` | ⚠️ 读取森林 SVG（Content-Type: image/svg+xml） | SVG |
-| `GET` | `/api/workspace/{id}/forest/mapping` | ⚠️ 读取最终映射结果 | JSON |
+工作区感知（product 主路径）:
+- `POST /api/workspace/create` — 创建工作区（JSON）
+- `POST /api/workspace/{id}/delete` — 删除工作区（JSON）
+- `GET /api/workspace/list` — 列出工作区（JSON）
+- `GET /api/workspace/{id}/meta` — 工作区元信息（JSON）
+- `POST /api/workspace/{id}/rules/aggregate` — 聚合规则并写入工作区（JSON）
+- `GET  /api/workspace/{id}/rules/aggregated` — 读取已聚合规则（JSON）
+- `POST /api/workspace/{id}/pipeline/compute` — 在工作区上下文计算（SSE）。**请求体：无**，聚合规则与决策从工作区目录读取；结果写回工作区（mapping、svg、fingerprints）。
+- `POST /api/workspace/{id}/pipeline/backup` — 在工作区上下文做差异备份（SSE）。请求体：`{ "dry_run": bool }`。
+- `POST /api/workspace/{id}/pipeline/apply` — 在工作区上下文提交 apply（SSE）。请求体：`{ "dry_run": bool }`。此路由会触发 orchestrator 的 `orchestrate_apply()`，并最终由 `apply()` 执行原语。
+- `POST /api/workspace/{id}/pipeline/restore` — 在工作区上下文恢复（SSE）。请求体：`{ "force": bool }`。
+- `POST /api/workspace/{id}/pipeline/run` — 在工作区上下文执行全流水线（SSE）。**请求体：无**（当前实现从工作区读取所有输入）。
+- `POST /api/workspace/{id}/decisions/save`、`GET /api/workspace/{id}/decisions/load` — 保存/读取决策（JSON）
+- `GET /api/workspace/{id}/forest/svg` — 读取 SVG（image/svg+xml）
+- `GET /api/workspace/{id}/forest/mapping` — 读取 mapping（JSON）
 
-### 4.2.1 强制清退清单（无兼容策略）
+> 说明：上面列出的请求体形态与实现同步，以 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 为权威定义。特别注意：工作区的 `compute` / `run` 路由不需要也不会接受 `aggregated_rule_set` 等计算输入——它们从工作区目录读取。
 
-以下旧内容必须从实现和文档中彻底删除，不保留兼容入口：
+## 4. SSE 使用示例（典型）
+- Generic run（需要在 body 中传入 `aggregated_rule_set`）：
+```http
+POST /api/pipeline/run
+Content-Type: application/json
 
-1. generic 执行端点：`POST /api/pipeline/backup`
-2. generic 执行端点：`POST /api/pipeline/apply`
-3. 任何将 backup/apply 执行主路径指向 generic pipeline 的文案
-4. 与上述旧端点耦合的 schema、mock handler、测试断言
-
-当前状态（2026-05-20）：上述 1~4 已完成清退。
-
-清退后的唯一产品主路径：
-
-- `POST /api/workspace/{id}/pipeline/backup`
-- `POST /api/workspace/{id}/pipeline/apply`
-
-### 4.3 端点详设
-
-#### `GET /api/health`
-
-```json
-// → 200
 {
-  "ok": true,
-  "data": { "version": "0.1.0", "package": "modmanager_web" },
-  "errors": [],
-  "warnings": []
+  "database_name": "default",
+  "aggregated_rule_set": { /* 必填 */ },
+  "dry_run": false
 }
 ```
+返回：`text/event-stream`，先若干 `event: progress`，最后 `event: result`，其中 `data` 是 ApiResponse（由 `adapt_pipeline_result` 序列化）。
 
-#### `POST /api/config/discover`
+- Workspace apply（工作区主路径）：
+```http
+POST /api/workspace/{workspace_id}/pipeline/apply
+Content-Type: application/json
 
-```json
-// ← Request
-{
-  "home_dir": null   // string | null，null = 自动检测
-}
-
-// → 200
-{
-  "ok": true,
-  "data": { /* 合并后的 user_config 字典 */ },
-  "errors": [],
-  "warnings": []
-}
-
-// → 500 (FileNotFoundError)
-{
-  "ok": false,
-  "data": null,
-  "errors": ["No user_config.json found in any search location"],
-  "warnings": []
-}
+{ "dry_run": false }
 ```
+行为：后端会通过 `resolve_apply_ws()` -> `orchestrate_apply()` -> `apply()` 顺序执行；全部上下文（mapping、backup_dir、database）由工作区解析，不从请求体读取。
 
-#### `POST /api/database/generate`
+## 5. Pydantic schema（参考实现）
+详见 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)。要点：
+- Generic `RunRequest` / `ComputeRequest` 需要 `aggregated_rule_set`（generic 端点）
+- Workspace 端点使用 `WorkspaceBackupRequest` / `WorkspaceApplyRequest` / `WorkspaceRestoreRequest`（仅含控制字段如 `dry_run` / `force`）
+- `ApiResponse` 为统一输出信封（见第 2 节）
 
-```json
-// ← Request
-{
-  "mode": "auto",             // "auto" | "manual"
-  "paths": null,              // string[] | null (manual 模式必填)
-  "working_pathstyle": "linux",
-  "greedy_parsing": false,
-  "database_name": null       // string | null，不传则用 user_config.databases 第一个 key
-}
+## 6. 适配器（adapters）
+实现中的 `adapt_pipeline_result(pr: PipelineResult)` 会把 `PipelineResult` 映射为 ApiResponse 字典，包含字段：
+- `data.trees`, `data.final_mapping`, `data.mapping_result`
+- 若有 `backup_result`：`data.backed_up`, `data.backup_skipped`, `data.backup_errors`, `data.dry_run`
+- 若有 `apply_result`：`data.applied`, `data.apply_skipped`, `data.apply_errors`, `data.apply_warnings`, `data.apply_diagnostics`, `data.dry_run`
+- 若 `pr.backup_dir` 存在，会带出 `data.backup_dir`
 
-// → SSE stream
-event: progress
-data: {"step":"scan","finished":0,"total":-1,"message":"Discovering Steam libraries..."}
+实现文件：[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)
 
-event: progress
-data: {"step":"scan","finished":1,"total":1,"message":"Steam discovery complete"}
+## 7. FastAPI 工厂（app.py）行为要点
+实现文件：[src/modmanager_web/app.py](src/modmanager_web/app.py)
+- CORS 仅在开发态启用；生产态（存在 `frontend/dist/index.html`）不挂载 CORS 中间件。
+- 开发态可通过环境变量 `KMM_CORS_ORIGINS` 覆盖允许源（逗号分隔）。
+- 路由注册使用 prefix：
+  - `/api/config`, `/api/database`, `/api/pipeline`, `/api/rules`, `/api/backups`, `/api/workspace`
 
-event: result
-data: {"ok":true,"data":{/* database dict */},"errors":[],"warnings":[]}
+## 8. 已删除的端点（本轮清退）
+- `POST /api/pipeline/backup`（generic 执行入口） — 已删除，备份执行请使用工作区端点。
+- `POST /api/pipeline/apply`（generic 执行入口） — 已删除，apply 执行请使用工作区端点。
+
+> 注：如果历史原因需要保留只读或审计视图，请使用 `/api/backups/*` 只读端点，不要重新开放 generic 执行入口。
+
+## 9. 验收与检验命令（本地）
+- 快速尾巴检索（确认已删除旧痕迹）：
+```bash
+git grep -n "api/pipeline/backup\|api/pipeline/apply\|BackupRequest\|ApplyRequest\|adapt_backup_result\|adapt_apply_result" || true
 ```
-
-#### `POST /api/database/read`
-
-读取指定 database 的内容。`database_name` 不传则用 `user_config.databases` 第一个 key。
-
-```json
-// ← Request
-{
-  "database_name": null    // string | null
-}
-
-// → 200 (成功)
-{
-  "ok": true,
-  "data": { /* database dict */ },
-  "errors": [],
-  "warnings": []
-}
-```
-
-#### `POST /api/database/save`
-
-保存 database。请求体包含完整 database 字典 + 目标 database name。
-
-```json
-// ← Request
-{
-  "database": { /* database dict */ },
-  "database_name": null   // string | null，不传则用默认
-}
-
-// → 200 (成功)
-{
-  "ok": true,
-  "data": {
-    "path": "/path/to/database.json",
-    "database": { /* database dict */ }
-  },
-  "errors": [],
-  "warnings": []
-}
-```
-
-#### `POST /api/workspace/{id}/pipeline/compute` ⚠️
-
-在工作区上下文中执行计算。聚合规则集和用户决策从工作区目录读取（由 workspacemanager 负责）。database 路径从工作区 meta.json 的 database_name 查 user_config 获取。计算结果（mapping + SVG + 指纹）写入工作区目录。
-
-```json
-// ← Request
-{
-  "action_orders": null             // dict | null
-}
-
-// → SSE stream  → event: progress ... → event: result
-```
-
-#### `POST /api/workspace/{id}/pipeline/run` ⚠️
-
-全流水线：计算 + 备份 + 应用。聚合规则集和用户决策从工作区目录读取。
-
-```json
-// ← Request
-{
-  "backup_dir": "/path/to/backup_dir",
-  "dry_run": false                  // true → 仅计算，跳过备份和应用
-}
-
-// → SSE stream
-```
-
-#### `POST /api/workspace/{id}/rules/aggregate` ⚠️
-
-在工作区上下文中聚合规则。聚合结果由 workspacemanager 存入工作区目录 `aggregated_rule.json`。
-
-```json
-// ← Request
-{
-    "paths": ["/rules/r1.kmmrule.json", "/rules/r2.kmmrule.json"]
-}
-
-// → 200
-{
-    "ok": true,
-    "data": {
-        "schema_namespace": "KMM_RuleSet",
-        "operation": [],
-        "aggregated_hash": "<sha256>",
-        "aggregated_at": "2026-05-16T00:00:00+00:00"
-    },
-    "errors": [],
-    "warnings": []
-}
-```
-
-#### `POST /api/workspace/{id}/decisions/save` ⚠️
-
-```json
-// ← Request
-{
-  "managed_entries": { "game": {...}, "mod": {...} },
-  "branch_decisions": { "root_path": "chosen_source_path" }
-}
-
-// → 200 { "ok": true, "data": null, "errors": [], "warnings": [] }
-```
-
-#### `GET /api/workspace/{id}/decisions/load` ⚠️
-
-```json
-// → 200
-{
-  "ok": true,
-  "data": {
-    "managed_entries": { ... },
-    "branch_decisions": { ... }
-  },
-  "errors": [],
-  "warnings": []
-}
-```
-
-#### `GET /api/workspace/{id}/forest/svg` ⚠️
-
-读取森林 SVG 文件。Content-Type: `image/svg+xml`。
-
-#### `GET /api/workspace/{id}/forest/mapping` ⚠️
-
-```json
-// → 200
-{
-  "ok": true,
-  "data": { /* mapping.json 内容 */ },
-  "errors": [],
-  "warnings": []
-}
-```
-
-### 已删除的端点
-
-以下端点随工作区模型重构而移除：
-
-| 旧端点 | 移除原因 |
-|------|----------|
-| `POST /api/pipeline/compute`（旧路径） | 迁移到 `/api/workspace/{id}/pipeline/compute`，参数从工作区读取 |
-| `POST /api/pipeline/run`（旧路径） | 同上 |
-| `POST /api/pipeline/restore` | 迁移到 `/api/workspace/{id}/pipeline/restore` |
-| `POST /api/pipeline/visualize` | 功能由 `GET /api/workspace/{id}/forest/svg` 替代 |
-| `POST /api/rules/aggregate`（旧路径） | 迁移到 `/api/workspace/{id}/rules/aggregate` |
-| `POST /api/rules/load-aggregated` | 功能由 `GET /api/workspace/{id}/rules/aggregated` 替代 |
-| `POST /api/workspace/save-inputs` | 旧 workspace 模型（方案 B 裁定已删除，若仍残留则清除） |
-| `POST /api/workspace/save-decisions` | 同上 |
-| `POST /api/workspace/save-results` | 同上 |
-| `GET /api/workspace/status` | 同上 |
-
----
-
-## 5. SSE 进度桥接设计
-
-核心挑战：orchestrator 的同步 `ProgressCallback(step, finished, total, message)` 需要桥接到 FastAPI 的异步 `StreamingResponse`。
-
-### 5.1 方案：asyncio.Queue 桥接
-
-```python
-# sse.py（伪代码结构）
-
-import asyncio
-import json
-from dataclasses import asdict
-from concurrent.futures import ThreadPoolExecutor
-
-_executor = ThreadPoolExecutor(max_workers=4)
-
-async def stream_with_progress(
-    sync_work: callable,  # 接受 on_progress 回调，返回结果
-    *,
-    sse_event_prefix: str = "pipeline",
-) -> AsyncGenerator[str, None]:
-    """在后台线程执行同步工作，通过 asyncio.Queue 桥接进度到 SSE 流。
-
-    SSE 事件类型：
-      - `event: progress` — 进度更新
-      - `event: result`   — 最终结果
-      - `event: error`    — 异常
-    """
-    queue: asyncio.Queue = asyncio.Queue()
-
-    def progress_cb(step, finished, total, message=""):
-        loop = asyncio.get_event_loop()
-        loop.call_soon_threadsafe(
-            queue.put_nowait,
-            {"type": "progress", "step": step, "finished": finished, "total": total, "message": message}
-        )
-
-    def worker():
-        try:
-            result = sync_work(on_progress=progress_cb)
-            loop = asyncio.get_event_loop()
-            loop.call_soon_threadsafe(queue.put_nowait, {"type": "result", "payload": result})
-        except Exception as exc:
-            loop = asyncio.get_event_loop()
-            loop.call_soon_threadsafe(queue.put_nowait, {"type": "error", "message": str(exc)})
-
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(_executor, worker)
-
-    try:
-        while True:
-            item = await queue.get()
-            if item["type"] == "progress":
-                yield f"event: progress\ndata: {json.dumps(item)}\n\n"
-            elif item["type"] == "result":
-                adapted = adapt_pipeline_result(item["payload"])
-                yield f"event: result\ndata: {json.dumps(adapted)}\n\n"
-                return
-            elif item["type"] == "error":
-                yield f"event: error\ndata: {json.dumps({'ok': False, 'errors': [item['message']]})}\n\n"
-                return
-    except asyncio.CancelledError:
-        # 客户端断开连接——后台线程无法取消，只能让它跑完。
-        # Phase 2 暂不做后台任务取消（复杂性过高）。
-        pass
-```
-
-### 5.2 路由使用示例
-
-```python
-# routes/pipeline.py
-
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
-from modmanager.orchestrator import run as orch_run
-from ..schemas import RunRequest
-from ..sse import stream_with_progress
-
-router = APIRouter()
-
-@router.post("/api/workspace/{workspace_id}/pipeline/run")
-async def pipeline_run(workspace_id: str, req: RunRequest):
-    def do_work(on_progress):
-        return orch_run(
-            workspace_id=workspace_id,
-            backup_dir=req.backup_dir,
-            dry_run=req.dry_run,
-            on_progress=on_progress,
-        )
-    return StreamingResponse(
-        stream_with_progress(do_work),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-    )
-```
-
-### 5.3 注意事项
-
-1. **线程安全**：`call_soon_threadsafe` 是 asyncio 的推荐方式，线程安全
-2. **取消处理**：Phase 2 暂不实现后台任务取消。客户端断开时，后台线程会继续跑完（无法安全中断底层 I/O 操作）
-3. **线程池大小**：`max_workers=4` 适合本地工具（同时最多 4 个并发操作），可按需调整
-
----
-
-## 6. Pydantic Schema 设计（schemas.py）
-
-```python
-from pydantic import BaseModel, Field
-from typing import Any
-
-# ── 通用 ──
-class ApiResponse(BaseModel):
-    ok: bool
-    data: dict[str, Any] | None = None
-    errors: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-
-# ── config ──
-class DiscoverUserConfigRequest(BaseModel):
-    home_dir: str | None = None
-
-# ── database ──
-class GenerateDatabaseRequest(BaseModel):
-    mode: str = "auto"                    # "auto" | "manual"
-    paths: list[str] | None = None
-    working_pathstyle: str = "linux"
-    greedy_parsing: bool = False
-    database_name: str | None = None      # 不传则用 user_config.databases 第一个 key
-
-class ReadDatabaseRequest(BaseModel):
-    database_name: str | None = None      # 不传则用默认
-
-class SaveDatabaseRequest(BaseModel):
-    database: dict[str, Any]              # database dict
-    database_name: str | None = None      # 不传则用默认
-
-# ── pipeline（工作区上下文内）──
-class ComputeRequest(BaseModel):
-    action_orders: dict[str, int] | None = None
-
-# 以下 workspace 请求体已在工作区模式下简化：
-# backup / apply / restore 的 mapping 数据从工作区目录读取，无需在请求体中传递。
-class WorkspaceBackupRequest(BaseModel):
-    dry_run: bool = False
-
-class WorkspaceApplyRequest(BaseModel):
-    dry_run: bool = False
-
-class WorkspaceRestoreRequest(BaseModel):
-    dry_run: bool = False
-
-# 旧全局管线的 schema（仅保留引用，全局端点已废弃）
-# class BackupRequest(BaseModel): ...  # 已废弃，使用 WorkspaceBackupRequest
-# class ApplyRequest(BaseModel): ...   # 已废弃，使用 WorkspaceApplyRequest
-# class RunRequest(BaseModel): ...     # 已废弃
-
-# ── workspace ──
-class CreateWorkspaceRequest(BaseModel):
-    name: str
-    database_name: str
-
-# ── rules（工作区上下文内）──
-class AggregateRulesRequest(BaseModel):
-    paths: list[str]
-
-# ── decisions（工作区上下文内）──
-class SaveDecisionsRequest(BaseModel):
-    managed_entries: dict[str, dict[str, list[str]]] | None = None
-    branch_decisions: dict[str, str] | None = None
-```
-
----
-
-## 7. 适配层设计（adapters.py）
-
-```python
-from modmanager.orchestrator import PipelineResult
-from .schemas import ApiResponse
-
-def adapt_pipeline_result(pr: PipelineResult) -> dict:
-    """将 PipelineResult 转为 ApiResponse 序列化格式。"""
-    return {
-        "ok": pr.ok,
-        "data": {
-            "trees": pr.trees,
-            "final_mapping": pr.final_mapping,
-            "mapping_result": pr.mapping_result,
-            "stats": {
-                "backed_up": len(pr.backup_result.get("backed_up", [])) if pr.backup_result else 0,
-                "applied": len(pr.apply_result.get("applied", [])) if pr.apply_result else 0,
-                "skipped": len(pr.apply_result.get("skipped", [])) if pr.apply_result else 0,
-            } if pr.backup_result or pr.apply_result else None,
-        },
-        "errors": pr.errors,
-        "warnings": pr.warnings,
-    }
-
-def adapt_backup_result(result: dict) -> dict:
-    return {
-        "ok": result.get("ok", False),
-        "data": {
-            "backed_up": result.get("backed_up", []),
-            "skipped": result.get("skipped", []),
-        },
-        "errors": result.get("errors", []),
-        "warnings": [],
-    }
-
-def adapt_apply_result(result: dict) -> dict:
-    return {
-        "ok": result.get("ok", False),
-        "data": {
-            "applied": result.get("applied", []),
-            "skipped": result.get("skipped", []),
-        },
-        "errors": result.get("errors", []),
-        "warnings": [],
-    }
-
-def adapt_dict_result(data: dict) -> dict:
-    """适配 discover_user_config / generate_database 的返回。"""
-    return {
-        "ok": True,
-        "data": data,
-        "errors": [],
-        "warnings": [],
-    }
-
-def adapt_error(message: str) -> dict:
-    return {
-        "ok": False,
-        "data": None,
-        "errors": [message],
-        "warnings": [],
-    }
-```
-
----
-
-## 8. FastAPI 应用工厂（app.py）
-
-```python
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from .routes import config, database, pipeline, rules, workspace
-
-def create_app() -> FastAPI:
-    app = FastAPI(
-        title="ModManager Web API",
-        version="0.1.0",
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-    )
-
-    # 仅本地访问，但未来可能扩展 → 先默认开放 CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    @app.get("/api/health")
-    async def health():
-        from .adapters import adapt_dict_result
-        return adapt_dict_result({"version": "0.1.0", "package": "modmanager_web"})
-
-    app.include_router(config.router, prefix="/api/config", tags=["config"])
-    app.include_router(database.router, prefix="/api/database", tags=["database"])
-    app.include_router(rules.router, prefix="/api", tags=["rules"])
-    app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"])
-    app.include_router(pipeline.router, prefix="/api", tags=["pipeline"])
-
-    return app
-```
-
-### 启动入口（`__main__.py`）
-
-```python
-import uvicorn
-from .app import create_app
-
-def main():
-    app = create_app()
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-
-if __name__ == "__main__":
-    main()
-```
-
-启动：`python -m modmanager_web` 或 `modmanager-web`
-
----
-
-## 9. 对现有代码的改动
-
-| 模块 | 改动 |
-|------|------|
-| `modmanager/*` | orchestrator 集成 workspacemanager；compute/run 签名改为 workspace_id |
-| `modmanager_web/routes/workspace.py` | **新增**：工作区 CRUD + decisions + forest 端点 |
-| `modmanager_web/core/workspacemanager.py` | **新增**：工作区生命周期管理 |
-| `modmanager_web/routes/pipeline.py` | URL 加 workspace_id 前缀；参数精简 |
-| `modmanager_web/routes/rules.py` | aggregate 端点迁移到 workspace 下 |
-| `modmanager_web/schemas.py` | 新增 workspace 相关 schema；精简 pipeline schema |
-| `pyproject.toml` | 无新增改动 |
-
-### pyproject.toml 改动
-
-```toml
-[project.scripts]
-modmanager-cli = "modmanager.cli:main"
-modmanager-web = "modmanager_web.__main__:main"       # 新增
-
-[project.optional-dependencies]
-web = [
-    "fastapi>=0.100",
-    "uvicorn[standard]>=0.23",
-]
-```
-
----
-
-## 10. 实现顺序
-
-```
-Task 9:  schemas.py + adapters.py    ← Pydantic 模型 + 适配器
-Task 10: sse.py                       ← 进度桥接基础设施
-Task 11: routes/ (config + database + pipeline)  ← 路由实现
-Task 12: app.py + __main__.py         ← 应用工厂 + 启动入口
-Task 13: pyproject.toml 更新          ← extras + 入口点
-Task 14: 测试                         ← 见 §11
-```
-
----
-
-## 11. 测试设计
-
-### 12.1 测试文件
-
-新建 `tests/test_web_api.py`（无需 FastAPI 启动真实服务器，全部使用 `TestClient`）。
-
-### 12.2 测试用例（≥10 个）
-
-| # | 测试名 | 覆盖 |
-|---|--------|------|
-| 1 | `test_health_endpoint` | GET /api/health → 200, ok=true |
-| 2 | `test_discover_user_config_success` | POST /api/config/discover → 200, 含合并后的 config |
-| 3 | `test_discover_user_config_not_found` | 三级均无 config → 500, errors 非空 |
-| 4 | `test_generate_database_invalid_mode` | mode="invalid" → 500 |
-| 5 | `test_compute_pipeline_sse` | POST /api/pipeline/compute → SSE 流含 progress + result |
-| 6 | `test_run_pipeline_sse` | POST /api/pipeline/run → SSE 流含 progress + result |
-| 7 | `test_adapt_pipeline_result_ok` | PipelineResult(ok=True) → ApiResponse.ok=True |
-| 8 | `test_adapt_pipeline_result_fail` | PipelineResult(ok=False, errors=["E_X"]) → errors 传递 |
-| 9 | `test_adapt_backup_result` | backup_ops 返回值 → ApiResponse 结构正确 |
-| 10 | `test_sse_stream_disconnect` | 客户端断开 → 服务端不崩溃 |
-| 11 | `test_docs_endpoint` | GET /api/docs → 200, HTML 含 "Swagger" |
-
-### 12.3 测试基础设施
-
-- 使用 FastAPI 内置的 `TestClient`（无需启动 uvicorn）
-- 为 `discover_user_config` 测试创建临时 `user_config.json`（`tmp_path` fixture）
-- 为 SSE 测试验证 `text/event-stream` 内容
-- Mock orchestrator / bootstrap 中有副作用的调用，避免修改真实文件系统
-
-### 12.4 测试中不做什么
-
-- 不启动真实 HTTP 服务器（TestClient 即可）
-- 不修改已有测试文件（261 tests 必须保持通过）
-- 不测试 orchestrator/bootstrap 的业务逻辑（已在 Phase 1 覆盖）
-
----
-
-## 12. 验收标准
-
-1. `pip install ".[web]"` 后 `modmanager-web` 命令可启动服务
-2. 浏览器访问 `http://127.0.0.1:8000/api/docs` 可见 Swagger UI
-3. `POST /api/config/discover` 返回 user_config
-4. `POST /api/pipeline/compute` SSE 流正确返回进度 + 结果
-5. `POST /api/pipeline/run` 全流水线 SSE 流正确
-6. 已有 CLI 测试（261）不被破坏
-
----
-
-## 5. Web 层安全约定
-
-> 更新：2026-05-08 质量审计
-
-### 应用定性
-
-本项目为**本地应用**，Web 层仅作跨平台 GUI 的实现手段（控制面板），并非公网 Web 服务。
-用户 = 机器的所有者，对本机文件有完整读写权限，不存在越权访问问题。
-
-唯一真实的外部威胁：用户浏览器中的恶意网页向 `127.0.0.1:8000` 发跨域请求，
-在用户不知情的情况下触发 backup/apply 等操作（与文件读写权限无关，是操作触发问题）。
-CORS 配置的目的仅为阻断此类场景，不是访问控制手段。
-路径规范化的目的是"输入归一化"，不是"访问限制"。
-
-### 5.1 CORS 策略
-
-- **禁止** `allow_origins=["*"]`
-- 检测逻辑：复用 `static_dir.exists()` 判断（已用于静态文件挂载）
-  - `frontend/dist/` 存在（生产态） → 不挂载 CORS 中间件（同 origin，无需）
-  - `frontend/dist/` 不存在（开发态） → 允许 `["http://localhost:5173", "http://127.0.0.1:5173"]`
-- 开发者零配置，无需 `.env` 文件
-- **Tauri2 迁移预留**：届时追加 `tauri://localhost`（macOS/Linux）和 `https://tauri.localhost`（Windows）
-  实现：通过环境变量 `KMM_CORS_ORIGINS`（逗号分隔）覆盖开发态默认值
-
-### 5.2 路径输入规范化（Web 路由入口）
-
-**定性：输入归一化，不是访问控制。** 本地应用用户对自己的文件有完整权限。
-
-原则：所有原始用户路径输入在 Web 路由层过且仅过一遍 `path_resolver`，之后视为规范路径。
-下游模块（orchestrator/engine 等）只做合规性断言，不再猜测路径。
-
-读类入口（目标必须存在）：
-
-| 路由文件 | 字段 | 使用函数 |
-|----------|------|----------|
-| `routes/rules.py` `/read` | `req.path` | `resolve_file_path` |
-| `routes/rules.py` `/scan` | `req.dir` | `resolve_directory_path` |
-| `routes/backups.py` `/list` | `req.dir` | `resolve_directory_path` |
-| `routes/pipeline.py` `/compute` `/run` | — | 不再接收文件路径参数；聚合规则和决策从工作区目录读取 |
-
-写类入口（目标不一定存在，不走 `path_resolver`）：
-
-| 路由文件 | 字段 | 处理方式 |
-|----------|------|----------|
-| `routes/config.py` `/save` | `req.output_path` | `Path(output_path).expanduser().resolve()`（纯规范化） |
-
-`path_resolver` 抛出异常时，路由层捕获并返回 `{"ok": false, "errors": [...]}`，
-SSE 端点中异常会被 `stream_with_progress` 捕获并作为 SSE error 事件推送（原始错误信息保留，对本地用户有调试价值）。
+- 文档到实现的一致性检查（人工核对）：
+  - 对照 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 的 request model ；确保文档中 request/response 与之匹配。
+  - 对照 [src/modmanager_web/adapters.py](src/modmanager_web/adapters.py) 的 `adapt_pipeline_result` 字段映射。
+
+## 10. 变更历史记录（简短）
+- 2026-05-16: 工作区模型引入，流水线端点迁移到 `/api/workspace/{id}/...`
+- 2026-05-20: 文档收口：移除 generic 执行入口 `/api/pipeline/backup` 与 `/api/pipeline/apply`，并把 schema/adapter/示例改为与实现一致。
