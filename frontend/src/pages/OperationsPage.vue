@@ -67,7 +67,7 @@
           <el-descriptions-item :label="STR.operationsPage.operationWarnings">
             <template v-if="operationWarnings.length > 0">
               <el-badge :value="operationWarnings.length" type="warning">
-                <span style="padding: 0 4px; cursor: pointer;" @click="showOpWarningsDialog = true">{{ operationWarnings.length }}</span>
+                <span style="padding: 0 4px; cursor: pointer;" @click="quickLocateFromSummary">{{ operationWarnings.length }}</span>
               </el-badge>
             </template>
             <span v-else style="padding: 0 4px; color: var(--el-text-color-placeholder);">0</span>
@@ -75,7 +75,7 @@
           <el-descriptions-item :label="STR.operationsPage.operationErrors">
             <template v-if="operationErrors.length > 0">
               <el-badge :value="operationErrors.length" type="danger">
-                <span style="padding: 0 4px; cursor: pointer;" @click="showOpErrorsDialog = true">{{ operationErrors.length }}</span>
+                <span style="padding: 0 4px; cursor: pointer;" @click="quickLocateErrorFromSummary">{{ operationErrors.length }}</span>
               </el-badge>
             </template>
             <span v-else style="padding: 0 4px; color: var(--el-text-color-placeholder);">0</span>
@@ -297,10 +297,44 @@
       <!-- 操作错误 dialog -->
       <el-dialog v-model="showOpErrorsDialog" title="操作错误详情" width="600px">
         <div v-if="operationErrors.length === 0" style="color: var(--el-text-color-placeholder);">无错误</div>
-        <el-table v-else :data="operationErrors.map((e, i) => ({ index: i + 1, message: e }))" size="small" max-height="400">
-          <el-table-column prop="index" label="#" width="50" />
-          <el-table-column prop="message" label="错误内容" />
-        </el-table>
+        <template v-else>
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <el-tag
+              :type="selectedErrorCode === '' ? 'danger' : 'info'"
+              style="cursor: pointer;"
+              @click="selectedErrorCode = ''"
+            >
+              {{ STR.operationsPage.errorGroupAll }} ({{ operationErrorRows.length }})
+            </el-tag>
+            <el-tag
+              v-for="group in operationErrorGroups"
+              :key="group.code"
+              :type="selectedErrorCode === group.code ? 'danger' : 'info'"
+              style="cursor: pointer;"
+              @click="selectedErrorCode = group.code"
+            >
+              {{ group.code }} ({{ group.count }})
+            </el-tag>
+          </div>
+          <el-table :data="filteredOperationErrorRows" size="small" max-height="400">
+            <el-table-column prop="index" label="#" width="50" />
+            <el-table-column prop="code" :label="STR.operationsPage.errorGroupCode" width="170" />
+            <el-table-column prop="path" :label="STR.operationsPage.errorGroupPath" min-width="180" />
+            <el-table-column :label="STR.operationsPage.diagActions" width="100" align="center">
+              <template #default="{ row }">
+                <el-button
+                  v-if="hasErrorPath(row)"
+                  size="small"
+                  @click="copyDiagPath(String(row.path))"
+                >
+                  {{ STR.operationsPage.copyPath }}
+                </el-button>
+                <span v-else style="color: var(--el-text-color-placeholder);">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="message" label="错误内容" min-width="240" />
+          </el-table>
+        </template>
         <template #footer>
           <el-button @click="showOpErrorsDialog = false">关闭</el-button>
         </template>
@@ -353,6 +387,7 @@ const showOpErrorsDialog = ref(false)
 /** 最近一次操作产生的警告/错误，持久显示直到下次操作覆盖 */
 const operationWarnings = ref<string[]>([])
 const operationErrors = ref<string[]>([])
+const selectedErrorCode = ref('')
 /** dry-run 结果文件列表，操作完成后显示在页面下方 */
 const dryRunEntries = ref<Array<Record<string, unknown>>>([])
 const dryRunOperation = ref('') // 'backup' | 'apply' | 'restore'
@@ -466,6 +501,42 @@ const operationWarningRows = computed(() => operationWarnings.value.map((w, i) =
   }
 }))
 
+const operationErrorRows = computed(() => operationErrors.value.map((e, i) => {
+  const text = String(e || '')
+  const code = text.split(':', 1)[0] || 'UNKNOWN'
+  let path = ''
+  if (code === 'E_COPY_FAILED' || code === 'E_DELETE_FAILED') {
+    const parts = text.split(': ')
+    path = parts.length >= 2 ? parts[1] : ''
+  } else if (code === 'E_SOURCE_NOT_FOUND') {
+    const prefix = 'E_SOURCE_NOT_FOUND: '
+    path = text.startsWith(prefix) ? text.slice(prefix.length).trim() : ''
+  }
+  return {
+    index: i + 1,
+    code,
+    path,
+    message: text,
+  }
+}))
+
+const operationErrorGroups = computed(() => {
+  const counter = new Map<string, number>()
+  for (const row of operationErrorRows.value) {
+    counter.set(row.code, (counter.get(row.code) || 0) + 1)
+  }
+  return Array.from(counter.entries())
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => b.count - a.count)
+})
+
+const filteredOperationErrorRows = computed(() => {
+  if (!selectedErrorCode.value) {
+    return operationErrorRows.value
+  }
+  return operationErrorRows.value.filter((row) => row.code === selectedErrorCode.value)
+})
+
 const diagnosticsHint = computed(() => {
   const g = gateFailedDirs.value.length
   const n = noMatchedDirs.value.length
@@ -544,6 +615,25 @@ function locateWarning(row: {
       card.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   })
+}
+
+function quickLocateFromSummary() {
+  const firstLocatable = operationWarningRows.value.find((row) => row.canLocate)
+  if (firstLocatable) {
+    locateWarning(firstLocatable)
+    return
+  }
+  showOpWarningsDialog.value = true
+}
+
+function quickLocateErrorFromSummary() {
+  const topGroup = operationErrorGroups.value[0]
+  selectedErrorCode.value = topGroup ? topGroup.code : ''
+  showOpErrorsDialog.value = true
+}
+
+function hasErrorPath(row: { path?: string }) {
+  return Boolean(String(row.path || '').trim())
 }
 
 function populateResults(data: Record<string, unknown>) {
@@ -678,6 +768,7 @@ async function doBackup() {
       const isDry = result?.data?.dry_run
       operationWarnings.value = warns
       operationErrors.value = errs
+      selectedErrorCode.value = ''
       if (isDry && backedUp.length > 0) {
         dryRunEntries.value = backedUp
         dryRunOperation.value = 'backup'
@@ -728,6 +819,7 @@ async function doApply() {
       const isDry = result?.data?.dry_run
       operationWarnings.value = warns
       operationErrors.value = errs
+      selectedErrorCode.value = ''
       if (isDry && applied.length > 0) {
         dryRunEntries.value = applied
         dryRunOperation.value = 'apply'
@@ -776,6 +868,7 @@ async function doRestore() {
       const warns: string[] = result?.warnings || []
       operationWarnings.value = warns
       operationErrors.value = errs
+      selectedErrorCode.value = ''
       if (errs.length > 0) {
         ElMessage.warning(`恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
       } else {

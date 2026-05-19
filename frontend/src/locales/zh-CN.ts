@@ -237,6 +237,9 @@ export const STR = {
     copyPathEmpty: '路径为空，无法复制',
     locateWarning: '定位',
     locateNoDiagnostics: '当前无可定位的应用诊断数据，请先执行应用操作',
+    errorGroupAll: '全部错误',
+    errorGroupCode: '错误类型',
+    errorGroupPath: '相关路径',
   },
 
   // ── ForestViewer ──────────────────────────────────────────────────────
