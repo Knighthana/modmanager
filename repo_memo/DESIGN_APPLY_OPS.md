@@ -27,6 +27,8 @@
 - apply 只消费执行输入，不生产前置决策。
 - apply 不猜测用户意图，也不补充上游未定义的语义。
 - apply 由上层编排命令（例如 `orchestrate_apply()`）调用，不作为工作区入口本身。
+ - 前置门禁（preflight / gate check）为 `orchestrator` 的职责：在工作区情境下，调用链为 `resolve_apply_ws()` → `orchestrate_apply()` → preflight → `apply()`。
+   orchestrator 在调用 `apply` 之前负责生成并评估 preflight manifest，仅在 manifest 表示可执行 (`ok`) 时才会继续调用 `apply`；`apply` 本身不再承担 gate 判定或前置决策的生成。
 
 ### 2.2 apply 只消费文件输入
 
