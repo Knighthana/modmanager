@@ -8,6 +8,26 @@
 
 ## 输出结构
 
+## 路径规范（新增硬约束）
+
+dry_run 列表中的路径字段必须满足以下约束（与引擎不变量一致）：
+
+- 目录路径：恰好一个尾部 `/`
+- 文件路径：不带尾部 `/`
+- 禁止输出重复分隔符导致的尾部 `//`
+
+示例：
+
+- 合法：`/tmp/fixture/content/maps/lobby/`
+- 非法：`/tmp/fixture/content/maps/lobby//`
+- 合法：`/tmp/fixture/content/maps/lobby/map.bin`
+- 非法：`/tmp/fixture/content/maps/lobby/map.bin/`
+
+说明：
+
+- 以上规则适用于 `path`、`source`、`target`、`backup_path` 四类字段。
+- 输出构造必须是幂等的：即同一记录重复序列化不应改变路径字符串。
+
 ### backup dry_run
 
 `run_differential_backup` 在 `dry_run=True` 时，`backed_up` 列表中每条记录的字段：

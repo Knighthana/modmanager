@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DryRunOutput",
+  "description": "Schema for dry_run output entries used by backup/apply/restore APIs.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "backup_entry": { "$ref": "#/$defs/BackupDryRunEntry" },
+    "apply_entry": { "$ref": "#/$defs/ApplyDryRunEntry" },
+    "restore_entry": { "$ref": "#/$defs/RestoreDryRunEntry" }
+  },
+  "$defs": {
+    "PathNoDoubleSlash": {
+      "type": "string",
+      "pattern": "^(?!.*//).+$"
+    },
+    "DirectoryPath": {
+      "allOf": [
+        { "$ref": "#/$defs/PathNoDoubleSlash" },
+        { "type": "string", "pattern": ".+/$" }
+      ]
+    },
+    "FilePath": {
+      "allOf": [
+        { "$ref": "#/$defs/PathNoDoubleSlash" },
+        { "type": "string", "pattern": ".+[^/]$" }
+      ]
+    },
+    "BackupDryRunEntry": {
+      "type": "object",
+      "required": ["action", "path", "backup_path", "size", "mtime", "is_dir"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "const": "copy" },
+        "path": { "type": "string" },
+        "backup_path": { "type": "string" },
+        "size": { "type": "integer", "minimum": 0 },
+        "mtime": { "type": "number", "minimum": 0 },
+        "is_dir": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "is_dir": { "const": true } } },
+          "then": {
+            "properties": {
+              "path": { "$ref": "#/$defs/DirectoryPath" },
+              "backup_path": { "$ref": "#/$defs/DirectoryPath" }
+            }
+          },
+          "else": {
+            "properties": {
+              "path": { "$ref": "#/$defs/FilePath" },
+              "backup_path": { "$ref": "#/$defs/FilePath" }
+            }
+          }
+        }
+      ]
+    },
+    "ApplyDryRunEntry": {
+      "type": "object",
+      "required": ["action", "target", "size", "mtime", "is_dir"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "enum": ["create", "replace", "delete"] },
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "size": { "type": "integer", "minimum": 0 },
+        "mtime": { "type": "number", "minimum": 0 },
+        "is_dir": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "is_dir": { "const": true } } },
+          "then": {
+            "properties": {
+              "target": { "$ref": "#/$defs/DirectoryPath" },
+              "source": { "$ref": "#/$defs/DirectoryPath" }
+            }
+          },
+          "else": {
+            "properties": {
+              "target": { "$ref": "#/$defs/FilePath" },
+              "source": { "$ref": "#/$defs/FilePath" }
+            }
+          }
+        }
+      ]
+    },
+    "RestoreDryRunEntry": {
+      "type": "object",
+      "required": ["path", "size", "mtime", "is_dir"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/FilePath" },
+        "size": { "type": "integer", "minimum": 0 },
+        "mtime": { "type": "number", "minimum": 0 },
+        "is_dir": { "const": false }
+      }
+    }
+  }
+}

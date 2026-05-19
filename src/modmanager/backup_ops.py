@@ -128,6 +128,21 @@ def _normalized(path: str) -> str:
     return normalize_posix(path)
 
 
+def _serialize_output_path(path: str, *, is_dir: bool) -> str:
+    """Serialize a path for API output with idempotent slash rules.
+
+    Rules:
+    - directory path: exactly one trailing slash
+    - file path: no trailing slash
+    - duplicated separators are collapsed by normalize_posix
+    """
+    normalized = normalize_posix(path)
+    stripped = normalized.rstrip("/")
+    if is_dir:
+        return stripped + "/" if stripped else "/"
+    return stripped
+
+
 def build_filefoldertree_with_hashes(
     root_dir: str,
     *,
@@ -420,13 +435,17 @@ def run_differential_backup(
             rel = norm.removeprefix(cr).lstrip("/") if norm.startswith(cr) else norm.lstrip("/")
             if src.exists():
                 is_dir = src.is_dir()
-                trail = "/" if is_dir else ""
+                path_out = _serialize_output_path(target, is_dir=is_dir)
+                backup_path_out = _serialize_output_path(
+                    f"{dir_basename}/{rel}",
+                    is_dir=is_dir,
+                )
                 try:
                     st = src.stat()
                     would_backup.append({
                         "action": "copy",
-                        "path": target + trail,
-                        "backup_path": f"{dir_basename}/{rel}{trail}",
+                        "path": path_out,
+                        "backup_path": backup_path_out,
                         "size": st.st_size,
                         "mtime": st.st_mtime,
                         "is_dir": is_dir,
@@ -434,8 +453,8 @@ def run_differential_backup(
                 except OSError:
                     would_backup.append({
                         "action": "copy",
-                        "path": target + trail,
-                        "backup_path": f"{dir_basename}/{rel}{trail}",
+                        "path": path_out,
+                        "backup_path": backup_path_out,
                         "size": 0,
                         "mtime": 0,
                         "is_dir": is_dir,
@@ -519,13 +538,13 @@ def apply_final_mapping(
             if action == "delete":
                 t = Path(target)
                 is_dir = t.is_dir() if t.exists() else False
-                trail = "/" if is_dir else ""
+                target_out = _serialize_output_path(target, is_dir=is_dir)
                 if t.exists():
                     try:
                         st = t.stat()
                         would_apply.append({
                             "action": "delete",
-                            "target": target + trail,
+                            "target": target_out,
                             "size": st.st_size,
                             "mtime": st.st_mtime,
                             "is_dir": is_dir,
@@ -533,7 +552,7 @@ def apply_final_mapping(
                     except OSError:
                         would_apply.append({
                             "action": "delete",
-                            "target": target + trail,
+                            "target": target_out,
                             "size": 0,
                             "mtime": 0,
                             "is_dir": is_dir,
@@ -549,13 +568,14 @@ def apply_final_mapping(
                 would_errors.append(f"E_SOURCE_NOT_FOUND: {source}")
                 continue
             is_dir = src_path.is_dir()
-            trail = "/" if is_dir else ""
+            source_out = _serialize_output_path(source, is_dir=is_dir)
+            target_out = _serialize_output_path(target, is_dir=is_dir)
             try:
                 st = src_path.stat()
                 would_apply.append({
                     "action": action,
-                    "source": source + trail,
-                    "target": target + trail,
+                    "source": source_out,
+                    "target": target_out,
                     "size": st.st_size,
                     "mtime": st.st_mtime,
                     "is_dir": is_dir,
@@ -563,8 +583,8 @@ def apply_final_mapping(
             except OSError:
                 would_apply.append({
                     "action": action,
-                    "source": source + trail,
-                    "target": target + trail,
+                    "source": source_out,
+                    "target": target_out,
                     "size": 0,
                     "mtime": 0,
                     "is_dir": is_dir,

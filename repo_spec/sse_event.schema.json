@@ -63,8 +63,35 @@
                             "type": "boolean"
                         },
                         "data": {
-                            "description": "Response payload. May be null when ok is false.",
-                            "type": ["object", "null"]
+                            "description": "Response payload. May be null when ok is false. When dry_run=true, backed_up/applied/restored entry items SHOULD conform to repo_spec/dry_run_output.schema.json.",
+                            "oneOf": [
+                                { "type": "null" },
+                                {
+                                    "type": "object",
+                                    "additionalProperties": true,
+                                    "properties": {
+                                        "dry_run": { "type": "boolean" },
+                                        "backed_up": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "dry_run_output.schema.json#/$defs/BackupDryRunEntry"
+                                            }
+                                        },
+                                        "applied": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "dry_run_output.schema.json#/$defs/ApplyDryRunEntry"
+                                            }
+                                        },
+                                        "restored": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "dry_run_output.schema.json#/$defs/RestoreDryRunEntry"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         },
                         "errors": {
                             "description": "Fatal error messages. Each string begins with an E_ code.",

@@ -279,6 +279,27 @@ class TestRunDifferentialBackup(TestCase):
             self.assertTrue((Path(bdir) / "orig" / "dir1" / "a.txt").exists())
             self.assertTrue((Path(bdir) / "orig" / "dir1" / "nested" / "b.txt").exists())
 
+    def test_dry_run_directory_path_has_single_trailing_slash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_dir = Path(tmp) / "orig" / "maps" / "lobby"
+            src_dir.mkdir(parents=True)
+            (src_dir / "a.txt").write_bytes(b"x")
+
+            bdir = str(Path(tmp) / "backup") + "/"
+            result = run_differential_backup(
+                bdir,
+                [str(src_dir) + "/"],
+                dry_run=True,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(len(result["backed_up"]), 1)
+            entry = result["backed_up"][0]
+            self.assertEqual(entry["path"], str(src_dir) + "/")
+            self.assertFalse(entry["path"].endswith("//"))
+            self.assertTrue(entry["backup_path"].endswith("/"))
+            self.assertFalse(entry["backup_path"].endswith("//"))
+
 
 # ── Phase 11: apply_final_mapping ────────────────────────────────────────────
 
@@ -439,6 +460,28 @@ class TestApplyFinalMapping(TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual((dest / "a.txt").read_bytes(), b"a")
             self.assertEqual((dest / "nested" / "b.txt").read_bytes(), b"b")
+
+    def test_apply_dry_run_directory_paths_have_single_trailing_slash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src_dir = Path(tmp) / "src" / "dirA"
+            src_dir.mkdir(parents=True)
+            (src_dir / "data.txt").write_bytes(b"ok")
+
+            dest_dir = Path(tmp) / "game" / "dirA"
+            bdir = self.ready_backup_dir(tmp)
+            result = apply_final_mapping(
+                [self._entry(str(dest_dir) + "/", str(src_dir) + "/")],
+                bdir,
+                dry_run=True,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(len(result["applied"]), 1)
+            entry = result["applied"][0]
+            self.assertEqual(entry["source"], str(src_dir) + "/")
+            self.assertEqual(entry["target"], str(dest_dir) + "/")
+            self.assertFalse(entry["source"].endswith("//"))
+            self.assertFalse(entry["target"].endswith("//"))
 
 
 # ── Phase 12: restore_from_backup ─────────────────────────────────────────────
