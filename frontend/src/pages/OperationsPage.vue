@@ -134,6 +134,84 @@
         </p>
       </el-card>
 
+      <!-- 最近一次 apply 诊断摘要 -->
+      <el-card id="apply-diagnostics-card" v-if="applyDiagnostics !== null" shadow="never" style="margin-top: 16px;">
+        <template #header>
+          {{ STR.operationsPage.applyDiagnosticsTitle }}
+          <el-button size="small" style="float: right;" @click="applyDiagnostics = null">{{ STR.operationsPage.clearDiagnostics }}</el-button>
+        </template>
+        <el-descriptions :column="4" border size="small">
+          <el-descriptions-item :label="STR.operationsPage.diagTotalDirs">
+            {{ applyDiagnostics.total_backup_dirs ?? 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="STR.operationsPage.diagProcessedDirs">
+            {{ applyDiagnostics.processed_dirs ?? 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="STR.operationsPage.diagGateFailedDirs">
+            {{ gateFailedDirs.length }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="STR.operationsPage.diagNoMatchedDirs">
+            {{ noMatchedDirs.length }}
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-alert
+          v-if="gateFailedDirs.length > 0 || noMatchedDirs.length > 0"
+          style="margin-top: 12px;"
+          type="warning"
+          :closable="false"
+          :title="diagnosticsHint"
+        />
+        <el-collapse
+          v-if="gateFailedDirs.length > 0 || noMatchedDirs.length > 0"
+          v-model="diagExpandedPanels"
+          style="margin-top: 12px;"
+        >
+          <el-collapse-item
+            v-if="gateFailedDirs.length > 0"
+            :title="`${STR.operationsPage.diagGateFailedListTitle} (${gateFailedDirs.length})`"
+            name="gate-failed"
+          >
+            <el-table
+              :data="gateFailedRows"
+              :row-class-name="diagRowClassName"
+              size="small"
+              max-height="220"
+              border
+            >
+              <el-table-column prop="index" label="#" width="56" />
+              <el-table-column prop="path" :label="STR.operationsPage.diagDirPathLabel" min-width="380" />
+              <el-table-column :label="STR.operationsPage.diagActions" width="120" align="center">
+                <template #default="{ row }">
+                  <el-button size="small" @click="copyDiagPath(String(row.path))">{{ STR.operationsPage.copyPath }}</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-collapse-item>
+
+          <el-collapse-item
+            v-if="noMatchedDirs.length > 0"
+            :title="`${STR.operationsPage.diagNoMatchedListTitle} (${noMatchedDirs.length})`"
+            name="no-matched"
+          >
+            <el-table
+              :data="noMatchedRows"
+              :row-class-name="diagRowClassName"
+              size="small"
+              max-height="220"
+              border
+            >
+              <el-table-column prop="index" label="#" width="56" />
+              <el-table-column prop="path" :label="STR.operationsPage.diagDirPathLabel" min-width="380" />
+              <el-table-column :label="STR.operationsPage.diagActions" width="120" align="center">
+                <template #default="{ row }">
+                  <el-button size="small" @click="copyDiagPath(String(row.path))">{{ STR.operationsPage.copyPath }}</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-collapse-item>
+        </el-collapse>
+      </el-card>
+
       <!-- dry-run 文件列表 -->
       <el-card v-if="dryRunEntries.length > 0" shadow="never" style="margin-top: 16px;">
         <template #header>
@@ -195,9 +273,21 @@
       <!-- 操作警告 dialog -->
       <el-dialog v-model="showOpWarningsDialog" title="操作警告详情" width="600px">
         <div v-if="operationWarnings.length === 0" style="color: var(--el-text-color-placeholder);">无警告</div>
-        <el-table v-else :data="operationWarnings.map((w, i) => ({ index: i + 1, message: w }))" size="small" max-height="400">
+        <el-table v-else :data="operationWarningRows" size="small" max-height="400">
           <el-table-column prop="index" label="#" width="50" />
-          <el-table-column prop="message" label="警告内容" />
+          <el-table-column prop="message" label="警告内容" min-width="360" />
+          <el-table-column :label="STR.operationsPage.diagActions" width="100" align="center">
+            <template #default="{ row }">
+              <el-button
+                v-if="row.canLocate"
+                size="small"
+                @click="locateWarning(row)"
+              >
+                {{ STR.operationsPage.locateWarning }}
+              </el-button>
+              <span v-else style="color: var(--el-text-color-placeholder);">-</span>
+            </template>
+          </el-table-column>
         </el-table>
         <template #footer>
           <el-button @click="showOpWarningsDialog = false">关闭</el-button>
@@ -220,7 +310,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
@@ -266,6 +356,10 @@ const operationErrors = ref<string[]>([])
 /** dry-run 结果文件列表，操作完成后显示在页面下方 */
 const dryRunEntries = ref<Array<Record<string, unknown>>>([])
 const dryRunOperation = ref('') // 'backup' | 'apply' | 'restore'
+/** 最近一次 apply 的结构化诊断 */
+const applyDiagnostics = ref<Record<string, unknown> | null>(null)
+const diagExpandedPanels = ref<string[]>([])
+const diagFocusedPath = ref('')
 
 // ── computed ───────────────────────────────────────────────────────────
 
@@ -304,6 +398,80 @@ const progressPct = computed(() => {
   return Math.round((finished / total) * 100)
 })
 
+const gateFailedDirs = computed(() => {
+  const raw = applyDiagnostics.value?.gate_failed_dirs
+  return Array.isArray(raw) ? raw : []
+})
+
+const noMatchedDirs = computed(() => {
+  const raw = applyDiagnostics.value?.no_matched_entry_dirs
+  return Array.isArray(raw) ? raw : []
+})
+
+const gateFailedRows = computed(() => gateFailedDirs.value.map((path, i) => ({
+  index: i + 1,
+  path: String(path),
+})))
+
+const noMatchedRows = computed(() => noMatchedDirs.value.map((path, i) => ({
+  index: i + 1,
+  path: String(path),
+})))
+
+function parseLocateInfo(message: string): {
+  canLocate: boolean
+  panels: string[]
+  path: string
+} {
+  const text = String(message || '')
+  if (text.startsWith('W_BACKUP_GATE_FAILED:')) {
+    const matched = gateFailedDirs.value.find((p) => text.includes(String(p)))
+    return {
+      canLocate: true,
+      panels: ['gate-failed'],
+      path: matched ? String(matched) : '',
+    }
+  }
+  if (text.startsWith('W_APPLY_DIR_NO_MATCHED_ENTRIES:')) {
+    const prefix = 'W_APPLY_DIR_NO_MATCHED_ENTRIES:'
+    const path = text.slice(prefix.length).trim()
+    return {
+      canLocate: true,
+      panels: ['no-matched'],
+      path,
+    }
+  }
+  if (text.startsWith('W_APPLY_NO_EFFECT:')) {
+    return {
+      canLocate: true,
+      panels: ['gate-failed', 'no-matched'],
+      path: '',
+    }
+  }
+  return {
+    canLocate: false,
+    panels: [],
+    path: '',
+  }
+}
+
+const operationWarningRows = computed(() => operationWarnings.value.map((w, i) => {
+  const info = parseLocateInfo(w)
+  return {
+    index: i + 1,
+    message: w,
+    canLocate: info.canLocate,
+    panels: info.panels,
+    path: info.path,
+  }
+}))
+
+const diagnosticsHint = computed(() => {
+  const g = gateFailedDirs.value.length
+  const n = noMatchedDirs.value.length
+  return `${STR.operationsPage.diagHintPrefix} gate=${g}，no-match=${n}`
+})
+
 /** 操作显示名称 */
 function operationLabel(op: string): string {
   const labels: Record<string, string> = {
@@ -326,6 +494,56 @@ function formatSize(bytes: number): string {
 function formatMtime(mtime: number): string {
   if (!mtime || mtime === 0) return '-'
   return new Date(mtime * 1000).toLocaleString()
+}
+
+function copyDiagPath(path: string) {
+  const text = path.trim()
+  if (!text) {
+    ElMessage.warning(STR.operationsPage.copyPathEmpty)
+    return
+  }
+
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    ElMessage.warning(STR.operationsPage.copyPathUnsupported)
+    return
+  }
+
+  navigator.clipboard.writeText(text)
+    .then(() => {
+      ElMessage.success(STR.operationsPage.copyPathSuccess)
+    })
+    .catch(() => {
+      ElMessage.error(STR.operationsPage.copyPathFailed)
+    })
+}
+
+function diagRowClassName({ row }: { row: Record<string, unknown> }) {
+  return String(row.path || '') === diagFocusedPath.value ? 'diag-row-focused' : ''
+}
+
+function locateWarning(row: {
+  canLocate: boolean
+  panels: string[]
+  path: string
+}) {
+  if (!row.canLocate) {
+    return
+  }
+  if (!applyDiagnostics.value) {
+    ElMessage.warning(STR.operationsPage.locateNoDiagnostics)
+    return
+  }
+
+  diagExpandedPanels.value = row.panels
+  diagFocusedPath.value = row.path || ''
+  showOpWarningsDialog.value = false
+
+  nextTick(() => {
+    const card = document.getElementById('apply-diagnostics-card')
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  })
 }
 
 function populateResults(data: Record<string, unknown>) {
@@ -440,6 +658,9 @@ async function confirmRestore() {
 /** 差异备份 */
 async function doBackup() {
   operating.value = 'backup'
+  applyDiagnostics.value = null
+  diagExpandedPanels.value = []
+  diagFocusedPath.value = ''
   progress.value = { step: 'backup', finished: 0, total: -1, message: '准备中...' }
 
   await streamSse(`/workspace/${workspaceId.value}/pipeline/backup`, {
@@ -494,6 +715,16 @@ async function doApply() {
       const skipped = result?.data?.apply_skipped || []
       const errs: string[] = result?.data?.apply_errors || result?.errors || []
       const warns: string[] = result?.warnings || []
+      const diagnostics = (result?.data?.apply_diagnostics || {}) as Record<string, unknown>
+      applyDiagnostics.value = Object.keys(diagnostics).length > 0 ? diagnostics : null
+      diagExpandedPanels.value = []
+      diagFocusedPath.value = ''
+      const gateFailed = Array.isArray(diagnostics?.gate_failed_dirs)
+        ? diagnostics.gate_failed_dirs.length
+        : 0
+      const noMatched = Array.isArray(diagnostics?.no_matched_entry_dirs)
+        ? diagnostics.no_matched_entry_dirs.length
+        : 0
       const isDry = result?.data?.dry_run
       operationWarnings.value = warns
       operationErrors.value = errs
@@ -502,8 +733,14 @@ async function doApply() {
         dryRunOperation.value = 'apply'
       }
       const prefix = isDry ? '[dry-run] ' : ''
-      if (errs.length > 0) {
-        ElMessage.warning(`${prefix}应用完成：${applied.length} 个操作，${skipped.length} 个跳过，${errs.length} 个错误`)
+      const noOp = !isDry && applied.length === 0 && skipped.length === 0
+      const diagText = (gateFailed > 0 || noMatched > 0)
+        ? `，gate失败目录 ${gateFailed}，无匹配目录 ${noMatched}`
+        : ''
+      if (errs.length > 0 || warns.length > 0 || noOp) {
+        ElMessage.warning(
+          `${prefix}应用完成：${applied.length} 个操作，${skipped.length} 个跳过，${errs.length} 个错误，${warns.length} 个警告${diagText}`,
+        )
       } else {
         ElMessage.success(`${prefix}应用完成：${applied.length} 个操作，${skipped.length} 个跳过`)
       }
@@ -520,6 +757,9 @@ async function doApply() {
 /** 恢复备份 */
 async function doRestore() {
   operating.value = 'restore'
+  applyDiagnostics.value = null
+  diagExpandedPanels.value = []
+  diagFocusedPath.value = ''
   progress.value = { step: 'restore', finished: 0, total: -1, message: '准备中...' }
 
   await streamSse(`/workspace/${workspaceId.value}/pipeline/restore`, {
@@ -570,5 +810,9 @@ async function doRestore() {
 }
 .summary-table :deep(.el-descriptions__content) {
   text-align: center;
+}
+
+:deep(.diag-row-focused td) {
+  background-color: #fff7e6 !important;
 }
 </style>

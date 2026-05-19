@@ -428,6 +428,12 @@ def apply(
     all_skipped: list[str] = []
     all_errors: list[str] = []
     all_warnings: list[str] = list(dir_warnings)
+    diagnostics: dict[str, Any] = {
+        "total_backup_dirs": len(backup_dirs),
+        "processed_dirs": 0,
+        "gate_failed_dirs": [],
+        "no_matched_entry_dirs": [],
+    }
 
     for backup_dir_str, dir_files in backup_dirs.items():
         gate_errors = check_backup_gate(backup_dir_str)
@@ -435,11 +441,19 @@ def apply(
             all_warnings.append(
                 f"W_BACKUP_GATE_FAILED: {backup_dir_str}: {'; '.join(gate_errors)}"
             )
+            diagnostics["gate_failed_dirs"].append(backup_dir_str)
             continue
 
-        path_set = set(dir_files)
-        dir_entries = [e for e in final_mapping if e.get("path") in path_set]
+        path_set = {normalize_posix(str(p)) for p in dir_files}
+        dir_entries = [
+            e for e in final_mapping
+            if normalize_posix(str(e.get("path", ""))) in path_set
+        ]
         if not dir_entries:
+            all_warnings.append(
+                f"W_APPLY_DIR_NO_MATCHED_ENTRIES: {backup_dir_str}"
+            )
+            diagnostics["no_matched_entry_dirs"].append(backup_dir_str)
             continue
 
         backup_path_obj = Path(backup_dir_str)
@@ -450,6 +464,7 @@ def apply(
             dry_run=dry_run,
             on_progress=on_progress,
         )
+        diagnostics["processed_dirs"] += 1
         all_applied.extend(result.get("applied", []))
         all_skipped.extend(result.get("skipped", []))
         all_errors.extend(result.get("errors", []))
@@ -464,12 +479,22 @@ def apply(
             except (OSError, ValueError):
                 pass
 
+    if not dry_run and not all_applied and not all_errors and (
+        diagnostics["gate_failed_dirs"] or diagnostics["no_matched_entry_dirs"]
+    ):
+        all_warnings.append(
+            "W_APPLY_NO_EFFECT: "
+            f"gate_failed_dirs={len(diagnostics['gate_failed_dirs'])}, "
+            f"no_matched_entry_dirs={len(diagnostics['no_matched_entry_dirs'])}"
+        )
+
     return {
         "ok": not all_errors,
         "applied": all_applied,
         "skipped": all_skipped,
         "errors": all_errors,
         "warnings": all_warnings,
+        "diagnostics": diagnostics,
         "dry_run": dry_run,
     }
 

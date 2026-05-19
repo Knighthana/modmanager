@@ -629,6 +629,33 @@ class TestAdapters:
         assert "E_SOMETHING" in result["errors"]
         assert "W_CAREFUL" in result["warnings"]
 
+    def test_adapt_pipeline_result_with_apply_diagnostics(self) -> None:
+        from modmanager_web.adapters import adapt_pipeline_result
+
+        pr = PipelineResult(
+            ok=True,
+            apply_result={
+                "ok": True,
+                "applied": [],
+                "skipped": [],
+                "errors": [],
+                "warnings": ["W_APPLY_NO_EFFECT: gate_failed_dirs=1, no_matched_entry_dirs=0"],
+                "diagnostics": {
+                    "total_backup_dirs": 1,
+                    "processed_dirs": 0,
+                    "gate_failed_dirs": ["/tmp/fixture/270150.abcd.kmmbackup/"],
+                    "no_matched_entry_dirs": [],
+                },
+            },
+        )
+        result = adapt_pipeline_result(pr)
+        assert result["ok"] is True
+        assert result["data"]["apply_warnings"] == [
+            "W_APPLY_NO_EFFECT: gate_failed_dirs=1, no_matched_entry_dirs=0"
+        ]
+        assert result["data"]["apply_diagnostics"]["processed_dirs"] == 0
+        assert result["data"]["apply_diagnostics"]["total_backup_dirs"] == 1
+
     def test_adapt_backup_result(self) -> None:
         from modmanager_web.adapters import adapt_backup_result
 

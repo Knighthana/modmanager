@@ -32,6 +32,8 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
         data["applied"] = pr.apply_result.get("applied", [])
         data["apply_skipped"] = pr.apply_result.get("skipped", [])
         data["apply_errors"] = pr.apply_result.get("errors", [])
+        data["apply_warnings"] = pr.apply_result.get("warnings", [])
+        data["apply_diagnostics"] = pr.apply_result.get("diagnostics", {})
         if pr.apply_result.get("dry_run"):
             data["dry_run"] = True
 

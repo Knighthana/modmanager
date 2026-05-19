@@ -7,6 +7,7 @@ import json
 import tempfile
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from modmanager.orchestrator import (
     PipelineResult,
@@ -101,6 +102,106 @@ class TestApply(TestCase):
                 user_config={},
                 dry_run=False,
             )
+
+    @patch("modmanager.orchestrator.apply_final_mapping")
+    @patch("modmanager.orchestrator.check_backup_gate")
+    @patch("modmanager.orchestrator.build_backup_dirs")
+    def test_apply_matches_paths_after_normalization(
+        self,
+        mock_build_backup_dirs,
+        mock_check_backup_gate,
+        mock_apply_final_mapping,
+    ) -> None:
+        """Path matching should use normalized paths to avoid // vs / misses."""
+        mock_build_backup_dirs.return_value = (
+            {
+                "/tmp/fixture/270150.abcd.kmmbackup/": [
+                    "/tmp/fixture/content/2606099273/file.txt"
+                ]
+            },
+            [],
+        )
+        mock_check_backup_gate.return_value = []
+        mock_apply_final_mapping.return_value = {
+            "ok": True,
+            "applied": ["/tmp/fixture/content/2606099273/file.txt"],
+            "skipped": [],
+            "errors": [],
+        }
+
+        result = apply(
+            final_mapping=[
+                {
+                    "path": "/tmp/fixture//content//2606099273/file.txt",
+                    "request": {"action": "replace", "path": "/tmp/src/file.txt"},
+                }
+            ],
+            database={},
+            user_config={},
+            dry_run=False,
+        )
+
+        self.assertTrue(result["ok"])
+        mock_apply_final_mapping.assert_called_once()
+        matched_entries = mock_apply_final_mapping.call_args.args[0]
+        self.assertEqual(len(matched_entries), 1)
+        self.assertEqual(
+            matched_entries[0]["path"],
+            "/tmp/fixture//content//2606099273/file.txt",
+        )
+
+    @patch("modmanager.orchestrator.apply_final_mapping")
+    @patch("modmanager.orchestrator.check_backup_gate")
+    @patch("modmanager.orchestrator.build_backup_dirs")
+    def test_apply_warns_when_backup_dir_has_no_matched_entries(
+        self,
+        mock_build_backup_dirs,
+        mock_check_backup_gate,
+        mock_apply_final_mapping,
+    ) -> None:
+        """When a backup_dir has no matched mapping entries, a warning should be emitted."""
+        mock_build_backup_dirs.return_value = (
+            {
+                "/tmp/fixture/270150.abcd.kmmbackup/": [
+                    "/tmp/fixture/content/2606099273/not-in-mapping.txt"
+                ]
+            },
+            [],
+        )
+        mock_check_backup_gate.return_value = []
+
+        result = apply(
+            final_mapping=[
+                {
+                    "path": "/tmp/fixture/content/2606099273/another.txt",
+                    "request": {"action": "replace", "path": "/tmp/src/file.txt"},
+                }
+            ],
+            database={},
+            user_config={},
+            dry_run=False,
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["applied"], [])
+        self.assertTrue(
+            any(
+                "W_APPLY_DIR_NO_MATCHED_ENTRIES" in w
+                for w in result.get("warnings", [])
+            )
+        )
+        self.assertTrue(
+            any(
+                "W_APPLY_NO_EFFECT" in w
+                for w in result.get("warnings", [])
+            )
+        )
+        self.assertEqual(result["diagnostics"]["processed_dirs"], 0)
+        self.assertEqual(
+            len(result["diagnostics"]["no_matched_entry_dirs"]),
+            1,
+        )
+        mock_apply_final_mapping.assert_not_called()
 
 
 class TestRun(TestCase):
