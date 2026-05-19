@@ -99,7 +99,7 @@ async def backups_inspect(req: BackupInspectRequest):
     try:
         # Load backup info
         info = load_backup_info(backup_path)
-        tree = info.get("filefoldertree") if isinstance(info, dict) else None
+        tree = info.get("tree") if isinstance(info, dict) else None
 
         # Detect dirty state
         dirty_state = detect_dirty_state(backup_path)

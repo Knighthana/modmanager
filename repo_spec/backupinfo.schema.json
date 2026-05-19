@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BackupInfo",
-  "description": "Schema for backupinfo.json — the file/dir tree with backup status and hash metadata.",
+  "description": "Schema for backupinfo.json — the frozen snapshot tree with backup status and hash metadata.",
   "type": "object",
   "required": [
     "snapshot_time",
@@ -27,7 +27,7 @@
     },
     "tree": {
       "$ref": "#/$defs/DirNode",
-      "description": "全量快照树，根节点为base/mod目录，结构冻结"
+      "description": "完整快照树（frozen snapshot），根节点为 base/mod 目录，结构已冻结"
     }
   },
   "$defs": {

@@ -384,10 +384,10 @@ class EngineTests(unittest.TestCase):
             self.assertEqual(result["final_mapping"], [])
             self.assertTrue(result["trees"])
 
-    def test_filefoldertree_transition_only_forward(self) -> None:
+    def test_tree_transition_only_forward(self) -> None:
         old_tree = {
             "name": "root",
-            "type": "directory",
+            "type": "dir",
             "children": [
                 {
                     "name": "a.txt",
@@ -400,7 +400,7 @@ class EngineTests(unittest.TestCase):
         }
         new_tree = {
             "name": "root",
-            "type": "directory",
+            "type": "dir",
             "children": [
                 {
                     "name": "a.txt",

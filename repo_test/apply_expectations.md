@@ -33,6 +33,8 @@
 - preflight 是 orchestrator 的独立子模块
 - preflight 产出 manifest，而不是直接执行 apply
 - manifest 至少包含 `ok`、`backup_dirs`、`errors`、`warnings`、`timestamp`
+- preflight 由 `orchestrator` 调用并产出 `manifest`。
+- `apply` 本体为执行原语，不负责生成 `manifest`（manifest 的产出与决策由 preflight/orchestrator 管理）。
 - cache 只是优化层；cache 未命中时允许重算，不改变结果语义
 
 ## 四、目录输入非法断言

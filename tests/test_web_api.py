@@ -1052,22 +1052,26 @@ class TestBackupsInspectApi:
 
         # Create a minimal backupinfo.json
         info = {
-            "filefoldertree_status": "ready",
-            "filefoldertree": {
+            "snapshot_time": "2026-05-20T10:15:30Z",
+            "last_modified_time": "2026-05-20T10:16:02Z",
+            "schema_version": "1",
+            "tree": {
                 "name": "kmmbackup_test",
-                "type": "directory",
+                "type": "dir",
                 "children": [
                     {
                         "name": "mnt",
-                        "type": "directory",
+                        "type": "dir",
                         "children": [
                             {
                                 "name": "d",
-                                "type": "directory",
+                                "type": "dir",
                                 "children": [
                                     {
                                         "name": "test.txt",
                                         "type": "file",
+                                        "isbackuped": True,
+                                        "hashtype": "sha256",
                                         "hashvalue": "abc123",
                                     }
                                 ],

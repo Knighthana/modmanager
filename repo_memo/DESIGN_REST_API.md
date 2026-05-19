@@ -63,6 +63,8 @@ SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 
 - `GET /api/workspace/{id}/forest/svg` — 读取 SVG（image/svg+xml）
 - `GET /api/workspace/{id}/forest/mapping` — 读取 mapping（JSON）
 
+注意：适配器在返回中可能包含 `data.backup_dir`（见第 6 节）；该字段仅为结果暴露，用于前端展示或审计，并不表示重新开放 generic 写盘执行入口或作为触发写盘行为的接口。
+
 > 说明：上面列出的请求体形态与实现同步，以 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 为权威定义。特别注意：工作区的 `compute` / `run` 路由不需要也不会接受 `aggregated_rule_set` 等计算输入——它们从工作区目录读取。
 
 ## 4. SSE 使用示例（典型）
@@ -116,14 +118,10 @@ Content-Type: application/json
 
 > 注：如果历史原因需要保留只读或审计视图，请使用 `/api/backups/*` 只读端点，不要重新开放 generic 执行入口。
 
-## 9. 验收与检验命令（本地）
-- 快速尾巴检索（确认已删除旧痕迹）：
-```bash
-git grep -n "api/pipeline/backup\|api/pipeline/apply\|BackupRequest\|ApplyRequest\|adapt_backup_result\|adapt_apply_result" || true
-```
-- 文档到实现的一致性检查（人工核对）：
-  - 对照 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 的 request model ；确保文档中 request/response 与之匹配。
-  - 对照 [src/modmanager_web/adapters.py](src/modmanager_web/adapters.py) 的 `adapt_pipeline_result` 字段映射。
+## 9. 验收与检验建议
+- 快速尾查：建议在仓库中搜索这些关键字以确认已移除或更新旧端点与旧模型：`api/pipeline/backup`、`api/pipeline/apply`、`BackupRequest`、`ApplyRequest`、`adapt_backup_result`、`adapt_apply_result`。
+- 文档与实现一致性核对：对照 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 的 request model；对照 [src/modmanager_web/adapters.py](src/modmanager_web/adapters.py) 的 `adapt_pipeline_result` 字段映射，确认 `data.backup_dir` 的行为与本文件声明一致。
+- 前端/测试覆盖核对：检查 frontend、repo_test 及 `tests` 目录中是否存在误导性旧文案或对旧 generic 端点的调用，并更新说明。
 
 ## 10. 变更历史记录（简短）
 - 2026-05-16: 工作区模型引入，流水线端点迁移到 `/api/workspace/{id}/...`

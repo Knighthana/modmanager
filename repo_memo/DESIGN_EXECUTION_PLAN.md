@@ -52,6 +52,8 @@ POST /api/config/discover          → 返回 user_config
 
 当前状态（2026-05-20）：上述清退项已执行完成，后续不得恢复。
 
+留痕：相关实现与文档修改已提交（示例 commit：`a888438` — `DESIGN_APPLY_OPS.md`；`6cbd73c` — `DESIGN_BACKUP_OPS.md`；`e17738a` — `DESIGN_PYTHON_LAYERS.md`）。
+
 ---
 
 ## 二、分阶段执行
