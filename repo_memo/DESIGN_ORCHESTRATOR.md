@@ -126,7 +126,12 @@ def apply(
     dry_run: bool = False,
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
-    """应用映射。内部调 build_backup_dirs 推导目录，逐目录 gate check 后执行。"""
+    """应用映射。
+
+    说明：`apply` 为文件替换的原语，仅负责在已确定的上下文内执行文件替换逻辑与写盘动作。
+    前置的门控检查（preflight / gate check）为 orchestrator 的职责 — orchestrator 在调用 `apply` 之前
+    应先通过 preflight 生成 manifest 并据此决定是否调用 `apply`。`apply` 本身不重复做 preflight 决策。
+    """
 ```
 
 #### restore()

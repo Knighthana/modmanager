@@ -104,6 +104,8 @@ manifest 的重点是“可被 orchestrator 与前端稳定消费”，而不是
   -> ok=false 时返回 preflight 结果，不调用 apply
 ```
 
+注意：REST API 不直接暴露 preflight 接口；工作区 `_ws` 函数为薄层，仅负责把 workspace 上下文解析为消费品并委托给 orchestrator。preflight 的执行与缓存由 orchestrator 管理，API 路由（例如 `/api/workspace/{id}/pipeline/apply`）只触发 `orchestrate_apply()` 编排，而不直接调用或绕过 preflight。 
+
 调用关系由 `DESIGN_ORCHESTRATOR.md` 记录，本文档只冻结 preflight 子模块本身。
 
 ## 八、cache policy
