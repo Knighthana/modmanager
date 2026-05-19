@@ -85,7 +85,7 @@
 | `POST` | `/api/pipeline/visualize` | — | Forest JSON → SVG/ASCII/DOT |
 | `POST` | `/api/workspace/{id}/pipeline/compute` | SSE | 工作区上下文内计算映射 |
 | `POST` | `/api/workspace/{id}/pipeline/backup` | SSE | 工作区上下文内差异备份 |
-| `POST` | `/api/workspace/{id}/pipeline/apply` | SSE | 工作区上下文内应用映射 |
+| `POST` | `/api/workspace/{id}/pipeline/apply` | SSE | 提交工作区 apply 任务给后端编排 |
 | `POST` | `/api/workspace/{id}/pipeline/restore` | SSE | 工作区上下文内恢复备份 |
 | `POST` | `/api/workspace/{id}/pipeline/run` | SSE | 工作区上下文内全流水线 |
 | `POST` | `/api/rules/scan` | — | 扫描目录列出 kmm_rule 文件 |
@@ -95,6 +95,12 @@
 | `GET` | `/api/workspace/{id}/rules/aggregated` | — | 读取工作区已聚合规则 |
 | `POST` | `/api/backups/list` | — | 列出备份目录摘要 |
 | `POST` | `/api/backups/inspect` | — | 查看备份详情 |
+
+协议冻结说明：
+
+- `/api/pipeline/backup` 与 `/api/pipeline/apply` 已从实现中删除，不属于当前有效协议契约。
+- 禁止恢复 generic backup/apply 执行入口。
+- backup/apply 的产品主路径仅允许 workspace 路由。
 
 ---
 

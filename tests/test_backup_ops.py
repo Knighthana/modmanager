@@ -6,12 +6,13 @@ import json
 import tempfile
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from modmanager.backup_ops import (
     _HARDCODED_BACKUP_SKIP_SUFFIX,
     _collect_backup_original_paths,
     apply_final_mapping,
-    build_filefoldertree_with_hashes,
+    build_dir_tree_with_hashes,
     check_backup_gate,
     delete_orphan_files,
     detect_dirty_state,
@@ -67,15 +68,15 @@ class TestGetGameBackupId(TestCase):
             self.assertIn("buildid", warn)
 
 
-# ── Phase 8: build_filefoldertree_with_hashes ─────────────────────────────────
+# ── Phase 8: build_dir_tree_with_hashes ──────────────────────────────────────
 
-class TestBuildFilefoldertree(TestCase):
+class TestBuildDirTree(TestCase):
     def test_single_file_node(self):
         with tempfile.TemporaryDirectory() as tmp:
             f = Path(tmp) / "hello.txt"
             f.write_bytes(b"hello")
-            tree = build_filefoldertree_with_hashes(tmp)
-            self.assertEqual(tree["type"], "directory")
+            tree = build_dir_tree_with_hashes(tmp)
+            self.assertEqual(tree["type"], "dir")
             self.assertEqual(len(tree["children"]), 1)
             child = tree["children"][0]
             self.assertEqual(child["name"], "hello.txt")
@@ -89,7 +90,7 @@ class TestBuildFilefoldertree(TestCase):
             sub = Path(tmp) / "sub"
             sub.mkdir()
             (sub / "file.txt").write_bytes(b"data")
-            tree = build_filefoldertree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp)
             self.assertEqual(tree["children"][0]["name"], "sub")
             self.assertEqual(tree["children"][0]["children"][0]["name"], "file.txt")
 
@@ -97,23 +98,23 @@ class TestBuildFilefoldertree(TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "backupinfo.json").write_bytes(b"{}")
             (Path(tmp) / "real.txt").write_bytes(b"x")
-            tree = build_filefoldertree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp)
             names = [c["name"] for c in tree["children"]]
             self.assertNotIn("backupinfo.json", names)
             self.assertIn("real.txt", names)
 
     def test_empty_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
-            tree = build_filefoldertree_with_hashes(tmp)
-            self.assertEqual(tree["type"], "directory")
+            tree = build_dir_tree_with_hashes(tmp)
+            self.assertEqual(tree["type"], "dir")
             self.assertEqual(tree["children"], [])
 
     def test_hash_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
             f = Path(tmp) / "f.bin"
             f.write_bytes(b"\x00" * 1024)
-            t1 = build_filefoldertree_with_hashes(tmp)
-            t2 = build_filefoldertree_with_hashes(tmp)
+            t1 = build_dir_tree_with_hashes(tmp)
+            t2 = build_dir_tree_with_hashes(tmp)
             self.assertEqual(
                 t1["children"][0]["hashvalue"],
                 t2["children"][0]["hashvalue"],
@@ -123,21 +124,22 @@ class TestBuildFilefoldertree(TestCase):
 # ── Phase 8: backup dir lifecycle ─────────────────────────────────────────────
 
 class TestBackupDirLifecycle(TestCase):
-    def test_init_creates_error_status(self):
+    def test_init_creates_placeholder_info(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
             info = load_backup_info(bdir)
-            self.assertEqual(info["filefoldertree_status"], "error")
+            self.assertEqual(info["tree"], {})
+            self.assertEqual(info["schema_version"], "1")
 
-    def test_finalize_creates_ready_status(self):
+    def test_finalize_creates_tree_info(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = str(Path(tmp) / "backup") + "/"
             init_backup_dir(bdir)
             (Path(bdir) / "data.txt").write_bytes(b"test")
             info = finalize_backup_dir(bdir)
-            self.assertEqual(info["filefoldertree_status"], "ready")
-            self.assertIn("filefoldertree", info)
+            self.assertIn("tree", info)
+            self.assertEqual(info["schema_version"], "1")
 
     def test_finalize_tree_contains_backed_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -145,7 +147,7 @@ class TestBackupDirLifecycle(TestCase):
             init_backup_dir(bdir)
             (Path(bdir) / "file.txt").write_bytes(b"content")
             info = finalize_backup_dir(bdir)
-            names = [c["name"] for c in info["filefoldertree"]["children"]]
+            names = [c["name"] for c in info["tree"]["children"]]
             self.assertIn("file.txt", names)
 
     def test_load_returns_empty_for_missing_dir(self):
@@ -180,9 +182,9 @@ class TestCheckBackupGate(TestCase):
     def test_fails_for_error_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = str(Path(tmp) / "backup") + "/"
-            init_backup_dir(bdir)  # status=error
+            init_backup_dir(bdir)
             errors = check_backup_gate(bdir)
-            self.assertTrue(any("E_BACKUP_TREE_INCOMPLETE" in e for e in errors))
+            self.assertTrue(any("E_BACKUP_TREE_MISSING" in e for e in errors))
 
     def test_fails_for_missing_backupinfo(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -194,10 +196,10 @@ class TestCheckBackupGate(TestCase):
     def test_fails_for_ready_status_but_missing_tree(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = str(Path(tmp) / "backup") + "/"
-            # Write info with ready status but no filefoldertree
+            # Write info without tree payload
             Path(bdir).mkdir()
             (Path(bdir) / "backupinfo.json").write_text(
-                json.dumps({"filefoldertree_status": "ready"})
+                json.dumps({"schema_version": "1"})
             )
             errors = check_backup_gate(bdir)
             self.assertTrue(any("E_BACKUP_TREE_MISSING" in e for e in errors))
@@ -218,7 +220,7 @@ class TestRunDifferentialBackup(TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(len(result["backed_up"]), 1)
             self.assertEqual(result["errors"], [])
-            self.assertEqual(load_backup_info(bdir)["filefoldertree_status"], "ready")
+            self.assertIn("tree", load_backup_info(bdir))
 
     def test_skips_nonexistent_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -235,7 +237,7 @@ class TestRunDifferentialBackup(TestCase):
             result = run_differential_backup(bdir, [])
 
             self.assertTrue(result["ok"])
-            self.assertEqual(load_backup_info(bdir)["filefoldertree_status"], "ready")
+            self.assertIn("tree", load_backup_info(bdir))
 
     def test_backed_up_file_is_in_tree(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -248,7 +250,7 @@ class TestRunDifferentialBackup(TestCase):
             info = load_backup_info(bdir)
 
             # Check that the tree has some file nodes (backup content)
-            self.assertIn("filefoldertree", info)
+            self.assertIn("tree", info)
 
     def test_multiple_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -359,6 +361,20 @@ class TestApplyFinalMapping(TestCase):
             self.assertTrue(result["ok"])
             self.assertFalse(target.exists())
 
+    def test_apply_final_mapping_does_not_recheck_backup_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "src.txt"
+            src.write_bytes(b"content")
+            dest = Path(tmp) / "dest.txt"
+            dest.write_bytes(b"old")
+
+            bdir = self.ready_backup_dir(tmp)
+            with patch("modmanager.backup_ops.check_backup_gate") as mock_check_backup_gate:
+                result = apply_final_mapping([self._entry(str(dest), str(src))], bdir)
+
+            self.assertTrue(result["ok"])
+            mock_check_backup_gate.assert_not_called()
+
     def test_delete_nonexistent_target_is_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = self.ready_backup_dir(tmp)
@@ -368,7 +384,7 @@ class TestApplyFinalMapping(TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(len(result["skipped"]), 1)
 
-    def test_gate_blocks_when_backup_missing(self):
+    def test_missing_backup_dir_does_not_block_apply_final_mapping(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "src.txt"
             src.write_bytes(b"x")
@@ -377,8 +393,8 @@ class TestApplyFinalMapping(TestCase):
             bdir = str(Path(tmp) / "nonexistent_backup") + "/"
             result = apply_final_mapping([self._entry(str(dest), str(src))], bdir)
 
-            self.assertFalse(result["ok"])
-            self.assertTrue(any("E_BACKUP_DIR_MISSING" in e for e in result["errors"]))
+            self.assertTrue(result["ok"])
+            self.assertEqual(dest.read_bytes(), b"x")
 
     def test_dry_run_does_not_modify_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -549,10 +565,10 @@ class TestRestoreFromBackup(TestCase):
 # ── Phase 13: dirty state / conflict / orphan governance ─────────────────────
 
 class TestPhase13Governance(TestCase):
-    def test_detect_dirty_state_for_error_status(self):
+    def test_detect_dirty_state_for_placeholder_tree(self):
         with tempfile.TemporaryDirectory() as tmp:
             bdir = str(Path(tmp) / "backup") + "/"
-            init_backup_dir(bdir)  # status=error
+            init_backup_dir(bdir)
             result = detect_dirty_state(bdir)
             self.assertTrue(result["dirty"])
             self.assertTrue(any("E_BACKUP_DIRTY_STATE" in e for e in result["errors"]))
@@ -641,7 +657,7 @@ class TestLoopProtectionCollectPaths(TestCase):
             self.assertNotIn(str(Path(tmp) / "some" / nested.name / "nested_skip.txt"), paths)
 
     def test_loop_protection_tree_build(self):
-        """build_filefoldertree_with_hashes skips *.kmmbackup sub-directories."""
+        """build_dir_tree_with_hashes skips *.kmmbackup sub-directories."""
         with tempfile.TemporaryDirectory() as tmp:
             # Normal content
             normal = Path(tmp) / "normal.txt"
@@ -657,7 +673,7 @@ class TestLoopProtectionCollectPaths(TestCase):
             nested.parent.mkdir(parents=True)
             nested.write_bytes(b"keep")
 
-            tree = build_filefoldertree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp)
             child_names = [c["name"] for c in tree["children"]]
 
             self.assertIn("normal.txt", child_names)

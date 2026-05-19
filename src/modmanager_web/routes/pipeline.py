@@ -1,4 +1,4 @@
-"""Pipeline routes — compute / backup / apply / run / restore.
+"""Pipeline routes — compute / visualize / run / restore.
 
 All endpoints return SSE streams with progress updates.
 """
@@ -8,19 +8,16 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from modmanager.backup_dir_builder import build_backup_dir
 from modmanager.backup_ops import restore_from_backup
 from modmanager.bootstrap import discover_user_config
 from modmanager.iojson import load_json_file
 from modmanager.orchestrator import (
     compute as orch_compute,
-    backup as orch_backup,
-    apply as orch_apply,
     run as orch_run,
 )
 
-from ..adapters import adapt_pipeline_result, adapt_backup_result, adapt_apply_result, adapt_restore_result, adapt_dict_result, adapt_error
-from ..schemas import ComputeRequest, BackupRequest, ApplyRequest, RunRequest, VisualizeRequest, RestoreRequest
+from ..adapters import adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
+from ..schemas import ComputeRequest, RunRequest, VisualizeRequest, RestoreRequest
 from ..sse import stream_with_progress
 from .database import _resolve_database_path
 
@@ -63,45 +60,6 @@ async def pipeline_compute(req: ComputeRequest):
     )
 
 
-@router.post("/backup")
-async def pipeline_backup(req: BackupRequest):
-    """Run differential backup for mapped files.
-
-    SSE events:
-      - ``progress`` — backup phase updates
-      - ``result``   — backup result in ``ApiResponse`` format
-      - ``error``    — exception information
-    """
-
-    # Resolve database and user_config from database_name
-    user_config = discover_user_config()
-    db_path = _resolve_database_path(req.database_name, user_config)
-    database = load_json_file(db_path)
-
-    resolved_backup_dir = req.backup_dir
-    if resolved_backup_dir is None:
-        final_mapping = req.mapping_result.get("final_mapping", [])
-        if not final_mapping:
-            return adapt_error("final_mapping is empty; cannot derive backup_dir")
-        try:
-            resolved_backup_dir = build_backup_dir(final_mapping, database, user_config)
-        except ValueError as exc:
-            return adapt_error(str(exc))
-
-    def do_work(*, on_progress):
-        return orch_backup(
-            mapping_result=req.mapping_result,
-            backup_dir=resolved_backup_dir,
-            on_progress=on_progress,
-        )
-
-    return StreamingResponse(
-        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-    )
-
-
 @router.post("/visualize")
 async def pipeline_visualize(req: VisualizeRequest):
     """Convert trees JSON to SVG/ASCII/DOT visualization.
@@ -125,45 +83,6 @@ async def pipeline_visualize(req: VisualizeRequest):
         return adapt_dict_result({"rendered": rendered, "format": req.format})
     except Exception as exc:
         return adapt_error(str(exc))
-
-
-@router.post("/apply")
-async def pipeline_apply(req: ApplyRequest):
-    """Apply the final mapping to disk.
-
-    SSE events:
-      - ``progress`` — apply phase updates
-      - ``result``   — apply result in ``ApiResponse`` format
-      - ``error``    — exception information
-    """
-
-    # Resolve database and user_config from database_name
-    user_config = discover_user_config()
-    db_path = _resolve_database_path(req.database_name, user_config)
-    database = load_json_file(db_path)
-
-    resolved_backup_dir = req.backup_dir
-    if resolved_backup_dir is None:
-        if not req.final_mapping:
-            return adapt_error("final_mapping is empty; cannot derive backup_dir")
-        try:
-            resolved_backup_dir = build_backup_dir(req.final_mapping, database, user_config)
-        except ValueError as exc:
-            return adapt_error(str(exc))
-
-    def do_work(*, on_progress):
-        return orch_apply(
-            final_mapping=req.final_mapping,
-            backup_dir=resolved_backup_dir,
-            dry_run=req.dry_run,
-            on_progress=on_progress,
-        )
-
-    return StreamingResponse(
-        stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-    )
 
 
 @router.post("/restore")
@@ -216,7 +135,6 @@ async def pipeline_run(req: RunRequest):
         return orch_run(
             database=db,
             aggregated_rule_set=req.aggregated_rule_set,
-            backup_dir=req.backup_dir,
             action_orders=req.action_orders,
             branch_decisions=req.branch_decisions,
             managed_entries=req.managed_entries,

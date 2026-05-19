@@ -45,6 +45,16 @@
 - [DESIGN_ORCHESTRATOR.md](DESIGN_ORCHESTRATOR.md)
 - [DESIGN_PATH_RESOLVER.md](DESIGN_PATH_RESOLVER.md)
 
+## 包 A5：Apply 与门禁
+
+适用：apply 原语、apply 前置门禁、apply 编排入口。
+
+排除：backup_dir 结构、engine 内部路径推导、GUI 页面实现。
+
+- [DESIGN_APPLY_OPS.md](DESIGN_APPLY_OPS.md)
+- [DESIGN_PREFLIGHT_APPLY.md](DESIGN_PREFLIGHT_APPLY.md)
+- [DESIGN_ORCHESTRATOR.md](DESIGN_ORCHESTRATOR.md)
+
 ## 包 A3：API 与执行约束
 
 适用：REST API、引擎约束、Python 分层约束。

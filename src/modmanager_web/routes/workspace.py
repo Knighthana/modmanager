@@ -11,7 +11,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response, StreamingResponse
 from modmanager.bootstrap import discover_user_config
 from modmanager.core.workspacemanager import WorkspaceManager
-from modmanager.orchestrator import backup_ws, apply_ws, compute_ws, restore_ws, run_ws
+from modmanager.orchestrator import backup_ws, compute_ws, orchestrate_apply, restore_ws, run_ws
 from modmanager.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
@@ -320,7 +320,7 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
     """
 
     def do_work(*, on_progress):
-        return apply_ws(
+        return orchestrate_apply(
             workspace_id=workspace_id,
             dry_run=req.dry_run,
             on_progress=on_progress,

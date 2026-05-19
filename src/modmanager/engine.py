@@ -26,8 +26,21 @@ class RuleItem:
     into_path: str | None
 
 
+@dataclass(frozen=True)
+class ExpandedSource:
+    source_path: str
+    target_rel: str | None = None
+
+
 def _norm(path: str) -> str:
     return normalize_posix(path)
+
+
+def _norm_dir(path: str) -> str:
+    normalized = normalize_posix(path)
+    if normalized == "/":
+        return normalized
+    return normalized.rstrip("/")
 
 
 def _is_none_destin(value: Any) -> bool:
@@ -74,25 +87,47 @@ def _build_change_request(
 
 
 
-def _expand_sources(source_root: str, source_expr: str, source_type: str = "file") -> list[str]:
+def _expand_dir_sources(dir_path: Path) -> list[ExpandedSource]:
+    if not dir_path.exists() or not dir_path.is_dir():
+        return []
+
+    expanded: list[ExpandedSource] = []
+    dir_name = dir_path.name
+    for found in sorted(dir_path.rglob("*"), key=lambda p: normalize_posix(str(p.relative_to(dir_path)))):
+        if not found.is_file():
+            continue
+        rel = normalize_posix(str(found.relative_to(dir_path)))
+        expanded.append(
+            ExpandedSource(
+                source_path=str(found),
+                target_rel=normalize_posix(str(Path(dir_name) / rel)),
+            )
+        )
+    return expanded
+
+
+def _expand_sources(source_root: str, source_expr: str, source_type: str = "file") -> list[ExpandedSource]:
     source_root_path = Path(source_root)
     pattern_path = normalize_posix(source_expr)
     has_glob = any(ch in pattern_path for ch in "*?[]")
     if not has_glob:
         candidate = source_root_path / pattern_path
-        return [str(candidate)] if candidate.exists() else []
+        if source_type == "dir":
+            return _expand_dir_sources(candidate)
+        return [ExpandedSource(str(candidate))] if candidate.exists() else []
 
-    matches: list[str] = []
+    matches: list[ExpandedSource] = []
     if not source_root_path.exists():
         return []
     for found in sorted(source_root_path.glob(pattern_path), key=lambda p: normalize_posix(str(p.relative_to(source_root_path)))):
         if source_type == "dir":
             if not found.is_dir():
                 continue
+            matches.extend(_expand_dir_sources(found))
         else:
             if not found.is_file():
                 continue
-        matches.append(str(found))
+            matches.append(ExpandedSource(str(found)))
     return matches
 
 
@@ -106,12 +141,21 @@ def _target_for(
     into_type: str = "dir",
 ) -> str:
     dest = Path(dest_root) / normalize_posix(into_expr)
-    # 尾 / 仅在目标本身是目录时保留（from_type="dir" 或 delete），不传播到目录内文件
-    trailing_slash = "/" if (into_type == "dir" and into_expr.endswith("/") and from_type == "dir") else ""
-    if from_type == "dir" and into_type == "dir":
-        return str(dest / Path(source_file).name) + trailing_slash
+    if into_type == "file":
+        return str(dest)
     name = nwname if nwname else Path(source_file).name
-    return str(dest / name) + trailing_slash
+    return str(dest / name)
+
+
+def _expand_delete_targets(dest_root: str, into_expr: str) -> tuple[str, list[str]]:
+    dir_path = Path(dest_root) / normalize_posix(into_expr)
+    dir_key = _norm_dir(str(dir_path))
+    file_targets: list[str] = []
+    if dir_path.exists() and dir_path.is_dir():
+        for found in sorted(dir_path.rglob("*"), key=lambda p: normalize_posix(str(p.relative_to(dir_path)))):
+            if found.is_file():
+                file_targets.append(_norm(str(found)))
+    return dir_key, file_targets
 
 
 def _check_dir_tree_transition(old_tree: dict[str, Any], new_tree: dict[str, Any]) -> list[str]:
@@ -295,6 +339,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
 
     mapping: dict[str, dict[str, Any]] = {}
     edges: dict[str, set[str]] = {}
+    deleted_dir_targets: set[str] = set()
 
     for actor_id, op_obj in op_index.items():
         if actor_id not in valid_actor_operations:
@@ -336,9 +381,25 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 # from/from_type are ignored for delete
                 into_type = item.get("into_type", "dir")
                 for into_target in into_list:
+                    if into_type == "dir" or str(into_target).endswith("/"):
+                        dir_key, expanded_targets = _expand_delete_targets(dest_root, str(into_target))
+                        deleted_dir_targets.add(dir_key)
+                        deleted_targets.update(expanded_targets)
+                        for target in expanded_targets:
+                            mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
+                            mapping[target]["changerequest"].append(
+                                _build_change_request(
+                                    path="!",
+                                    action="delete",
+                                    mixed_id=actor_id,
+                                    hashtype="sha256",
+                                    hashvalue="0",
+                                    item=item,
+                                )
+                            )
+                        continue
+
                     target = _norm(str(Path(dest_root) / _norm(into_target)))
-                    if str(into_target).endswith("/"):
-                        target += "/"
                     mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
                     mapping[target]["changerequest"].append(
                         _build_change_request(
@@ -360,7 +421,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 continue
 
             # Expand all sources from all from_list entries
-            all_sources: list[str] = []
+            all_sources: list[ExpandedSource] = []
             from_type = item.get("from_type", "file")
             into_type = item.get("into_type", "dir")
             for src_expr in from_list:
@@ -375,14 +436,14 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
 
             # For each into entry, process all sources
             for into_target in into_list:
-                for src_file in all_sources:
+                for source in all_sources:
                     target = _norm(
                         _target_for(
                             dest_root,
                             into_target,
-                            src_file,
-                            None,
-                            from_type=from_type,
+                            source.source_path,
+                            source.target_rel,
+                            from_type="file",
                             into_type=into_type,
                         )
                     )
@@ -392,7 +453,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                     mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
                     mapping[target]["changerequest"].append(
                         _build_change_request(
-                            path=_norm(src_file),
+                            path=_norm(source.source_path),
                             action=action,
                             mixed_id=actor_id,
                             hashtype="sha256",
@@ -400,7 +461,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                             item=item,
                         )
                     )
-                    edges.setdefault(_norm(src_file), set()).add(target)
+                    edges.setdefault(_norm(source.source_path), set()).add(target)
 
     for cycle in find_cycles(edges):
         chain = " -> ".join(cycle)
@@ -438,7 +499,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             warnings.append(f"W_BRANCH_DECISION_SUPERFLUOUS: {key}")
 
     # ── 从底向上解析 ──
-    _resolve_trees_bottom_up(sorted_trees, branch_decisions, warnings, errors)
+    _resolve_trees_bottom_up(sorted_trees, branch_decisions, warnings, errors, deleted_dir_targets)
 
     # ── 构建输出（返回 trees + final_mapping）──
     return _build_output(sorted_trees, warnings, errors)
@@ -533,15 +594,13 @@ def _topological_sort_by_refs(
     return [tree_map[p] for p in sorted_paths]
 
 
-def _any_ancestor_deleted(path: str, tree_by_root: dict[str, ForestTree]) -> bool:
-    """检查 *path* 的任一祖先目录是否对应一棵已删除的树。"""
+def _any_ancestor_deleted(path: str, deleted_dir_targets: set[str]) -> bool:
+    """检查 *path* 的任一祖先目录是否命中已删除目录约束。"""
     from pathlib import PurePosixPath
-    p = PurePosixPath(path)
+    p = PurePosixPath(normalize_posix(path))
     for ancestor in p.parents:
-        ancestor_str = str(ancestor)
-        if ancestor_str in tree_by_root:
-            if tree_by_root[ancestor_str].resolved_state == "deleted":
-                return True
+        if _norm_dir(str(ancestor)) in deleted_dir_targets:
+            return True
     return False
 
 
@@ -550,12 +609,14 @@ def _resolve_trees_bottom_up(
     branch_decisions: dict[str, str],
     warnings: list[str],
     errors: list[str],
+    deleted_dir_targets: set[str] | None = None,
 ) -> None:
     """原地修改 trees，填充 resolved_state。
 
     按拓扑序处理每棵树：收集有效操作 → 应用用户决策 → 裁决。
     """
     tree_by_root: dict[str, ForestTree] = {t.root_path: t for t in trees}
+    deleted_dir_targets = deleted_dir_targets or set()
 
     for tree in trees:
         if tree.resolved:
@@ -580,7 +641,7 @@ def _resolve_trees_bottom_up(
                     continue
                 if ref_tree.resolved_state == "failed":
                     continue
-            elif _any_ancestor_deleted(src_path, tree_by_root):
+            elif _any_ancestor_deleted(src_path, deleted_dir_targets):
                 warnings.append(f"W_SOURCE_DIRECTORY_DELETED: {src_path} (ancestor deleted)")
                 continue
 

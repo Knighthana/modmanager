@@ -301,7 +301,7 @@ async def compute(workspace_id: str):
 | `POST` | `/api/workspace/{workspace_id}/pipeline/compute` | 执行计算。从工作区读取 aggregated_rule + decisions，执行 engine.compute，结果写入工作区。→ `{ ok, mapping, svg }` |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/run` | 全流水线：计算 + 备份 + 应用。→ `PipelineResult` |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/backup` | 备份操作。→ `{ ok, backup_dir }` |
-| `POST` | `/api/workspace/{workspace_id}/pipeline/apply` | 应用映射。→ `{ ok, detailed }` |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/apply` | 提交 apply 任务给后端编排。→ `{ ok, detailed }` |
 
 #### 决策（工作区上下文内）
 
@@ -331,6 +331,11 @@ async def compute(workspace_id: str):
 | `POST` | `/api/rules/affected-entries` | 查询受影响条目 |
 | `POST` | `/api/backups/list` | 列出备份 |
 | `POST` | `/api/backups/inspect` | 查看备份详情 |
+
+约束说明（强制清退）：
+
+- 不再提供 generic `/api/pipeline/backup` 与 `/api/pipeline/apply` 执行端点。
+- backup/apply 执行仅允许走 workspace 流水线路由。
 
 ### 4.3 已删除的端点
 

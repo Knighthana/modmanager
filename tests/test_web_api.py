@@ -471,7 +471,6 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "backup_dir": "/fake/backups",
             },
         )
         assert resp.status_code == 200
@@ -530,7 +529,6 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "backup_dir": "/fake/backups",
                 "managed_entries": managed_entries,
             },
         )
@@ -572,7 +570,6 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": rule_set,
-                "backup_dir": "/fake/backups",
             },
         )
         assert resp.status_code == 200
@@ -586,7 +583,6 @@ class TestRunPipeline:
             "/api/pipeline/run",
             json={
                 "database_name": "default",
-                "backup_dir": "/fake/backups",
             },
         )
         assert resp.status_code == 200
@@ -655,34 +651,6 @@ class TestAdapters:
         ]
         assert result["data"]["apply_diagnostics"]["processed_dirs"] == 0
         assert result["data"]["apply_diagnostics"]["total_backup_dirs"] == 1
-
-    def test_adapt_backup_result(self) -> None:
-        from modmanager_web.adapters import adapt_backup_result
-
-        raw = {
-            "ok": True,
-            "backed_up": ["/a.txt.bak"],
-            "skipped": [],
-            "errors": [],
-        }
-        result = adapt_backup_result(raw)
-        assert result["ok"] is True
-        assert result["data"]["backed_up"] == ["/a.txt.bak"]
-        assert result["errors"] == []
-
-    def test_adapt_apply_result(self) -> None:
-        from modmanager_web.adapters import adapt_apply_result
-
-        raw = {
-            "ok": True,
-            "applied": ["/a.txt"],
-            "skipped": [],
-            "errors": [],
-        }
-        result = adapt_apply_result(raw)
-        assert result["ok"] is True
-        assert result["data"]["applied"] == ["/a.txt"]
-        assert result["errors"] == []
 
     def test_adapt_dict_result(self) -> None:
         from modmanager_web.adapters import adapt_dict_result

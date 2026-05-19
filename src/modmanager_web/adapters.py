@@ -67,34 +67,6 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
     }
 
 
-def adapt_backup_result(result: dict) -> dict:
-    """Convert the dict returned by ``orchestrator.backup()`` into an
-    ``ApiResponse``-shaped dict."""
-    return {
-        "ok": result.get("ok", False),
-        "data": {
-            "backed_up": result.get("backed_up", []),
-            "skipped": result.get("skipped", []),
-        },
-        "errors": result.get("errors", []),
-        "warnings": [],
-    }
-
-
-def adapt_apply_result(result: dict) -> dict:
-    """Convert the dict returned by ``orchestrator.apply()`` into an
-    ``ApiResponse``-shaped dict."""
-    return {
-        "ok": result.get("ok", False),
-        "data": {
-            "applied": result.get("applied", []),
-            "skipped": result.get("skipped", []),
-        },
-        "errors": result.get("errors", []),
-        "warnings": [],
-    }
-
-
 def adapt_dict_result(data: dict) -> dict:
     """适配 discover_user_config / generate_database 的返回。"""
     return {

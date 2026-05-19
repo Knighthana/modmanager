@@ -178,11 +178,18 @@ def backup_ws(workspace_id: str, *, dry_run=False, on_progress=None) -> Pipeline
     """加载 mapping + database + user_config → build_backup_dirs → backup()。"""
 ```
 
-#### apply_ws()
+#### resolve_apply_ws()
 
 ```python
-def apply_ws(workspace_id: str, *, dry_run=False, on_progress=None) -> PipelineResult:
-    """加载 mapping + database + user_config → apply()。"""
+def resolve_apply_ws(workspace_id: str) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    """仅做工作区解析与前置校验，返回 apply 编排所需消费品。"""
+```
+
+#### orchestrate_apply()
+
+```python
+def orchestrate_apply(workspace_id: str, *, dry_run=False, on_progress=None) -> PipelineResult:
+    """resolve_apply_ws() → preflight → apply()。"""
 ```
 
 #### restore_ws()
@@ -214,13 +221,11 @@ run(database, aggregated_rule_set, managed_entries, branch_decisions, user_confi
   │
   ├─ backup(final_mapping, database, user_config, dry_run, on_progress)
   │     ├─ build_backup_dirs(final_mapping, database, user_config)
-  │     ├─ 逐目录：bakignore 过滤 → run_differential_backup
-  │     └─ 拷贝 .kmmbakignore 进 backup_dir
+  │     └─ 逐目录：bakignore 过滤 → run_differential_backup
   │
   └─ apply(final_mapping, database, user_config, dry_run, on_progress)
         ├─ build_backup_dirs(final_mapping, database, user_config)
-        ├─ 逐目录：gate check → apply_final_mapping
-        └─ 拷贝 .kmmbakignore 回源目录
+      └─ 逐目录：按条目分组 → apply_final_mapping
 ```
 
 ### _ws 函数流程
@@ -236,9 +241,11 @@ run_ws(workspace_id, dry_run, on_progress)
   │     └─ ws.read_mapping / _resolve_database
   │        → build_backup_dirs → backup(...)
   │
-  └─ apply_ws(workspace_id, dry_run, on_progress)
-        └─ ws.read_mapping / _resolve_database
-           → apply(...)
+  └─ orchestrate_apply(workspace_id, dry_run, on_progress)
+      └─ resolve_apply_ws(workspace_id)
+       → preflight manifest
+       → ok=true 时 apply(...)
+       → ok=false 时返回 preflight 结果
 ```
 
 ---
@@ -248,11 +255,26 @@ run_ws(workspace_id, dry_run, on_progress)
 - 任一步骤失败（errors 非空）→ 停止后续步骤，返回当前状态
 - engine 函数不负责生成 `backup_dir` 命名——内部调 `backup_dir_builder.build_backup_dirs`
 - `_ws` 函数不传 backup_dirs——引擎自己算
-- gate check 失败不阻塞其他 backup_dir 的处理
+- `orchestrate_apply()` 负责调用 apply 前置 preflight；preflight 是 orchestrator 子模块，不属于 apply 原语本体
+- `resolve_apply_ws()` 只做工作区解析与前置校验，不参与 apply 业务编排
 
 ---
 
-## 六、CLI 改动
+## 六、Apply 旧内容清退清单（不保兼容）
+
+以下项必须清退，避免后续实现继续背负历史路径：
+
+1. 删除 `apply_ws` 旧命名与引用（包括导出清单、调用点、测试名）
+2. 删除 generic `/api/pipeline/apply` 执行语义与端点实现（禁止恢复）
+3. 删除 generic `/api/pipeline/backup` 执行语义与端点实现（禁止恢复）
+4. 删除任何“apply 内部 gate / preflight / .kmmbakignore 回源”的旧语义描述
+5. 删除前端 mock 对 generic backup/apply 的执行模拟，避免新页面误接旧入口
+
+清退完成标准：workspace apply 主路径唯一、命名唯一、职责唯一。
+
+---
+
+## 七、CLI 改动
 
 现有 `cli.py` 的编排逻辑迁移到 orchestrator：
 
@@ -266,7 +288,7 @@ CLI 变为薄壳：解析参数 → 调用 orchestrator → 格式化输出。
 
 ---
 
-## 七、与现有代码的关系
+## 八、与现有代码的关系
 
 | 模块 | 改动 |
 |------|------|
@@ -278,7 +300,7 @@ CLI 变为薄壳：解析参数 → 调用 orchestrator → 格式化输出。
 
 ---
 
-## 八、实现顺序
+## 九、实现顺序
 
 ```
 Task 5: bootstrap.py    ← user_config 发现 + 数据库生成

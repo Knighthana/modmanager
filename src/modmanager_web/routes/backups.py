@@ -1,7 +1,7 @@
 """Backups routes — ``POST /api/backups/list`` and ``POST /api/backups/inspect`` (read-only).
 
 These endpoints browse backup *artefacts* already on disk.  The actual
-backup *execution* belongs in ``/api/pipeline/backup``.
+backup *execution* belongs in workspace pipeline backup/apply flow.
 """
 
 from __future__ import annotations

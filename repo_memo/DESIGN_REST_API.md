@@ -231,12 +231,28 @@ web = [
 | `GET` | `/api/workspace/{id}/rules/aggregated` | ⚠️ 读取工作区中已聚合的规则集 | JSON |
 | `POST` | `/api/workspace/{id}/pipeline/compute` | ⚠️ 计算映射；从工作区读取规则+决策，结果写入工作区 | SSE |
 | `POST` | `/api/workspace/{id}/pipeline/backup` | ⚠️ 差异备份 | SSE |
-| `POST` | `/api/workspace/{id}/pipeline/apply` | ⚠️ 应用替换 | SSE |
+| `POST` | `/api/workspace/{id}/pipeline/apply` | ⚠️ 提交 apply 任务给后端编排（preflight + apply） | SSE |
 | `POST` | `/api/workspace/{id}/pipeline/run` | ⚠️ 全流水线（计算→备份→应用） | SSE |
 | `POST` | `/api/workspace/{id}/decisions/save` | ⚠️ 保存用户决策到工作区 | JSON |
 | `GET` | `/api/workspace/{id}/decisions/load` | ⚠️ 从工作区读取用户决策 | JSON |
 | `GET` | `/api/workspace/{id}/forest/svg` | ⚠️ 读取森林 SVG（Content-Type: image/svg+xml） | SVG |
 | `GET` | `/api/workspace/{id}/forest/mapping` | ⚠️ 读取最终映射结果 | JSON |
+
+### 4.2.1 强制清退清单（无兼容策略）
+
+以下旧内容必须从实现和文档中彻底删除，不保留兼容入口：
+
+1. generic 执行端点：`POST /api/pipeline/backup`
+2. generic 执行端点：`POST /api/pipeline/apply`
+3. 任何将 backup/apply 执行主路径指向 generic pipeline 的文案
+4. 与上述旧端点耦合的 schema、mock handler、测试断言
+
+当前状态（2026-05-20）：上述 1~4 已完成清退。
+
+清退后的唯一产品主路径：
+
+- `POST /api/workspace/{id}/pipeline/backup`
+- `POST /api/workspace/{id}/pipeline/apply`
 
 ### 4.3 端点详设
 

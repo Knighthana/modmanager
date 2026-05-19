@@ -42,38 +42,6 @@ export const pipelineHandlers = [
     })
   }),
 
-  // POST /api/pipeline/backup — 差异备份
-  http.post('/api/pipeline/backup', async () => {
-    return sseResponse([
-      { event: 'progress', data: { step: 'backup', finished: 0, total: 3, message: '开始备份...' } },
-      { event: 'progress', data: { step: 'backup', finished: 1, total: 3, message: '正在计算差异...' } },
-      { event: 'progress', data: { step: 'backup', finished: 2, total: 3, message: '正在复制文件...' } },
-      {
-        event: 'result',
-        data: {
-          ok: true,
-          data: { backup_path: '/tmp/backup_mock', file_count: 15, timestamp: new Date().toISOString() },
-        },
-      },
-    ])
-  }),
-
-  // POST /api/pipeline/apply — 应用映射
-  http.post('/api/pipeline/apply', async () => {
-    return sseResponse([
-      { event: 'progress', data: { step: 'apply', finished: 0, total: 5, message: '开始应用...' } },
-      { event: 'progress', data: { step: 'apply', finished: 2, total: 5, message: '正在替换文件...' } },
-      { event: 'progress', data: { step: 'apply', finished: 4, total: 5, message: '正在清理...' } },
-      {
-        event: 'result',
-        data: {
-          ok: true,
-          data: { applied: 15, skipped: 0, errors: [], timestamp: new Date().toISOString() },
-        },
-      },
-    ])
-  }),
-
   // POST /api/pipeline/restore — 恢复备份
   http.post('/api/pipeline/restore', async () => {
     return sseResponse([

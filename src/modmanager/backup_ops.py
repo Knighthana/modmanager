@@ -489,23 +489,18 @@ def apply_final_mapping(
     dry_run: bool = False,
     on_progress: Any = None,
 ) -> dict[str, Any]:
-    """Apply *final_mapping* to disk after verifying the backup gate.
+    """Apply *final_mapping* to disk.
 
     Args:
         final_mapping: ``final_mapping`` list from ``compute_mapping``.
-        backup_dir: Path to the backup directory; gate must pass before files
-            are touched.
-        dry_run: When ``True`` the gate is checked but no file operations are
-            performed.
+        backup_dir: Path to the backup directory.
+        dry_run: When ``True`` no file operations are performed.
 
     Returns::
 
         {"ok": bool, "applied": [str], "skipped": [str], "errors": [str]}
     """
     assert_directory_path(backup_dir, label="backup_dir")
-    gate_errors = check_backup_gate(backup_dir)
-    if gate_errors:
-        return {"ok": False, "applied": [], "skipped": [], "errors": gate_errors}
 
     if dry_run:
         would_apply: list[dict[str, Any]] = []

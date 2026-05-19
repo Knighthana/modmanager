@@ -8,7 +8,7 @@ from modmanager.engine import (
     _any_ancestor_deleted,
     _build_forest_trees,
     _build_output,
-    _check_filefoldertree_transition,
+    _check_dir_tree_transition,
     _resolve_trees_bottom_up,
     _topological_sort_by_refs,
     compute_mapping,
@@ -412,11 +412,11 @@ class EngineTests(unittest.TestCase):
             ],
         }
 
-        self.assertEqual(_check_filefoldertree_transition(old_tree, new_tree), [])
+        self.assertEqual(_check_dir_tree_transition(old_tree, new_tree), [])
 
         bad_tree = json.loads(json.dumps(new_tree))
         bad_tree["children"][0]["isbackuped"] = False
-        errs = _check_filefoldertree_transition(new_tree, bad_tree)
+        errs = _check_dir_tree_transition(new_tree, bad_tree)
         self.assertTrue(any("E_TREE_ATTR_BACKWARD" in e for e in errs))
 
     # ── branch decision schema validation ─────────────────────────────────
@@ -737,6 +737,9 @@ class EngineTests(unittest.TestCase):
             (src_root / "src1").mkdir(parents=True)
             (src_root / "src2").mkdir(parents=True)
             (src_root / "src3").mkdir(parents=True)
+            (src_root / "src1" / "a.txt").write_text("a", encoding="utf-8")
+            (src_root / "src2" / "b.txt").write_text("b", encoding="utf-8")
+            (src_root / "src3" / "c.txt").write_text("c", encoding="utf-8")
 
             aggregated_rule_set = {
                 "operation": [
@@ -760,9 +763,10 @@ class EngineTests(unittest.TestCase):
 
             self.assertEqual(result["errors"], [])
             targets = {entry["path"] for entry in result["final_mapping"]}
-            self.assertIn(str(tmp_path / "game" / "maps" / "src1").replace("\\", "/") + "/", targets)
-            self.assertIn(str(tmp_path / "game" / "maps" / "src2").replace("\\", "/") + "/", targets)
-            self.assertIn(str(tmp_path / "game" / "maps" / "src3").replace("\\", "/") + "/", targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src1" / "a.txt").replace("\\", "/"), targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src2" / "b.txt").replace("\\", "/"), targets)
+            self.assertIn(str(tmp_path / "game" / "maps" / "src3" / "c.txt").replace("\\", "/"), targets)
+            self.assertTrue(all(not path.endswith("/") for path in targets))
 
     def test_file_glob_does_not_pull_directories(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -871,17 +875,62 @@ class EngineTests(unittest.TestCase):
 
     def test_ancestor_deleted_true(self) -> None:
         """Deleted tree at /modA/dir → /modA/dir/file.png returns True."""
-        tree_by_root = {
-            "/modA/dir": ForestTree("/modA/dir", "m1", [], [], resolved=True, resolved_state="deleted"),
-        }
-        self.assertTrue(_any_ancestor_deleted("/modA/dir/file.png", tree_by_root))
+        deleted_dir_targets = {"/modA/dir"}
+        self.assertTrue(_any_ancestor_deleted("/modA/dir/file.png", deleted_dir_targets))
+
+    def test_ancestor_deleted_true_with_trailing_slash_normalizes(self) -> None:
+        deleted_dir_targets = {"/modA/dir"}
+        self.assertTrue(_any_ancestor_deleted("/modA/dir/sub/file.png", deleted_dir_targets))
 
     def test_ancestor_deleted_false(self) -> None:
         """Deleted tree at /modA/dir → /other/file.png returns False."""
-        tree_by_root = {
-            "/modA/dir": ForestTree("/modA/dir", "m1", [], [], resolved=True, resolved_state="deleted"),
-        }
-        self.assertFalse(_any_ancestor_deleted("/other/file.png", tree_by_root))
+        deleted_dir_targets = {"/modA/dir"}
+        self.assertFalse(_any_ancestor_deleted("/other/file.png", deleted_dir_targets))
+
+    def test_directory_delete_blocks_descendant_source_without_directory_output(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp_path = Path(td)
+            db = self._mk_db(tmp_path)
+            game_maps = tmp_path / "game" / "maps" / "src1"
+            game_maps.mkdir(parents=True)
+            (game_maps / "a.txt").write_text("x", encoding="utf-8")
+
+            aggregated_rule_set = {
+                "operation": [
+                    {
+                        "mixed_id": "270150:100",
+                        "actionlist": [
+                            {
+                                "action": "delete",
+                                "destin": "270150:0",
+                                "into": ["maps/src1/"],
+                                "into_type": "dir",
+                            }
+                        ],
+                    },
+                    {
+                        "mixed_id": "270150:0",
+                        "actionlist": [
+                            {
+                                "action": "replace",
+                                "destin": "270150:0",
+                                "from": ["maps/src1/a.txt"],
+                                "from_type": "file",
+                                "into": ["out/"],
+                                "into_type": "dir",
+                            }
+                        ],
+                    },
+                ]
+            }
+
+            result = compute_mapping(aggregated_rule_set, db)
+
+            self.assertEqual(result["errors"], [])
+            targets = {entry["path"] for entry in result["final_mapping"]}
+            self.assertIn(str(game_maps / "a.txt").replace("\\", "/"), targets)
+            self.assertNotIn(str(game_maps).replace("\\", "/") + "/", targets)
+            self.assertTrue(any("W_SOURCE_DELETED" in w or "W_SOURCE_DIRECTORY_DELETED" in w for w in result["warnings"]))
 
     # ── _resolve_trees_bottom_up ─────────────────────────────────────────────────
 

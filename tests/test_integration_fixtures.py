@@ -706,7 +706,7 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
 
 
 class P005_PathGlobDirectoryExpansion(unittest.TestCase):
-    def test_shiplander_style_path_glob_creates_directory_targets(self):
+    def test_shiplander_style_path_glob_expands_to_file_targets(self):
         with tempfile.TemporaryDirectory() as td:
             fixture = IntegrationFixture(Path(td))
             fixture.create_mod_file("100", "shiplander v1.9/src1/a.txt")
@@ -736,9 +736,9 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
             self.assertEqual(result["errors"], [])
             self.assertEqual(len(result["final_mapping"]), 3)
             targets = {entry["path"] for entry in result["final_mapping"]}
-            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src1/") for path in targets))
-            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src2/") for path in targets))
-            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src3/") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src1/a.txt") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src2/b.txt") for path in targets))
+            self.assertTrue(any(path.endswith("/media/packages/GFL_Castling/maps/src3/c.txt") for path in targets))
 
     def test_two_actions_cover_cp_r_src_star_dest(self):
         with tempfile.TemporaryDirectory() as td:
@@ -777,8 +777,8 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
 
             self.assertEqual(result["errors"], [])
             targets = {entry["path"] for entry in result["final_mapping"]}
-            self.assertTrue(any(path.endswith("/dest/dir1/") for path in targets))
-            self.assertTrue(any(path.endswith("/dest/dir2/") for path in targets))
+            self.assertTrue(any(path.endswith("/dest/dir1/a.txt") for path in targets))
+            self.assertTrue(any(path.endswith("/dest/dir2/b.txt") for path in targets))
             self.assertTrue(any(path.endswith("/dest/root.txt") for path in targets))
 
 

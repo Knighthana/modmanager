@@ -10,7 +10,8 @@ Provides:
   - ``run()``      — full pipeline (aggregate → compute → backup → apply).
   - ``compute_ws()`` — workspace-aware compute (reads rules/decisions from workspace).
   - ``backup_ws()``  — workspace-aware backup.
-  - ``apply_ws()``   — workspace-aware apply.
+    - ``resolve_apply_ws()`` — resolve workspace inputs for apply.
+    - ``orchestrate_apply()`` — workspace-aware apply orchestration.
   - ``restore_ws()`` — workspace-aware restore.
   - ``run_ws()``     — workspace-aware full pipeline.
 """
@@ -53,7 +54,8 @@ __all__ = [
     "run",
     "compute_ws",
     "backup_ws",
-    "apply_ws",
+    "resolve_apply_ws",
+    "orchestrate_apply",
     "restore_ws",
     "run_ws",
 ]
@@ -250,6 +252,53 @@ class PipelineResult:
     backup_dir: str | None = None
 
 
+def _generate_apply_preflight(
+    final_mapping: list[dict[str, Any]],
+    database: dict[str, Any],
+    user_config: dict[str, Any],
+) -> dict[str, Any]:
+    """Generate an apply preflight manifest without executing file operations."""
+    backup_dirs, dir_warnings = build_backup_dirs(final_mapping, database, user_config)
+
+    manifest_dirs: list[dict[str, Any]] = []
+    errors: list[str] = []
+    warnings: list[str] = list(dir_warnings)
+
+    for backup_dir_str, dir_files in backup_dirs.items():
+        path_set = {normalize_posix(str(p)) for p in dir_files}
+        applicable_entries = sum(
+            1
+            for entry in final_mapping
+            if normalize_posix(str(entry.get("path", ""))) in path_set
+        )
+        gate_errors = check_backup_gate(backup_dir_str)
+        if gate_errors:
+            errors.extend(gate_errors)
+            warnings.append(
+                f"W_BACKUP_GATE_FAILED: {backup_dir_str}: {'; '.join(gate_errors)}"
+            )
+        manifest_dirs.append(
+            {
+                "path": backup_dir_str,
+                "gate_pass": not gate_errors,
+                "gate_errors": gate_errors,
+                "applicable_entries": applicable_entries,
+            }
+        )
+
+    return {
+        "ok": not errors,
+        "backup_dirs": manifest_dirs,
+        "errors": errors,
+        "warnings": warnings,
+        "diagnostics": {
+            "total_backup_dirs": len(backup_dirs),
+            "failed_backup_dirs": [d["path"] for d in manifest_dirs if not d["gate_pass"]],
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 # ── Phase helpers ─────────────────────────────────────────────────────────────
 
 
@@ -407,15 +456,14 @@ def apply(
 ) -> dict[str, Any]:
     """执行 final_mapping 的磁盘替换。
 
-    内部调用 ``build_backup_dirs`` 推导备份目录，对每个目录
-    独立做 gate check。gate 通过 → 滤出属于该目录的 mapping 条目
-    → ``apply_final_mapping``。gate 失败 → 跳过该目录，记录警告。
+    内部调用 ``build_backup_dirs`` 推导备份目录，并将属于每个目录的
+    条目分组后委托 ``apply_final_mapping`` 执行。
 
     Args:
         final_mapping: ``final_mapping`` list from ``compute_mapping``.
         database: Game database dict.
         user_config: User configuration dict.
-        dry_run: When ``True`` only check gates, do not modify files.
+        dry_run: When ``True`` only return structured would-apply results.
         on_progress: Optional progress callback.
 
     Returns:
@@ -431,19 +479,10 @@ def apply(
     diagnostics: dict[str, Any] = {
         "total_backup_dirs": len(backup_dirs),
         "processed_dirs": 0,
-        "gate_failed_dirs": [],
         "no_matched_entry_dirs": [],
     }
 
     for backup_dir_str, dir_files in backup_dirs.items():
-        gate_errors = check_backup_gate(backup_dir_str)
-        if gate_errors:
-            all_warnings.append(
-                f"W_BACKUP_GATE_FAILED: {backup_dir_str}: {'; '.join(gate_errors)}"
-            )
-            diagnostics["gate_failed_dirs"].append(backup_dir_str)
-            continue
-
         path_set = {normalize_posix(str(p)) for p in dir_files}
         dir_entries = [
             e for e in final_mapping
@@ -456,9 +495,6 @@ def apply(
             diagnostics["no_matched_entry_dirs"].append(backup_dir_str)
             continue
 
-        backup_path_obj = Path(backup_dir_str)
-        contentid_dir = backup_path_obj.parent
-
         result = apply_final_mapping(
             dir_entries, backup_dir_str,
             dry_run=dry_run,
@@ -469,23 +505,10 @@ def apply(
         all_skipped.extend(result.get("skipped", []))
         all_errors.extend(result.get("errors", []))
 
-        # ── Restore .kmmbakignore from backup_dir back to source ─────
-        for ig_path in backup_path_obj.rglob(".kmmbakignore"):
-            try:
-                rel = ig_path.relative_to(backup_path_obj)
-                dest = contentid_dir / rel
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(str(ig_path), str(dest))
-            except (OSError, ValueError):
-                pass
-
-    if not dry_run and not all_applied and not all_errors and (
-        diagnostics["gate_failed_dirs"] or diagnostics["no_matched_entry_dirs"]
-    ):
+    if not dry_run and not all_applied and not all_errors and diagnostics["no_matched_entry_dirs"]:
         all_warnings.append(
             "W_APPLY_NO_EFFECT: "
-            f"gate_failed_dirs={len(diagnostics['gate_failed_dirs'])}, "
-            f"no_matched_entry_dirs={len(diagnostics['no_matched_entry_dirs'])}"
+            f"gate_failed_dirs=0, no_matched_entry_dirs={len(diagnostics['no_matched_entry_dirs'])}"
         )
 
     return {
@@ -988,7 +1011,41 @@ def backup_ws(
     )
 
 
-def apply_ws(
+def resolve_apply_ws(
+    workspace_id: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+    """Resolve workspace context required by apply orchestration.
+
+    Performs workspace-level validation and returns ready-to-use inputs
+    for the apply orchestration command.
+
+    Args:
+        workspace_id: Target workspace identifier.
+
+    Returns:
+        Tuple of ``(mapping_result, final_mapping, database, user_config)``.
+
+    Raises:
+        ValueError: When workspace or required inputs are missing.
+    """
+    user_config = discover_user_config()
+    wm = _get_workspace_manager(user_config)
+
+    if not wm.exists(workspace_id):
+        raise ValueError(f"workspace '{workspace_id}' not found")
+
+    if not wm.has_mapping(workspace_id):
+        raise ValueError("no mapping in workspace — compute first")
+    mapping_result = wm.read_mapping(workspace_id)
+
+    meta = wm.read_meta(workspace_id)
+    database = _resolve_database(meta["database_name"], user_config)
+    final_mapping = mapping_result.get("final_mapping", [])
+
+    return mapping_result, final_mapping, database, user_config
+
+
+def orchestrate_apply(
     workspace_id: str,
     *,
     dry_run: bool = False,
@@ -1006,30 +1063,29 @@ def apply_ws(
     Returns:
         A ``PipelineResult``.
     """
-    user_config = discover_user_config()
-    wm = _get_workspace_manager(user_config)
-
-    if not wm.exists(workspace_id):
-        return PipelineResult(
-            ok=False,
-            errors=[f"workspace '{workspace_id}' not found"],
-        )
-
-    if not wm.has_mapping(workspace_id):
-        return PipelineResult(
-            ok=False,
-            errors=["no mapping in workspace — compute first"],
-        )
-    mapping_result = wm.read_mapping(workspace_id)
-
-    # ── Resolve and load database ─────────────────────────────────────
-    meta = wm.read_meta(workspace_id)
     try:
-        database = _resolve_database(meta["database_name"], user_config)
+        mapping_result, final_mapping, database, user_config = resolve_apply_ws(workspace_id)
     except Exception as exc:
         return PipelineResult(ok=False, errors=[str(exc)])
 
-    final_mapping = mapping_result.get("final_mapping", [])
+    preflight = _generate_apply_preflight(final_mapping, database, user_config)
+    if not preflight.get("ok", False):
+        return PipelineResult(
+            ok=False,
+            errors=preflight.get("errors", []),
+            warnings=preflight.get("warnings", []),
+            final_mapping=final_mapping,
+            mapping_result=mapping_result,
+            apply_result={
+                "ok": False,
+                "applied": [],
+                "skipped": [],
+                "errors": preflight.get("errors", []),
+                "warnings": preflight.get("warnings", []),
+                "diagnostics": {"preflight": preflight},
+                "dry_run": dry_run,
+            },
+        )
 
     # ── Delegate to engine ────────────────────────────────────────────
     apply_result = apply(
@@ -1046,7 +1102,7 @@ def apply_ws(
         warnings=apply_result.get("warnings", []),
         final_mapping=final_mapping,
         mapping_result=mapping_result,
-        apply_result=apply_result,
+        apply_result={**apply_result, "diagnostics": {**apply_result.get("diagnostics", {}), "preflight": preflight}},
     )
 
 

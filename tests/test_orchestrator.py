@@ -12,7 +12,9 @@ from unittest.mock import patch
 from modmanager.orchestrator import (
     PipelineResult,
     _apply_managed_filter,
+    _generate_apply_preflight,
     apply,
+    orchestrate_apply,
     backup,
     compute,
     run,
@@ -104,12 +106,10 @@ class TestApply(TestCase):
             )
 
     @patch("modmanager.orchestrator.apply_final_mapping")
-    @patch("modmanager.orchestrator.check_backup_gate")
     @patch("modmanager.orchestrator.build_backup_dirs")
     def test_apply_matches_paths_after_normalization(
         self,
         mock_build_backup_dirs,
-        mock_check_backup_gate,
         mock_apply_final_mapping,
     ) -> None:
         """Path matching should use normalized paths to avoid // vs / misses."""
@@ -121,7 +121,6 @@ class TestApply(TestCase):
             },
             [],
         )
-        mock_check_backup_gate.return_value = []
         mock_apply_final_mapping.return_value = {
             "ok": True,
             "applied": ["/tmp/fixture/content/2606099273/file.txt"],
@@ -151,12 +150,10 @@ class TestApply(TestCase):
         )
 
     @patch("modmanager.orchestrator.apply_final_mapping")
-    @patch("modmanager.orchestrator.check_backup_gate")
     @patch("modmanager.orchestrator.build_backup_dirs")
     def test_apply_warns_when_backup_dir_has_no_matched_entries(
         self,
         mock_build_backup_dirs,
-        mock_check_backup_gate,
         mock_apply_final_mapping,
     ) -> None:
         """When a backup_dir has no matched mapping entries, a warning should be emitted."""
@@ -168,8 +165,6 @@ class TestApply(TestCase):
             },
             [],
         )
-        mock_check_backup_gate.return_value = []
-
         result = apply(
             final_mapping=[
                 {
@@ -202,6 +197,140 @@ class TestApply(TestCase):
             1,
         )
         mock_apply_final_mapping.assert_not_called()
+
+    @patch("modmanager.orchestrator.apply_final_mapping")
+    @patch("modmanager.orchestrator.build_backup_dirs")
+    def test_apply_does_not_restore_kmmbakignore(
+        self,
+        mock_build_backup_dirs,
+        mock_apply_final_mapping,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            contentid_dir = Path(tmp) / "content" / "2606099273"
+            backup_dir = contentid_dir / "2606099273.abcd.kmmbackup"
+            backup_dir.mkdir(parents=True)
+            (backup_dir / ".kmmbakignore").write_text("*.log\n", encoding="utf-8")
+
+            target = str(contentid_dir / "file.txt")
+            mock_build_backup_dirs.return_value = ({str(backup_dir) + "/": [target]}, [])
+            mock_apply_final_mapping.return_value = {
+                "ok": True,
+                "applied": [target],
+                "skipped": [],
+                "errors": [],
+            }
+
+            result = apply(
+                final_mapping=[{"path": target, "request": {"action": "replace", "path": "/tmp/src.txt"}}],
+                database={},
+                user_config={},
+                dry_run=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertFalse((contentid_dir / ".kmmbakignore").exists())
+
+
+class TestApplyPreflight(TestCase):
+    @patch("modmanager.orchestrator.check_backup_gate")
+    @patch("modmanager.orchestrator.build_backup_dirs")
+    def test_generate_apply_preflight_collects_gate_failures(
+        self,
+        mock_build_backup_dirs,
+        mock_check_backup_gate,
+    ) -> None:
+        mock_build_backup_dirs.return_value = (
+            {"/tmp/fixture/270150.abcd.kmmbackup/": ["/tmp/fixture/game/file.txt"]},
+            [],
+        )
+        mock_check_backup_gate.return_value = ["E_BACKUP_INFO_MISSING: /tmp/fixture/270150.abcd.kmmbackup/"]
+
+        manifest = _generate_apply_preflight(
+            final_mapping=[{"path": "/tmp/fixture/game/file.txt", "request": {"action": "replace", "path": "/tmp/src.txt"}}],
+            database={},
+            user_config={},
+        )
+
+        self.assertFalse(manifest["ok"])
+        self.assertEqual(len(manifest["backup_dirs"]), 1)
+        self.assertFalse(manifest["backup_dirs"][0]["gate_pass"])
+        self.assertEqual(manifest["backup_dirs"][0]["applicable_entries"], 1)
+        self.assertTrue(any("W_BACKUP_GATE_FAILED" in w for w in manifest["warnings"]))
+
+    @patch("modmanager.orchestrator.apply")
+    @patch("modmanager.orchestrator._generate_apply_preflight")
+    @patch("modmanager.orchestrator._resolve_database")
+    @patch("modmanager.orchestrator._get_workspace_manager")
+    @patch("modmanager.orchestrator.discover_user_config")
+    def test_orchestrate_apply_returns_preflight_failure_without_running_apply(
+        self,
+        mock_discover_user_config,
+        mock_get_workspace_manager,
+        mock_resolve_database,
+        mock_generate_apply_preflight,
+        mock_apply,
+    ) -> None:
+        mock_discover_user_config.return_value = {"workspace_dir": "/tmp/ws"}
+        wm = mock_get_workspace_manager.return_value
+        wm.exists.return_value = True
+        wm.has_mapping.return_value = True
+        wm.read_mapping.return_value = {"final_mapping": [{"path": "/tmp/game/a.txt", "request": {"action": "replace", "path": "/tmp/src.txt"}}]}
+        wm.read_meta.return_value = {"database_name": "demo"}
+        mock_resolve_database.return_value = {}
+        mock_generate_apply_preflight.return_value = {
+            "ok": False,
+            "backup_dirs": [],
+            "errors": ["E_BACKUP_INFO_MISSING: /tmp/backup/"],
+            "warnings": ["W_BACKUP_GATE_FAILED: /tmp/backup/: E_BACKUP_INFO_MISSING: /tmp/backup/"],
+            "diagnostics": {},
+            "timestamp": "2026-05-20T00:00:00+00:00",
+        }
+
+        result = orchestrate_apply("ws-1")
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.errors, ["E_BACKUP_INFO_MISSING: /tmp/backup/"])
+        self.assertTrue(any("W_BACKUP_GATE_FAILED" in w for w in result.warnings))
+        self.assertIsNotNone(result.apply_result)
+        self.assertIn("preflight", result.apply_result["diagnostics"])
+        mock_apply.assert_not_called()
+
+    @patch("modmanager.orchestrator.apply")
+    @patch("modmanager.orchestrator._generate_apply_preflight")
+    @patch("modmanager.orchestrator._resolve_database")
+    @patch("modmanager.orchestrator._get_workspace_manager")
+    @patch("modmanager.orchestrator.discover_user_config")
+    def test_orchestrate_apply_runs_apply_after_preflight_success(
+        self,
+        mock_discover_user_config,
+        mock_get_workspace_manager,
+        mock_resolve_database,
+        mock_generate_apply_preflight,
+        mock_apply,
+    ) -> None:
+        mock_discover_user_config.return_value = {"workspace_dir": "/tmp/ws"}
+        wm = mock_get_workspace_manager.return_value
+        wm.exists.return_value = True
+        wm.has_mapping.return_value = True
+        final_mapping = [{"path": "/tmp/game/a.txt", "request": {"action": "replace", "path": "/tmp/src.txt"}}]
+        wm.read_mapping.return_value = {"final_mapping": final_mapping}
+        wm.read_meta.return_value = {"database_name": "demo"}
+        mock_resolve_database.return_value = {"game": []}
+        mock_generate_apply_preflight.return_value = {
+            "ok": True,
+            "backup_dirs": [{"path": "/tmp/backup/", "gate_pass": True, "gate_errors": [], "applicable_entries": 1}],
+            "errors": [],
+            "warnings": [],
+            "diagnostics": {},
+            "timestamp": "2026-05-20T00:00:00+00:00",
+        }
+        mock_apply.return_value = {"ok": True, "applied": ["/tmp/game/a.txt"], "skipped": [], "errors": [], "warnings": [], "diagnostics": {}, "dry_run": False}
+
+        result = orchestrate_apply("ws-1")
+
+        self.assertTrue(result.ok)
+        mock_apply.assert_called_once()
+        self.assertIn("preflight", result.apply_result["diagnostics"])
 
 
 class TestRun(TestCase):

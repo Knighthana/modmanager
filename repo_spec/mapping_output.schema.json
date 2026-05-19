@@ -35,8 +35,15 @@
       "additionalProperties": false,
       "properties": {
         "path": {
-          "description": "Absolute path of the source file, or '!' for a delete sentinel.",
-          "type": "string"
+          "description": "Absolute path of the source file, or '!' for a delete sentinel. File paths must not end with '/'.",
+          "oneOf": [
+            { "const": "!" },
+            {
+              "type": "string",
+              "minLength": 1,
+              "not": { "pattern": "/$" }
+            }
+          ]
         },
         "action": {
           "description": "File operation semantics. 'hold' MUST NOT appear here; its presence indicates a bug in the aggregator or engine pipeline.",
@@ -77,8 +84,10 @@
       "additionalProperties": false,
       "properties": {
         "root_path": {
-          "description": "Absolute path of the tree root (the destination file path).",
-          "type": "string"
+          "description": "Absolute path of the tree root (the destination file path). Must not end with '/'.",
+          "type": "string",
+          "minLength": 1,
+          "not": { "pattern": "/$" }
         },
         "destin_mixed_id": {
           "description": "appid:modid of the mod that owns this destination file.",
@@ -119,8 +128,10 @@
       "additionalProperties": false,
       "properties": {
         "path": {
-          "description": "Absolute path of the destination file.",
-          "type": "string"
+          "description": "Absolute path of the destination file. File-only output is required; directory-style trailing '/' is invalid.",
+          "type": "string",
+          "minLength": 1,
+          "not": { "pattern": "/$" }
         },
         "request": {
           "description": "The winning change-request, or null when the target has no source (vacuous node).",

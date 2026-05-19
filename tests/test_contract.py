@@ -111,6 +111,50 @@ class SchemaLoadTests(unittest.TestCase):
         )
         self.assertEqual(errs, [])
 
+    def test_validate_output_rejects_directory_style_final_mapping_path(self) -> None:
+        errs = validate_output_collect(
+            {
+                "warnings": [],
+                "errors": [],
+                "trees": [],
+                "final_mapping": [
+                    {
+                        "path": "/dst/dir/",
+                        "request": {
+                            "path": "/src/a.txt",
+                            "action": "replace",
+                            "mixed_id": "1:10",
+                            "hashtype": "sha256",
+                            "hashvalue": "",
+                        },
+                    }
+                ],
+            }
+        )
+        self.assertTrue(errs)
+
+    def test_validate_output_rejects_directory_style_request_path(self) -> None:
+        errs = validate_output_collect(
+            {
+                "warnings": [],
+                "errors": [],
+                "trees": [],
+                "final_mapping": [
+                    {
+                        "path": "/dst/a.txt",
+                        "request": {
+                            "path": "/src/dir/",
+                            "action": "replace",
+                            "mixed_id": "1:10",
+                            "hashtype": "sha256",
+                            "hashvalue": "",
+                        },
+                    }
+                ],
+            }
+        )
+        self.assertTrue(errs)
+
 
 # ── contract tests against actual compute_mapping output ─────────────────────
 

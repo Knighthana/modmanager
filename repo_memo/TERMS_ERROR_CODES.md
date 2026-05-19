@@ -29,6 +29,10 @@
 | `E_RESTORE_COPY_FAILED` | `restore` | 从 backup_dir 复制回目标位置失败 | `error` | 恢复复制失败 | 当前条目执行失败 |
 | `E_EXTERNAL_FILE_ORPHAN` | `restore` | 检测到本次 restore 未命中的外部文件或孤儿文件 | `warning` | 外部孤儿文件提示 | 当前实现虽然以 `E_` 前缀输出，但默认严重级别按 warning 处理 |
 | `E_BACKUP_COPY_FAILED` | `backup` | 将目标文件复制进 backup_dir 失败 | `error` | 备份复制失败 | 当前条目未成功写入 backup |
+| `E_APPLY_MISSING_TARGET` | `apply` | apply 条目缺少目标路径或目标路径为空 | `error` | apply 目标路径缺失 | 属于 apply 输入或执行前检查失败 |
+| `E_APPLY_MISSING_SOURCE` | `apply` | apply 条目缺少源路径，或无法定位源文件 | `error` | apply 源路径缺失 | delete 哨兵 `!` 不适用本条 |
+| `W_APPLY_DIR_NO_MATCHED_ENTRIES` | `apply` | 某个 apply 处理单元没有匹配到可执行条目 | `warning` | 当前处理单元没有可应用条目 | 不阻断其它处理单元 |
+| `W_APPLY_NO_EFFECT` | `apply` | 本次 apply 未真正应用任何条目 | `warning` | 当前 apply 没有产生实际效果 | 用于提示空执行或全部被跳过 |
 
 ## 三、使用约束
 
@@ -83,6 +87,10 @@
 | `E_RESTORE_COPY_FAILED` | `restore` | 从 backup_dir 复制回原路径时发生 I/O 失败 | `error` | 某个命中文件恢复失败 | restore 主流程直接产出 |
 | `E_EXTERNAL_FILE_ORPHAN` | `restore` | 发现 backup 外的孤儿文件 | `warning` | 存在未被当前 restore 集合覆盖的外部文件 | 当前实现前缀虽为 E_，严重级别按 warning 解释 |
 | `E_BACKUP_COPY_FAILED` | `backup` | 备份复制阶段发生 I/O 失败 | `error` | 某个文件未能写入 backup_dir | backup 主流程直接产出 |
+| `E_APPLY_MISSING_TARGET` | `apply` | apply 条目缺少目标路径或目标路径为空 | `error` | apply 目标路径缺失 | 属于 apply 输入或执行前检查失败 |
+| `E_APPLY_MISSING_SOURCE` | `apply` | apply 条目缺少源路径，或无法定位源文件 | `error` | apply 源路径缺失 | delete 哨兵 `!` 不适用本条 |
+| `W_APPLY_DIR_NO_MATCHED_ENTRIES` | `apply` | 某个 apply 处理单元没有匹配到可执行条目 | `warning` | 当前处理单元没有可应用条目 | 不阻断其它处理单元 |
+| `W_APPLY_NO_EFFECT` | `apply` | 本次 apply 未真正应用任何条目 | `warning` | 当前 apply 没有产生实际效果 | 用于提示空执行或全部被跳过 |
 
 ## 四、治理规则
 

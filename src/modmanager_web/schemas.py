@@ -79,29 +79,11 @@ class ComputeRequest(BaseModel):
     managed_entries: dict | None = None
 
 
-class BackupRequest(BaseModel):
-    """Request body for ``POST /api/pipeline/backup``."""
-
-    mapping_result: dict[str, Any]
-    backup_dir: str | None = None
-    database_name: str = "default"
-
-
-class ApplyRequest(BaseModel):
-    """Request body for ``POST /api/pipeline/apply``."""
-
-    final_mapping: list[dict[str, Any]]
-    backup_dir: str | None = None
-    database_name: str = "default"
-    dry_run: bool = False
-
-
 class RunRequest(BaseModel):
     """Request body for ``POST /api/pipeline/run``."""
 
     database_name: str = "default"
     aggregated_rule_set: dict | None = None
-    backup_dir: str | None = None
     action_orders: dict[str, int] | None = None
     branch_decisions: dict[str, str] | None = None
     managed_entries: dict | None = None

@@ -38,6 +38,20 @@ POST /api/workspace/{id}/pipeline/compute → 参数从工作区读取；orchest
 POST /api/config/discover          → 返回 user_config
 ```
 
+### Apply 线强制清退任务（无兼容策略）
+
+以下项属于当前必须清理的技术债，执行策略为一次性删除，不保留兼容层：
+
+1. 删除 generic 执行入口：`/api/pipeline/backup`、`/api/pipeline/apply`
+2. 删除与上述入口绑定的请求模型与注释：`BackupRequest`、`ApplyRequest`（若不再被其他入口使用）
+3. 删除遗留文案：任何将 backup/apply 执行指向 generic pipeline 的描述
+4. 删除前端 mock 中的 generic backup/apply handler，避免继续被新页面误用
+5. 删除测试中的 generic backup/apply 依赖断言，统一迁移到 workspace 主路径
+
+执行验收：代码、文档、mock、测试四个层面都不能再出现 generic backup/apply 执行入口。
+
+当前状态（2026-05-20）：上述清退项已执行完成，后续不得恢复。
+
 ---
 
 ## 二、分阶段执行

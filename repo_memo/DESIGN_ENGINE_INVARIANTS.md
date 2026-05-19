@@ -13,12 +13,14 @@
 - `mixed_id` 格式：`appid:modid`（colon-separated）
 - `hashtype`：正常值为 `sha256`；计算前哨兵值为 `invalid`（表示尚未计算，不得视为合法哈希）
 - final_mapping 只允许单文件到单文件，不允许通配符残留
+- 目录语义允许作为 engine 内部辅助状态存在，但不得进入公开产物；`trees.root_path` 与 `final_mapping.path` 必须保持 file-only
 - `changerequest` 中的 `action` **不允许出现 `hold`**；若出现说明聚合器或引擎流水线存在 bug，应断言失败而非静默通过
 
 ## 行为不变量
 - 文件级环检测：基于具体文件链路，mod 级依赖环不直接判错；检测到环时产生告警 `W_FOREST_CYCLE_DETECTED`
 - 森林允许分枝，分枝需告警（`W_FOREST_BRANCHING`）并等待用户决策
 - 同输入同输出（确定性）
+- 目录级规则输入（如 `from_type=dir`、delete 目录）可以在解析期保留目录辅助语义，但必须在输出边界前收口为文件级结果
 - engine 接收的 `database` 参数为**已过滤的纯数据**（不含 managed 标记，不含重复条目）。过滤职责由 orchestrator 承担（详见 `DESIGN_WORKSPACE_STATE.md` §6）
 
 ## 路径约定

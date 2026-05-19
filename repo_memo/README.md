@@ -40,8 +40,9 @@
 | [包 A1](READING_PACKAGES.md#L13) | 采集、规则聚合、森林模型 |
 | [包 A2](READING_PACKAGES.md#L21) | 编排、备份、路径解析 |
 | [包 A3](READING_PACKAGES.md#L29) | REST API、引擎约束、Python 分层 |
-| [包 B1](READING_PACKAGES.md#L37) | GUI 总体、数据源、计算准备 |
-| [包 B2](READING_PACKAGES.md#L45) | GUI 任务流、前端集成、Mock 基础设施 |
+| [包 A5](READING_PACKAGES.md#L37) | apply 原语、apply preflight、apply 编排入口 |
+| [包 B1](READING_PACKAGES.md#L45) | GUI 总体、数据源、计算准备 |
+| [包 B2](READING_PACKAGES.md#L53) | GUI 任务流、前端集成、Mock 基础设施 |
 
 ### 非默认输入
 
@@ -63,6 +64,8 @@
 - 任务涉及 `backup_dir` 结构、`backupinfo.json` 结构或字段冻结时，必须读取 `DESIGN_BACKUP_DIR.md`（通常对应包 A2）
 - 任务涉及 backup 执行、差异备份、`.kmmbakignore` 复制或脏状态/冲突检查时，必须读取 `DESIGN_BACKUP_OPS.md`（通常对应包 A2）
 - 任务涉及 restore 执行、命中集合、hash 核对或 `force` 语义时，必须读取 `DESIGN_RESTORE_OPS.md`（通常对应包 A2）
+- 任务涉及 apply 执行、dry_run 契约、file-only 消费边界时，必须读取 `DESIGN_APPLY_OPS.md`（通常对应包 A5）
+- 任务涉及 apply preflight、manifest、cache policy 或 apply 前置 gate 时，必须读取 `DESIGN_PREFLIGHT_APPLY.md`（通常对应包 A5）
 - 任务明确涉及 replace service 方案时，必须读取 `further/REPLACE_SERVICE_DESIGN.md`；其他任务不默认读取
 
 ## 备注
