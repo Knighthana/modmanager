@@ -18,9 +18,9 @@ cleanup_actions:
   - DESIGN_STORAGE.md: delete "workspace.json migration to frontend" history
   - DESIGN_EXECUTION_PLAN.md: delete "workspace.json revoked" notes
   - DESIGN_FOREST_MODEL.md: verify no "forest → trees" migration notes
-  - DESIGN_RULE_AGGREGATOR.md: verify no "appitemid" references
+  - DESIGN_RULE_AGGREGATOR.md: verify no historical terminology references
   - DESIGN_ENGINE_INVARIANTS.md: verify no old terminology
-  - DESIGN_STEAM_DISCOVERY.md: delete "islbfdvdflocate" references
+  - DESIGN_STEAM_DISCOVERY.md: delete historical terminology references
 related_discussions:
   - 2026-05-14 Architecture Audit Session
   - REST API / GUI Tar Pit Analysis
@@ -229,9 +229,9 @@ POST /api/pipeline/run
 | DESIGN_STORAGE.md | 删除"workspace.json迁移"说法 | 直接定义现状：modmanager:workspace 键 |
 | DESIGN_EXECUTION_PLAN.md | 删除"workspace.json撤销"说法 | 只说当前状态 |
 | DESIGN_FOREST_MODEL.md | 验证+删除旧术语 | 无"forest改trees"说法 |
-| DESIGN_RULE_AGGREGATOR.md | 验证+删除旧术语 | 无"appitemid"说法 |
+| DESIGN_RULE_AGGREGATOR.md | 验证+删除旧术语 | 无旧术语说法 |
 | DESIGN_ENGINE_INVARIANTS.md | 验证+删除旧术语 | 无旧术语 |
-| DESIGN_STEAM_DISCOVERY.md | 验证+删除旧术语 | 无"islbfdvdflocate"说法 |
+| DESIGN_STEAM_DISCOVERY.md | 验证+删除旧术语 | 无旧术语说法 |
 
 ### 2.2 清理后的效果
 

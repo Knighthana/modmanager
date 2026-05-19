@@ -13,8 +13,7 @@
 8. `steamlib` 必须提供 CRUD；并提供 `liveupdate` 与 `regen` 两个维护接口
 
 ## 历史名处理
-- `islbfdvdflocate` / `islbfvdflocate`：废弃
-- `appitemid`：废弃，统一 `mixed_id`
+
 - `itemid`（mod 列表语义）：废弃，统一 `mods_found`
 
 ## 实现对齐优先级

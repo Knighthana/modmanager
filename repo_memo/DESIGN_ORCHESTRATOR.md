@@ -301,7 +301,6 @@ CLI 变为薄壳：解析参数 → 调用 orchestrator → 格式化输出。
 | `aggregator.py` | 无改动 |
 | `backup_ops.py` | 无改动 |
 | `cli.py` | 编排逻辑迁移到调用 orchestrator |
-| `cli-hmi/run.py` | 可替换为调用 orchestrator（非必须） |
 
 ---
 

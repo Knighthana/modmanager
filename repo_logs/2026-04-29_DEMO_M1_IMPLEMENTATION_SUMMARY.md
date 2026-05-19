@@ -3,14 +3,14 @@
 ## Management Summary
 
 ### Objective
-- Deliver a demo-ready workflow in cli-hmi for M1:
+- Deliver a demo-ready workflow for M1:
 - Single-rule KMM aggregation (MVP, one input file).
 - Human-friendly full test execution with report export.
 - Visualization updates that expose M1 trace fields.
 
 ### Scope
 - In scope:
-- cli-hmi document and wrapper tooling.
+- Demo document and wrapper tooling.
 - Visualization detail mode wiring for demo readability.
 - Tests for visualization detail behavior and aggregator behavior.
 - Out of scope:
@@ -34,22 +34,22 @@
 ## Implementation Summary
 
 ### Delivered Components
-- cli-hmi/rule_aggregator.py:
+- Demo rule_aggregator:
 - One-file KMM rule to aggregated_rule_set conversion.
 - Normalizes M1 fields in actionlist (action_order/provenance_ref/sidecar_ref).
 - Validates output with existing modmanager validation.
-- cli-hmi/test_runner.py:
+- Demo test_runner:
 - Interactive menu for full test run and module run.
 - Terminal summary with pass/fail/time.
-- Report export to cli-hmi/reports as JSON and Markdown.
+- Report export as JSON and Markdown.
 - src/modmanager/forest_visual.py:
 - Optional detail rendering mode for M1 fields.
-- src/modmanager/cli.py and cli-hmi/visualize_interactive.py:
+- src/modmanager/cli.py and demo visualize_interactive:
 - Expose detail mode switch and pass through to visualizer.
 
 ### Decisions
 - Aggregator MVP only supports one kmm_rule file.
-- Test reports default output directory: cli-hmi/reports.
+- Test reports default output directory: demo reports directory.
 - Demo default kmm input file:
 - description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example
 - Visualization detail mode default for demo entrypoints: enabled.
@@ -60,7 +60,7 @@
 - If test runner fails in a target terminal:
 - Use fallback command: python -m unittest discover -s tests -p "test_*.py"
 - If aggregator rejects input unexpectedly:
-- Run existing aggregated_rule_set path directly with cli-hmi/run.py.
+- Run existing aggregated_rule_set path directly with demo run.py.
 
 ### Acceptance Checklist
 - Aggregator accepts one rule file and emits valid aggregated_rule_set.

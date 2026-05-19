@@ -9,7 +9,7 @@
 - 术语：主 VDF 发现点
 - 定义：某个 `steamapps` 路径下存在 `libraryfolders.vdf`，可用于扩展发现全部 Steam 库。
 - 主字段：`contains_libraryfolders_vdf`（boolean）
-- 历史别名：`islbfdvdflocate`、`islbfvdflocate`
+
 
 ## 2. 路径风格
 - `workingpathstyle`：当前运行环境路径风格（linux/windows）
@@ -29,7 +29,7 @@
 - 术语：组合标识
 - 主字段：`mixed_id`
 - 格式：`appid:modid`
-- 历史别名：`appitemid`
+
 
 ## 6. 命名原则
 - 每个概念只有一个主名
@@ -58,7 +58,7 @@
 - `path_target`：路径别名项对应的本地文件系统根目录
 - `rule_meta_tag`：规则级元数据容器（不直接表达替换动作），仅存在于 kmm_rule 文件中
 - `provenance_ref`：动作级来源引用，值为 kmm_rule 源文件的**绝对路径**（由聚合器填入）
-- `sidecar_ref`：动作级外置扩展引用；缺失或空值时回退为 `404` 并记录 warning
+- `sidecar_ref`：动作级外置扩展引用；缺失或空值时回退为 `404`或`undesignated` 并记录 warning
 
 ## 9. 作者与规则名回退
 - `rulenamespace` 为空：`anonymousnamespace`
@@ -75,7 +75,8 @@
 - `from_type` / `into_type`：`"file"` 或 `"dir"`（dir 时列表每项以 `/` 结尾）
 
 ## 12. 引擎输出
-- `trees` — P0 后替代旧 `"forest"`，独立根+引用模型的森林
+- `trees` — 独立根+引用模型的森林
+- `forest` — 早期场合或用户界面中表示trees时候的说法
 - `TreeNode` — 树结点：`root_path`、`destin_mixed_id`、`changerequest`、`refs`、`resolved_state`
 - `changerequest` — 单个操作映射：`path`、`action`、`mixed_id`、`hashtype`、`hashvalue`
 - `resolved_state` — `pending` / `kept` / `deleted` / `failed` / `skipped`
@@ -83,7 +84,7 @@
 - `final_mapping` — 决议后的最终文件映射列表
 
 ## 13. 数据库扩展
-- `mod[]` — mod 列表（历史名称：`dommod`）：`mixed_id`（appid:modid 格式）、`path`（以 / 结尾）、`localdate`、`managed`（boolean，是否接受管理）
+- `mod[]` — mod 列表：`mixed_id`（appid:modid 格式）、`path`（以 / 结尾）、`localdate`、`managed`（boolean，是否接受管理）
 - `game[].managed` — boolean，同名 appid 最多一个为 true
 - `mod[].managed` — boolean，同名 mixed_id 最多一个为 true
 - `history` — 操作历史记录数组（预留，当前为空）

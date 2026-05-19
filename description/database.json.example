@@ -18,7 +18,7 @@
         "string1": "注意路径中间的空格!!!",
         "string2": "`contains_libraryfolders_vdf=true`表示该库路径中存在主`libraryfolders.vdf`",
         "string3": "应先解析主`libraryfolders.vdf`扩展发现其他Steam库, 再继续扫描游戏与mod",
-        "string4": "该字段命名已冻结，不再使用`islbfdvdflocate`等历史拼写"
+        "string4": "该字段命名已冻结"
       }
     },
     {

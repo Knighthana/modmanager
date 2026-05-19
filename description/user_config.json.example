@@ -1,31 +1,29 @@
 {
   "schema_namespace": "KMM_UserConfig",
-  "schema_version": "knighthana@0.0.1",
-  "file_example_URL": "https://raw.githubusercontent.com/knighthana/",
+  "schema_version": "knighthana@0.1.0",
+  "file_example_URL": "?",
   "comment": {
     "string1": "这是一个示例文件"
   },
   "path_alias":[
     {
-      "description": "本机kmmrule存储位置1",
+      "description": "myalias",
       "path_handle": "rule_base_path_1",
       "path_target": "/home/knighthana/workspace/modmanager/"
-    },
-    {
-      "description": "本机kmmrule存储位置2",
-      "path_handle": "rule_base_path_2",
-      "path_target": "/home/knighthana/workspace/modmanager/description/"
-    },
-    {
-      "description": "本机kmmrule存储位置3",
-      "path_handle": "rule_base_path_3",
-      "path_target": "/home/knighthana/workspace/modmanager/description/rules/"
     }
   ],
-  "baksuffix": "kmmbackup_",
+  "baksuffix": "kmmbackup",
   "bakignore": [
-    "kmmbackup_",
     "*.tmp",
     "__pycache__/"
+  ],
+  "databases": {
+    "default": {
+      "path": "/home/knighthana/.local/share/kmm/database.json"
+    }
+  },
+  "aggregated_ruleset_output_path": "/home/knighthana/.local/share/kmm/aggregated_rule_set.json",
+  "rule_sources": [
+    "~/workspace/modmanager/description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example"
   ]
 }

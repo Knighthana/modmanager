@@ -64,10 +64,10 @@
                 <div class="detail-section-title">规则文件元信息</div>
                 <div class="detail-row">
                   <span class="meta-label">namespace:</span>
-                  <span class="meta-value">{{ file.detail.rule_meta_tag.rulenamespace }}</span>
+                  <span class="meta-value">{{ getRuleMetaDisplay(file.detail.rule_meta_tag.rulenamespace, 'anonymousnamespace') }}</span>
                   <el-divider direction="vertical" />
                   <span class="meta-label">rulename:</span>
-                  <span class="meta-value">{{ file.detail.rule_meta_tag.rulename }}</span>
+                  <span class="meta-value">{{ getRuleMetaDisplay(file.detail.rule_meta_tag.rulename, 'unknownrulename') }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="meta-label">author:</span>
@@ -260,6 +260,11 @@ function getGameName(appid: string): string {
   return gameNames.value[appid] ?? `Game[${appid}]`
 }
 
+function getRuleMetaDisplay(val: string | undefined, fallback: string): string {
+  if (val === undefined || val === '') return fallback
+  return val
+}
+
 function getDisplayName(file: RuleFileItem): string {
   if (file.detail) {
     const games = file.detail.game || []
@@ -268,7 +273,7 @@ function getDisplayName(file: RuleFileItem): string {
     const modName = mods.length > 0 ? (mods[0].nickname || mods[0].mixed_id?.split(':')[1] || '') : ''
     if (gameName && modName) return `${gameName}-${modName}`
     if (gameName) return gameName
-    return file.detail.rule_meta_tag?.rulename || file.name
+    return file.detail.rule_meta_tag?.rulename || 'unknownrulename'
   }
   return file.name
 }

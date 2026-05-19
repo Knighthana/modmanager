@@ -363,14 +363,6 @@ def aggregate(
 
 ---
 
-## 9. 与现有 Demo 聚合器的关系
-
-`cli-hmi/rule_aggregator.py` 是为演示目的临时构建的单文件直通转换器。其设计逻辑（处理 `provenance_ref`、`sidecar_ref`、路径规范化的方式，以及输出中是否保留 `def_destin` / `def_action`）**与本设计文档不一致**。
-
-正式聚合器 `src/modmanager/rule_aggregator.py` 应**完全按本文档设计实现**，不参考 Demo 实现。
-
----
-
 ## 10. 错误码与告警汇总
 
 ### 聚合器专属
