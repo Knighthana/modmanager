@@ -16,6 +16,8 @@
 - `backupinfo.json` 的结构应该长什么样
 - restore 如何执行
 
+注意：前置门禁（preflight / gate check）为 `orchestrator` 的职责。backup 实现可以暴露检测结果（脏状态、冲突、warnings/errors）供 orchestrator 在 preflight 阶段消费，但不应在自身流程中承担“决定是否允许 apply”的 gate 判定逻辑。
+
 这些内容分别由 `DESIGN_BACKUP_DIR.md` 和 `DESIGN_RESTORE_OPS.md` 负责。
 
 ## 二、总原则
@@ -138,6 +140,8 @@ backup 相关实现可以暴露以下检查能力：
 - 检测 metadata 缺失或 tree 缺失的脏状态
 - 检测 backup_dir 内实际实体与 `backupinfo.json` 的冲突
 - 检测目标文件与 backup 副本的漂移
+
+这些检查可作为 preflight 的输入；orchestrator 负责综合这些输出并做出 gate 判定，backup 本身不负责门禁决策。
 
 这些检查的错误码与默认严重级别统一以 `TERMS_ERROR_CODES.md` 为准。
 
