@@ -243,25 +243,6 @@ class ForestVisualTests(unittest.TestCase):
 
     # --- new tests for trees format ---
 
-    def test_backward_compat_forest_key(self) -> None:
-        """_extract_forest falls back to 'forest' key when 'trees' is absent."""
-        payload = {
-            "forest": [
-                {
-                    "root_path": "/dst/a.txt",
-                    "changerequest": [
-                        {"path": "/src/a.txt", "action": "replace", "mixed_id": "270150:100", "hashtype": "sha256", "hashvalue": "abc"}
-                    ],
-                    "refs": [],
-                    "resolved_state": "",
-                }
-            ]
-        }
-
-        out = visualize_payload(payload, "ascii")
-        self.assertIn("TREES", out)
-        self.assertIn("/dst/a.txt", out)
-
     def test_ref_edges_in_dot(self) -> None:
         """Reference edges render as dashed lines in DOT output (single tree, no pack)."""
         payload = {

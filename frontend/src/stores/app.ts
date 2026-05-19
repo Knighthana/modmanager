@@ -21,7 +21,6 @@ import {
   saveSidebarCollapsed,
   loadActiveTab,
   saveActiveTab,
-  migrateOldWorkspace,
 } from '../utils/persistence'
 
 export const useAppStore = defineStore('app', () => {
@@ -84,7 +83,6 @@ export const useAppStore = defineStore('app', () => {
   // ── Lifecycle ─────────────────────────────────────────────────────
 
   function init() {
-    migrateOldWorkspace()
     sidebarCollapsed.value = loadSidebarCollapsed()
     activeTab.value = loadActiveTab()
     currentWorkspaceId.value = loadCurrentWorkspaceId()

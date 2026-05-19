@@ -82,22 +82,22 @@
         "from": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Source paths (relative to the mod's root). Each entry ends with '/' when from_type is 'path'."
+          "description": "Source paths (relative to the mod's root). Each entry ends with '/' when from_type is 'dir'."
         },
         "from_type": {
           "type": "string",
-          "enum": ["file", "path"],
-          "description": "'file' when from entries are file paths; 'path' when they are directory paths."
+          "enum": ["file", "dir"],
+          "description": "'file' when from entries are file paths; 'dir' when they are directory paths."
         },
         "into": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Destination paths (relative to the destin mod's root). Each entry ends with '/' when into_type is 'path'."
+          "description": "Destination paths (relative to the destin mod's root). Each entry ends with '/' when into_type is 'dir'."
         },
         "into_type": {
           "type": "string",
-          "enum": ["file", "path"],
-          "description": "'file' when into entries are file paths; 'path' when they are directory paths."
+          "enum": ["file", "dir"],
+          "description": "'file' when into entries are file paths; 'dir' when they are directory paths."
         },
         "action_order": {
           "type": "integer",
@@ -134,9 +134,9 @@
           }
         },
         {
-          "description": "When from_type is 'path', each from entry MUST end with '/'.",
+          "description": "When from_type is 'dir', each from entry MUST end with '/'.",
           "if": {
-            "properties": { "from_type": { "const": "path" } },
+            "properties": { "from_type": { "const": "dir" } },
             "required": ["from_type"]
           },
           "then": {
@@ -149,9 +149,9 @@
           }
         },
         {
-          "description": "When into_type is 'path', each into entry MUST end with '/'.",
+          "description": "When into_type is 'dir', each into entry MUST end with '/'.",
           "if": {
-            "properties": { "into_type": { "const": "path" } },
+            "properties": { "into_type": { "const": "dir" } },
             "required": ["into_type"]
           },
           "then": {

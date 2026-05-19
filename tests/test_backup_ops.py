@@ -75,7 +75,7 @@ class TestBuildFilefoldertree(TestCase):
             f = Path(tmp) / "hello.txt"
             f.write_bytes(b"hello")
             tree = build_filefoldertree_with_hashes(tmp)
-            self.assertEqual(tree["type"], "folder")
+            self.assertEqual(tree["type"], "directory")
             self.assertEqual(len(tree["children"]), 1)
             child = tree["children"][0]
             self.assertEqual(child["name"], "hello.txt")
@@ -105,7 +105,7 @@ class TestBuildFilefoldertree(TestCase):
     def test_empty_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
             tree = build_filefoldertree_with_hashes(tmp)
-            self.assertEqual(tree["type"], "folder")
+            self.assertEqual(tree["type"], "directory")
             self.assertEqual(tree["children"], [])
 
     def test_hash_is_deterministic(self):

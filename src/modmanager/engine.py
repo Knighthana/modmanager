@@ -86,7 +86,7 @@ def _expand_sources(source_root: str, source_expr: str, source_type: str = "file
     if not source_root_path.exists():
         return []
     for found in sorted(source_root_path.glob(pattern_path), key=lambda p: normalize_posix(str(p.relative_to(source_root_path)))):
-        if source_type == "path":
+        if source_type == "dir":
             if not found.is_dir():
                 continue
         else:
@@ -103,12 +103,12 @@ def _target_for(
     nwname: str | None = None,
     *,
     from_type: str = "file",
-    into_type: str = "path",
+    into_type: str = "dir",
 ) -> str:
     dest = Path(dest_root) / normalize_posix(into_expr)
-    # 尾 / 仅在目标本身是目录时保留（from_type="path" 或 delete），不传播到目录内文件
-    trailing_slash = "/" if (into_type == "path" and into_expr.endswith("/") and from_type == "path") else ""
-    if from_type == "path" and into_type == "path":
+    # 尾 / 仅在目标本身是目录时保留（from_type="dir" 或 delete），不传播到目录内文件
+    trailing_slash = "/" if (into_type == "dir" and into_expr.endswith("/") and from_type == "dir") else ""
+    if from_type == "dir" and into_type == "dir":
         return str(dest / Path(source_file).name) + trailing_slash
     name = nwname if nwname else Path(source_file).name
     return str(dest / name) + trailing_slash
@@ -125,8 +125,8 @@ def _check_filefoldertree_transition(old_tree: dict[str, Any], new_tree: dict[st
             if old_node.get(key) != new_node.get(key):
                 errors.append(f"E_TREE_NODE_MUTATION: {path}: {key} changed")
 
-        old_children = old_node.get("children", []) if old_node.get("type") == "folder" else []
-        new_children = new_node.get("children", []) if new_node.get("type") == "folder" else []
+        old_children = old_node.get("children", []) if old_node.get("type") == "directory" else []
+        new_children = new_node.get("children", []) if new_node.get("type") == "directory" else []
         old_sig = [(c.get("name"), c.get("type")) for c in old_children]
         new_sig = [(c.get("name"), c.get("type")) for c in new_children]
         if old_sig != new_sig:
@@ -326,7 +326,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             if action == "delete":
                 # delete rules: iterate over into list, each entry is a deletion target
                 # from/from_type are ignored for delete
-                into_type = item.get("into_type", "path")
+                into_type = item.get("into_type", "dir")
                 for into_target in into_list:
                     target = _norm(str(Path(dest_root) / _norm(into_target)))
                     if str(into_target).endswith("/"):
@@ -354,7 +354,7 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
             # Expand all sources from all from_list entries
             all_sources: list[str] = []
             from_type = item.get("from_type", "file")
-            into_type = item.get("into_type", "path")
+            into_type = item.get("into_type", "dir")
             for src_expr in from_list:
                 sources = _expand_sources(source_root, src_expr, source_type=from_type)
                 if not sources:

@@ -3,7 +3,7 @@
 > Status: active
 > Authority: authoritative
 > Read-Tier: task-scoped
-> Purpose: 记录 2026-05-13 讨论确定的全量重构执行方案。涵盖底层数据模型重定义、localStorage 清退、mock-first 页面重写、存量适配四条线。
+> Purpose: 记录 2026-05-13 起的重构执行方案，聚焦数据模型收敛、工作区权威落地、前端状态清退、mock-first 页面重写与存量适配。
 > 原则：每步必绿（每完成一个 Phase 子步骤立即跑全量测试，不累积）。
 
 ---
@@ -12,7 +12,7 @@
 
 ### 数据模型终态
 
-|  | database.json | 前端 localStorage | user_config.json | compute 参数 |
+|  | database.json | 前端浏览器存储 | user_config.json | compute 参数 |
 |--|:---:|:---:|:---:|:---:|
 | **磁盘描述** | steamlib[], game[], mod[]（纯扫描数据） | — | — | — |
 | **用户决策** | — | 工作区目录 `decisions.json` (managed_entries + branch_decisions) | baksuffix, bakignore, output_paths | ✅ |
@@ -48,20 +48,20 @@ POST /api/config/discover          → 返回 user_config
 
 | # | 文档 | 类型 | 内容 |
 |---|------|------|------|
-| 0.1 | `DESIGN_GUI_WORKSPACE.md` | 新（原 DESIGN_WORKSPACE_STATE.md 归档重写） | 前端 localStorage 存储 decisions/results、DatabaseSelector 行为、compute 流程 |
-| 0.2 | `DESIGN_DATA_CLEANUP.md` | 新 | 前端 localStorage 清退清单、persistence.ts 新职责边界、前端数据流规范 |
+| 0.1 | `repo_logs/DOC_ARCHIVE_2026-05-19_DESIGN_GUI_WORKSPACE.md` | 归档（原 DESIGN_WORKSPACE_STATE.md 重写） | 迁移记录 |
+| 0.2 | `repo_logs/DOC_ARCHIVE_2026-05-19_DESIGN_DATA_CLEANUP.md` | 归档 | 清退记录 |
 | 0.3 | `DESIGN_MOCK_INFRA.md` | 新 | MSW 架构、mock/real 切换机制、`npm run dev:mock` 命令、mock 数据约定 |
-| 0.4 | `DESIGN_STORAGE.md` | 改 | database.json 不包含 managed/warnings/errors；workspace 章节改为前端 localStorage |
+| 0.4 | `DESIGN_STORAGE.md` | 改 | database.json 不包含 managed/warnings/errors；workspace 章节收敛为后端工作区权威 |
 | 0.5 | `DESIGN_GUI_DATASOURCE_TAB.md` | 改 | §3.3 managed 逻辑重写：从存 database 改为存 workspace |
 | 0.6 | `DESIGN_ENGINE_INVARIANTS.md` | 改 | 移除 managed 相关约束；补充 orchestrator workspace 过滤职责 |
 
-**受影响的已有文档归档规则**：修改前，将旧版复制到 `repo_memo/archive/` 加日期后缀，原位置写入新版。
+**受影响的已有文档归档规则**：见 `DOCUMENT_METADATA.md` 与 `DOCUMENT_GOVERNANCE.md`，旧版先迁入 `repo_logs/` 并保留日期前缀。
 
 ---
 
 ### Phase 1 — 后端底层改造（串行，仅 Python，不动前端）
 
-**验收：全部 Python 测试通过。不可回退边界：database.json 不再含 managed/warnings/errors；managed_entries 由前端通过请求参数传入，orchestrator 不读取 workspace 文件。**
+**验收：全部 Python 测试通过。不可回退边界：database.json 不再含 managed/warnings/errors；managed_entries 由前端通过请求参数传入；orchestrator 通过 workspacemanager 读取工作区数据。**
 
 | 步骤 | 任务 | 涉及文件 | 测试 |
 |------|------|---------|------|
@@ -85,8 +85,8 @@ POST /api/config/discover          → 返回 user_config
 | 2.1 | `persistence.ts` 削减：注释声明"仅 UI 状态"（discoveryMode、manualPath、sidebar 折叠、tab 可见性偏好）；save/load 失败时 notify 警告而非静默 | persistence.ts |
 | 2.2 | `stores/datasource.ts` 移除 saveToCache/loadFromCache/clearCache；移除 datasource-db 持久化；扫描结果仅暂存 Pinia 内存 | datasource.ts |
 | 2.3 | `stores/forest.ts` 移除 watch + savePersistentState/loadPersistentState | forest.ts |
-| 2.4 | 各 store/page 新增对 localStorage（`modmanager:decisions:{name}` / `modmanager:results:{name}`）的读写 | datasource.ts, forest.ts, DataSourcePage.vue 等 |
-| 2.5 | branch_decisions 保存：ConflictPage 按钮触发写 `localStorage.modmanager:decisions:{name}.branch_decisions`（非每次切 radio） | ConflictsPage.vue |
+| 2.4 | 各 store/page 改为调用 workspace 端点读写 decisions/mapping；浏览器端仅保留 UI 状态持久化 | datasource.ts, forest.ts, DataSourcePage.vue 等 |
+| 2.5 | branch_decisions 保存：ConflictPage 通过工作区 decisions 端点保存（非每次切 radio） | ConflictsPage.vue |
 | 2.6 | 更新全部前端测试 | `frontend/src/__tests__/` |
 
 ---
@@ -134,7 +134,7 @@ POST /api/config/discover          → 返回 user_config
 1. **每步必绿**：Phase 1 每完成一个子步骤立即 `pytest` 全量；Phase 2 每步 `npm run test`
 2. **不可回退边界**：Phase 1/2 完成后，database.json 不再含 managed；localStorage 不再含业务数据。任何试图恢复旧行为的代码视为违规
 3. **文档先行**：Phase 1.1 开工前，Phase 0 设计文档必须全部就位
-4. **归档不删**：修改已有设计文档时，旧版移入 `repo_memo/archive/`
+4. **归档不删**：见上方归档规则；旧版移入 `repo_logs/`，主目录只保留当前口径
 5. **workspace 状态**：decisions/mapping 存后端工作区目录 `~/.cache/kmm/workspace/{id}/`（详见 `DESIGN_WORKSPACE_MODEL.md`）
 
 ---
@@ -143,8 +143,8 @@ POST /api/config/discover          → 返回 user_config
 
 | # | 决策 | 结论 |
 |---|------|------|
-| D1 | managed 归属 | 前端 localStorage（`modmanager:decisions:{name}.managed_entries`），compute 时作为参数传入 |
+| D1 | managed 归属 | 后端工作区目录 `decisions.json` 为权威；请求体中的 `managed_entries` 作为单次计算输入 |
 | D6 | compute 端点 database 参数 | 不接收完整 database dict。orchestrator 内部通过 bootstrap 获取。接收 `database_name?` 选择目标 database |
 | D7 | workspace 模式（2026-05-16 更新） | 后端工作区目录（decisions/mapping/SVG）— 详见 `DESIGN_WORKSPACE_MODEL.md` |
-| D12 | decisions 范围 | managed_entries + branch_decisions 存前端 localStorage，compute 时作为参数传入 orchestrator |
-| D13 | results 存储粒度 | 仅摘要 + inputs_hash；不存完整 trees/mapping |
+| D12 | decisions 范围 | managed_entries + branch_decisions 存工作区 `decisions.json`，compute 时由工作区加载并可被请求覆盖 |
+| D13 | results 存储粒度 | 完整结果存工作区 `mapping.json`；前端可派生摘要用于展示 |

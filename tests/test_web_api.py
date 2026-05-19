@@ -1060,15 +1060,15 @@ class TestBackupsInspectApi:
             "filefoldertree_status": "ready",
             "filefoldertree": {
                 "name": "kmmbackup_test",
-                "type": "folder",
+                "type": "directory",
                 "children": [
                     {
                         "name": "mnt",
-                        "type": "folder",
+                        "type": "directory",
                         "children": [
                             {
                                 "name": "d",
-                                "type": "folder",
+                                "type": "directory",
                                 "children": [
                                     {
                                         "name": "test.txt",

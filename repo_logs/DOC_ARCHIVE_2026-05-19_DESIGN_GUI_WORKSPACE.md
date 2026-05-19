@@ -1,8 +1,8 @@
 # DESIGN_GUI_WORKSPACE — 前端工作区状态（已迁移）
 
 > Status: superseded
-> Authority: authoritative（新权威为 DESIGN_WORKSPACE_MODEL.md）
-> Read-Tier: task-scoped
+> Authority: reference-only（新权威为 DESIGN_WORKSPACE_MODEL.md）
+> Read-Tier: on-demand
 > Purpose: 本文档描述的旧 localStorage 工作区模型已被 `DESIGN_WORKSPACE_MODEL.md` 替代。本文档保留为迁移记录，不作为当前实现依据。
 > 创建：2026-05-14（原 DESIGN_WORKSPACE_STATE.md 归档重写）
 > 更新：2026-05-16 — 新工作区模型替代旧 localStorage 模型

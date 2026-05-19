@@ -56,7 +56,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
     def test_visualize_unsupported_format_returns_code_3(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             forest_path = Path(td) / "forest.json"
-            write_json_file(forest_path, {"forest": []})
+            write_json_file(forest_path, {"trees": []})
 
             with patch(
                 "sys.argv",
@@ -392,14 +392,14 @@ class CliDatabaseOpsTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("regen failed", err.getvalue())
 
-    def test_legacy_mode_missing_errors_key_defaults_to_success(self) -> None:
+    def test_missing_errors_key_defaults_to_success(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             aggregated_rule_set_path = Path(td) / "aggregated_rule_set.json"
             db_path = Path(td) / "database.json"
             write_json_file(aggregated_rule_set_path, {"operation": []})
             write_json_file(db_path, {"game": []})
 
-            with patch("modmanager.cli.compute_mapping", return_value={"forest": [], "final_mapping": []}):
+            with patch("modmanager.cli.compute_mapping", return_value={"trees": [], "final_mapping": []}):
                 with patch(
                     "sys.argv",
                     [

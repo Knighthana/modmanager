@@ -20,7 +20,7 @@
 
 ### 2.1 目录目标测试
 
-当 `into_type == "path"` 时，`final_mapping` 中的 `path` 字段**必须以 `/` 结尾**：
+当 `into_type == "dir"` 时，`final_mapping` 中的 `path` 字段**必须以 `/` 结尾**：
 
 ```python
 targets = {entry["path"] for entry in result["final_mapping"]}

@@ -4,7 +4,7 @@
 > Authority: normative
 > Read-Tier: task-scoped
 > Purpose: 规定测试文件组织、pytest 配置、前后端测试约定
-> Last-Updated: 2026-05-18
+> Last-Updated: 2026-05-19
 
 ---
 
@@ -31,11 +31,10 @@ testpaths = ["tests"]
 
 ## 三、当前测试覆盖
 
-### Python 后端 — 20 个文件，403 个用例
+### Python 后端 — 19 个文件
 
 | 文件 | 覆盖范围 |
 |------|---------|
-| `test_acf_parser.py` | ACF 文件解析 |
 | `test_backup_dir_builder.py` | 备份目录推导、suffix 生成、自定义 ID |
 | `test_backup_ops.py` | 差异备份、应用映射、恢复、循环防护、脏状态 |
 | `test_bootstrap.py` | user_config 发现、数据库生成 |

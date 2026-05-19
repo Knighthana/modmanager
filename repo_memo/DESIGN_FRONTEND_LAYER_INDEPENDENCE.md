@@ -335,7 +335,7 @@ Tauri 迁移时，组件代码完全不动：
    ```typescript
    // ❌ 禁止
    onMounted(() => {
-     const data = JSON.parse(localStorage.getItem('modmanager:workspace'))
+     const data = JSON.parse(localStorage.getItem('modmanager:business-state'))
    })
    ```
 

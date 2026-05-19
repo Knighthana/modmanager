@@ -51,7 +51,7 @@ class TestAggregatorBasic(unittest.TestCase):
                                 "from": ["data/file.txt"],
                                 "from_type": "file",
                                 "into": ["game_data/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -93,7 +93,7 @@ class TestAggregatorBasic(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["dest/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -113,7 +113,7 @@ class TestAggregatorBasic(unittest.TestCase):
                                 "from": ["b.txt"],
                                 "from_type": "file",
                                 "into": ["dest/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -217,8 +217,8 @@ class TestAggregatorFiltering(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "hold",
                         "actionlist": [
-                            {"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
-                            {"action": "replace", "destin": "270150:0", "from": ["b.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
+                            {"action": "replace", "destin": "270150:0", "from": ["b.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -243,7 +243,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                         "def_action": "hold",
                         "actionlist": [
                             # No explicit action — inherits "hold" from def_action
-                            {"destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -266,7 +266,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "none", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "none", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -294,7 +294,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                         "def_action": "create",
                         "actionlist": [
                             # No explicit action — inherits "create"
-                            {"destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -322,7 +322,7 @@ class TestAggregatorFiltering(unittest.TestCase):
                         "def_action": "replace",
                         "actionlist": [
                             # No explicit destin — inherits "270150:0"
-                            {"action": "replace", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -380,7 +380,7 @@ class TestAggregatorPermission(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -406,7 +406,7 @@ class TestAggregatorPermission(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -436,7 +436,7 @@ class TestAggregatorPermission(unittest.TestCase):
                         "def_destin": "270150:100",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:100", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:100", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     },
                 ]
@@ -466,7 +466,7 @@ class TestAggregatorPermission(unittest.TestCase):
                         "def_destin": "270150:100",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:100", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:100", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     },
                 ]
@@ -495,7 +495,7 @@ class TestAggregatorInjection(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -521,7 +521,7 @@ class TestAggregatorInjection(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -548,7 +548,7 @@ class TestAggregatorInjection(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -616,7 +616,7 @@ class TestAggregatorErrorHandling(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "replace",
                         "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -646,7 +646,7 @@ class TestAggregatorEmptyActions(unittest.TestCase):
                         "def_destin": "270150:0",
                         "def_action": "hold",  # all actions would be hold → filtered
                         "actionlist": [
-                            {"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"},
+                            {"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -665,7 +665,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
     """Trailing slash auto-fix in Step 4 for path-type from/into lists."""
 
     def test_trailing_slash_fixed_into(self) -> None:
-        """into_type=path, into=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
+        """into_type=dir, into=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
         with tempfile.TemporaryDirectory() as td:
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
@@ -681,7 +681,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                                 "from": ["data/file.txt"],
                                 "from_type": "file",
                                 "into": ["maps/lobby"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -700,7 +700,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
             )
 
     def test_trailing_slash_fixed_from(self) -> None:
-        """from_type=path, from=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
+        """from_type=dir, from=['maps/lobby'] → fixed to ['maps/lobby/'], warning."""
         with tempfile.TemporaryDirectory() as td:
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
@@ -714,9 +714,9 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                         "actionlist": [
                             {
                                 "from": ["maps/lobby"],
-                                "from_type": "path",
+                                "from_type": "dir",
                                 "into": ["dest/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -735,7 +735,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
             )
 
     def test_trailing_slash_glob_untouched(self) -> None:
-        """from_type=path, from=['maps/*/'] → unchanged (glob)."""
+        """from_type=dir, from=['maps/*/'] → unchanged (glob)."""
         with tempfile.TemporaryDirectory() as td:
             rule = _make_temp_kmm_rule(td, "rule.json", {
                 "game": [
@@ -749,9 +749,9 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
                         "actionlist": [
                             {
                                 "from": ["maps/*/"],
-                                "from_type": "path",
+                                "from_type": "dir",
                                 "into": ["dest/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }

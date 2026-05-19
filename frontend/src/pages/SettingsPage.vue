@@ -24,8 +24,8 @@
           <el-input v-model="form.baksuffix" placeholder="kmmbackup" />
         </el-form-item>
 
-        <!-- 备份忽略模式 -->
-        <el-form-item label="备份忽略模式">
+        <!-- 被忽略目录的后缀 -->
+        <el-form-item label="被忽略目录的后缀">
           <div style="width: 100%;">
             <el-table :data="form.bakignore" border stripe size="small" style="width: 100%;">
               <el-table-column label="路径">

@@ -60,7 +60,7 @@ def main() -> int:
 
     code, result = execute_mapping(aggregated_rule_set, database, decisions_path=decisions)
 
-    required_keys = {"warnings", "errors", "forest", "final_mapping"}
+    required_keys = {"warnings", "errors", "trees", "final_mapping"}
     missing = [k for k in sorted(required_keys) if k not in result]
     if missing:
         print(f"{RED}[FAILED]{RESET} result missing keys: {', '.join(missing)}")

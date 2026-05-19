@@ -49,7 +49,7 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "create", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"}],
+                        "actionlist": [{"action": "create", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -79,7 +79,7 @@ class EngineTests(unittest.TestCase):
                         "mixed_id": "270150:100",
                         "actionlist": [
                             {"action": "delete", "destin": "270150:0", "into": ["dest/a.txt"], "into_type": "file"},
-                            {"action": "create", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "path"},
+                            {"action": "create", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["dest/"], "into_type": "dir"},
                         ],
                     }
                 ]
@@ -105,7 +105,7 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "clear_then_copy", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "clear_then_copy", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -123,7 +123,7 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:local_dev_mod",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -151,7 +151,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -175,7 +175,7 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "hold", "destin": "none", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "none", "into": ["d/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -200,7 +200,7 @@ class EngineTests(unittest.TestCase):
                     "from": ["a.txt"],
                     "from_type": "file",
                     "into": ["d_replace/"],
-                    "into_type": "path",
+                    "into_type": "dir",
                     "destin": "none",
                 },
                 {
@@ -208,7 +208,7 @@ class EngineTests(unittest.TestCase):
                     "from": ["a.txt"],
                     "from_type": "file",
                     "into": ["d_create/"],
-                    "into_type": "path",
+                    "into_type": "dir",
                     "destin": "none",
                 },
                 {
@@ -222,7 +222,7 @@ class EngineTests(unittest.TestCase):
                     "from": ["a.txt"],
                     "from_type": "file",
                     "into": ["d_alt1/"],
-                    "into_type": "path",
+                    "into_type": "dir",
                     "destin": "none",
                 },
                 {
@@ -230,7 +230,7 @@ class EngineTests(unittest.TestCase):
                     "from": ["a.txt"],
                     "from_type": "file",
                     "into": ["d_alt2/"],
-                    "into_type": "path",
+                    "into_type": "dir",
                     "destin": "none",
                 },
             ]
@@ -270,7 +270,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -301,7 +301,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                                 "provenance_ref": "rule_base_path_2:demo.json",
                                 "action_order": 7,
                                 "sidecar_ref": "sidecar/provenance/demo.json",
@@ -337,7 +337,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                                 "provenance_ref": "",
                                 "sidecar_ref": None,
                             }
@@ -366,15 +366,15 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 0}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir", "action_order": 0}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path", "action_order": 3}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir", "action_order": 3}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -387,7 +387,7 @@ class EngineTests(unittest.TestCase):
     def test_filefoldertree_transition_only_forward(self) -> None:
         old_tree = {
             "name": "root",
-            "type": "folder",
+            "type": "directory",
             "children": [
                 {
                     "name": "a.txt",
@@ -400,7 +400,7 @@ class EngineTests(unittest.TestCase):
         }
         new_tree = {
             "name": "root",
-            "type": "folder",
+            "type": "directory",
             "children": [
                 {
                     "name": "a.txt",
@@ -448,7 +448,7 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -468,15 +468,15 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -502,15 +502,15 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -548,7 +548,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                                 "action_order": 1,
                             }
                         ],
@@ -562,14 +562,14 @@ class EngineTests(unittest.TestCase):
                                 "from": ["a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                                 "action_order": 9,
                             }
                         ],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -595,15 +595,15 @@ class EngineTests(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -635,7 +635,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["s/a.txt"],
                                 "from_type": "file",
                                 "into": ["d/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                                 "action_order": 10,
                             }
                         ],
@@ -654,7 +654,7 @@ class EngineTests(unittest.TestCase):
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "path"}],
+                        "actionlist": [{"action": "hold", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -747,9 +747,9 @@ class EngineTests(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": ["v1.9/*/"],
-                                "from_type": "path",
+                                "from_type": "dir",
                                 "into": ["maps/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -785,7 +785,7 @@ class EngineTests(unittest.TestCase):
                                 "from": ["src/*"],
                                 "from_type": "file",
                                 "into": ["out/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }

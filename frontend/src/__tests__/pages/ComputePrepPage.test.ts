@@ -151,24 +151,7 @@ describe('ComputePrepPage', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     sessionStorage.clear()
-    
-    // Setup default localStorage workspace data for loadWorkspace() to use
-    const defaultWorkspace = {
-      lastDatabase: 'default',
-      perDatabase: {
-        default: {
-          selectedRulePaths: [],
-          managedEntries: { game: {}, mod: {} },
-          branchDecisions: {},
-          results: null,
-        },
-      },
-      aggregatedRuleSet: null,
-      aggregatedRuleHash: '',
-      uiState: {},
-    }
-    localStorage.setItem('modmanager:workspace', JSON.stringify(defaultWorkspace))
-    
+
     // Mock global fetch for GET /api/workspace/status
     vi.stubGlobal('fetch', vi.fn())
   })

@@ -19,11 +19,6 @@
 
     <!-- ── Main content ─────────────────────────────────────────────── -->
     <template v-else>
-      <!-- DatabaseSelector -->
-      <div style="margin-bottom: 16px;">
-        <DatabaseSelector ref="databaseSelectorRef" />
-      </div>
-
       <!-- Top action bar -->
       <div class="action-bar">
         <div class="action-buttons">
@@ -175,7 +170,6 @@ import { apiPost, apiGet } from '../api/transport'
 import { streamSse } from '../api/transport'
 import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
-import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 // ── Router ────────────────────────────────────────────────────────────────
 const router = useRouter()
@@ -183,7 +177,6 @@ const route = useRoute()
 const workspaceId = computed(() => route.params.workspaceId as string)
 const appStore = useAppStore()
 
-const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -358,13 +351,12 @@ async function loadData() {
   }
 
   // 4. Get selected database
-  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
 
   // 5. Fetch affected entries
   try {
     const entriesResp = await apiPost<AffectedEntriesData>('/rules/affected-entries', {
       aggregated_rule_set: aggregatedRuleSet || undefined,
-      database_name: selectedDb,
+      database_name: "default",
     })
 
     if (!entriesResp.ok || !entriesResp.data) {
@@ -623,7 +615,6 @@ async function doCompute(): Promise<boolean> {
 
   const forestStore = useForestStore()
   const managedEntries = buildManagedEntries()
-  const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
   let ruleSet = forestStore.aggregatedRuleSet
 
   if (!ruleSet) {
@@ -644,7 +635,6 @@ async function doCompute(): Promise<boolean> {
   try {
     const wid = workspaceId.value
     await streamSse(`/workspace/${wid}/pipeline/compute`, {
-      database_name: selectedDb,
       aggregated_rule_set: ruleSet || undefined,
       managed_entries: managedEntries,
     }, {
@@ -687,7 +677,6 @@ async function doCompute(): Promise<boolean> {
     // Save decisions via workspace API
     await apiPost(`/workspace/${wid}/decisions/save`, {
       managed_entries: managedEntries,
-      database_name: selectedDb,
     })
 
     return true

@@ -4,13 +4,13 @@
 
 ## 用途
 
-**唯一用途**：存放 `states.md`，记录当前工作的 TODO / FINISHED 状态。
-
-不作其他用途。
+- 存放`states.md`，记录当前工作的 TODO / FINISHED 状态。
+- 存放`decisions.md`。
+- 其他由user亲自明确交代的用途。
 
 ## 状态文件格式
 
-`states.md` 由实现者自行维护，建议格式：
+`states.md` 由arch维护，smith可以向其中添加条目，建议格式：
 
 ```markdown
 # 工作状态
@@ -35,6 +35,4 @@
 
 ## 维护规则
 
-- 由 implement 自行维护
-- 不作为契约或实现依据
 - 若与 `repo_memo/` 内容冲突，以 `repo_memo/` 为准

@@ -1,13 +1,14 @@
 # DESIGN_DATA_CLEANUP — 前端 localStorage 清退与数据流规范
 
-> Status: active
-> Authority: authoritative
-> Read-Tier: task-scoped
-> Purpose: 定义前端 localStorage 中业务数据的清退清单、persistence.ts 新职责边界、以及清退后的前后端数据流规范。作为 Phase 2 前端改造的唯一执行依据。
+> Status: superseded
+> Authority: reference-only
+> Read-Tier: on-demand
+> Purpose: 本文档记录 2026-05-13/14 阶段的清退过程，含历史口径，不作为当前实现依据。
 > 创建：2026-05-13
 > 更新：2026-05-14 — 清退后的 decisions/results 存前端 localStorage，非后端 workspace
 > 更新：2026-05-14 — 【§十二补充裁定】分散 key 聚合为单一 `modmanager:workspace` key
-> 依赖：DESIGN_GUI_WORKSPACE.md（前端 workspace 结构）
+> 替代文档：DESIGN_STORAGE.md、DESIGN_WORKSPACE_MODEL.md、DESIGN_EXECUTION_PLAN.md
+> 依赖：DOC_ARCHIVE_2026-05-19_DESIGN_GUI_WORKSPACE.md（前端 workspace 结构）
 
 ---
 
@@ -75,7 +76,7 @@
 | 游戏可见性开关 | `Record<number, boolean>` | `gameVisibility` |
 | `modmanager:workspace` | `object` | 聚合 workspace 对象（含 lastDatabase、perDatabase、aggregatedRuleSet、aggregatedRuleHash） |
 
-workspace 结构见 `DESIGN_GUI_WORKSPACE.md` §二。
+workspace 结构见 `DOC_ARCHIVE_2026-05-19_DESIGN_GUI_WORKSPACE.md` §二。
 
 ### 2.3 禁止存储的内容
 

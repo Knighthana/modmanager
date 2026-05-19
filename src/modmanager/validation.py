@@ -110,12 +110,12 @@ def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
             # Non-hold and non-delete actions require from_type and into_type
             if action != "delete":
                 from_type = item.get("from_type")
-                if from_type not in {"file", "path"}:
-                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from_type' in {{file, path}}")
+                if from_type not in {"file", "dir"}:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'from_type' in {{file, dir}}")
                 
                 into_type = item.get("into_type")
-                if into_type not in {"file", "path"}:
-                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into_type' in {{file, path}}")
+                if into_type not in {"file", "dir"}:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into_type' in {{file, dir}}")
                     continue  # Skip further checks if into_type is invalid
 
                 # Rule 1: if from is multi-value or contains glob, into cannot be multi-value
@@ -130,25 +130,25 @@ def validate_aggregated_rule_set(aggregated_rule_set: Any) -> list[str]:
                     errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] into_type=file requires from_type=file")
 
                 # Rule 5: _type=path requires all paths end with /
-                if from_type == "path":
+                if from_type == "dir":
                     for f_idx, f in enumerate(from_list if isinstance(from_list, list) else []):
                         if not f.endswith("/"):
-                            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] from[{f_idx}] from_type=path requires path to end with /")
-                if into_type == "path":
+                            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] from[{f_idx}] from_type=dir requires path to end with /")
+                if into_type == "dir":
                     for t_idx, t in enumerate(into_list):
                         if not t.endswith("/"):
-                            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] into[{t_idx}] into_type=path requires path to end with /")
+                            errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] into[{t_idx}] into_type=dir requires path to end with /")
             elif action == "delete":
                 # delete: only check into_type
                 into_type = item.get("into_type")
-                if into_type not in {"file", "path"}:
-                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into_type' in {{file, path}}")
+                if into_type not in {"file", "dir"}:
+                    errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] action={action!r} requires 'into_type' in {{file, dir}}")
                 else:
-                    # Rule 5 for delete: into_type=path requires all paths end with /
-                    if into_type == "path":
+                    # Rule 5 for delete: into_type=dir requires all paths end with /
+                    if into_type == "dir":
                         for t_idx, t in enumerate(into_list):
                             if not t.endswith("/"):
-                                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] into[{t_idx}] into_type=path requires path to end with /")
+                                errors.append(f"E_AGGREGATED_RULE_SET_INVALID: operation[{idx}]['actionlist'][{item_idx}] into[{t_idx}] into_type=dir requires path to end with /")
 
     return errors
 
@@ -164,7 +164,7 @@ def validate_database(database: Any) -> list[str]:
     3. Each game entry must have 'appid' as string
     4. game entries must have 'basepath' and 'modpath'
     5. mod entries must have 'mixed_id' and 'path'
-    (Duplicate appid / mixed_id is allowed — resolved by managedEntries or branchDecisions.)
+    (Duplicate appid / mixed_id is allowed — resolved by managed_entries or branch_decisions.)
     """
     errors: list[str] = []
 
@@ -198,7 +198,7 @@ def validate_database(database: Any) -> list[str]:
             continue
 
         # appid / mixed_id may appear multiple times (same game in multiple libraries).
-        # Duplicates are resolved by managedEntries or branch decisions — not rejected here.
+        # Duplicates are resolved by managed_entries or branch_decisions — not rejected here.
         seen_appids.add(appid)
 
         # Check required path fields

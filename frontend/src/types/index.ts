@@ -1,12 +1,3 @@
-/** @deprecated 使用 TreeNode */
-export interface ForestNode {
-  path: string
-  destin_mixed_id: string
-  changerequest: Changerequest[]
-  warning?: string
-  candidates?: string[]
-}
-
 export interface TreeNode {
   root_path: string           // 树的根路径（旧: ForestNode.path）
   destin_mixed_id: string
@@ -42,8 +33,6 @@ export interface ConflictItem {
 export interface PipelineParams {
   database_name: string
   aggregated_rule_set?: Record<string, unknown>
-  // Legacy field kept to avoid breaking old call sites during migration.
-  kmm_rule_paths?: string[]
   managed_entries?: Record<string, unknown>
   branch_decisions?: Record<string, string>
   dry_run?: boolean
@@ -130,14 +119,4 @@ export interface WorkspaceMeta {
 export interface WorkspaceDecisions {
   managed_entries: Record<string, Record<string, string[]>>
   branch_decisions: Record<string, string>
-}
-
-/**
- * @deprecated Legacy workspace data type — replaced by WorkspaceMeta + backend API.
- * Kept for backward compatibility during migration.
- */
-export interface WorkspaceData {
-  lastDatabase: string
-  perDatabase: Record<string, unknown>
-  uiState?: Record<string, unknown>
 }

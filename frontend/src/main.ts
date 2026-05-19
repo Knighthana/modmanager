@@ -2,7 +2,6 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import { router } from './router'
-import { migrateOldWorkspace } from './utils/persistence'
 import './styles/gui-consistency.css'
 
 // Element Plus 命令式调用组件的样式需显式导入
@@ -11,9 +10,6 @@ import 'element-plus/theme-chalk/el-message-box.css'
 import 'element-plus/theme-chalk/el-message.css'
 
 async function bootstrap() {
-  // One-time cleanup of old localStorage workspace key (before Pinia init)
-  migrateOldWorkspace()
-
   if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({ onUnhandledRequest: 'bypass' })

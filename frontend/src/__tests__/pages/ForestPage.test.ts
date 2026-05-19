@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import ForestPage from '../../pages/ForestPage.vue'
@@ -18,7 +18,7 @@ describe('ForestPage', () => {
   })
 
   function createWrapper() {
-    return shallowMount(ForestPage, {
+    return mount(ForestPage, {
       global: {
         plugins: [router],
       },
@@ -29,5 +29,24 @@ describe('ForestPage', () => {
     await router.push('/workspace/test-ws-1/forest')
     const wrapper = createWrapper()
     expect(wrapper.find('.forest-page').exists()).toBe(true)
+  })
+
+  it('toggles minimap visibility on button click', async () => {
+    await router.push('/workspace/test-ws-1/forest')
+    const wrapper = createWrapper()
+
+    // Initially minimap is shown
+    const viewer = wrapper.findComponent({ name: 'ForestViewer' })
+    expect(viewer.exists()).toBe(true)
+    expect(viewer.props('showMinimap')).toBe(true)
+
+    // Click the toggle button → hidden
+    const btn = wrapper.find('.forest-controls button:nth-child(2)')
+    await btn.trigger('click')
+    expect(viewer.props('showMinimap')).toBe(false)
+
+    // Click again → shown
+    await btn.trigger('click')
+    expect(viewer.props('showMinimap')).toBe(true)
   })
 })

@@ -49,9 +49,6 @@ def _extract_forest(payload: Any) -> list[dict[str, Any]]:
         trees = payload.get("trees")
         if isinstance(trees, list):
             return trees
-        forest = payload.get("forest")  # fallback for old format
-        if isinstance(forest, list):
-            return forest
     raise VisualizationError("invalid forest input: expected array or object with trees[]", 2)
 
 

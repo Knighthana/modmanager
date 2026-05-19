@@ -228,7 +228,7 @@ class TestBuildBackupDir(TestCase):
             build_backup_dir([], database, {})
         self.assertIn("E_BACKUP_DIR_BUILD_NO_APPID", str(ctx.exception))
 
-    def test_build_backup_dir_custom_bakprefix(self):
+    def test_build_backup_dir_custom_baksuffix(self):
         """user_config provides custom baksuffix."""
         with tempfile() as tmp:
             steamapps = Path(tmp) / "steamapps"

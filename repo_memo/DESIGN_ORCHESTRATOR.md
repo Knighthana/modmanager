@@ -234,7 +234,7 @@ run_ws(workspace_id, dry_run, on_progress)
   │
   ├─ backup_ws(workspace_id, dry_run, on_progress)
   │     └─ ws.read_mapping / _resolve_database
-  │        → build_backup_dirs → backup(...) → ws.write_backup_dirs
+  │        → build_backup_dirs → backup(...)
   │
   └─ apply_ws(workspace_id, dry_run, on_progress)
         └─ ws.read_mapping / _resolve_database

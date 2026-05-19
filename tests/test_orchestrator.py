@@ -119,7 +119,7 @@ class TestRun(TestCase):
         result = run(
             database={"game": [], "mod": []},
             aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
-            user_config={"bakprefix": "kmmbackup_"},
+            user_config={"baksuffix": "kmmbackup_"},
             dry_run=True,
         )
         self.assertTrue(result.ok)

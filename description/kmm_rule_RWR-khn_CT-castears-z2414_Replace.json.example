@@ -98,11 +98,11 @@
           "from": [
             "shiplander v1.9/*/"
           ],
-          "from_type": "path",
+          "from_type": "dir",
           "into": [
             "media/packages/GFL_Castling/maps/"
           ],
-          "into_type": "path",
+          "into_type": "dir",
           "sidecar":{}
         },
         {
@@ -110,7 +110,7 @@
           "into": [
             "media/packages/GFL_Castling/maps/1使用方法和图例/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -121,7 +121,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "action": "delete",
@@ -144,7 +144,7 @@
           "into": [
             "media/packages/GFL_Castling/maps/map105_3/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -173,11 +173,11 @@
             "no smoke/vehicles/",
             "no smoke/weapons/"
           ],
-          "from_type": "path",
+          "from_type": "dir",
           "into": [
             "media/packages/GFL_Castling/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -201,11 +201,11 @@
             "itemlocater/particles/",
             "itemlocater/vehicles/"
           ],
-          "from_type": "path",
+          "from_type": "dir",
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -233,7 +233,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -243,7 +243,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -253,7 +253,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -263,7 +263,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -273,7 +273,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -283,7 +283,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -293,7 +293,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -303,7 +303,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -328,7 +328,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -338,7 +338,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -348,7 +348,7 @@
           "into": [
             "media/packages/GFL_Castling/weapons/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -373,7 +373,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -383,7 +383,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -393,7 +393,7 @@
           "into": [
             "media/packages/GFL_Castling/vehicles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -415,7 +415,7 @@
           "into": [
             "media/packages/GFL_Castling/sounds/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -440,7 +440,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -450,7 +450,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -460,7 +460,7 @@
           "into": [
             "media/packages/GFL_Castling/weapons/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -485,7 +485,7 @@
           "into": [
             "media/packages/GFL_Castling/calls/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -495,7 +495,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -505,7 +505,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -515,7 +515,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -525,7 +525,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -535,7 +535,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -545,7 +545,7 @@
           "into": [
             "media/packages/GFL_Castling/vehicles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -567,7 +567,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -577,7 +577,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -587,7 +587,7 @@
           "into": [
             "media/packages/GFL_Castling/textures/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -597,7 +597,7 @@
           "into": [
             "media/packages/GFL_Castling/vehicles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -622,7 +622,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -649,7 +649,7 @@
           "into": [
             "media/packages/vanilla/maps/lobby/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "destin": "270150:0",
@@ -657,11 +657,11 @@
           "from": [
             "media/packages/vanilla/maps/lobby/"
           ],
-          "from_type": "path",
+          "from_type": "dir",
           "into": [
             "media/packages/vanilla/maps/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -680,11 +680,11 @@
           "from": [
             "时效性附加内容/maps/*/"
           ],
-          "from_type": "path",
+          "from_type": "dir",
           "into": [
             "media/packages/GFL_Castling/maps/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },
@@ -706,7 +706,7 @@
           "into": [
             "media/packages/GFL_Castling/materials/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -716,7 +716,7 @@
           "into": [
             "media/packages/GFL_Castling/particles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         },
         {
           "from": [
@@ -726,7 +726,7 @@
           "into": [
             "media/packages/GFL_Castling/vehicles/"
           ],
-          "into_type": "path"
+          "into_type": "dir"
         }
       ]
     },

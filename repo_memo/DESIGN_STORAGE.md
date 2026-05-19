@@ -175,7 +175,7 @@ database.json 的路径来源于 `user_config.databases[name].path`。`name` 由
 
 database 扫描可能发现同一个 appid 出现在多个 Steam 库中（重复 game），或同一 mixed_id 对应多个路径（重复 mod）。这些重复条目**全部写入 database.json**，不作过滤。
 
-用户对重复条目的取舍（managed_entries）由前端 localStorage 管理，compute 时作为参数传入。详见 `DESIGN_GUI_WORKSPACE.md`。
+用户对重复条目的取舍（managed_entries）通过工作区 decisions API（`/workspace/{id}/decisions/save`）持久化在工作区目录中，compute 时从工作区读取。详见 `DESIGN_WORKSPACE_MODEL.md`。
 
 ---
 
@@ -314,7 +314,7 @@ try { pers.save(key, value) } catch {
 | 用户决策与聚合规则（decisions, aggregated_rule） | 后端工作区目录（通过 workspace 端点） |
 | UI 状态（sidebar, activeTab, 可见性, 表单输入） | `sessionStorage`（优先）→ `localStorage`（回退） |
 
-详见 `DESIGN_DATA_CLEANUP.md`。
+详见 `DESIGN_WORKSPACE_MODEL.md` §6。
 
 ---
 

@@ -22,7 +22,7 @@
       "path_target": "/home/knighthana/workspace/modmanager/description/rules/"
     }
   ],
-  "bakprefix": "kmmbackup_",
+  "baksuffix": "kmmbackup_",
   "bakignore": [
     "kmmbackup_",
     "*.tmp",

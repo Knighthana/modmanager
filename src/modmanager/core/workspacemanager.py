@@ -46,7 +46,6 @@ class WorkspaceManager:
     _MAPPING = "mapping.json"
     _SVG = "forest.svg"
     _FINGERPRINTS = "fingerprints.json"
-    _BACKUP_DIRS = "backup_dirs.json"
 
     def __init__(self, workspace_dir: str | Path) -> None:
         """*workspace_dir* – absolute path to the workspace root directory."""
@@ -159,20 +158,6 @@ class WorkspaceManager:
 
     def has_mapping(self, workspace_id: str) -> bool:
         return (self._dir(workspace_id) / self._MAPPING).is_file()
-
-    # -- backup_dir ----------------------------------------------------
-
-    def write_backup_dirs(self, workspace_id: str, backup_dirs: dict[str, list[str]]) -> None:
-        """Write the backup_dir → file_paths mapping into the workspace."""
-        write_json_file(self._dir(workspace_id) / self._BACKUP_DIRS, backup_dirs)
-        self._touch(workspace_id)
-
-    def read_backup_dirs(self, workspace_id: str) -> dict[str, list[str]]:
-        """Read the backup_dir → file_paths mapping, or {} if absent."""
-        p = self._dir(workspace_id) / self._BACKUP_DIRS
-        if not p.is_file():
-            return {}
-        return load_json_file(p)
 
     # -- SVG -----------------------------------------------------------
 

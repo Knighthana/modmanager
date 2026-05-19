@@ -2,14 +2,23 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
+vi.mock('../../api/client', () => ({
+  apiGet: vi.fn(),
+  apiPost: vi.fn(),
+}))
+
 import ConflictsPage from '../../pages/ConflictsPage.vue'
 import { useForestStore } from '../../stores/forest'
+import { apiGet, apiPost } from '../../api/client'
+
+const mockedApiGet = vi.mocked(apiGet)
+const mockedApiPost = vi.mocked(apiPost)
 
 // Stub router
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/conflicts', name: 'conflicts', component: { template: '<div />' } },
+    { path: '/workspace/:workspaceId/conflicts', name: 'workspace-conflicts', component: { template: '<div />' } },
   ],
 })
 
@@ -25,8 +34,10 @@ const elStubs = {
 }
 
 describe('ConflictsPage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
+    vi.clearAllMocks()
+    await router.push('/workspace/test-ws-1/conflicts')
   })
 
   it('renders empty state when conflictList is empty', () => {
@@ -134,7 +145,20 @@ describe('ConflictsPage', () => {
     expect(clearSpy).toHaveBeenCalled()
   })
 
-  it('confirm decision saves branchDecisions via savePersistent', async () => {
+  it('confirm decision saves branch_decisions via workspace decisions API', async () => {
+    mockedApiGet.mockResolvedValue({
+      ok: true,
+      data: { managed_entries: { game: {}, mod: {} } },
+      errors: [],
+      warnings: [],
+    })
+    mockedApiPost.mockResolvedValue({
+      ok: true,
+      data: { saved: true },
+      errors: [],
+      warnings: [],
+    })
+
     const wrapper = mount(ConflictsPage, {
       global: { plugins: [router], stubs: elStubs },
     })
@@ -143,11 +167,6 @@ describe('ConflictsPage', () => {
     // Set some decisions so the button is enabled
     store.setDecision('/a.png', '/m1/a.png')
     await wrapper.vm.$nextTick()
-
-    // Mock sessionStorage (savePersistent writes to both storages)
-    const mockSetItem = vi.spyOn(Storage.prototype, 'setItem')
-    const mockGetItem = vi.spyOn(Storage.prototype, 'getItem')
-    mockGetItem.mockReturnValue(null)
 
     const buttons = wrapper.findAll('.el-button-stub')
     const confirmBtn = buttons.find(b => b.text().includes('确认决策'))
@@ -158,15 +177,11 @@ describe('ConflictsPage', () => {
     await confirmBtn!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    // Verify that branchDecisions was saved via savePersistent
-    expect(mockSetItem).toHaveBeenCalled()
-    const saveCall = mockSetItem.mock.calls.find(call => call[0] === 'modmanager:conflicts.branchDecisions')
-    expect(saveCall).toBeTruthy()
-    const savedData = JSON.parse(saveCall![1])
-    expect(savedData).toEqual({ '/a.png': '/m1/a.png' })
-
-    mockSetItem.mockRestore()
-    mockGetItem.mockRestore()
+    expect(mockedApiGet).toHaveBeenCalledWith('/workspace/test-ws-1/decisions/load')
+    expect(mockedApiPost).toHaveBeenCalledWith('/workspace/test-ws-1/decisions/save', {
+      managed_entries: { game: {}, mod: {} },
+      branch_decisions: { '/a.png': '/m1/a.png' },
+    })
   })
 
   it('confirm decision button is disabled when no decisions made', () => {

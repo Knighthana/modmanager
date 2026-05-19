@@ -196,7 +196,7 @@ ForestPage 迁出后仅保留：**计算映射**按钮 + SVG 可视化面板。
 
 **展示/编辑字段**：
 - `bakprefix`：备份目录名前缀（可编辑，默认 `kmmbackup_`）
-- `bakignore`：备份忽略模式列表（可增删）
+- `bakignore`：被忽略目录的后缀列表（可增删）
 - `database_output_path`：database.json 输出路径（可编辑）
 - `aggregated_ruleset_output_path`：aggregated_rule_set.json 输出路径（可编辑）
 

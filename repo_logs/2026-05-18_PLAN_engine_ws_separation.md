@@ -197,7 +197,7 @@ def run(
 - `load_bakignore_rules` 重写为活代码：接收 `user_config.bakignore` + `backup_dir/.kmmbakignore` 路径列表，用 gitignore-parser 迭代解析
 - 备份时：读取每个 contentid 源目录中的 `.kmmbakignore`，传给 parser 用于忽略判断，**同时将 `.kmmbakignore` 文件本身拷贝进 backup_dir**
 - 应用时：将 backup_dir 中的 `.kmmbakignore` 覆盖回源目录对应位置
-- user_config 的备份忽略模式仅用于根目录检查根目录的点分后缀目录名称，防循环备份；引擎内部硬编码 `.kmmbackup` 后缀不依赖 user_config
+- user_config 的被忽略目录的后缀仅用于根目录检查根目录的点分后缀目录名称，防循环备份；引擎内部硬编码 `.kmmbackup` 后缀不依赖 user_config
 
 ### 全项目"前缀"清理
 

@@ -70,14 +70,13 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForestStore } from '../stores/forest'
-import { useAppStore } from '../stores/app'
+import { apiGet, apiPost } from '../api/client'
 import type { ConflictItem } from '../types'
 import { STR } from '../locales/zh-CN'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const store = useForestStore()
-const appStore = useAppStore()
 const tableRef = ref()
 const isSaving = ref(false)
 
@@ -92,10 +91,32 @@ function onClearDecisions() {
 }
 
 async function onConfirmDecisions() {
+  const workspaceId = route.params.workspaceId as string | undefined
+  if (!workspaceId) {
+    ElMessage.error(STR.conflictsPage.saveDecisionFailed)
+    return
+  }
+
   isSaving.value = true
   try {
-    appStore.save('conflicts.branchDecisions', { ...store.branchDecisions })
-    ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
+    const loadResp = await apiGet<{ managed_entries?: Record<string, Record<string, string[]>> }>(
+      `/workspace/${workspaceId}/decisions/load`,
+    )
+    const managedEntries = (loadResp.ok && loadResp.data?.managed_entries) ? loadResp.data.managed_entries : {}
+
+    const saveResp = await apiPost<{ saved: boolean }>(
+      `/workspace/${workspaceId}/decisions/save`,
+      {
+        managed_entries: managedEntries,
+        branch_decisions: { ...store.branchDecisions },
+      },
+    )
+
+    if (saveResp.ok) {
+      ElMessage.success(STR.conflictsPage.saveDecisionSuccess)
+    } else {
+      ElMessage.error(STR.conflictsPage.saveDecisionFailed)
+    }
   } catch {
     ElMessage.error(STR.conflictsPage.saveDecisionFailed)
   } finally {

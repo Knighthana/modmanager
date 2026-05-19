@@ -22,19 +22,6 @@
 | `decisions.managed_entries` | `object` | 用户对重复条目的路径筛选 `{ game: {appid: [path]}, mod: {mixed_id: [path]} }` | 2026-05-16 |
 | `decisions.branch_decisions` | `object` | 冲突裁决映射 `{ root_path: chosen_source_path }` | 2026-05-16 |
 
-### 已废弃字段（2026-05-16 移除）
-
-以下字段随旧 localStorage 工作区模型一并废除。新模型使用后端工作区目录管理。
-
-| 字段 | 原说明 | 废弃原因 |
-|------|------|----------|
-| `lastDatabase` | 全局 database 选中 | 工作区绑定 database，创建时选定 |
-| `selectedRulePaths` | 用户选定的规则文件路径列表 | 聚合结果直接存入工作区 |
-| `managedEntries`（localStorage） | 前端持久化的重复条目筛选 | 迁移到工作区 `decisions.json` |
-| `branchDecisions`（localStorage） | 前端持久化的冲突裁决 | 迁移到工作区 `decisions.json` |
-| `lastComputeSummary` | 前端持久化的计算摘要 | 迁移到工作区 `mapping.json` |
-| `aggregatedRuleMeta.*` | 前端持久化的聚合缓存 | 规则集直接存入工作区，指纹校验后端管理 |
-
 ## 输出结构冻结
 - compute_mapping 输出 key: `"trees"`（数组），`"final_mapping"`（数组）
 - TreeNode: `root_path`, `destin_mixed_id`, `changerequest`, `refs`, `resolved_state`

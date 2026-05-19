@@ -64,7 +64,7 @@ class F001_SingleFileReplace(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["data/file.txt"], "from_type": "file", "into": ["game_data/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["data/file.txt"], "from_type": "file", "into": ["game_data/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -99,7 +99,7 @@ class F002_WildcardExpandSuccess(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -131,7 +131,7 @@ class F003_WildcardExpandFail(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["*.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -165,7 +165,7 @@ class F004_FileCircularDep(unittest.TestCase):
                             {
                                 "action": "replace",
                                 "destin": "270150:0",
-                                "from": ["source_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path",
+                                "from": ["source_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir",
                             }
                         ],
                     },
@@ -173,7 +173,7 @@ class F004_FileCircularDep(unittest.TestCase):
                         "mixed_id": "270150:101",
                         "actionlist": [
                             {
-                                "action": "replace", "destin": "270150:0", "from": ["source_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "path",
+                                "action": "replace", "destin": "270150:0", "from": ["source_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir",
                             }
                         ],
                     },
@@ -206,15 +206,15 @@ class F005_ModLevelLoopNoFileLoop(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["file_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["file_a.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "replace", "destin": "270150:300", "from": ["file_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:300", "from": ["file_b.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:300",
-                        "actionlist": [{"action": "replace", "destin": "270150:100", "from": ["file_c.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:100", "from": ["file_c.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -242,11 +242,11 @@ class F006_BranchDetection(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 1}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir", "action_order": 1}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 2}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir", "action_order": 2}],
                     },
                 ]
             }
@@ -279,11 +279,11 @@ class F007_BranchResolved(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 1}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir", "action_order": 1}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 2}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir", "action_order": 2}],
                     },
                 ]
             }
@@ -318,7 +318,7 @@ class F008_BaseNotHit(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:200", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:200",
@@ -355,15 +355,15 @@ class F009_SelectionSubset(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file0.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file0.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:101",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file1.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file1.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                     {
                         "mixed_id": "270150:102",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file2.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file2.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     },
                 ]
             }
@@ -411,7 +411,7 @@ class P001_PathstyleDetection(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": ["data\file.txt"], "from_type": "file",  # Windows-style
-                                "into": ["output/"], "into_type": "path",  # Linux-style
+                                "into": ["output/"], "into_type": "dir",  # Linux-style
                             }
                         ],
                     }
@@ -442,7 +442,7 @@ class F011_IdentifierFormat(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150_100",  # Invalid: should be 270150:100
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                     }
                 ]
             }
@@ -468,11 +468,11 @@ class F012_AutoDiscoveryBoundary(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 1}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir", "action_order": 1}],
                     },
                     {
                         "mixed_id": "270150:200",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path", "action_order": 2}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir", "action_order": 2}],
                     },
                 ]
             }
@@ -501,7 +501,7 @@ class F013_HistoryTolerance(unittest.TestCase):
                 "operation": [
                     {
                         "mixed_id": "270150:100",
-                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "path"}],
+                        "actionlist": [{"action": "replace", "destin": "270150:0", "from": ["file.txt"], "from_type": "file", "into": ["output/"], "into_type": "dir"}],
                         "history": "some metadata",  # Extra field
                     }
                 ]
@@ -545,7 +545,7 @@ class F014_PathNormalization(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": [r"data\subdir\file.txt"], "from_type": "file",  # Windows backslashes
-                                "into": ["output/"], "into_type": "path",  # Forward slash
+                                "into": ["output/"], "into_type": "dir",  # Forward slash
                             }
                         ],
                     }
@@ -621,7 +621,7 @@ class P003_AcfPathCombination(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 # ACF-style: mixed separators, nested paths
-                                "from": ["mods/mod_content\\file.txt"], "from_type": "file", "into": ["steamapps\\common/"], "into_type": "path",
+                                "from": ["mods/mod_content\\file.txt"], "from_type": "file", "into": ["steamapps\\common/"], "into_type": "dir",
                             }
                         ],
                     }
@@ -660,7 +660,7 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": ["data/file.txt"], "from_type": "file",  # Linux style
-                                "into": ["output/"], "into_type": "path",
+                                "into": ["output/"], "into_type": "dir",
                             }
                         ],
                     },
@@ -683,7 +683,7 @@ class P004_ConsistencyAcrossStyles(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": [r"data\file.txt"], "from_type": "file",  # Windows style
-                                "into": ["output/"], "into_type": "path",
+                                "into": ["output/"], "into_type": "dir",
                             }
                         ],
                     },
@@ -722,9 +722,9 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": ["shiplander v1.9/*/"],
-                                "from_type": "path",
+                                "from_type": "dir",
                                 "into": ["media/packages/GFL_Castling/maps/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             }
                         ],
                     }
@@ -756,9 +756,9 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
                                 "action": "replace",
                                 "destin": "270150:0",
                                 "from": ["src/*/"],
-                                "from_type": "path",
+                                "from_type": "dir",
                                 "into": ["dest/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             },
                             {
                                 "action": "replace",
@@ -766,7 +766,7 @@ class P005_PathGlobDirectoryExpansion(unittest.TestCase):
                                 "from": ["src/*"],
                                 "from_type": "file",
                                 "into": ["dest/"],
-                                "into_type": "path",
+                                "into_type": "dir",
                             },
                         ],
                     }

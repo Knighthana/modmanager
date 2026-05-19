@@ -616,7 +616,7 @@ DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsin
 
 | 事项 | 说明 |
 |------|------|
-| 资源白名单机制 | 独立的模型，仅用于外部资源请求（kmmrule preview/README），参见 `DESIGN_SVG_CACHE_AND_FOREST_LIST.md` 中的白名单章节（待迁移到独立设计文档） |
+| 资源白名单机制 | 独立的模型，仅用于外部资源请求（kmmrule preview/README）；当前以 `repo_spec/resource_whitelist.json` 作为规范来源，后续可迁移为独立设计文档 |
 | TODO-70（森林图展示打磨） | 森林可视页的纯展示优化——小地图比例、滚动条、放缩数值。独立任务，与工作区模型无关 |
 | `force_compute` 参数 | compute 端点的缓存跳过标志，MVP 后可加 |
 | 外部资源端点（preview/README） | TODO-66/67 范畴 |
@@ -634,7 +634,7 @@ DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsin
 | `DESIGN_STORAGE.md` | workspace 目录路径定义归属 | ✅ 新增 `workspace_dir` 字段与目录类型 |
 | `DESIGN_ORCHESTRATOR.md` | workspacemanager 下属拓扑 | ✅ 新增 workspacemanager 节点与接口 |
 | `DESIGN_REST_API.md` | URL 全量重构 | ✅ 端点表改写，URL 加 workspace_id 前缀 |
-| `DESIGN_GUI_WORKSPACE.md` | 旧 localStorage 模型被替代 | ✅ 重写或归档，由本文档替代 |
+| `repo_logs/DOC_ARCHIVE_2026-05-19_DESIGN_GUI_WORKSPACE.md` | 旧 localStorage 模型被替代 | ✅ 已归档，由本文档替代 |
 | `TERMS_FIELD_FREEZE.md` | 新增冻结字段 | ✅ 新增 workspace 相关字段 |
 | `DESIGN_FOREST_MODEL.md` | 不变 | 否 |
 | `DESIGN_ENGINE_INVARIANTS.md` | 不变 | 否 |

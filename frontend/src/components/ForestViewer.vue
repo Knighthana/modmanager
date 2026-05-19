@@ -18,7 +18,7 @@
       >
         <!-- 小地图浮层 -->
         <div
-          v-if="minimapReady"
+          v-if="showMinimap && minimapReady"
           class="forest-minimap"
           :style="{ width: minimapWidth + 'px', height: minimapHeight + 'px' }"
           @mousedown.stop="onMinimapMouseDown"
@@ -45,6 +45,7 @@ import svgPanZoom from 'svg-pan-zoom'
 
 const props = defineProps<{
     emptyMessage?: string
+    showMinimap?: boolean
 }>()
 
 const store = useForestStore()

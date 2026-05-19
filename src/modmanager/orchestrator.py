@@ -953,10 +953,6 @@ def backup_ws(
     if isinstance(backup_result.get("warnings"), list):
         all_warnings.extend(backup_result["warnings"])
 
-    # ── Store backup_dirs mapping in workspace ────────────────────────
-    if backup_result.get("ok") and not dry_run:
-        wm.write_backup_dirs(workspace_id, backup_dirs)
-
     return PipelineResult(
         ok=backup_result.get("ok", False),
         errors=backup_result.get("errors", []),

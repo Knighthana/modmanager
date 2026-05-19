@@ -94,7 +94,7 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
             "operation": [
                 {
                     "mixed_id": "270150:100",
-                    "actionlist": [{"action": "replace", "destin": "270150:0", "into": ["data/"], "into_type": "path"}],  # missing 'from'
+                    "actionlist": [{"action": "replace", "destin": "270150:0", "into": ["data/"], "into_type": "dir"}],  # missing 'from'
                 }
             ]
         }
@@ -125,7 +125,7 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
                             "from": ["file.txt"],
                             "from_type": "file",
                             "into": ["data/"],
-                            "into_type": "path",
+                            "into_type": "dir",
                         }
                     ],
                 }
@@ -146,7 +146,7 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
                             "from": ["file.txt"],
                             "from_type": "file",
                             "into": ["data/"],
-                            "into_type": "path",
+                            "into_type": "dir",
                         }
                     ],
                 }
@@ -167,14 +167,14 @@ class ValidateAggregatedRuleSetTests(unittest.TestCase):
                             "from": ["src/*"],
                             "from_type": "file_and_path",
                             "into": ["dest/"],
-                            "into_type": "path",
+                            "into_type": "dir",
                         }
                     ],
                 }
             ]
         }
         errs = validate_aggregated_rule_set(aggregated_rule_set)
-        self.assertTrue(any("from_type" in e and "file, path" in e for e in errs))
+        self.assertTrue(any("from_type" in e and "file, dir" in e for e in errs))
 
 
 class ValidateDatabaseTests(unittest.TestCase):
@@ -225,7 +225,7 @@ class ValidateDatabaseTests(unittest.TestCase):
         self.assertTrue(any("E_DATABASE_INVALID" in e and "empty" in e for e in errs))
 
     def test_appid_not_unique_allowed(self):
-        """Duplicate appids are allowed — resolved by managedEntries or branchDecisions."""
+        """Duplicate appids are allowed — resolved by managed_entries or branch_decisions."""
         database = {
             "game": [
                 {"appid": "270150", "basepath": "/path1", "modpath": "/path1"},

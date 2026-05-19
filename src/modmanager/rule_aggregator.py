@@ -243,11 +243,11 @@ def _process_file(
                     processed_action[field] = action_item[field]
 
             # 4h. Fix trailing slashes for path-type from/into lists
-            #     (only when from_type/into_type is "path", not "file")
+            #     (only when from_type/into_type is "dir", not "file")
             _from_type = processed_action.get("from_type")
             _into_type = processed_action.get("into_type")
 
-            if _from_type == "path":
+            if _from_type == "dir":
                 raw_from = processed_action.get("from", [])
                 fixed_from: list[str] = []
                 for _entry in raw_from:
@@ -266,7 +266,7 @@ def _process_file(
                         fixed_from.append(_entry)
                 processed_action["from"] = fixed_from
 
-            if _into_type == "path":
+            if _into_type == "dir":
                 raw_into = processed_action.get("into", [])
                 fixed_into: list[str] = []
                 for _entry in raw_into:

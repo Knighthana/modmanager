@@ -80,7 +80,7 @@ def _section(title: str) -> None:
 def _print_summary(label: str, result: dict[str, Any]) -> None:
     errs = result.get("errors", [])
     warns = result.get("warnings", [])
-    forest = result.get("forest", [])
+    forest = result.get("trees", [])
     fm = result.get("final_mapping", [])
 
     print(f"\n{_c(label, _BOLD)}")
@@ -128,7 +128,7 @@ def _shorten(path: str, maxlen: int) -> str:
 # ---------------------------------------------------------------------------
 
 def _collect_decisions(result: dict[str, Any], batch_mode: bool = False) -> dict[str, str]:
-    forest = result.get("forest", [])
+    forest = result.get("trees", [])
     branched = [n for n in forest if n.get("warning") == "W_FOREST_BRANCHING"]
 
     if not branched:

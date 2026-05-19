@@ -114,7 +114,7 @@ user_config 的字段定义与搜索策略见 `DESIGN_STORAGE.md` §3。
           "from": ["weaponpics/1.6/*.png"],
           "from_type": "file",
           "into": ["media/packages/GFL_Castling/textures/"],
-          "into_type": "path",
+          "into_type": "dir",
           "action": "replace",
           "destin": "270150:2606099273",
           "action_order": 0,

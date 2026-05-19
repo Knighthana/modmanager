@@ -443,10 +443,6 @@ async function doSave(): Promise<boolean> {
       // Update datasource store so managed values are reflected in local state
       store.updateDatabase(savedDb)
 
-      // Persist selected database in uiState
-      const ds = appStore.loadUiStateFor<Record<string, unknown>>('datasource') ?? {}
-      appStore.saveUiStateFor('datasource', { ...ds, lastDatabase: selectedDb })
-
       if (!forestStore.userConfig) {
         await forestStore.loadConfig()
       }
@@ -468,7 +464,11 @@ async function doSave(): Promise<boolean> {
 async function onConfirm() {
   const ok = await doSave()
   if (ok) {
-    router.push('/rules-overview')
+    if (appStore.currentWorkspaceId) {
+      router.push(`/workspace/${appStore.currentWorkspaceId}/rules`)
+    } else {
+      router.push('/')
+    }
   }
 }
 
@@ -509,22 +509,6 @@ function saveUiStateToStorage() {
 
 onMounted(async () => {
   loadUiStateFromStorage()
-
-  // Auto-load last database from uiState
-  const lastDb = (appStore.loadUiStateFor<Record<string, unknown>>('datasource')?.lastDatabase as string | undefined)
-  if (lastDb) {
-    try {
-      const resp = await apiPost<{ database: Record<string, unknown> }>(
-        '/database/read',
-        { database_name: lastDb },
-      )
-      if (resp.ok && resp.data) {
-          store.updateDatabase(resp.data as Record<string, unknown>)
-      }
-    } catch {
-      // 静默失败——用户可以手动扫描
-    }
-  }
 })
 
 onBeforeUnmount(() => {

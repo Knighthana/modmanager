@@ -17,10 +17,16 @@
 - 代码可以随文档变更重构，但不反过来推导逻辑
 - `description/` 仅作历史样例，不得直接作为实现依据
 
+## 文档生命周期判定
+- `stable` / `active`：可作为当前实现依据，但默认读取仍以入口索引控制
+- `draft`：仅在任务明确指向草案时读取
+- `archived` / `future`：默认不作为实现依据，除非 Plan 或当前权威文档明确要求追溯
+- 若一份文档的状态与目录位置冲突，优先按目录归属和 `Supersedes` 判定，再由 Plan 裁决
+
 ## 分层读取机制
 - `Tier 0 / always-read`：建立最小正确上下文的核心文档；agent 每次开始实现前必须读取
-- `Tier 1 / task-scoped`：按模块或任务读取的权威设计文档；仅在任务涉及对应子系统时读取
-- `archive/`：历史设计、阶段决策、同步记录；默认不作为当前实现依据，仅在追溯时按需读取
+- `Tier 1 / task-scoped`：按任务包读取的权威设计文档；仅在任务涉及对应子系统时读取
+- `repo_logs/`：历史设计、阶段决策、迁移记录；默认不读，仅在追溯或审计时按需读取
 - `further/`：已确认但当前轮次不执行的未来方案；默认不作为当前实现依据
 - `repo_bkgd/`：背景解释与机制推导目录；默认忽略，仅允许通过索引点读具体文件
 
@@ -29,23 +35,24 @@
 - `DOCUMENT_GOVERNANCE.md`
 - `DOCUMENT_METADATA.md`
 - `PATTERNS_ENGINEERING.md`
-- `TERMS_TERMINOLOGY.md`
-- `TERMS_FIELD_FREEZE.md`
-- `DESIGN_PROCESS_OVERVIEW.md`
 - `DESIGN_ENGINE_INVARIANTS.md`
 
+### 条件读取（命名/字段/输出结构变更时）
+- `TERMS_TERMINOLOGY.md`
+- `TERMS_FIELD_FREEZE.md`
+
 ### Tier 1（按任务读取）
-- `DESIGN_FOREST_MODEL.md`
-- `DESIGN_RULE_AGGREGATOR.md`
-- `DESIGN_REST_API.md`
-- `DESIGN_BACKUP.md`
-- `DESIGN_ORCHESTRATOR.md`
-- `DESIGN_PATH_RESOLVER.md`
-- `DESIGN_STEAM_DISCOVERY.md`
-- `DESIGN_GUI.md`
-- `DESIGN_GUI_DATASOURCE_TAB.md`
-- `DESIGN_GUI_GAP_CLOSURE.md`
-- `FRONTEND_INTEGRATION_CONSTRAINTS.md`
+- `READING_PACKAGES.md`
+
+## Tier 1 包使用原则
+- 优先从 `READING_PACKAGES.md` 选择单一任务包
+- 每次实现默认只展开一个包；只有跨域问题才允许第二个包
+- 包内文档若超过 3 份，先拆包再扩展，不要把包重新长成清单
+- 同一轮任务若需要三个以上子域，优先重构任务边界，而不是直接扩大阅读面
+
+## 高权重触发规则
+- 涉及备份目录推导、备份恢复或 `backup_dir` 语义时，必须读取 `DESIGN_BACKUP.md`
+- 明确涉及 replace service 方案时，必须读取 `further/REPLACE_SERVICE_DESIGN.md`；其他任务不默认读取
 
 ## repo_bkgd 读取门禁
 - `repo_bkgd/` 不得作为目录被主动读取或批量扫描。
@@ -61,7 +68,7 @@
 ## Plan 授权例外
 - 仅当 Plan 明确写出例外范围时，允许临时引用 `description/`
 - 例外任务必须写明：授权来源、有效期、影响字段、回收动作
-- 例外结束后在 `archive/MEMORY_SYNC_INDEX.md` 追加回收记录
+- 例外结束后 SHOULD 在 `repo_logs/` 记录回收说明
 
 ## 执行门禁
 - 实现任务必须引用 repo_memo 中的文档路径；缺失路径视为无效
@@ -70,8 +77,7 @@
 - 归档判定以“是否仍为当前权威规范”为准，不以“是否已完成实现”单独判定
 
 ## 角色与现场信息
-- `repo_logs/` 仅用于历史追溯，不参与默认读取与契约裁决
-- `work_memo/` 仅用于当前工作现场状态记录，不作为契约权威来源
+- `work_memo/`：当前工作现场状态；排障时按需读取，不作为契约权威来源
 - Plan 需要排障时可读取 `work_memo/states.md`，但若与 `repo_memo/` 冲突，仍以 `repo_memo/` 为准
 
 ## AI Agent 使用约束
@@ -80,49 +86,16 @@
 - `description/` 仅由人类管理者在明确指令下被动更新，agent 读取该目录内容时须忽略其规范含义
 
 ## 已冻结不再讨论的决定
+以下决定定义当前实现边界。若需变更，MUST 先更新权威文档，再进入代码实施。
 
-以下决定帲定了业务界限、字段、架构、工程实践、API 约束，不很害穳次讨论，新特性必须钀帐该决定。
+### 冻结决定（当前有效）
+- 业务数据权威 MUST 位于后端工作区目录（如 `decisions.json`、`mapping.json`）；前端存储 SHOULD 仅承载 UI 偏好与导航状态。
+- `repo_memo/` 与 `repo_spec/` MUST 作为实现与契约的权威来源；`description/`、`repo_logs/`、`work_memo/` MUST NOT 用于契约裁决。
+- 若文档标记为 superseded 或 archived，该文档 MUST NOT 作为当前实现依据。
+- 命名与字段变更 MUST 先更新术语与冻结文档（`TERMS_TERMINOLOGY.md`、`TERMS_FIELD_FREEZE.md`），再修改代码。
 
-**Category A: 行动不仁罗成并的一类冒箱。私自改业务决定即是破坟 RFC 程序。**
-
-### 存傢三层模式
-- **后端文件**：`user_config.json`, `database.json`, (optional) `aggregated_rule_set.json`
-- **Pinia（会话内存）**：useDataSourceStore, useComputeStore
-- **localStorage**：`modmanager:workspace` (单键，包含用户决策 + 摘要)
-
-**理由**：不破坏此模式的冻结。
-
-### 字段冻结扩展
-- `lastDatabase`, `selectedRulePaths`, `managedEntries`, `branchDecisions`
-- 以及 其他掲决策歛膺的微偷RM序吧，修改馋敘 RFC。
-
-### Python 分层定位
-- 0-2层：业务核心，必须唾确翻译（Rust 避叶改子 幾孜叶改）
-- 3层：入口实现，原来容杉沐与氛境。
-
-### 前端框架独立性
-- 第 1 层：**咨询适配（什件为 HTTP, 绿剡 Tauri invoke）**
-- 第 2-3 层：与递题递他关，Tauri 时零改动。
-
-### 工程模式
-- Workspace Store 唯一写者、aggregatedRuleSet 内存化、database 不缓存、SSE 用于长操作
-
-### API 冻结部分
-- `/api/database/*`, `/api/config/*`, `/api/rules/*` (除 compute-scoped), `/api/backups/*` → **STABLE**
-- `/api/pipeline/*` (载辒鼓位) → **EVOLVING** (等 DESIGN_GUI.md 稳定后重新冻结)
-- SSE 协议、ApiResponse 格式、错误码 → **STABLE**
+### 变更流程约束
+- 涉及架构边界、字段归属、API 语义的变更，MUST 在 Plan 或权威设计文档中先完成裁定。
+- 未完成文档裁定前，实施任务 SHOULD 标记为 blocked，避免代码先行导致口径漂移。
 
 ---
-
-## 建诮拒绝素旨
-
-#### 禁止见: 金萬马藪者缚罷的【优化】
-- 例: 发现 Python 版本其欖有儫餕判断、Rust 妹拒。
-- **理由**：业务邏辑是当前项目的定义，改它会改变行为。
-
----
-
-## 归档与未来方案边界
-- `archive/` 只接收历史设计、阶段决策、迁移记录；其有效规范必须已被主目录文档吸收
-- `further/` 只接收未来方案，不得混入历史归档
-- 若某设计文档仍定义当前系统行为，即使对应功能已完成，也必须保留在主目录并按任务读取

@@ -36,7 +36,7 @@
           "type": "string"
         },
         "type": {
-          "const": "folder"
+          "const": "directory"
         },
         "children": {
           "type": "array",

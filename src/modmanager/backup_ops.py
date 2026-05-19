@@ -163,7 +163,7 @@ def build_filefoldertree_with_hashes(
                 children.append(_scan(child))
         except PermissionError:
             pass
-        return {"name": path.name, "type": "folder", "children": children}
+        return {"name": path.name, "type": "directory", "children": children}
 
     return _scan(Path(root_dir))
 

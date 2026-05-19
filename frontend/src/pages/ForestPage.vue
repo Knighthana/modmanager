@@ -32,7 +32,7 @@
 
     <!-- ForestViewer -->
     <div class="forest-viewer-wrap">
-      <ForestViewer ref="forestViewerRef" :empty-message="emptyMessage" />
+      <ForestViewer ref="forestViewerRef" :empty-message="emptyMessage" :show-minimap="showMinimap" />
     </div>
 
     <!-- Drawer -->
@@ -108,7 +108,7 @@ const activeCollapseNames = computed(() => {
 
 // 展示模式切换：仅显示分枝（pending）树
 const showBranchingOnly = ref(false)
-const showMinimap = ref(false)
+const showMinimap = ref(true)
 const showDrawer = ref(false)
 
 const forestViewerRef = ref<InstanceType<typeof ForestViewer> | null>(null)

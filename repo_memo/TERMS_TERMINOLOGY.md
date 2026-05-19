@@ -60,7 +60,7 @@
 ## 11. 聚合器输出
 - `operation[]` — 聚合后的 mod 操作列表（key: `"operation"`，替代旧 `"mod"`）
 - action 类型：`replace` / `create` / `delete`（`hold` 在聚合器阶段已过滤，不出现在输出中）
-- `from_type` / `into_type`：`"file"` 或 `"path"`（path 时列表每项以 `/` 结尾）
+- `from_type` / `into_type`：`"file"` 或 `"dir"`（dir 时列表每项以 `/` 结尾）
 
 ## 12. 引擎输出
 - `trees` — P0 后替代旧 `"forest"`，独立根+引用模型的森林

@@ -118,18 +118,3 @@ export function saveUiState(scope: string, state: unknown): void {
 export function clearUiState(scope: string): void {
   clearPersistent(`uiState:${scope}`)
 }
-
-// ── Migrate old workspace key ────────────────────────────────────────────
-
-/** One-time cleanup of the old ``modmanager:workspace`` localStorage key. */
-export function migrateOldWorkspace(): void {
-  try {
-    const old = localStorage.getItem(PREFIX + 'workspace')
-    if (old !== null) {
-      localStorage.removeItem(PREFIX + 'workspace')
-      console.log('[persistence] removed old modmanager:workspace key')
-    }
-  } catch { /* ignore */ }
-}
-
-// (deprecated shims removed — createPersistence, loadWorkspace, saveWorkspace, simpleHash)

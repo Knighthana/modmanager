@@ -1,11 +1,21 @@
-# user_memo
+# ⚠️ AGENT NOTICE — DO NOT USE AS AUTHORITY
 
-此目录非实现权威，设计以 `repo_memo/` 为准。
+**Note:** This directory is not authoritative for governance rules or implementation specifications. Refer to [`repo_memo/`](../repo_memo/) for authoritative sources.
 
-## 索引
-- `direct/GUI_MANAGEMENT_PLAYBOOK_2026-05-15.md`
-- `direct/GUI_STABILIZATION_IMPLEMENT_PLAN_2026-05-15.md`
-- `direct/IMPLEMENT_REFERENCE_WHITELIST_2026-05-15.md`
+# User Memo Directory
 
-## 说明
-- 2026-05-15 已执行 direct 契约清理：冲突文档已归档至 `archive/2026-05-15_contract_cleanup/`。
+This directory is designed for **developers**. It contains:
+- Development plans and implementation references.
+- Audit logs and historical records.
+- Technical notes and developer-specific documentation.
+
+## Directory Structure
+- `plans/`: Development plans and implementation strategies.
+- `logs/`: Audit logs and historical records.
+- `references/`: Technical references and developer notes.
+- `archive/`: Archived content for historical purposes.
+
+## Usage Guidelines
+- Follow the naming convention: `YYYY-MM-DD_<topic>.md`.
+- Use Markdown templates for consistency.
+- Outdated content should be moved to `archive/`.

@@ -176,10 +176,10 @@ def main():
             if len(result["errors"]) > 20:
                 print(f"  ... and {len(result['errors']) - 20} more")
         if result["errors"]:
-            print("\nNOTE: Errors exist; final_mapping is empty. Forest data still analyzed below.\n")
+            print("\nNOTE: Errors exist; final_mapping is empty. Trees data still analyzed below.\n")
 
         warnings_list = result.get("warnings", [])
-        forest = result.get("forest", [])
+        forest = result.get("trees", [])
 
         warn_summary = defaultdict(int)
         for w in warnings_list:
@@ -205,7 +205,7 @@ def main():
 
         dir_conflicts = defaultdict(list)
         for node in branching_nodes:
-            target = node["path"]
+            target = node["root_path"]
             parent_dir = str(Path(target).parent) + "/"
             dir_conflicts[parent_dir].append(node)
 
@@ -227,7 +227,7 @@ def main():
 
             if len(nodes) <= 15:
                 for node in nodes:
-                    fname = Path(node["path"]).name
+                    fname = Path(node["root_path"]).name
                     mids = [r["mixed_id"] for r in node["changerequest"]]
                     named = [f"{m} ({nicknames.get(m, '?')})" for m in mids]
                     print(f"    {fname}: {named}")
@@ -294,8 +294,8 @@ def main():
                 mid = mids[0]
                 info = self_conflict_mods[mid]
                 info["count"] += 1
-                info["dirs"].add(str(Path(node["path"]).parent) + "/")
-                info["target"] = node["path"]
+                info["dirs"].add(str(Path(node["root_path"]).parent) + "/")
+                info["target"] = node["root_path"]
 
         inter_mod_conflicts = [n for n in branching_nodes
                                if len(set(r["mixed_id"] for r in n["changerequest"])) > 1]

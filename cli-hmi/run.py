@@ -90,7 +90,7 @@ def execute_mapping(
     summary = {
         "warnings_count": len(result.get("warnings", [])),
         "errors_count": len(result.get("errors", [])),
-        "forest_count": len(result.get("forest", [])),
+        "forest_count": len(result.get("trees", [])),
         "final_mapping_count": len(result.get("final_mapping", [])),
     }
     result["summary"] = summary
