@@ -34,7 +34,7 @@
 | **运行产出默认目录** | `~/.local/share/kmm/` | 进程本体文件所在目录 |
 | **工作区默认目录** | `~/.cache/kmm/workspace/` | `%appdata%\.cache\kmm\workspace\` |
 | **扫描缓存目录** | `/tmp/kmm/` | 进程本体文件所在目录 |
-| **备份目录** | Steam 库下（详见 `DESIGN_BACKUP.md`） | Steam 库下 |
+| **备份目录** | Steam 库下（详见 `DESIGN_BACKUP_DIR.md` / `DESIGN_BACKUP_OPS.md`） | Steam 库下 |
 
 ### 2.2 路径优先级总则
 
@@ -233,7 +233,7 @@ database 扫描可能发现同一个 appid 出现在多个 Steam 库中（重复
 
 ## 7. 备份目录
 
-备份目录的位置、命名与生命周期已在 `DESIGN_BACKUP.md` 中完整规定，本文档不重复。
+备份目录的位置、命名、结构与执行生命周期已在 `DESIGN_BACKUP_DIR.md` 与 `DESIGN_BACKUP_OPS.md` 中规定，本文档不重复。
 备份目录不受 `user_config` 中的输出路径配置影响——备份始终写入 Steam 库下。
 
 ---

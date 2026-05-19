@@ -80,3 +80,4 @@ testpaths = ["tests"]
 2. 前端测试文件命名 `*.test.ts`，放 `frontend/src/__tests__/` 下
 3. `pyproject.toml` 必须配 `testpaths = ["tests"]`
 4. 新增引擎函数必须同步添加测试
+5. backupinfo 正例结构、backup_dir 结构与 restore 主路径正例，优先以 [backupinfo_expectations.md](backupinfo_expectations.md) 为准

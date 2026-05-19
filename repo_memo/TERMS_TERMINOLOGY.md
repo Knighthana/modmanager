@@ -40,6 +40,18 @@
 - `bakignore`：备份/恢复扫描时的忽略规则集合（路径/通配）
 - 约束：`backup_ops` 只消费最终目录字符串，不负责生成规则
 
+## 7.1 backup_dir 与 backupinfo
+- `backup_dir`：单个备份目录，保存可恢复实体文件与该目录根部的 `backupinfo.json`
+- `backupinfo`：`backup_dir` 内的权威快照文件，负责描述结构与 hash truth
+- `tree`：backupinfo 根字段，表示冻结的全量快照树
+- `DirNode`：backupinfo 中的目录节点，`type="dir"`
+- `FileNode`：backupinfo 中的文件节点，`type="file"`
+
+## 7.2 restore scope / truth 边界
+- `mapping`：在 restore 中只用于决定当前命中集合，也就是 restore scope
+- `backupinfo`：在 restore 中只用于决定结构与 hash truth
+- `force`：restore 执行策略开关，只影响是否跳过可省略的复制，不改变 truth 权威归属
+
 ## 8. 本地路径别名与动作引用
 - `path_alias`：本地用户配置中的路径别名列表
 - `path_handle`：路径别名项中的引用句柄；当前无消费者（`provenance_ref` 已改用绝对路径），保留供未来扩展

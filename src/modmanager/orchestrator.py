@@ -510,7 +510,7 @@ def restore(
     """根据 final_mapping 恢复文件。
 
     独立原语，与 ``backup`` 解耦。内部调用 ``build_backup_dirs``
-    推导备份目录，对每个目录读 ``backupinfo.json`` 中的 filefoldertree，
+    推导备份目录，对每个目录读 ``backupinfo.json`` 中的 tree，
     按 force 标志决定是否比对 HASH。
 
     Args:
@@ -548,7 +548,7 @@ def restore(
 
         # Load backup tree
         info = load_backup_info(backup_dir_str)
-        tree = info.get("filefoldertree") if isinstance(info, dict) else None
+        tree = info.get("tree") if isinstance(info, dict) else None
         flat_hashes = _flatten_tree_file_hashes(tree) if isinstance(tree, dict) else {}
 
         for target in dir_files:

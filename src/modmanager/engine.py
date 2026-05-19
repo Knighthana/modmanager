@@ -114,7 +114,7 @@ def _target_for(
     return str(dest / name) + trailing_slash
 
 
-def _check_filefoldertree_transition(old_tree: dict[str, Any], new_tree: dict[str, Any]) -> list[str]:
+def _check_dir_tree_transition(old_tree: dict[str, Any], new_tree: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
     def walk(old_node: dict[str, Any], new_node: dict[str, Any], pfx: str) -> None:
@@ -122,11 +122,19 @@ def _check_filefoldertree_transition(old_tree: dict[str, Any], new_tree: dict[st
         path = f"{pfx}/{node_name}" if pfx else str(node_name)
 
         for key in ("name", "type"):
-            if old_node.get(key) != new_node.get(key):
+            # type 字段 directory → dir
+            old_type = old_node.get(key)
+            new_type = new_node.get(key)
+            if key == "type":
+                if old_type == "directory":
+                    old_type = "dir"
+                if new_type == "directory":
+                    new_type = "dir"
+            if old_type != new_type:
                 errors.append(f"E_TREE_NODE_MUTATION: {path}: {key} changed")
 
-        old_children = old_node.get("children", []) if old_node.get("type") == "directory" else []
-        new_children = new_node.get("children", []) if new_node.get("type") == "directory" else []
+        old_children = old_node.get("children", []) if old_node.get("type") in ("directory", "dir") else []
+        new_children = new_node.get("children", []) if new_node.get("type") in ("directory", "dir") else []
         old_sig = [(c.get("name"), c.get("type")) for c in old_children]
         new_sig = [(c.get("name"), c.get("type")) for c in new_children]
         if old_sig != new_sig:
@@ -673,5 +681,5 @@ __all__ = [
     "compute_mapping",
     "validate_branch_decisions_schema",
     "find_cycles",
-    "_check_filefoldertree_transition",
+    "_check_dir_tree_transition",
 ]

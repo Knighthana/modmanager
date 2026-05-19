@@ -26,14 +26,23 @@
 - [DESIGN_RULE_AGGREGATOR.md](DESIGN_RULE_AGGREGATOR.md)
 - [DESIGN_FOREST_MODEL.md](DESIGN_FOREST_MODEL.md)
 
-## 包 A2：运行编排
+## 包 A2：备份与恢复
 
-适用：编排、备份、路径解析。
+适用：`backup_dir` 结构、backup 执行、restore 执行、backupinfo 契约。
 
-排除：采集聚合、REST API、GUI 页面实现、前端集成细节。
+排除：采集聚合、REST API、GUI 页面实现、通用路径解析细节。
+
+- [DESIGN_BACKUP_DIR.md](DESIGN_BACKUP_DIR.md)
+- [DESIGN_BACKUP_OPS.md](DESIGN_BACKUP_OPS.md)
+- [DESIGN_RESTORE_OPS.md](DESIGN_RESTORE_OPS.md)
+
+## 包 A4：运行编排与路径
+
+适用：编排、路径解析、流水线如何调用 backup/restore 原语。
+
+排除：backupinfo 结构细则、backup/restore 具体执行语义。
 
 - [DESIGN_ORCHESTRATOR.md](DESIGN_ORCHESTRATOR.md)
-- [DESIGN_BACKUP.md](DESIGN_BACKUP.md)
 - [DESIGN_PATH_RESOLVER.md](DESIGN_PATH_RESOLVER.md)
 
 ## 包 A3：API 与执行约束

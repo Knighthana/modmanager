@@ -1,75 +1,60 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BackupInfo",
-  "description": "Schema for backupinfo.json — the file/folder tree with backup status and hash metadata.",
+  "description": "Schema for backupinfo.json — the file/dir tree with backup status and hash metadata.",
   "type": "object",
   "required": [
-    "filefoldertree_status",
-    "filefoldertree"
+    "snapshot_time",
+    "last_modified_time",
+    "schema_version",
+    "tree"
   ],
   "additionalProperties": false,
   "properties": {
-    "filefoldertree_status": {
+    "snapshot_time": {
       "type": "string",
-      "enum": ["ready", "error"],
-      "description": "'ready' once the tree has been built; 'error' while construction is in progress or failed."
+      "format": "date-time",
+      "description": "快照创建时间，ISO8601字符串"
     },
-    "filefoldertree": {
-      "$ref": "#/$defs/FileFolderNode",
-      "description": "Root of the recursive file/folder tree. Tree structure is frozen after creation; only file node attributes isbackuped, hashtype, hashvalue are mutable one-way."
+    "last_modified_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "最后一次被本项目任何工具写入的时间"
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "schema版本号"
+    },
+    "tree": {
+      "$ref": "#/$defs/DirNode",
+      "description": "全量快照树，根节点为base/mod目录，结构冻结"
     }
   },
   "$defs": {
-    "FileFolderNode": {
-      "description": "A node in the file/folder tree. Must be either a folder or a file.",
-      "oneOf": [
-        { "$ref": "#/$defs/FolderNode" },
-        { "$ref": "#/$defs/FileNode" }
-      ]
-    },
-    "FolderNode": {
+    "DirNode": {
       "type": "object",
       "required": ["name", "type", "children"],
-      "additionalProperties": false,
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "type": {
-          "const": "directory"
-        },
+        "name": {"type": "string"},
+        "type": {"const": "dir"},
         "children": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/FileFolderNode"
-          }
+          "items": {"oneOf": [{"$ref": "#/$defs/DirNode"}, {"$ref": "#/$defs/FileNode"}]}
         }
-      }
+      },
+      "additionalProperties": false
     },
     "FileNode": {
       "type": "object",
       "required": ["name", "type", "isbackuped", "hashtype", "hashvalue"],
-      "additionalProperties": false,
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "type": {
-          "const": "file"
-        },
-        "isbackuped": {
-          "type": "boolean",
-          "description": "Whether this file has been backed up. May transition false→true once."
-        },
-        "hashtype": {
-          "type": "string",
-          "description": "Hash algorithm identifier (e.g. 'sha256'). May transition 'invalid'→<algorithm> once."
-        },
-        "hashvalue": {
-          "type": "string",
-          "description": "Hex digest of the file. May transition '0'→<hex> once."
-        }
-      }
+        "name": {"type": "string"},
+        "type": {"const": "file"},
+        "isbackuped": {"type": "boolean", "description": "是否已完成备份"},
+        "hashtype": {"type": "string", "description": "哈希算法类型"},
+        "hashvalue": {"type": "string", "description": "哈希值（hex）"}
+      },
+      "additionalProperties": false
     }
   }
 }

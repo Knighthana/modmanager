@@ -60,7 +60,9 @@
 5. 按需进入 `repo_logs/` 或 `further/`。
 
 ## 高权重触发读取
-- 任务涉及备份目录推导、备份恢复或 `backup_dir` 语义时，必须读取 `DESIGN_BACKUP.md`（通常对应包 A2）
+- 任务涉及 `backup_dir` 结构、`backupinfo.json` 结构或字段冻结时，必须读取 `DESIGN_BACKUP_DIR.md`（通常对应包 A2）
+- 任务涉及 backup 执行、差异备份、`.kmmbakignore` 复制或脏状态/冲突检查时，必须读取 `DESIGN_BACKUP_OPS.md`（通常对应包 A2）
+- 任务涉及 restore 执行、命中集合、hash 核对或 `force` 语义时，必须读取 `DESIGN_RESTORE_OPS.md`（通常对应包 A2）
 - 任务明确涉及 replace service 方案时，必须读取 `further/REPLACE_SERVICE_DESIGN.md`；其他任务不默认读取
 
 ## 备注

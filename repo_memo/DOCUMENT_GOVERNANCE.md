@@ -51,7 +51,9 @@
 - 同一轮任务若需要三个以上子域，优先重构任务边界，而不是直接扩大阅读面
 
 ## 高权重触发规则
-- 涉及备份目录推导、备份恢复或 `backup_dir` 语义时，必须读取 `DESIGN_BACKUP.md`
+- 涉及 `backup_dir` 结构、`backupinfo.json` 结构或字段冻结时，必须读取 `DESIGN_BACKUP_DIR.md`
+- 涉及 backup 执行、差异备份、忽略规则或脏状态/冲突检查时，必须读取 `DESIGN_BACKUP_OPS.md`
+- 涉及 restore 执行、命中集合、hash 核对或 `force` 语义时，必须读取 `DESIGN_RESTORE_OPS.md`
 - 明确涉及 replace service 方案时，必须读取 `further/REPLACE_SERVICE_DESIGN.md`；其他任务不默认读取
 
 ## repo_bkgd 读取门禁

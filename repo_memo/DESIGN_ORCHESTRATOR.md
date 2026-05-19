@@ -141,7 +141,7 @@ def restore(
     on_progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """恢复文件。独立原语，与 backup 解耦。内部调 build_backup_dirs 推导目录，
-    读 backupinfo.json 比对 HASH（force=True 时跳过比对）。"""
+    读 backupinfo.json；force=False 时执行 HASH 比对，force=True 时直接跳过 HASH 计算并执行文件操作。"""
 ```
 
 #### run()

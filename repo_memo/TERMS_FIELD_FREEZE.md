@@ -21,11 +21,29 @@
 | `currentWorkspaceId` | `string \| null` | 前端 sessionStorage 中存储的当前活跃工作区 ID | 2026-05-16 |
 | `decisions.managed_entries` | `object` | 用户对重复条目的路径筛选 `{ game: {appid: [path]}, mod: {mixed_id: [path]} }` | 2026-05-16 |
 | `decisions.branch_decisions` | `object` | 冲突裁决映射 `{ root_path: chosen_source_path }` | 2026-05-16 |
+| `backupinfo.snapshot_time` | `string` | backupinfo 快照创建时间，ISO8601 date-time | 2026-05-19 |
+| `backupinfo.last_modified_time` | `string` | backupinfo 最后一次被本项目工具写入的时间 | 2026-05-19 |
+| `backupinfo.schema_version` | `string` | backupinfo schema 版本号 | 2026-05-19 |
+| `backupinfo.tree` | `DirNode` | backupinfo 的冻结全量快照树 | 2026-05-19 |
+| `backupinfo.tree[].type` | `"dir" \| "file"` | backupinfo 节点类型，目录语义统一用 dir | 2026-05-19 |
+| `backupinfo.dir.name` | `string` | DirNode 名称字段 | 2026-05-19 |
+| `backupinfo.dir.children` | `array` | DirNode 子节点字段 | 2026-05-19 |
+| `backupinfo.file.name` | `string` | FileNode 名称字段 | 2026-05-19 |
+| `backupinfo.file.isbackuped` | `boolean` | FileNode 是否已完成备份 | 2026-05-19 |
+| `backupinfo.file.hashtype` | `string` | FileNode hash 算法类型 | 2026-05-19 |
+| `backupinfo.file.hashvalue` | `string` | FileNode hash 值 | 2026-05-19 |
 
 ## 输出结构冻结
 - compute_mapping 输出 key: `"trees"`（数组），`"final_mapping"`（数组）
 - TreeNode: `root_path`, `destin_mixed_id`, `changerequest`, `refs`, `resolved_state`
 - ChangeRequest: `path`, `action`, `mixed_id`, `hashtype`, `hashvalue`
 - FinalMappingEntry: `path`, `request`
+
+## backupinfo 结构冻结
+- 根字段：`snapshot_time`, `last_modified_time`, `schema_version`, `tree`
+- `tree` 根节点类型必须为 `dir`
+- `DirNode`: `name`, `type`, `children`
+- `FileNode`: `name`, `type`, `isbackuped`, `hashtype`, `hashvalue`
+- backupinfo 目录语义统一使用 `dir`
 
 

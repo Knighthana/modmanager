@@ -2,7 +2,7 @@
 
 Implements Phase 7-12 of the implementation plan:
 - Phase 7:  Version check — derive backup_id from appmanifest ACF LastUpdated
-- Phase 8:  Directory tree creation — build filefoldertree with sha256
+- Phase 8:  Directory tree creation — build dir tree with sha256
 - Phase 9:  Pre-replacement gate — verify backup exists and is complete
 - Phase 10: Differential backup — copy target files into backup directory
 - Phase 11: Replacement execution — apply final_mapping to disk
@@ -110,7 +110,8 @@ def get_workshop_timestamphex(steamapps_path: str, appid: str, contentid: str) -
     return (True, hex_id, "")
 
 
-# ── Phase 8: Directory tree creation ──────────────────────────────────────────
+
+# ── Phase 8: Dir tree creation ───────────────────────────────────────────────
 
 def _sha256_file(path: Path) -> str:
     """Compute SHA256 of *path*. Returns "0" on I/O error."""
@@ -143,17 +144,15 @@ def _serialize_output_path(path: str, *, is_dir: bool) -> str:
     return stripped
 
 
-def build_filefoldertree_with_hashes(
+
+def build_dir_tree_with_hashes(
     root_dir: str,
     *,
     skip_names: frozenset[str] | None = None,
 ) -> dict[str, Any]:
-    """Scan *root_dir* recursively and build a filefoldertree dict.
+    """递归扫描 *root_dir*，生成符合 schema 的快照树 dict。
 
-    File nodes have ``isbackuped=True`` and a SHA256 hash (files inside a
-    backup directory are by definition already backed up).
-    *skip_names* defaults to ``{"backupinfo.json"}`` to exclude the metadata
-    file from the tree.
+    文件节点 isbackuped=True，hashtype=sha256。*skip_names* 默认排除 backupinfo.json。
     """
     if skip_names is None:
         skip_names = frozenset({"backupinfo.json"})
@@ -172,13 +171,13 @@ def build_filefoldertree_with_hashes(
             for child in sorted(path.iterdir()):
                 if child.name in skip_names:
                     continue
-                # Loop protection: skip *.kmmbackup sub-directories
+                # 跳过.kmmbackup子目录
                 if child.name.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX):
                     continue
                 children.append(_scan(child))
         except PermissionError:
             pass
-        return {"name": path.name, "type": "directory", "children": children}
+        return {"name": path.name, "type": "dir", "children": children}
 
     return _scan(Path(root_dir))
 
@@ -196,7 +195,7 @@ def load_backup_info(backup_dir: str) -> dict[str, Any]:
 
 
 def _flatten_tree_file_hashes(node: dict[str, Any], prefix: str = "") -> dict[str, str]:
-    """Flatten filefoldertree into ``rel_path -> hashvalue`` mapping."""
+    """将快照树拍平成 rel_path -> hashvalue 映射。"""
     name = str(node.get("name", ""))
     node_type = str(node.get("type", ""))
     current = f"{prefix}/{name}" if prefix and name else (name or prefix)
@@ -252,17 +251,17 @@ def init_backup_dir(backup_dir: str) -> None:
     tree scan and flips it to ``"ready"``.
     """
     assert_directory_path(backup_dir, label="backup_dir")
-    _write_backup_info(backup_dir, {"filefoldertree_status": "error"})
+    _write_backup_info(backup_dir, {"tree": {}, "snapshot_time": "", "last_modified_time": "", "schema_version": "1"})
 
 
 def finalize_backup_dir(backup_dir: str) -> dict[str, Any]:
-    """Scan *backup_dir*, build the filefoldertree with hashes, write status=ready.
+    """扫描 *backup_dir*，生成快照树，写入 backupinfo.json。
 
-    Returns the completed backupinfo dict.
+    返回完整 backupinfo dict。
     """
     assert_directory_path(backup_dir, label="backup_dir")
-    tree = build_filefoldertree_with_hashes(backup_dir)
-    info: dict[str, Any] = {"filefoldertree_status": "ready", "filefoldertree": tree}
+    tree = build_dir_tree_with_hashes(backup_dir)
+    info: dict[str, Any] = {"tree": tree, "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "schema_version": "1"}
     _write_backup_info(backup_dir, info)
     return info
 
@@ -298,21 +297,12 @@ def detect_dirty_state(backup_dir: str) -> dict[str, Any]:
             }
         return {"dirty": False, "errors": [], "partial_files": []}
 
-    status = str(info.get("filefoldertree_status", ""))
-    if status == "error":
+    if not info.get("tree"):
         return {
             "dirty": True,
-            "errors": [f"E_BACKUP_DIRTY_STATE: {backup_dir}: status='error'"],
+            "errors": [f"E_BACKUP_DIRTY_STATE: {backup_dir}: tree missing"],
             "partial_files": partial_files,
         }
-
-    if status == "ready" and "filefoldertree" not in info:
-        return {
-            "dirty": True,
-            "errors": [f"E_BACKUP_DIRTY_STATE: {backup_dir}: ready but tree missing"],
-            "partial_files": partial_files,
-        }
-
     return {"dirty": False, "errors": [], "partial_files": []}
 
 
@@ -333,9 +323,9 @@ def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None
 
     backup_path = Path(backup_dir)
     info = load_backup_info(backup_dir)
-    tree = info.get("filefoldertree") if isinstance(info, dict) else None
+    tree = info.get("tree") if isinstance(info, dict) else None
     if not isinstance(tree, dict):
-        return {"clean": False, "conflicts": [f"E_TREE_CONFLICT: {backup_dir}: invalid filefoldertree"]}
+        return {"clean": False, "conflicts": [f"E_TREE_CONFLICT: {backup_dir}: invalid tree"]}
 
     conflicts: list[str] = []
     expected = _flatten_tree_file_hashes(tree)
@@ -387,12 +377,8 @@ def check_backup_gate(backup_dir: str) -> list[str]:
     if not info:
         errors.append(f"E_BACKUP_INFO_MISSING: {backup_dir}")
         return errors
-    if info.get("filefoldertree_status") != "ready":
-        errors.append(
-            f"E_BACKUP_TREE_INCOMPLETE: {backup_dir}: "
-            f"status={info.get('filefoldertree_status')!r}"
-        )
-    if "filefoldertree" not in info:
+    # 只检查新字段
+    if not info.get("tree"):
         errors.append(f"E_BACKUP_TREE_MISSING: {backup_dir}")
     return errors
 
@@ -881,7 +867,7 @@ def delete_orphan_files(orphan_paths: list[str]) -> dict[str, Any]:
 __all__ = [
     "get_game_backup_id",
     "get_workshop_timestamphex",
-    "build_filefoldertree_with_hashes",
+    "build_dir_tree_with_hashes",
     "load_backup_info",
     "init_backup_dir",
     "finalize_backup_dir",
