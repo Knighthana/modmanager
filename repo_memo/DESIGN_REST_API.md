@@ -13,7 +13,7 @@
 > - 工作区感知流水线：所有文件系统写入相关的主路径为 `POST /api/workspace/{workspace_id}/pipeline/*`（compute / backup / apply / restore / run）
 
 ## 1. 概览（要点）
-- 事实源（实现文件）：[src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)、[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)、[src/modmanager_web/app.py](src/modmanager_web/app.py)、[src/modmanager_web/routes/pipeline.py](src/modmanager_web/routes/pipeline.py)、[src/modmanager_web/routes/workspace.py](src/modmanager_web/routes/workspace.py)、[src/modmanager_web/sse.py](src/modmanager_web/sse.py)、[src/modmanager/orchestrator.py](src/modmanager/orchestrator.py)。
+- 事实源（实现文件）：[src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)、[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)、[src/modmanager_web/app.py](src/modmanager_web/app.py)、[src/modmanager_web/routes/pipeline.py](src/modmanager_web/routes/pipeline.py)、[src/modmanager_web/routes/workspace.py](src/modmanager_web/routes/workspace.py)、[src/modmanager_web/sse.py](src/modmanager_web/sse.py)、[src/modmanager/orchestrator/__init__.py](src/modmanager/orchestrator/__init__.py)。
 - 原则：任何会写磁盘或执行备份/应用的执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 提供的是无工作区（非写盘）或供脚本化使用的端点，但不再负责 workspace-scoped backup/apply 执行。
 
 ## 2. 通用响应格式（ApiResponse）
@@ -56,7 +56,7 @@ SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 
 - `GET  /api/workspace/{id}/rules/aggregated` — 读取已聚合规则（JSON）
 - `POST /api/workspace/{id}/pipeline/compute` — 在工作区上下文计算（SSE）。**请求体：无**，聚合规则与决策从工作区目录读取；结果写回工作区（mapping、svg、fingerprints）。
 - `POST /api/workspace/{id}/pipeline/backup` — 在工作区上下文做差异备份（SSE）。请求体：`{ "dry_run": bool }`。
-- `POST /api/workspace/{id}/pipeline/apply` — 在工作区上下文提交 apply（SSE）。请求体：`{ "dry_run": bool }`。此路由会触发 orchestrator 的 `orchestrate_apply()`，并最终由 `apply()` 执行原语。
+- `POST /api/workspace/{id}/pipeline/apply` — 在工作区上下文提交 apply（SSE）。请求体：`{ "dry_run": bool }`。此路由会调用 `dispatch()` 传入 `Intent.APPLY`，通过 Resolver → Planner → 原语管线执行；最终由 `apply_entries()` 执行文件替换。
 - `POST /api/workspace/{id}/pipeline/restore` — 在工作区上下文恢复（SSE）。请求体：`{ "force": bool }`。
 - `POST /api/workspace/{id}/pipeline/run` — 在工作区上下文执行全流水线（SSE）。**请求体：无**（当前实现从工作区读取所有输入）。
 - `POST /api/workspace/{id}/decisions/save`、`GET /api/workspace/{id}/decisions/load` — 保存/读取决策（JSON）
@@ -88,7 +88,7 @@ Content-Type: application/json
 
 { "dry_run": false }
 ```
-行为：后端会通过 `resolve_apply_ws()` -> `orchestrate_apply()` -> `apply()` 顺序执行；全部上下文（mapping、backup_dir、database）由工作区解析，不从请求体读取。
+行为：后端通过 `dispatch(Intent.APPLY)` 进入 Resolver → Planner → 原语管线执行；全部上下文（mapping、backup_dir、database）由工作区解析，不从请求体读取。
 
 ## 5. Pydantic schema（参考实现）
 详见 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)。要点：

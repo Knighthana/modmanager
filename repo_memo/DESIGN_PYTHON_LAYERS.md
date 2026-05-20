@@ -19,7 +19,7 @@ Python 代码按功能职责分为 4 层，自下而上分别为：
 │ cli.py / modmanager_web/routes/          │  ↓
 ├─────────────────────────────────────────┤
 │ 第 2 层：Orchestration（编排）            │  精确翻译
-│ orchestrator.py / bootstrap.py           │  ↓
+│ orchestrator/  / bootstrap.py            │  ↓
 ├─────────────────────────────────────────┤
 │ 第 1 层：Core Business Logic（业务核心）  │  精确翻译
 │ engine.py / rule_aggregator.py / ...     │  ↓
@@ -107,36 +107,26 @@ Python 代码按功能职责分为 4 层，自下而上分别为：
 
 ---
 
-## 3. 第 2 层：Orchestration（编排）
+## 3. 第 2 层：Orchestration（`orchestrator/` 包）
 
-### 职责
-协调第 1 层的多个模块，形成完整的业务流程。
+**文件**：`src/modmanager/orchestrator/`（包，非单文件）
 
-### 包含的模块
-- `orchestrator.py` — 流程编排器
-  - 方法：`compute()` / `run()` / `backup()` / `apply()`
-  - 职责：调用 engine/rule_aggregator/backup_ops，串联流程，处理异常
-  
-- `bootstrap.py` — 初始化和加载
-  - 函数：`discover_user_config()` / `generate_database()`
-  - 职责：文件系统操作、user_config 搜索、database 缓存加载
+**入口**：`dispatch(request: TaskRequest) -> PipelineResult`
+所有请求（Web API / CLI）通过此单一入口进入。根据 `request.intent` 路由到对应管线。
 
-### 特性
-- 知道"调用顺序"，但不知道"如何实现"
-- 处理配置文件、缓存、临时文件等系统级操作
-- 可能有会话状态，但不依赖全局变量
+**子模块**：
 
-### Rust 迁移规则
-**翻译目标**：业务流程保持，入参出参改为 Rust 类型
-- 调用顺序：完全相同，不能跳过或重排步骤
-- 配置加载：逻辑相同（搜索路径、默认值、优先级），实现改为 Rust 的文件操作
-- 错误处理：异常链条保持，可改用 Rust 的 ? 操作符
-- 会话状态：如果 Python 中用类的实例变量，Rust 改用 struct；如果是全局，改用函数参数传递
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| 核心 | `__init__.py` | `dispatch()` 入口 + `PipelineResult` dataclass |
+| Entry | `entry.py` | `TaskRequest` + `Intent` enum — 请求归一化 |
+| Resolver | `resolver.py` | `CleanContext` + 三种 Resolver（workspace / file_paths / raw_dict）— 资源收集 |
+| Planner | `planner_fileops.py` | `FileOpsPlan` + `plan_fileops()` — 推导 + preflight 决策 |
+| Preflight | `preflight.py` | `run_apply_preflight()` / `run_restore_preflight()` — 门禁检查 |
+| Compute 管线 | `compute_pipeline.py` | `compute()` / `compute_ws()` — 映射生产 |
+| 共享 | `_common.py` | `PipelineResult` dataclass, 共享 helper |
 
-**禁止变更**：
-- 不能跳过任何检查或校验步骤
-- 不能改变 compute/backup/apply 的执行顺序
-- 不能省略任何错误代码
+**职责**：作为星形拓扑核心，统一调度所有流程。不直接执行文件操作或映射计算——这些由独立的 `*_ops.py` 原语模块执行。
 
 ---
 
@@ -188,7 +178,7 @@ Python 代码按功能职责分为 4 层，自下而上分别为：
 - [ ] 所有测试用例通过（428 个 Python 测试，需在 Rust 版本重新运行）
 
 ### 第 2 层
-- [ ] orchestrator.compute/run/backup/apply 的调用顺序不变
+- [ ] `dispatch()` 的调用顺序不变（Resolver → Planner → Primitive）
 - [ ] 相同的输入配置，得到相同的输出
 - [ ] 异常触发条件、错误码完全一致
 

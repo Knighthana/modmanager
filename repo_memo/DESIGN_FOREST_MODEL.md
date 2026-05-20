@@ -135,7 +135,7 @@ class ForestTree:
 | 模块 | 文件 | 改动量评估 | 风险等级 |
 |------|------|-----------|---------|
 | **引擎核心** | `engine.py` | **重写** `_resolve_effective_leaf_request` 及相关逻辑（约150行）；新增 ~200+行 | 🔴 高 |
-| **编排层** | `orchestrator.py` | 小改（`PipelineResult` 字段更名） | 🟡 中 |
+| **编排层** | `orchestrator/` | 小改（`PipelineResult` 字段更名） | 🟡 中 |
 | **可视化** | `forest_visual.py` | **重写** 核心模型 + 新增 ref 边渲染 | 🔴 高 |
 | **Web API** | `schemas.py` / `adapters.py` / `routes/` | 适配新字段 | 🟡 中 |
 | **前端** | `types/` / `stores/` / `pages/` / `components/` | 冲突裁决模型重写 | 🔴 高 |
@@ -319,7 +319,7 @@ def _build_output(trees, warnings, errors) -> dict:
 
 | 模块 | 改动内容 |
 |------|---------|
-| `orchestrator.py` | `PipelineResult.trees` |
+| `orchestrator/` | `PipelineResult.trees` |
 | `modmanager_web/schemas.py` | `trees: list[dict]` |
 | `modmanager_web/adapters.py` | key 使用 `trees` |
 | `forest_visual.py` | 重写 `_build_graph_model()`，以"树"为中心 |

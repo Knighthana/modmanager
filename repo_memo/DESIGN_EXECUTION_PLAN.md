@@ -6,6 +6,10 @@
 > Purpose: 记录 2026-05-13 起的重构执行方案，聚焦数据模型收敛、工作区权威落地、前端状态清退、mock-first 页面重写与存量适配。
 > 原则：每步必绿（每完成一个 Phase 子步骤立即跑全量测试，不累积）。
 
+> **Archival note (2026-05-21)**: This plan was executed in May 2026 and reflects the pre-four-layer
+> architecture. The `orchestrator.py` single file has since been replaced by the `orchestrator/` package
+> with `dispatch()` as the unified entry point. See `DESIGN_ORCHESTRATOR.md` for the current architecture.
+
 ---
 
 ## 一、数据模型终态

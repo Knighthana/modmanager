@@ -1,6 +1,7 @@
 # DESIGN_BACKUP_OPS — Backup 执行设计
 
 > Status: active
+> Last update: 2026-05-21 — Four-layer model; backup triggered via dispatch() → Resolver → Planner → backup_ops.run_differential_backup()
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义如何执行 backup，包括创建 backup_dir、写入 backupinfo、扫描与差异备份，但不重复定义 backup_dir 结构本身
@@ -16,7 +17,8 @@
 - `backupinfo.json` 的结构应该长什么样
 - restore 如何执行
 
-注意：前置门禁（preflight / gate check）为 `orchestrator` 的职责。backup 实现可以暴露检测结果（脏状态、冲突、warnings/errors）供 orchestrator 在 preflight 阶段消费，但不应在自身流程中承担“决定是否允许 apply”的 gate 判定逻辑。
+前置门禁（preflight / gate check）为 Planner 层职责：`plan_fileops()` 在 Planner 层调用 preflight，
+orchestrator 的 `dispatch()` 据此决策是否继续执行。backup 自身流程中不承担 gate 判定逻辑。
 
 这些内容分别由 `DESIGN_BACKUP_DIR.md` 和 `DESIGN_RESTORE_OPS.md` 负责。
 
