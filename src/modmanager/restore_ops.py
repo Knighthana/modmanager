@@ -60,8 +60,8 @@ def restore_entries(
                 finished += 1
                 continue
 
-            # Resolve the backed-up file path
-            rel_path = _relative_to_backup_root(target_path, backupinfo)
+            # Resolve the backed-up file path (mirrors run_differential_backup's content_root logic)
+            rel_path = _relative_to_backup_root(target_path, backup_dir)
             backup_file = os.path.join(backup_dir, rel_path)
 
             if not os.path.isfile(backup_file):
@@ -134,19 +134,20 @@ def _flatten_hash_lookup(
             _flatten_hash_lookup(child, base_dir, lookup, current)
 
 
-def _relative_to_backup_root(target_path: str, backupinfo: dict[str, Any]) -> str:
-    """Extract the relative path component that corresponds to the backup tree root.
+def _relative_to_backup_root(target_path: str, backup_dir: str) -> str:
+    """Compute the relative path of target_path within backup_dir.
 
-    The backupinfo tree mirrors the original file structure; we need the
-    part of target_path relative to the backup directory root.
+    Mirrors run_differential_backup's derivation: content_root is the
+    parent of backup_dir, and files are stored relative to it.
     """
-    # Simple heuristic: use the file name + its immediate parent pattern
-    # For a more robust approach, walk the tree.
-    parts = target_path.replace("\\", "/").split("/")
-    # Return last 2-3 segments as a best-effort relative path
-    if len(parts) >= 3:
-        return "/".join(parts[-3:])
-    return "/".join(parts)
+    from pathlib import Path
+    from .paths import normalize_posix
+
+    content_root = str(Path(backup_dir).parent)
+    rel = normalize_posix(target_path).removeprefix(
+        normalize_posix(content_root)
+    ).lstrip("/")
+    return rel
 
 
 def _sha256_hex(file_path: str) -> str:
