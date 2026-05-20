@@ -36,7 +36,8 @@ def run_apply_preflight(
     dir_results: list[dict[str, Any]] = []
 
     for backup_dir, entries in backup_dirs.items():
-        gate_ok, gate_errors = check_backup_gate(backup_dir)
+        gate_errors = check_backup_gate(backup_dir)
+        gate_ok = len(gate_errors) == 0
         dir_results.append({
             "path": backup_dir,
             "gate_pass": gate_ok,
