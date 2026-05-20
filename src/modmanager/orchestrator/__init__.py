@@ -163,11 +163,10 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
     errors: list[str] = []
 
     for backup_dir, dir_entries in plan.entries_by_backup_dir.items():
+        files_to_backup = plan.backup_dirs.get(backup_dir, [])
         dir_result = run_differential_backup(
-            context.final_mapping,
             backup_dir,
-            context.user_config,
-            bakignore_patterns=plan.ignore_patterns,
+            files_to_backup,
             dry_run=plan.dry_run,
             on_progress=on_progress,
         )
