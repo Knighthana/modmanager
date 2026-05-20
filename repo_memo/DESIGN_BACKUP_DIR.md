@@ -71,9 +71,9 @@
 
 ### 3.3 tree 的根节点语义
 
-- `tree` 的根节点表示本次备份所对应的源根目录快照。
+- `tree` 的根节点表示对应源目录（content_root）的完整文件结构镜像，而非 backup_dir 本身的快照
 - 根节点类型必须为 `dir`。
-- 根节点的 `name` 为对应源根目录名，而不是固定字面量。
+- 根节点的 `name` 为源目录名（即 content_root 的最后一段）
 
 ## 四、backupinfo.json 的根结构
 
@@ -99,7 +99,7 @@
 - `snapshot_time`：表示这份快照首次生成时刻。
 - `last_modified_time`：表示本项目工具最后一次写入该 `backupinfo.json` 的时刻。
 - `schema_version`：用于标识此文件遵循的结构版本。
-- `tree`：该 backup 对应源根目录的全量冻结快照。
+- `tree`：该 backup 对应源目录的全量冻结文件结构镜像。每个文件标记 isbackuped 以区分是否已有备份副本
 
 ## 五、tree 的递归节点结构
 
@@ -140,6 +140,16 @@
 - `tree` 根节点必须是 `DirNode`
 - `DirNode.children[]` 只能包含 `DirNode` 或 `FileNode`
 - `FileNode` 为叶子节点，不可再有子节点
+
+### 5.4 tree 的生成规则
+
+`tree` 是**源目录的完整结构镜像**，而非 `backup_dir` 的快照。
+
+1. **扫描对象**：以源根目录（`backup_dir` 的父目录，即 `content_root`）为根，递归遍历。
+2. **节点标记**：遍历到的每个文件，检查其在 `backup_dir` 中是否有对应副本：
+   - 有副本 → `isbackuped: true`，`hashtype` / `hashvalue` 取自备份副本
+   - 无副本 → `isbackuped: false`，`hashtype` / `hashvalue` 为占位值（`"sha256"` / `""` 或 `"0"`）
+3. **排除规则**：`backupinfo.json` 自身、`.kmmbackup` 后缀目录不进入 tree 的递归内容。
 
 ## 六、backupinfo 与 schema 的关系
 

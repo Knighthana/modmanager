@@ -88,7 +88,7 @@ Python 代码按功能职责分为 4 层，自下而上分别为：
 - `backup_ops.py` — 差异备份和恢复
 - `backup_ops.py` — 差异备份和恢复
   - 输入：`final_mapping`、`database`、`user_config`
-  - 说明：`backup_ops` 不依赖调用方传入单一 `backup_dir`。实现通过 `backup_dir_builder.build_backup_dirs(final_mapping, database, user_config)` 推导出每个 content/app 的 `backup_dir` 映射（形如 `{ backup_dir: [file_paths] }`），并对每个目录独立执行差异备份、写入 `backupinfo.json` 以及扫描/校验流程。
+  - 说明：`backup_ops` 不依赖调用方传入单一 `backup_dir`。实现通过 `backup_dir_builder.build_backup_dirs(final_mapping, database, user_config)` 推导出每个 content/app 的 `backup_dir` 映射（形如 `{ backup_dir: [file_paths] }`），并对每个目录独立执行差异备份、写入 `backupinfo.json` 以及基于源目录的扫描/校验流程。tree 结构与生成规则详见 DESIGN_BACKUP_DIR.md。
   - 输出：backup metadata（包括 `backupinfo.json`、tree/hash 信息、复制统计等）
 
 ### 特性

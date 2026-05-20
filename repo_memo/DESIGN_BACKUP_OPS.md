@@ -4,7 +4,7 @@
 > Last update: 2026-05-21 — Four-layer model; backup triggered via dispatch() → Resolver → Planner → backup_ops.run_differential_backup()
 > Authority: authoritative
 > Read-Tier: task-scoped
-> Purpose: 定义如何执行 backup，包括创建 backup_dir、写入 backupinfo、扫描与差异备份，但不重复定义 backup_dir 结构本身
+> Purpose: 定义如何执行 backup，包括创建 backup_dir、差异备份、写入 backupinfo、扫描源目录生成 tree。backupinfo.json 的结构定义见 DESIGN_BACKUP_DIR.md
 > Supersedes: DESIGN_BACKUP.md
 
 ## 一、职责边界
@@ -65,7 +65,7 @@ backup 执行至少需要：
   -> 创建 backup_dir
   -> 初始化 backupinfo.json
   -> 复制命中目标到 backup_dir
-  -> 扫描 backup_dir 生成完整 tree
+  -> 扫描源目录生成完整 tree（详见 DESIGN_BACKUP_DIR.md）
   -> 写回最终 backupinfo.json
 ```
 
@@ -121,8 +121,9 @@ backup 扫描与复制时适用以下忽略层：
 
 ### 8.1 生成时机
 
-- 复制完成后，backup 应扫描 `backup_dir` 的实际内容。
-- 基于扫描结果生成完整的 `tree`。
+- 复制完成后，backup 应扫描源目录（`backup_dir` 的父目录，即 content_root），生成完整文件结构镜像。
+- 每个文件的 `isbackuped` 字段标记其在 `backup_dir` 中是否有备份副本。
+- `tree` 的完整结构与生成规则详见 `DESIGN_BACKUP_DIR.md`。
 
 ### 8.2 回写字段
 
@@ -167,7 +168,7 @@ backup 及 backup_dir 相关设计至少涉及以下条目：
 
 - backup 会先推导 `backup_dir`，再执行复制
 - backup 会在 `backup_dir` 根目录生成 `backupinfo.json`
-- backup 完成后会回写完整 `tree`
+- backup 完成后会回写完整的源目录结构 tree（详见 DESIGN_BACKUP_DIR.md）
 - `.kmmbakignore` 应被复制进 backup_dir，对应规则可被保留
 - 条目复制失败会产生 error，而不是静默成功
 
