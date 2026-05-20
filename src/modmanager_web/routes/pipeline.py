@@ -11,10 +11,8 @@ from fastapi.responses import StreamingResponse
 from modmanager.backup_ops import restore_from_backup
 from modmanager.bootstrap import discover_user_config
 from modmanager.iojson import load_json_file
-from modmanager.orchestrator import (
-    compute as orch_compute,
-    run as orch_run,
-)
+from modmanager.orchestrator import dispatch
+from modmanager.orchestrator.entry import Intent, TaskRequest
 
 from ..adapters import adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
 from ..schemas import ComputeRequest, RunRequest, VisualizeRequest, RestoreRequest
@@ -44,14 +42,19 @@ async def pipeline_compute(req: ComputeRequest):
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
-        return orch_compute(
-            database=db,
-            aggregated_rule_set=req.aggregated_rule_set,
-            action_orders=req.action_orders,
-            branch_decisions=req.branch_decisions,
-            managed_entries=req.managed_entries,
-            on_progress=on_progress,
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.COMPUTE_MAPPING,
+            resolver_type="raw_dict",
+            resolver_args={
+                "database": db,
+                "aggregated_rule_set": req.aggregated_rule_set,
+                "action_orders": req.action_orders,
+                "branch_decisions": req.branch_decisions,
+                "managed_entries": req.managed_entries,
+            },
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
@@ -132,15 +135,21 @@ async def pipeline_run(req: RunRequest):
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
-        return orch_run(
-            database=db,
-            aggregated_rule_set=req.aggregated_rule_set,
-            action_orders=req.action_orders,
-            branch_decisions=req.branch_decisions,
-            managed_entries=req.managed_entries,
-            dry_run=req.dry_run,
-            on_progress=on_progress,
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.RUN,
+            resolver_type="raw_dict",
+            resolver_args={
+                "database": db,
+                "aggregated_rule_set": req.aggregated_rule_set,
+                "action_orders": req.action_orders,
+                "branch_decisions": req.branch_decisions,
+                "managed_entries": req.managed_entries,
+                "user_config": user_config,
+            },
+            flags={"dry_run": req.dry_run},
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),

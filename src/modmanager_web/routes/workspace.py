@@ -11,7 +11,8 @@ from fastapi import APIRouter
 from fastapi.responses import Response, StreamingResponse
 from modmanager.bootstrap import discover_user_config
 from modmanager.core.workspacemanager import WorkspaceManager
-from modmanager.orchestrator import backup_ws, compute_ws, orchestrate_apply, restore_ws, run_ws
+from modmanager.orchestrator import dispatch, compute_ws
+from modmanager.orchestrator.entry import Intent, TaskRequest
 from modmanager.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
@@ -265,11 +266,14 @@ async def workspace_run(workspace_id: str):
     """
 
     def do_work(*, on_progress):
-        return run_ws(
-            workspace_id=workspace_id,
-            dry_run=False,
-            on_progress=on_progress,
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.RUN,
+            resolver_type="workspace",
+            resolver_args={"workspace_id": workspace_id},
+            flags={"dry_run": False},
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
@@ -295,11 +299,15 @@ async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest):
     """
 
     def do_work(*, on_progress):
-        return backup_ws(
-            workspace_id=workspace_id,
-            dry_run=req.dry_run,
-            on_progress=on_progress,
+        dry_run = req.dry_run if hasattr(req, 'dry_run') else False
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.BACKUP,
+            resolver_type="workspace",
+            resolver_args={"workspace_id": workspace_id},
+            flags={"dry_run": dry_run},
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
@@ -322,11 +330,15 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
     """
 
     def do_work(*, on_progress):
-        return orchestrate_apply(
-            workspace_id=workspace_id,
-            dry_run=req.dry_run,
-            on_progress=on_progress,
+        dry_run = req.dry_run if hasattr(req, 'dry_run') else False
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.APPLY,
+            resolver_type="workspace",
+            resolver_args={"workspace_id": workspace_id},
+            flags={"dry_run": dry_run},
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),
@@ -349,11 +361,15 @@ async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
     """
 
     def do_work(*, on_progress):
-        return restore_ws(
-            workspace_id=workspace_id,
-            force=req.force,
-            on_progress=on_progress,
+        force = req.force if hasattr(req, 'force') else False
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.RESTORE,
+            resolver_type="workspace",
+            resolver_args={"workspace_id": workspace_id},
+            flags={"force": force},
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),

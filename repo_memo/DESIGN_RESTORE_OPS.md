@@ -1,12 +1,15 @@
 # DESIGN_RESTORE_OPS — Restore 执行设计
 
 > Status: active
+> Last update: 2026-05-21 — restore_ops.py as independent module
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义 restore 如何消费当前 mapping、backupinfo 与 backup_dir 执行恢复，不承担上层流程门禁职责
 > Supersedes: DESIGN_BACKUP.md
 
 ## 一、职责边界
+
+实现文件：`src/modmanager/restore_ops.py`（独立原语模块）。
 
 本文档只描述 restore 如何执行。
 

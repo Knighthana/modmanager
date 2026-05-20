@@ -5,11 +5,9 @@ from pathlib import Path
 from typing import Any
 
 from .backup_ops import (
-    apply_final_mapping,
     delete_orphan_files,
     detect_dirty_state,
     restore_from_backup,
-    run_differential_backup,
 )
 from .database_ops import (
     add_manual_steamlib,
@@ -222,8 +220,8 @@ def _handle_regen(args: argparse.Namespace) -> int:
 
 
 def _handle_backup(args: argparse.Namespace) -> int:
-    from .backup_dir_builder import build_backup_dir
-    from .orchestrator import backup as orch_backup
+    from .orchestrator import dispatch
+    from .orchestrator.entry import Intent, TaskRequest
 
     try:
         aggregated_rule_set = load_json_file(args.aggregated_rule_set)
@@ -248,19 +246,27 @@ def _handle_backup(args: argparse.Namespace) -> int:
     if not final_mapping:
         return _emit_error("no final_mapping produced; resolve branch conflicts first")
 
-    # Auto-derive backup_dir if not provided
-    backup_dir = args.backup_dir
-    if backup_dir is None:
+    # Load user_config for dispatch
+    user_config: dict[str, Any] = {}
+    if args.config:
         try:
-            user_config: dict[str, Any] = {}
-            if args.config:
-                user_config = load_json_file(args.config)
-            backup_dir = build_backup_dir(final_mapping, database, user_config)
+            user_config = load_json_file(args.config)
         except Exception as exc:
-            return _emit_error(f"failed to derive backup_dir: {exc}")
+            return _emit_error(f"failed to load user config: {exc}")
 
     try:
-        result = orch_backup(mapping_result, backup_dir)
+        request = TaskRequest(
+            identity="cli",
+            intent=Intent.BACKUP,
+            resolver_type="raw_dict",
+            resolver_args={
+                "final_mapping": final_mapping,
+                "database": database,
+                "user_config": user_config,
+            },
+            flags={"dry_run": args.dry_run},
+        )
+        result = dispatch(request)
     except Exception as exc:
         return _emit_error(f"backup failed: {exc}")
 
@@ -269,8 +275,8 @@ def _handle_backup(args: argparse.Namespace) -> int:
 
 
 def _handle_apply(args: argparse.Namespace) -> int:
-    from .backup_dir_builder import build_backup_dir
-    from .orchestrator import apply as orch_apply
+    from .orchestrator import dispatch
+    from .orchestrator.entry import Intent, TaskRequest
 
     try:
         aggregated_rule_set = load_json_file(args.aggregated_rule_set)
@@ -295,19 +301,27 @@ def _handle_apply(args: argparse.Namespace) -> int:
     if not final_mapping:
         return _emit_error("no final_mapping produced; resolve branch conflicts first")
 
-    # Auto-derive backup_dir if not provided
-    backup_dir = args.backup_dir
-    if backup_dir is None:
+    # Load user_config for dispatch
+    user_config: dict[str, Any] = {}
+    if args.config:
         try:
-            user_config: dict[str, Any] = {}
-            if args.config:
-                user_config = load_json_file(args.config)
-            backup_dir = build_backup_dir(final_mapping, database, user_config)
+            user_config = load_json_file(args.config)
         except Exception as exc:
-            return _emit_error(f"failed to derive backup_dir: {exc}")
+            return _emit_error(f"failed to load user config: {exc}")
 
     try:
-        result = orch_apply(final_mapping, backup_dir, dry_run=args.dry_run)
+        request = TaskRequest(
+            identity="cli",
+            intent=Intent.APPLY,
+            resolver_type="raw_dict",
+            resolver_args={
+                "final_mapping": final_mapping,
+                "database": database,
+                "user_config": user_config,
+            },
+            flags={"dry_run": args.dry_run},
+        )
+        result = dispatch(request)
     except Exception as exc:
         return _emit_error(f"apply failed: {exc}")
 

@@ -1,11 +1,14 @@
 # DESIGN_PREFLIGHT_APPLY — Apply 前置门禁设计
 
 > Status: active
+> Last update: 2026-05-21 — preflight.py as independent module
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义 apply 前置 preflight 子模块的职责、manifest 契约、cache policy 与 orchestrator 调用边界
 
 ## 一、职责边界
+
+实现文件：`src/modmanager/orchestrator/preflight.py`（orchestrator 子模块）。
 
 本文档描述 apply 前置 preflight 子模块。
 
@@ -21,8 +24,9 @@
 ## 二、定位
 
 - preflight 是 orchestrator 的独立子模块。
-- preflight 只有一个直接消费者也不改变其边界：它仍然是“前置决策生产者”，不是 apply 内部逻辑。
-- orchestrator 负责调用 preflight，并据其结果决定是否继续调用 apply。
+- preflight 只有一个直接消费者也不改变其边界：它仍然是"前置决策生产者"，不是 apply 内部逻辑。
+- preflight 由 `planner_fileops.plan_fileops()` 在 Planner 层调用（原 `orchestrate_apply()` 已不存在）。
+  orchestrator 据 preflight manifest 决定是否继续执行原语。
 
 ## 三、总原则
 
@@ -94,17 +98,19 @@ manifest 的重点是“可被 orchestrator 与前端稳定消费”，而不是
 
 ## 七、与 orchestrator 的关系
 
-`orchestrate_apply()` 或等价编排命令应遵循如下顺序：
+`dispatch()` 路由到文件操作管线时，Planner 层内调 preflight，orchestrator 按如下流程执行：
 
 ```text
-读取 workspace mapping / database / user_config
-  -> preflight 生成 manifest
-  -> orchestrator 判断 manifest.ok
-  -> ok=true 时调用 apply
-  -> ok=false 时返回 preflight 结果，不调用 apply
+dispatch(request)
+  -> Select Resolver / Resolve → CleanContext
+  -> Planner: plan_fileops() → FileOpsPlan (含 preflight manifest)
+  -> Preflight gate check: manifest.ok?
+  -> ok=true → execute primitive (apply / restore / backup)
+  -> ok=false → return preflight result, skip primitive
 ```
 
-注意：REST API 不直接暴露 preflight 接口；工作区 `_ws` 函数为薄层，仅负责把 workspace 上下文解析为消费品并委托给 orchestrator。preflight 的执行与缓存由 orchestrator 管理，API 路由（例如 `/api/workspace/{id}/pipeline/apply`）只触发 `orchestrate_apply()` 编排，而不直接调用或绕过 preflight。 
+注意：REST API 不直接暴露 preflight 接口；preflight 的执行与缓存由 orchestrator 管理，API 路由
+只触发 `dispatch()` 入口，不直接调用或绕过 preflight。
 
 调用关系由 `DESIGN_ORCHESTRATOR.md` 记录，本文档只冻结 preflight 子模块本身。
 

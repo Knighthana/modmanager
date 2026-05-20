@@ -18,6 +18,23 @@
 
 - **D9**: `repo_spec/` schema 补全与字段统一施工——新增 9 个 schema + 修改 10 个既有 schema（原禁区"不修改 schema 文件 / repo_spec JSON"已由 user 直接指令覆盖，开发阶段无生产数据）
 
+## 2026-05-21 架构重构 — Orchestrator 四层模型
+
+### 已确认决策
+
+- **D10**: Orchestrator 采用 Entry → Resolver → Planner → Primitive 四层模型
+- **D11**: Entry 层只拼装 `TaskRequest` object，不做语义解析；`resolver_args` 为 opaque dict，语义由 Resolver 自决
+- **D12**: Resolver 只收集「资源」（database / mapping / user_config 等磁盘文件内容），不读取「状态」（backupinfo）——backupinfo 由 Planner 或其 helper 负责
+- **D13**: Planner 根据 `intent` 自主决策是否做 preflight：apply / restore 必须做，run 豁免（backup 紧耦合 apply），backup 不需要；preflight 用 enum 分支
+- **D14**: 备份/应用/恢复三大原语各自独立为 `*_ops.py`（`backup_ops.py`、`apply_ops.py`、`restore_ops.py`），`run` 为组合原语
+- **D15**: 所有原语严格 file-to-file，删除全部目录处理代码（`rmtree` / `copytree` 等）
+- **D16**: Orchestrator 是唯一入口，Web API 和 CLI 全部通过它调度，内部细节零对外暴露
+- **D17**: 不采用状态机——Orchestrator 核心为 dispatch + phase 序列
+- **D18**: `compute` 管线单独拆到 `orchestrator/compute_pipeline.py`，只搬不改逻辑
+- **D19**: `preflight` 为 `orchestrator/preflight.py` 单文件
+- **D20**: `.kmmbakignore` 语义保留为 backup 专属，不改名，不扩展到 apply/restore
+- **D21**: 实施顺序为「先建新文件，再改调用方，最后删旧代码」——避免中间态不可构建
+
 ### 禁区
 
 - 不跑测试

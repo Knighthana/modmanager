@@ -1,11 +1,14 @@
 # DESIGN_APPLY_OPS — Apply 执行设计
 
 > Status: active
+> Last update: 2026-05-21 — apply_ops.py as independent module
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义 apply 如何消费 final_mapping 执行文件替换，以及 apply 自身的输入输出与边界
 
 ## 一、职责边界
+
+实现文件：`src/modmanager/apply_ops.py`（独立原语模块）。
 
 本文档只描述 apply 原语本身。
 
@@ -76,6 +79,10 @@ apply 执行至少需要：
 - 若输入不满足 schema 或契约，apply 不应赋予额外目录语义。
 - 非法输入的机器可校验约束以 `repo_spec/mapping_output.schema.json` 为准。
 - 非法输入的测试行为以 `repo_test/apply_expectations.md` 与后端测试为准。
+
+### 4.4 文件路径守卫
+
+apply 入口对每个目标路径执行 `_assert_is_file()`，拒绝目录输入。这是运行时守卫，与 schema 层守卫互补。
 
 ## 五、最小执行流程
 
