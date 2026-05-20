@@ -2,10 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ComputeMappingOutput",
   "description": "Schema for the dict returned by modmanager.engine.compute_mapping().",
+  "version": "knighthana@0.1.0",
   "type": "object",
   "required": ["warnings", "errors", "trees", "final_mapping"],
   "additionalProperties": false,
   "properties": {
+    "version": {
+      "const": "knighthana@0.1.0"
+    },
     "warnings": {
       "description": "Non-fatal diagnostic messages. Each string begins with a W_ code.",
       "type": "array",

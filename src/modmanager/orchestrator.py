@@ -831,6 +831,8 @@ def compute_ws(
 
     # Compute and write data fingerprints for cache invalidation
     fingerprints = {
+        "schema_namespace": "KMM_WorkspaceFingerprints",
+        "schema_version": "knighthana@0.1.0",
         "kmmrule": _sha256_dict(aggregated_rule_set),
         "database": _sha256_dict(database),
         "computed_at": _utcnow(),

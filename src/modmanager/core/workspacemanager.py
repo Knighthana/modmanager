@@ -67,6 +67,8 @@ class WorkspaceManager:
 
         now = _utcnow()
         meta = {
+            "schema_namespace": "KMM_WorkspaceMeta",
+            "schema_version": "knighthana@0.1.0",
             "workspace_id": workspace_id,
             "name": name,
             "database_name": database_name,

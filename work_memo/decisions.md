@@ -16,8 +16,8 @@
 - **D7**: 警告码 `W_FOREST_BRANCHING` 不重命名（报错是给人看的）
 - **D8**: `description/` 目录下的示例文件由用户自行修改，仅提供修改建议；与 D5 冲突时 D8 优先（即 `description/database.json.example` 由 arch 输出建议，smith 不直接编辑）
 
+- **D9**: `repo_spec/` schema 补全与字段统一施工——新增 9 个 schema + 修改 10 个既有 schema（原禁区"不修改 schema 文件 / repo_spec JSON"已由 user 直接指令覆盖，开发阶段无生产数据）
+
 ### 禁区
 
 - 不跑测试
-- 不修改 schema 文件
-- 不修改 `repo_spec/` 下的 JSON 文件

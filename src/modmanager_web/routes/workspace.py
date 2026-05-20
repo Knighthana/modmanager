@@ -104,6 +104,8 @@ async def save_decisions(workspace_id: str, req: SaveDecisionsRequest):
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         decisions = {
+            "schema_namespace": "KMM_WorkspaceDecisions",
+            "schema_version": "knighthana@0.1.0",
             "managed_entries": req.managed_entries or {},
             "branch_decisions": req.branch_decisions or {},
         }

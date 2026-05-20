@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AggregatedRuleSet",
   "description": "Schema for aggregated_rule_set.json — the post-aggregation rule set consumed by the M1 engine.",
+  "version": "knighthana@0.1.0",
   "type": "object",
   "required": [
     "schema_namespace",
@@ -10,6 +11,9 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "version": {
+      "const": "knighthana@0.1.0"
+    },
     "schema_namespace": {
       "type": "string"
     },

@@ -3,8 +3,9 @@
     "$id": "https://knighthana.github.io/modmanager/schemas/user_config.schema.json",
     "title": "UserConfig",
     "description": "用户配置文件 schema。控制工具运行时行为（备份前缀、输出路径、路径别名）。",
+    "version": "knighthana@0.1.0",
     "type": "object",
-    "required": [],
+    "required": ["schema_namespace", "schema_version"],
     "additionalProperties": true,
     "properties": {
         "schema_namespace": {
@@ -65,6 +66,11 @@
                     }
                 }
             }
+        },
+        "workspace_dir": {
+            "description": "工作区根目录。null 或未设置时使用平台默认路径。",
+            "type": ["string", "null"],
+            "default": null
         },
         "databases": {
             "description": "database 名称→路径映射。对象天然防重，每个 entry 是对象为未来扩展留空间。key 为 database 名称，value 包含 path 属性。",

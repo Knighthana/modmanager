@@ -125,6 +125,8 @@ def discover_user_config(home_dir: str | None = None) -> dict:
         str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json")
     )
     default_config: dict[str, Any] = {
+        "schema_namespace": "KMM_UserConfig",
+        "schema_version": "knighthana@0.1.0",
         "databases": {
             "default": {"path": default_db_path},
         },

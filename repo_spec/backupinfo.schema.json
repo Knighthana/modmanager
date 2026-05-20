@@ -2,8 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BackupInfo",
   "description": "Schema for backupinfo.json — the frozen snapshot tree with backup status and hash metadata.",
+  "version": "knighthana@0.1.0",
   "type": "object",
   "required": [
+    "schema_namespace",
     "snapshot_time",
     "last_modified_time",
     "schema_version",
@@ -11,6 +13,14 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "version": {
+      "const": "knighthana@0.1.0"
+    },
+    "schema_namespace": {
+      "type": "string",
+      "const": "KMM_BackupInfo",
+      "description": "Schema namespace identifier."
+    },
     "snapshot_time": {
       "type": "string",
       "format": "date-time",

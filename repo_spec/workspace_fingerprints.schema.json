@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkspaceFingerprints",
+  "description": "Schema for workspace fingerprints.json — hash fingerprints for cache validation. DESIGN_WORKSPACE_MODEL.md §3.4.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["schema_namespace", "schema_version", "kmmrule", "database", "computed_at"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "schema_namespace": {
+      "type": "string",
+      "const": "KMM_WorkspaceFingerprints",
+      "description": "Schema namespace identifier."
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version string."
+    },
+    "kmmrule": {
+      "type": "string",
+      "description": "sha256 hash of the aggregated rule set content (prefix 'sha256:')."
+    },
+    "database": {
+      "type": "string",
+      "description": "sha256 hash of the bound database file content (prefix 'sha256:')."
+    },
+    "computed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of computation."
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PreflightManifest",
+  "description": "Schema for the preflight manifest produced by the preflight submodule. Transient communication — no embedded schema_namespace/schema_version. DESIGN_PREFLIGHT_APPLY.md §6.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["ok", "backup_dirs", "errors", "warnings", "timestamp"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "ok": { "type": "boolean", "description": "Whether all gates passed. When false, apply MUST NOT proceed." },
+    "backup_dirs": {
+      "type": "array",
+      "description": "Per-backup-dir gate check results.",
+      "items": {
+        "type": "object",
+        "required": ["path", "gate_pass", "gate_errors", "applicable_entries"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "description": "Absolute path of the backup_dir." },
+          "gate_pass": { "type": "boolean", "description": "Whether this backup_dir passed all gate checks." },
+          "gate_errors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Gate check error messages for this backup_dir."
+          },
+          "applicable_entries": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "File paths within this backup_dir scope that are applicable."
+          }
+        }
+      }
+    },
+    "errors": {
+      "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "description": "Non-fatal warning messages. Each string begins with a W_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the manifest was generated."
+    }
+  }
+}

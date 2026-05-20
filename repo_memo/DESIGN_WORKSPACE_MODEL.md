@@ -202,6 +202,8 @@ async def compute(workspace_id: str):
 
 ```json
 {
+  "schema_namespace": "KMM_WorkspaceMeta",
+  "schema_version": "knighthana@0.1.0",
   "workspace_id": "abc123def456",
   "name": "我的第一次实验",
   "database_name": "default",
@@ -213,6 +215,8 @@ async def compute(workspace_id: str):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
+| `schema_namespace` | `string` | Schema 命名空间标识，固定为 `"KMM_WorkspaceMeta"` |
+| `schema_version` | `string` | Schema 版本号，如 `"knighthana@0.1.0"` |
 | `workspace_id` | `string` | 后端生成的唯一标识 |
 | `name` | `string` | 用户指定的工作区名称 |
 | `database_name` | `string` | 绑定的 database 名称（创建时选定，不可变） |
@@ -228,6 +232,8 @@ async def compute(workspace_id: str):
 
 ```json
 {
+  "schema_namespace": "KMM_WorkspaceDecisions",
+  "schema_version": "knighthana@0.1.0",
   "managed_entries": {
     "game": { "appid": ["/path/to/game"] },
     "mod": { "mixed_id": ["/path/to/mod"] }
@@ -248,6 +254,8 @@ async def compute(workspace_id: str):
 
 ```json
 {
+  "schema_namespace": "KMM_WorkspaceFingerprints",
+  "schema_version": "knighthana@0.1.0",
   "kmmrule": "sha256:abc...xyz",
   "database": "sha256:def...uvw",
   "computed_at": "2026-05-16T10:35:00Z"
@@ -256,6 +264,8 @@ async def compute(workspace_id: str):
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
+| `schema_namespace` | `string` | Schema 命名空间标识，固定为 `"KMM_WorkspaceFingerprints"` |
+| `schema_version` | `string` | Schema 版本号，如 `"knighthana@0.1.0"` |
 | `kmmrule` | `string` | 参与聚合的规则文件内容的 sha256 |
 | `database` | `string` | 绑定的 database 文件内容的 sha256 |
 | `computed_at` | `string` | 计算时间 |

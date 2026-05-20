@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApiResponse",
+  "description": "Universal REST/SSE response envelope. All non-SSE JSON responses use this wrapper. Transient communication — no schema_namespace/schema_version embedded.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["ok", "errors", "warnings"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "ok": { "type": "boolean", "description": "Whether the operation succeeded." },
+    "data": {
+      "description": "Response payload. May be null when ok is false.",
+      "oneOf": [
+        { "type": "object", "additionalProperties": true },
+        { "type": "null" }
+      ]
+    },
+    "errors": {
+      "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "description": "Non-fatal warning messages. Each string begins with a W_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkspaceMeta",
+  "description": "Schema for workspace meta.json — workspace metadata persisted in the workspace directory. DESIGN_WORKSPACE_MODEL.md §3.4.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["schema_namespace", "schema_version", "workspace_id", "name", "database_name", "created_at", "updated_at", "app_version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "schema_namespace": {
+      "type": "string",
+      "const": "KMM_WorkspaceMeta",
+      "description": "Schema namespace identifier."
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version string."
+    },
+    "workspace_id": {
+      "type": "string",
+      "description": "Backend-generated unique workspace identifier."
+    },
+    "name": {
+      "type": "string",
+      "description": "User-specified workspace name."
+    },
+    "database_name": {
+      "type": "string",
+      "description": "Bound database name (selected at creation, immutable)."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 creation timestamp."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last modification timestamp."
+    },
+    "app_version": {
+      "type": "string",
+      "description": "Application version at workspace creation."
+    }
+  }
+}

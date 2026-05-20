@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApplyResult",
+  "description": "Schema for the dict returned by apply_final_mapping(). Transient communication — no embedded schema_namespace/schema_version. DESIGN_APPLY_OPS.md §7.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["ok", "applied", "skipped", "errors", "warnings", "diagnostics", "dry_run"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "ok": { "type": "boolean", "description": "Whether the apply operation succeeded overall." },
+    "applied": {
+      "description": "Entries that were successfully applied.",
+      "type": "array",
+      "items": { "$ref": "dry_run_output.schema.json#/$defs/ApplyDryRunEntry" }
+    },
+    "skipped": {
+      "description": "Entries that were skipped (e.g. hash match, no-op).",
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "errors": {
+      "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "description": "Non-fatal warning messages. Each string begins with a W_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "diagnostics": {
+      "description": "Diagnostic information about the apply execution.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "Whether this was a dry-run (no files modified)."
+    }
+  }
+}

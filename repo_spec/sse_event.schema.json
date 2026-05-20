@@ -2,17 +2,22 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "SseEvent",
     "description": "Schema for SSE (Server-Sent Events) emitted by modmanager_web.sse.stream_with_progress().",
-    "oneOf": [
-        {
-            "$ref": "#/$defs/ProgressEvent"
+    "version": "knighthana@0.1.0",
+    "type": "object",
+    "required": ["payload"],
+    "additionalProperties": false,
+    "properties": {
+        "version": {
+            "const": "knighthana@0.1.0"
         },
-        {
-            "$ref": "#/$defs/ResultEvent"
-        },
-        {
-            "$ref": "#/$defs/ErrorEvent"
+        "payload": {
+            "oneOf": [
+                { "$ref": "#/$defs/ProgressEvent" },
+                { "$ref": "#/$defs/ResultEvent" },
+                { "$ref": "#/$defs/ErrorEvent" }
+            ]
         }
-    ],
+    },
     "$defs": {
         "ProgressEvent": {
             "description": "Progress update event emitted during long-running operations.",

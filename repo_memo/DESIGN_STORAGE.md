@@ -97,6 +97,8 @@
 
 | 字段 | 类型 | 必需 | 说明 |
 |------|------|:--:|------|
+| `schema_namespace` | `string` | **是** | Schema 命名空间标识，固定为 `"KMM_UserConfig"` |
+| `schema_version` | `string` | **是** | Schema 版本号，如 `"knighthana@0.1.0"` |
 | `baksuffix` | `string` | 否 | 备份目录名后缀，默认 `"kmmbackup"` |
 | `bakignore` | `string[]` | 否 | 备份扫描忽略模式列表 |
 | `aggregated_ruleset_output_path` | `string \| null` | 否 | `aggregated_rule_set.json` 输出路径。`null` 时使用默认位置 |

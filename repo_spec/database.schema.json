@@ -3,10 +3,23 @@
     "$id": "https://knighthana.github.io/modmanager/schemas/database.schema.json",
     "title": "Database",
     "description": "Steam 库扫描的纯客观结果。不含用户决策(managed)或扫描产物(warnings/errors)。重复条目全部保留，由 orchestrator 通过 compute 参数中的 managed_entries 按需过滤。",
+    "version": "knighthana@0.1.0",
     "type": "object",
-    "required": ["steamlib", "game", "mod"],
+    "required": ["schema_namespace", "schema_version", "steamlib", "game", "mod"],
     "additionalProperties": false,
     "properties": {
+        "version": {
+            "const": "knighthana@0.1.0"
+        },
+        "schema_namespace": {
+            "type": "string",
+            "const": "KMM_Database",
+            "description": "Schema namespace identifier."
+        },
+        "schema_version": {
+            "type": "string",
+            "description": "Schema version string."
+        },
         "OS": {
             "$ref": "#/$defs/OS"
         },

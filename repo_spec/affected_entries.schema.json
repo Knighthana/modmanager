@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AffectedEntriesResult",
+  "description": "Schema for the response of POST /api/rules/affected-entries. Transient communication — no embedded schema_namespace/schema_version. DESIGN_COMPUTE_PREP_PAGE.md §2.3.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["libraries", "games", "mods"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "libraries": {
+      "type": "array",
+      "description": "Steam libraries that contain referenced entries.",
+      "items": {
+        "type": "object",
+        "required": ["index", "path", "game_count", "mod_count"],
+        "additionalProperties": false,
+        "properties": {
+          "index": { "type": "integer", "description": "Zero-based index into the steamlib array." },
+          "path": { "type": "string", "description": "Steam library root path (directory, ends with '/')." },
+          "game_count": { "type": "integer", "description": "Number of referenced games in this library." },
+          "mod_count": { "type": "integer", "description": "Number of referenced mods in this library." }
+        }
+      }
+    },
+    "games": {
+      "type": "array",
+      "description": "Game entries referenced by the aggregated rule set.",
+      "items": {
+        "type": "object",
+        "required": ["appid", "name", "basepath", "libraryIndex", "has_duplicate"],
+        "additionalProperties": false,
+        "properties": {
+          "appid": { "type": "string", "description": "Steam App ID." },
+          "name": { "type": "string", "description": "Game display name from the database." },
+          "basepath": { "type": "string", "description": "Game installation root path." },
+          "libraryIndex": { "type": "integer", "description": "Index of the steamlib this game belongs to (-1 if not found)." },
+          "has_duplicate": { "type": "boolean", "description": "Whether this appid appears in multiple libraries." }
+        }
+      }
+    },
+    "mods": {
+      "type": "array",
+      "description": "Mod entries referenced by the aggregated rule set.",
+      "items": {
+        "type": "object",
+        "required": ["mixed_id", "nickname", "path", "libraryIndex", "gameIndex", "has_duplicate"],
+        "additionalProperties": false,
+        "properties": {
+          "mixed_id": { "type": "string", "pattern": "^[^:]+:.+$", "description": "Colon-separated appid:modid composite identifier." },
+          "nickname": { "type": "string", "description": "Human-readable short name for this mod." },
+          "path": { "type": "string", "description": "Mod file system root path (directory, ends with '/')." },
+          "libraryIndex": { "type": "integer", "description": "Index of the steamlib this mod belongs to (-1 if not found)." },
+          "gameIndex": { "type": "integer", "description": "Index into the games array for the parent game (-1 if not found)." },
+          "has_duplicate": { "type": "boolean", "description": "Whether this mixed_id appears in multiple locations." }
+        }
+      }
+    }
+  }
+}

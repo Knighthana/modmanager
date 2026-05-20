@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkspaceDecisions",
+  "description": "Schema for workspace decisions.json — managed_entries and branch_decisions persisted in the workspace directory. DESIGN_WORKSPACE_MODEL.md §3.4.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["schema_namespace", "schema_version", "managed_entries", "branch_decisions"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "schema_namespace": {
+      "type": "string",
+      "const": "KMM_WorkspaceDecisions",
+      "description": "Schema namespace identifier."
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version string."
+    },
+    "managed_entries": {
+      "type": "object",
+      "description": "User path filtering for duplicate entries. Format: { game: { appid: [paths] }, mod: { mixed_id: [paths] } }.",
+      "additionalProperties": false,
+      "properties": {
+        "game": {
+          "type": "object",
+          "description": "appid → retained file paths mapping.",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "mod": {
+          "type": "object",
+          "description": "mixed_id → retained file paths mapping.",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "branch_decisions": {
+      "type": "object",
+      "description": "Conflict resolution mapping: root_path → chosen_source_path.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}

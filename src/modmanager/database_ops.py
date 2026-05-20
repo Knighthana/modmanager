@@ -189,6 +189,8 @@ def _scan_from_libraries(
         m.pop("_lib_index", None)
 
     return {
+        "schema_namespace": "KMM_Database",
+        "schema_version": "knighthana@0.1.0",
         "OS": {
             "workingpathstyle": scanner.working_pathstyle,
             "steamlibpathstyle": scanner.steamlib_pathstyle,

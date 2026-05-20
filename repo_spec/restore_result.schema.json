@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RestoreResult",
+  "description": "Schema for the dict returned by restore_from_backup() / restore(). Transient communication — no embedded schema_namespace/schema_version. DESIGN_RESTORE_OPS.md.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["ok", "restored", "skipped", "orphans", "errors", "dry_run", "force"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "ok": { "type": "boolean", "description": "Whether the restore operation succeeded overall." },
+    "restored": {
+      "description": "Entries that were successfully restored.",
+      "type": "array",
+      "items": { "$ref": "dry_run_output.schema.json#/$defs/RestoreDryRunEntry" }
+    },
+    "skipped": {
+      "description": "Entries that were skipped (e.g. hash match when force=false).",
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "orphans": {
+      "description": "Orphaned files found in the backup directory that are not in the current mapping scope.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "Whether this was a dry-run."
+    },
+    "force": {
+      "type": "boolean",
+      "description": "Whether force mode was used (skip hash verification)."
+    }
+  }
+}

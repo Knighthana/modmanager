@@ -2,9 +2,15 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "BranchDecisions",
     "description": "Schema for branch_decisions — user decisions made on the ConflictsPage to resolve branch conflicts.",
+    "version": "knighthana@0.1.0",
     "$comment": "用户在 ConflictsPage 做出的分支决策映射",
     "type": "object",
     "additionalProperties": false,
+    "properties": {
+        "version": {
+            "const": "knighthana@0.1.0"
+        }
+    },
     "propertyNames": {
         "description": "Target root_path (the destination file path that has multiple candidates).",
         "type": "string"

@@ -83,6 +83,7 @@
 
 | 字段 | 类型 | 含义 |
 |------|------|------|
+| `schema_namespace` | `string` | Schema 命名空间标识，固定为 `"KMM_BackupInfo"` |
 | `snapshot_time` | `string` | 快照创建时间，ISO8601 date-time |
 | `last_modified_time` | `string` | 最后一次被本项目工具写入的时间，ISO8601 date-time |
 | `schema_version` | `string` | 当前 backupinfo schema 版本 |
@@ -91,7 +92,7 @@
 补充约束：
 
 - 根对象 `additionalProperties=false`
-- 四个字段缺一不可
+- 五个字段缺一不可
 
 ### 4.2 根字段语义
 
@@ -161,7 +162,7 @@
 测试组可以直接基于本文档编写正例断言：
 
 - `backup_dir` 根目录应包含 `backupinfo.json`
-- `backupinfo.json` 根字段必须为 `snapshot_time`、`last_modified_time`、`schema_version`、`tree`
+- `backupinfo.json` 根字段必须为 `schema_namespace`、`snapshot_time`、`last_modified_time`、`schema_version`、`tree`
 - `tree` 根节点必须是 `dir`
 - 目录节点只能是 `dir`，文件节点只能是 `file`
 - `FileNode` 必须带 `isbackuped`、`hashtype`、`hashvalue`

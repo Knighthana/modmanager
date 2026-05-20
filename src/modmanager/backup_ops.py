@@ -251,7 +251,7 @@ def init_backup_dir(backup_dir: str) -> None:
     tree scan and flips it to ``"ready"``.
     """
     assert_directory_path(backup_dir, label="backup_dir")
-    _write_backup_info(backup_dir, {"tree": {}, "snapshot_time": "", "last_modified_time": "", "schema_version": "1"})
+    _write_backup_info(backup_dir, {"schema_namespace": "KMM_BackupInfo", "tree": {}, "snapshot_time": "", "last_modified_time": "", "schema_version": "knighthana@0.1.0"})
 
 
 def finalize_backup_dir(backup_dir: str) -> dict[str, Any]:
@@ -261,7 +261,7 @@ def finalize_backup_dir(backup_dir: str) -> dict[str, Any]:
     """
     assert_directory_path(backup_dir, label="backup_dir")
     tree = build_dir_tree_with_hashes(backup_dir)
-    info: dict[str, Any] = {"tree": tree, "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "schema_version": "1"}
+    info: dict[str, Any] = {"schema_namespace": "KMM_BackupInfo", "tree": tree, "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "schema_version": "knighthana@0.1.0"}
     _write_backup_info(backup_dir, info)
     return info
 

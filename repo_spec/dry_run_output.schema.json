@@ -2,9 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DryRunOutput",
   "description": "Schema for dry_run output entries used by backup/apply/restore APIs.",
+  "version": "knighthana@0.1.0",
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "version": {
+      "const": "knighthana@0.1.0"
+    },
     "backup_entry": { "$ref": "#/$defs/BackupDryRunEntry" },
     "apply_entry": { "$ref": "#/$defs/ApplyDryRunEntry" },
     "restore_entry": { "$ref": "#/$defs/RestoreDryRunEntry" }

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BackupResult",
+  "description": "Schema for the dict returned by run_differential_backup() / backup(). Transient communication — no embedded schema_namespace/schema_version. DESIGN_BACKUP_OPS.md.",
+  "version": "knighthana@0.1.0",
+  "type": "object",
+  "required": ["ok", "backed_up", "skipped", "errors", "dry_run"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "knighthana@0.1.0" },
+    "ok": { "type": "boolean", "description": "Whether the backup operation succeeded overall." },
+    "backed_up": {
+      "description": "Entries that were successfully backed up.",
+      "type": "array",
+      "items": { "$ref": "dry_run_output.schema.json#/$defs/BackupDryRunEntry" }
+    },
+    "skipped": {
+      "description": "Entries that were skipped (e.g. bakignore match, already backed up).",
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "errors": {
+      "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "dry_run": {
+      "type": "boolean",
+      "description": "Whether this was a dry-run (no files copied)."
+    }
+  }
+}
