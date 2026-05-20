@@ -8,6 +8,7 @@ uniform CleanContext consumed by Planner.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from ..bootstrap import discover_user_config
@@ -43,8 +44,8 @@ class WorkspaceResolver:
     def resolve(self, request: Any) -> CleanContext:
         workspace_id: str = request.resolver_args["workspace_id"]
         user_config = discover_user_config()
-        ws_dir = user_config.get("workspace_dir")
-        wm = WorkspaceManager(expand_path(ws_dir) if ws_dir else ws_dir)
+        ws_dir = user_config.get("workspace_dir") or _default_ws_dir()
+        wm = WorkspaceManager(expand_path(ws_dir))
 
         if not wm.exists(workspace_id):
             raise ValueError(f"workspace {workspace_id} does not exist")
@@ -94,3 +95,8 @@ def _resolve_database(database_name: str, user_config: dict[str, Any]) -> dict[s
     if not db_entry:
         raise ValueError(f"database '{database_name}' not found in user_config.databases")
     return load_json_file(expand_path(db_entry["path"]))
+
+
+def _default_ws_dir() -> str:
+    """Platform-default workspace root directory."""
+    return str(Path.home() / ".cache" / "kmm" / "workspace")
