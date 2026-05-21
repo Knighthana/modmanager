@@ -53,8 +53,8 @@ def prep_backup_dir(
 ### `orchestrator/planner_fileops.py`
 
 **FileOpsPlan** 变化：
-- 删除 `ignore_rules: IgnoreRuleSet` 字段
-- 新增 `needs_tree_build: bool` 字段——Planner 通过检查 backup_dir 是否存在、tree 是否完整来判定
+- `ignore_rules` 字段保留——标记为 Planner/Prep 内部字段，**不作为 backup/restore/apply 的公开输入**。prep 消费它建树，Plan 结束后释放
+- 新增 `needs_tree_build: bool` 字段
 
 **plan_fileops** 变化：
 - 不再收集 ignore_rules（移到别处存储以便传给 prep）
@@ -121,7 +121,9 @@ _dispatch_fileops:
        apply(entries)                      ← 不接触 ignore
 ```
 
-ignore_rules 在 `_dispatch_fileops` 中收集，传给 prep（如果建树），然后丢弃。不进入 `FileOpsPlan`。不传给 backup / restore / apply。
+ignore_rules 在 `_dispatch_fileops` 中收集，作为本次 Plan 执行上下文的一部分持续保存到 Plan 结束。不丢弃——ignore 计算是费时操作，缓存结果以防后续有其他用途。
+
+ignore_rules 保存在 `FileOpsPlan` 中（标记为 Planner/Prep 内部字段，backup/restore/apply 不引用）。prep 消费它建树。Plan 结束后随对象生命周期自然释放。
 
 ## 文件清单
 
