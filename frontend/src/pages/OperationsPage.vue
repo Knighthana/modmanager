@@ -231,11 +231,11 @@
           <el-table-column label="类型" width="80" align="center">
             <template #default="{ row }">{{ row.is_dir ? '目录' : '文件' }}</template>
           </el-table-column>
-          <el-table-column label="备份位置" min-width="300">
+          <el-table-column :label="dryRunOperation === 'backup' ? '备份位置' : '目标路径'" min-width="300">
             <template #default="{ row }">{{ row.backup_path || row.target || row.path }}</template>
           </el-table-column>
-          <el-table-column v-if="dryRunOperation !== 'restore'" label="源路径" min-width="200">
-            <template #default="{ row }">{{ row.path || row.source }}</template>
+          <el-table-column v-if="dryRunOperation !== 'restore'" :label="dryRunOperation === 'backup' ? '源路径' : '源路径'" min-width="200">
+            <template #default="{ row }">{{ row.source || row.path }}</template>
           </el-table-column>
           <el-table-column label="大小" width="100" align="right">
             <template #default="{ row }">{{ formatSize(row.size as number) }}</template>
