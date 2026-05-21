@@ -215,7 +215,7 @@
       <!-- dry-run 文件列表 -->
       <el-card v-if="dryRunEntries.length > 0" shadow="never" style="margin-top: 16px;">
         <template #header>
-          <span>{{ dryRun ? '[dry-run] ' : '' }}{{ operationLabel(dryRunOperation) }} — 共 {{ dryRunEntries.length }} 个文件</span>
+          <span>{{ dryRunResult ? '[dry-run] ' : '' }}{{ operationLabel(dryRunOperation) }} — 共 {{ dryRunEntries.length }} 个文件</span>
           <el-button size="small" style="float: right;" @click="dryRunEntries = []">清除列表</el-button>
         </template>
         <el-table :data="dryRunEntries" size="small" max-height="400" border stripe>
@@ -392,6 +392,7 @@ const selectedErrorCode = ref('')
 /** dry-run 结果文件列表，操作完成后显示在页面下方 */
 const dryRunEntries = ref<Array<Record<string, unknown>>>([])
 const dryRunOperation = ref('') // 'backup' | 'apply' | 'restore'
+const dryRunResult = ref(false) // 本次响应对应的 dry_run 状态，反映「表中的数据是什么意思」
 /** 最近一次 apply 的结构化诊断 */
 const applyDiagnostics = ref<Record<string, unknown> | null>(null)
 const diagExpandedPanels = ref<string[]>([])
@@ -757,6 +758,7 @@ async function doBackup() {
   operating.value = 'backup'
   dryRunEntries.value = []
   dryRunOperation.value = ''
+  dryRunResult.value = false
   applyDiagnostics.value = null
   diagExpandedPanels.value = []
   diagFocusedPath.value = ''
@@ -775,6 +777,7 @@ async function doBackup() {
       const errs: string[] = result?.data?.backup_errors || result?.errors || []
       const warns: string[] = result?.warnings || []
       const isDry = result?.data?.dry_run
+      dryRunResult.value = !!isDry
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
@@ -803,6 +806,7 @@ async function doApply() {
   operating.value = 'apply'
   dryRunEntries.value = []
   dryRunOperation.value = ''
+  dryRunResult.value = false
   progress.value = { step: 'apply', finished: 0, total: -1, message: '准备中...' }
 
   await streamSse(`/workspace/${workspaceId.value}/pipeline/apply`, {
@@ -828,6 +832,7 @@ async function doApply() {
         ? diagnostics.no_matched_entry_dirs.length
         : 0
       const isDry = result?.data?.dry_run
+      dryRunResult.value = !!isDry
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
@@ -862,6 +867,7 @@ async function doRestore() {
   operating.value = 'restore'
   dryRunEntries.value = []
   dryRunOperation.value = ''
+  dryRunResult.value = false
   applyDiagnostics.value = null
   diagExpandedPanels.value = []
   diagFocusedPath.value = ''
@@ -881,6 +887,7 @@ async function doRestore() {
       const errs: string[] = result?.errors || result?.data?.restore_errors || []
       const warns: string[] = result?.warnings || []
       const isDry = result?.data?.dry_run
+      dryRunResult.value = !!isDry
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
