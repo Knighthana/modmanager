@@ -6,10 +6,8 @@
 ## 目标
 
 1. 从 `backup_ops.py` 中拆分出 `prep.py`（创建 backup_dir 目录结构 + 建初始 tree + 写 `backupinfo.json`）
-2. backup / restore / apply 彻底失去「知道 ignore」的必要性
-3. `FileOpsPlan` 不再携带 `ignore_rules` 字段
-4. backup 失去建树能力，只保留「更新树结点状态」的方法
-5. restore 只读树，不写树
+2. backup / restore / apply 彻底失去「知道 ignore」的必要性——通过函数签名隔离，不接收 Plan 对象
+3. `FileOpsPlan` 保留 `ignore_rules` 字段作为 Plan 资产，primitive 无法访问
 
 ## 新模块
 
@@ -57,7 +55,7 @@ def prep_backup_dir(
 - 新增 `needs_tree_build: bool` 字段
 
 **plan_fileops** 变化：
-- 不再收集 ignore_rules（移到别处存储以便传给 prep）
+- 收集 ignore_rules → 存入 `FileOpsPlan.ignore_rules`
 - 调用 `build_backup_dirs` 后，对每个 backup_dir 检查是否需要建树
 - 建树判断逻辑：`backup_dir` 目录不存在 **或** `backupinfo.json` 中的 tree 为空/不完整 → `needs_tree_build=True`
 
@@ -67,13 +65,10 @@ def prep_backup_dir(
 
 ```python
 if plan.needs_tree_build:
-    # 收集 ignore_rules（Planner 在 dispatch 层收集，不在 plan_fileops 内）
-    prep_backup_dir(backup_dir, ignore_rules)
+    prep_backup_dir(backup_dir, plan.ignore_rules)
 # 然后执行 backup
-_execute_backup_plan(plan, context, on_progress)
+_execute_backup_plan(entries, tree, plan.dry_run, on_progress)
 ```
-
-ignore_rules 的收集从 `plan_fileops` 移到 `_dispatch_fileops`——因为 prep 和 backup 的调度都在 dispatch 层完成，ignore 只传给 prep，不进入 Plan。
 
 ### `src/modmanager/backup_ops.py`
 
@@ -106,19 +101,20 @@ backup 对 tree 只有**更新状态**的方法：
 
 ## ignore_rules 的生命周期
 
+`plan_fileops()` 收集 ignore_rules → 存入 `FileOpsPlan.ignore_rules`。`_dispatch_fileops` 从 `plan.ignore_rules` 读取，传给 prep（如果建树）。primitive 函数不接收 Plan 对象，无法访问。
+
 ```
 _dispatch_fileops:
-  1. 收集 ignore_rules（调用 ignore_rules.collect_rules）
-  2. plan_fileops（不再收集 ignore，不再过滤——过滤移到 dispatch 层）
-  3. apply ignore 过滤到 entries + backup_dirs
-  4. if intent=backup:
+  1. plan_fileops() → Plan（含 ignore_rules + needs_tree_build）
+  2. 过滤 entries（应用 plan.ignore_rules）
+  3. if intent=backup:
        if needs_tree_build:
-           prep(backup_dir, ignore_rules)  ← ignore 在此消费
-       backup(entries, tree)               ← 不接触 ignore
-  5. if intent=restore:
-       restore(entries, tree)              ← 不接触 ignore
-  6. if intent=apply:
-       apply(entries)                      ← 不接触 ignore
+           prep(backup_dir, plan.ignore_rules)
+       backup(entries, tree, dry_run)        ← 不接触 Plan
+  4. if intent=restore:
+       restore(entries, tree, force)          ← 不接触 Plan
+  5. if intent=apply:
+       apply(entries, dry_run)                ← 不接触 Plan
 ```
 
 ignore_rules 作为 Plan 的资产，存储在 `FileOpsPlan.ignore_rules` 字段中。Planner 持有整个 Plan 对象，在 Plan 生命周期内随时可取。
@@ -130,8 +126,8 @@ ignore_rules 作为 Plan 的资产，存储在 `FileOpsPlan.ignore_rules` 字段
 | 操作 | 文件 |
 |------|------|
 | 新建 | `src/modmanager/prep.py` |
-| 修改 | `orchestrator/planner_fileops.py` — 删 `ignore_rules` 字段，加 `needs_tree_build` |
-| 修改 | `orchestrator/__init__.py` — dispatch 层收集 ignore，调度 prep+backup |
+| 修改 | `orchestrator/planner_fileops.py` — 加 `needs_tree_build` 字段，建树判断逻辑 |
+| 修改 | `orchestrator/__init__.py` — 重构 `_dispatch_fileops`，prep 调度，primitive 签名改为具体字段 |
 | 修改 | `src/modmanager/backup_ops.py` — 删建树函数，修改 `run_differential_backup` 接受预建 tree |
 | 修改 | `src/modmanager/restore_ops.py` — 加 `.kmmignore` 复制回源目录 |
 | 不修改 | `src/modmanager/apply_ops.py` |
