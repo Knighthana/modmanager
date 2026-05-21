@@ -12,3 +12,4 @@
 - [ ] (pending)TASK2605-0x6 [user] 规则概览 — README 文件内容查看；同上
 - [ ] (pending)TASK2605-0x7 [user] 规则概览 — author 字段的键含义与展示方式待讨论
 - [ ] TASK2605-0x9 [user] 检查bootstrap目前使用什么样的逻辑进行自动发现；提供“steam没有安装在默认目录”场景下手动指定`steam.exe`位置(更推荐，因为主vdf的路径可以通过`steam.exe`位置推算)或手动指定主vdf文件的途径；让bootstrap对macOS进行支持；针对Linux/Windows/macOS三套系统写出详细的“默认路径”方案；
+- [ ] TASK2605-0xA [user] 应当显式增加路径大小写的检查/模糊开关，而不是仅仅根据DataBase进行判断；
