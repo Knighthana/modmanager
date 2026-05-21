@@ -35,6 +35,7 @@ def restore_entries(
     skipped: list[dict[str, Any]] = []
     orphans: list[str] = []
     errors: list[str] = []
+    warnings: list[str] = []
 
     total = sum(len(v) for v in entries_by_backup_dir.values())
     finished = 0
@@ -65,7 +66,7 @@ def restore_entries(
             backup_file = os.path.join(backup_dir, rel_path)
 
             if not os.path.isfile(backup_file):
-                skipped.append({"path": target_path, "reason": "no backup copy found in backup_dir"})
+                warnings.append(f"W_RESTORE_NO_BACKUP_COPY: no backup copy found for {target_path}")
                 finished += 1
                 continue
 
@@ -99,12 +100,32 @@ def restore_entries(
             finished += 1
             _notify(on_progress, "restore", finished, total)
 
+        # ── Detect orphans: files in backup_dir not in restore scope ──
+        all_restore_targets = {
+            e["path"] for entries in entries_by_backup_dir.values() for e in entries
+        }
+        for backup_dir in entries_by_backup_dir:
+            if os.path.isdir(backup_dir):
+                try:
+                    for root, _dirs, files in os.walk(backup_dir):
+                        for f in files:
+                            if f == "backupinfo.json":
+                                continue
+                            full = os.path.join(root, f)
+                            if full not in all_restore_targets:
+                                orphans.append(full)
+                except OSError:
+                    pass
+        if orphans:
+            warnings.append(f"W_RESTORE_ORPHANS: {len(orphans)} orphan file(s) in backup_dir, not in restore scope")
+
     return {
         "ok": len(errors) == 0,
         "restored": restored,
         "skipped": skipped,
         "orphans": orphans,
         "errors": errors,
+        "warnings": warnings,
         "dry_run": False,
         "force": force,
     }

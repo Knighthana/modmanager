@@ -137,12 +137,13 @@ class TestRestoreEntries:
 
             result = restore_entries(entries, {str(backup_dir) + "/": backupinfo})
             assert result["ok"]
-            assert len(result["skipped"]) == 1
+            assert len(result["warnings"]) >= 1
+            assert any("W_RESTORE_NO_BACKUP_COPY" in w for w in result["warnings"])
 
     def test_return_contract_fields(self):
         """Result contains all required fields."""
         result = restore_entries({}, {})
-        for key in ("ok", "restored", "skipped", "orphans", "errors", "dry_run", "force"):
+        for key in ("ok", "restored", "skipped", "orphans", "errors", "warnings", "dry_run", "force"):
             assert key in result, f"missing field: {key}"
 
     def test_force_false_hash_match_skips(self):
