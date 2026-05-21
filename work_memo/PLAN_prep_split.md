@@ -53,8 +53,8 @@ def prep_backup_dir(
 ### `orchestrator/planner_fileops.py`
 
 **FileOpsPlan** 变化：
-- `ignore_rules` 字段保留——标记为 Planner/Prep 内部字段，**不作为 backup/restore/apply 的公开输入**。prep 消费它建树，Plan 结束后释放
-- 新增 `needs_tree_build: bool` 字段
+- 不含 `ignore_rules` 字段（由 `_dispatch_fileops` 局部变量持有）
+- 新增 `needs_tree_build: bool` 字段——Planner 通过检查 backup_dir 是否存在、tree 是否完整来判定
 
 **plan_fileops** 变化：
 - 不再收集 ignore_rules（移到别处存储以便传给 prep）
@@ -121,9 +121,7 @@ _dispatch_fileops:
        apply(entries)                      ← 不接触 ignore
 ```
 
-ignore_rules 在 `_dispatch_fileops` 中收集，作为本次 Plan 执行上下文的一部分持续保存到 Plan 结束。不丢弃——ignore 计算是费时操作，缓存结果以防后续有其他用途。
-
-ignore_rules 保存在 `FileOpsPlan` 中（标记为 Planner/Prep 内部字段，backup/restore/apply 不引用）。prep 消费它建树。Plan 结束后随对象生命周期自然释放。
+ignore_rules 在 `_dispatch_fileops` 中收集，作为该函数的局部变量持有。传给 prep 消费，不进入 `FileOpsPlan`。`_dispatch_fileops` 返回时自然释放。backup/restore/apply 在任何路径下都无法访问此变量——python 作用域强制隔离。
 
 ## 文件清单
 
