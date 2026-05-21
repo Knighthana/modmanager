@@ -18,10 +18,11 @@ from ._common import (
 )
 from .compute_pipeline import compute, compute_ws
 from .entry import Intent, TaskRequest
-from ..backup_ops import run_differential_backup
+from ..backup_ops import run_differential_backup, load_backup_info
 
 from ..apply_ops import apply_entries
 from ..restore_ops import restore_entries
+from ..prep import prep_backup_dir
 from .resolver import CleanContext, WorkspaceResolver, FilePathResolver, RawDictResolver
 from .planner_fileops import plan_fileops
 
@@ -172,14 +173,17 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
     for i, (backup_dir, dir_entries) in enumerate(plan.entries_by_backup_dir.items()):
         _notify(on_progress, "backup", i + 1, total_dirs, f"Backing up {backup_dir}")
         files_to_backup = plan.backup_dirs.get(backup_dir, [])
-        # Load existing tree to skip already-backed-up files
+        # Load existing tree or build initial tree
         tree: dict | None = None
-        try:
-            from modmanager.backup_ops import load_backup_info as _lbi
-            info = _lbi(backup_dir)
+        info = load_backup_info(backup_dir)
+        tree = info.get("tree") if info else None
+        if not tree or not tree.get("children"):
+            # Tree missing or empty — build initial tree via prep
+            _notify(on_progress, "prep", 0, 1, "Building initial tree...")
+            prep_backup_dir(backup_dir, plan.ignore_rules)
+            info = load_backup_info(backup_dir)
             tree = info.get("tree") if info else None
-        except Exception:
-            tree = None
+            _notify(on_progress, "prep", 1, 1, "Tree built")
         dir_result = run_differential_backup(
             backup_dir,
             files_to_backup,

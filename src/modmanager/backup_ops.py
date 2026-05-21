@@ -485,7 +485,6 @@ def run_differential_backup(
         return {"ok": True, "backed_up": would_backup, "skipped": would_skip, "errors": [], "dry_run": True}
 
     assert_directory_path(backup_dir, label="backup_dir")
-    init_backup_dir(backup_dir)
     backup_path = Path(backup_dir)
     backed_up: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
@@ -497,6 +496,7 @@ def run_differential_backup(
         src = Path(target)
 
         # ── Tree check: skip if already backed up ─────────────────
+        rel_for_tree = ""
         if tree is not None:
             rel_for_tree = normalize_posix(str(src)).removeprefix(cr).lstrip("/") if normalize_posix(str(src)).startswith(cr) else normalize_posix(str(src)).lstrip("/")
             if _tree_node_is_backuped(tree, rel_for_tree):
@@ -528,10 +528,20 @@ def run_differential_backup(
                 "mtime": st.st_mtime,
                 "is_dir": is_dir,
             })
+
+            # ── Update tree node after successful copy ─────────────
+            if tree is not None and rel_for_tree:
+                _update_tree_node(tree, rel_for_tree, "sha256", _sha256_file(dest))
+                _write_backup_info(backup_dir, {
+                    "schema_namespace": "KMM_BackupInfo",
+                    "tree": tree,
+                    "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "schema_version": "knighthana@0.1.0",
+                })
         except OSError as exc:
             errors.append(f"E_BACKUP_COPY_FAILED: {target}: {exc}")
 
-    finalize_backup_dir(backup_dir)
     return {"ok": not errors, "backed_up": backed_up, "skipped": skipped, "errors": errors}
 
 
@@ -780,6 +790,29 @@ def _tree_node_is_backuped(tree: dict[str, Any], rel_path: str) -> bool:
             return False
         node = found
     return node.get("isbackuped", False) is True
+
+
+def _update_tree_node(tree: dict[str, Any], rel_path: str, hashtype: str, hashvalue: str) -> None:
+    """Walk *tree* to the node at *rel_path* and update its backup fields.
+
+    Only updates if current values allow the transition:
+    - isbackuped: false → true
+    - hashtype: "invalid" → meaningful
+    - hashvalue: "0" → meaningful hex
+    """
+    parts = rel_path.split("/")
+    node = tree
+    for part in parts:
+        found = next((c for c in node.get("children", []) if c.get("name") == part), None)
+        if found is None:
+            return  # node not in tree — don't modify
+        node = found
+    if node.get("isbackuped") is False:
+        node["isbackuped"] = True
+    if node.get("hashtype") == "invalid":
+        node["hashtype"] = hashtype
+    if node.get("hashvalue", "0") == "0":
+        node["hashvalue"] = hashvalue
 
 
 __all__ = [
