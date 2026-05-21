@@ -94,7 +94,7 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
         )
 
     # ── 2. Resolve → CleanContext ──────────────────────────────────
-    _notify(on_progress, "prepare", 0, 3, "Resolving context...")
+    _notify(on_progress, "prepare", 0, 6, "Resolving context...")
     try:
         context: CleanContext = resolver.resolve(request)
     except Exception as exc:
@@ -108,11 +108,10 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
         )
 
     # ── 3. Plan ────────────────────────────────────────────────────
-    _notify(on_progress, "prepare", 1, 3, "Planning file operations...")
-    plan = plan_fileops(request, context)
+    plan = plan_fileops(request, context, on_progress=on_progress)
 
     # ── 4. Preflight gate ──────────────────────────────────────────
-    _notify(on_progress, "prepare", 2, 3, "Running preflight checks...")
+    _notify(on_progress, "prepare", 5, 6, "Running preflight checks...")
     if plan.preflight_ok is False:
         return PipelineResult(
             ok=False,
@@ -139,7 +138,7 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
             } if request.intent == Intent.APPLY else None,
         )
 
-    _notify(on_progress, "prepare", 3, 3, "Ready")
+    _notify(on_progress, "prepare", 6, 6, "Ready")
 
     # ── 5. Execute primitive ───────────────────────────────────────
     if request.intent == Intent.BACKUP:

@@ -36,17 +36,24 @@ class FileOpsPlan:
     warnings: list[str] = field(default_factory=list)
 
 
-def plan_fileops(request: TaskRequest, context: CleanContext) -> FileOpsPlan:
+def plan_fileops(
+    request: TaskRequest,
+    context: CleanContext,
+    *,
+    on_progress: Any = None,
+) -> FileOpsPlan:
     """Derive a FileOpsPlan from request intent and clean context.
 
     Steps:
     1. Derive backup_dirs from final_mapping + database + user_config
-    2. Collect ignore rules (backup intent only)
-    3. Determine preflight requirement by intent
-    4. Run preflight if required
-    5. Assemble and return the plan
+    2. Group entries by backup_dir
+    3. Collect ignore rules and filter
+    4. Determine preflight requirement by intent
+    5. Run preflight if required
+    6. Assemble and return the plan
     """
     # ── 1. Derive backup dirs ────────────────────────────────────────
+    _notify(on_progress, "prepare", 0, 4, "Deriving backup directories...")
     backup_dirs, dir_warnings = build_backup_dirs(
         context.final_mapping,
         context.database,
@@ -55,6 +62,7 @@ def plan_fileops(request: TaskRequest, context: CleanContext) -> FileOpsPlan:
     warnings: list[str] = list(dir_warnings)
 
     # Group final_mapping entries by backup_dir
+    _notify(on_progress, "prepare", 1, 4, "Grouping entries by backup directory...")
     entries_by_backup_dir: dict[str, list[dict[str, Any]]] = {}
     for entry in context.final_mapping:
         target_path = entry.get("path", "")
@@ -64,9 +72,11 @@ def plan_fileops(request: TaskRequest, context: CleanContext) -> FileOpsPlan:
                 break
 
     # ── 2. Ignore rules (all intents) ────────────────────────────────
+    _notify(on_progress, "prepare", 2, 4, "Collecting ignore rules...")
     ignore_rules = _collect_ignore_rules(context)
 
     # ── 3. Filter ignored entries ────────────────────────────────────
+    _notify(on_progress, "prepare", 3, 4, "Filtering ignored entries...")
     filtered_count = 0
     for backup_dir in list(backup_dirs.keys()):
         before = len(backup_dirs[backup_dir])
@@ -129,3 +139,8 @@ def _derive_source_roots(context: CleanContext) -> list[str]:
         if bp:
             roots.append(bp)
     return roots
+
+
+def _notify(on_progress: Any, step: str, finished: int, total: int, message: str = "") -> None:
+    if on_progress:
+        on_progress(step, finished, total, message)
