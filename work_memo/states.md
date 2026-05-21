@@ -9,14 +9,14 @@
 - [ ] **backup `run_differential_backup` 目录处理**：`backup_ops.py:472` — `if src.is_dir(): shutil.copytree(...)` 违反 D15 file-to-file 约束，需删除
 - [ ] **CLI restore 绕过 orchestrator**：`cli.py:338` — 调 `backup_ops.restore_from_backup` 直接，应为 `dispatch(Intent.RESTORE)`
 
-### P1 — `.kmmignore` 升级
-- [ ] 新建 `orchestrator/ignore_rules.py`（gitignore-parser 封装 + 三层规则收集）
-- [ ] 文件名 `.kmmbakignore` → `.kmmignore`（存量文件用户自行重命名）
-- [ ] `user_config.bakignore` → `user_config.ignore`（schema + 文档 + 代码）
-- [ ] Planner `_collect_bakignore` → `_collect_ignore_rules`，backup/apply/restore 全量过滤
-- [ ] 新建 `DESIGN_IGNORE_RULES.md`
-- [ ] 更新 `DESIGN_BACKUP_DIR.md` §5.4、`DESIGN_BACKUP_OPS.md` §七
-- [ ] 更新 `user_config.schema.json`
+### P1 — `.kmmignore` 升级 ✅
+- [x] 新建 `orchestrator/ignore_rules.py`（gitignore-parser 封装 + 三层规则收集）
+- [x] 文件名 `.kmmbakignore` → `.kmmignore`（存量文件用户自行重命名）
+- [x] `user_config.bakignore` → `user_config.ignore`（schema + 文档 + 代码）
+- [x] Planner `_collect_bakignore` → `_collect_ignore_rules`，backup/apply/restore 全量过滤
+- [x] 新建 `DESIGN_IGNORE_RULES.md`
+- [x] 更新 `DESIGN_BACKUP_DIR.md` §5.4、`DESIGN_BACKUP_OPS.md` §七
+- [x] 更新 `user_config.schema.json`
 
 ### P2 — 文档残修
 - [ ] `DESIGN_BACKUP_OPS.md` §八：字段列表是否有重复定义需精简为引用
