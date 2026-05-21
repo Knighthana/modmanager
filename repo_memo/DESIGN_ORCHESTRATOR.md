@@ -61,7 +61,6 @@ class ProgressCallback(Protocol):
 
 | 阶段 | step 值 | 说明 |
 |------|---------|------|
-| 环境解析 | `"prepare"` | Resolver → Planner，发送 `"Resolving context..."` |
 | 备份 | `"backup"` | `_execute_backup_plan` |
 | 应用 | `"apply"` | `_execute_apply_plan` |
 | 恢复 | `"restore"` | `_execute_restore_plan` |

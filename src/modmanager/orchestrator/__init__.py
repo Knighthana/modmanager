@@ -75,7 +75,6 @@ def _dispatch_compute(request: TaskRequest, on_progress) -> PipelineResult:
 
 def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
     """Full Resolver → Planner → Primitive pipeline for file operations."""
-    _notify(on_progress, "prepare", 0, 1, "Resolving context...")
     # ── 1. Select resolver ─────────────────────────────────────────
     resolver_type = request.resolver_type
     if resolver_type == "workspace":
