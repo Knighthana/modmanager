@@ -75,6 +75,7 @@ def _dispatch_compute(request: TaskRequest, on_progress) -> PipelineResult:
 
 def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
     """Full Resolver → Planner → Primitive pipeline for file operations."""
+    _notify(on_progress, "prepare", 0, 1, "Resolving context...")
     # ── 1. Select resolver ─────────────────────────────────────────
     resolver_type = request.resolver_type
     if resolver_type == "workspace":
@@ -162,7 +163,11 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
     skipped: list[dict] = []
     errors: list[str] = []
 
-    for backup_dir, dir_entries in plan.entries_by_backup_dir.items():
+    total_dirs = len(plan.entries_by_backup_dir)
+    _notify(on_progress, "backup", 0, max(total_dirs, 1), "Starting backup...")
+
+    for i, (backup_dir, dir_entries) in enumerate(plan.entries_by_backup_dir.items()):
+        _notify(on_progress, "backup", i + 1, total_dirs, f"Backing up {backup_dir}")
         files_to_backup = plan.backup_dirs.get(backup_dir, [])
         dir_result = run_differential_backup(
             backup_dir,
@@ -173,6 +178,8 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
         backed_up.extend(dir_result.get("backed_up", []))
         skipped.extend(dir_result.get("skipped", []))
         errors.extend(dir_result.get("errors", []))
+
+    _notify(on_progress, "backup", total_dirs, total_dirs, "Backup complete")
 
     return PipelineResult(
         ok=len(errors) == 0,
@@ -193,6 +200,8 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
 
 def _execute_apply_plan(plan, context, on_progress) -> PipelineResult:
     """Execute apply using apply_ops.apply_entries."""
+    total = sum(len(v) for v in plan.entries_by_backup_dir.values())
+    _notify(on_progress, "apply", 0, max(total, 1), "Starting apply...")
     result = apply_entries(
         plan.entries_by_backup_dir,
         dry_run=plan.dry_run,
@@ -212,6 +221,9 @@ def _execute_apply_plan(plan, context, on_progress) -> PipelineResult:
 
 def _execute_restore_plan(plan, context, on_progress) -> PipelineResult:
     """Execute restore using restore_ops.restore_entries."""
+    total = sum(len(v) for v in plan.entries_by_backup_dir.values())
+    _notify(on_progress, "restore", 0, max(total, 1), "Starting restore...")
+
     # Pre-load backupinfos (Planner responsibility, but loaded here for now)
     backupinfos: dict[str, dict] = {}
     try:
@@ -262,6 +274,12 @@ def _execute_run_plan(plan, context, request, on_progress) -> PipelineResult:
         backup_result=backup_result.backup_result,
         apply_result=apply_result.apply_result,
     )
+
+
+def _notify(on_progress, step, finished, total, message=""):
+    """Send progress if callback is set."""
+    if on_progress:
+        on_progress(step, finished, total, message)
 
 
 __all__ = [
