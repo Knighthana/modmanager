@@ -18,6 +18,7 @@ def restore_entries(
     backupinfos: dict[str, dict[str, Any]],
     *,
     force: bool = False,
+    dry_run: bool = False,
     on_progress: Callable[..., None] | None = None,
 ) -> dict[str, Any]:
     """Execute file-to-file restore.
@@ -26,10 +27,11 @@ def restore_entries(
         entries_by_backup_dir: {backup_dir_path: [{path, request}, ...]}
         backupinfos: {backup_dir_path: backupinfo_dict} — pre-loaded by Planner.
         force: If True, skip hash verification.
+        dry_run: If True, simulate without modifying files.
         on_progress: Optional progress callback.
 
     Returns:
-        dict with keys: ok, restored, skipped, orphans, errors, dry_run, force
+        dict with keys: ok, restored, skipped, orphans, errors, warnings, dry_run, force
     """
     restored: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
@@ -82,11 +84,13 @@ def restore_entries(
 
             # ── Execute restore ─────────────────────────────────────────
             try:
-                os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                shutil.copy2(backup_file, target_path)
+                if not dry_run:
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                    shutil.copy2(backup_file, target_path)
 
-                st = os.stat(target_path)
+                st = os.stat(target_path if not dry_run else backup_file)
                 restored.append({
+                    "action": "restore",
                     "path": target_path,
                     "size": st.st_size,
                     "mtime": st.st_mtime,
@@ -126,7 +130,7 @@ def restore_entries(
         "orphans": orphans,
         "errors": errors,
         "warnings": warnings,
-        "dry_run": False,
+        "dry_run": dry_run,
         "force": force,
     }
 

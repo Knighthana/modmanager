@@ -243,6 +243,7 @@ def _execute_restore_plan(plan, context, on_progress) -> PipelineResult:
         plan.entries_by_backup_dir,
         backupinfos,
         force=plan.force,
+        dry_run=plan.dry_run,
         on_progress=on_progress,
     )
 

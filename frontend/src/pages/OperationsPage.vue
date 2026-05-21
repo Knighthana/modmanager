@@ -224,6 +224,7 @@
               <el-tag v-if="row.action === 'delete'" type="danger" size="small">删除</el-tag>
               <el-tag v-else-if="row.action === 'create'" type="success" size="small">创建</el-tag>
               <el-tag v-else-if="row.action === 'replace'" type="warning" size="small">替换</el-tag>
+              <el-tag v-else-if="row.action === 'restore'" type="primary" size="small">恢复</el-tag>
               <el-tag v-else-if="row.action === 'copy'" type="info" size="small">拷贝</el-tag>
               <el-tag v-else size="small">{{ row.action || '—' }}</el-tag>
             </template>
@@ -868,6 +869,7 @@ async function doRestore() {
 
   await streamSse(`/workspace/${workspaceId.value}/pipeline/restore`, {
     force: false,
+    dry_run: dryRun.value,
   }, {
     onProgress(p: SseProgress) {
       progress.value = p
@@ -878,6 +880,7 @@ async function doRestore() {
       const skipped = result?.data?.skipped || []
       const errs: string[] = result?.errors || result?.data?.restore_errors || []
       const warns: string[] = result?.warnings || []
+      const isDry = result?.data?.dry_run
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
@@ -885,10 +888,11 @@ async function doRestore() {
         dryRunEntries.value = restored
         dryRunOperation.value = 'restore'
       }
+      const prefix = isDry ? '[dry-run] ' : ''
       if (errs.length > 0) {
-        ElMessage.warning(`恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
+        ElMessage.warning(`${prefix}恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
       } else {
-        ElMessage.success(`恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过`)
+        ElMessage.success(`${prefix}恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过`)
       }
       operating.value = null
     },
