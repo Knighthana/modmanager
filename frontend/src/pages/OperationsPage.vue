@@ -215,7 +215,7 @@
       <!-- dry-run 文件列表 -->
       <el-card v-if="dryRunEntries.length > 0" shadow="never" style="margin-top: 16px;">
         <template #header>
-          <span>[dry-run] {{ operationLabel(dryRunOperation) }} — 共 {{ dryRunEntries.length }} 个文件</span>
+          <span>{{ dryRun ? '[dry-run] ' : '' }}{{ operationLabel(dryRunOperation) }} — 共 {{ dryRunEntries.length }} 个文件</span>
           <el-button size="small" style="float: right;" @click="dryRunEntries = []">清除列表</el-button>
         </template>
         <el-table :data="dryRunEntries" size="small" max-height="400" border stripe>
