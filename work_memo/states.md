@@ -4,10 +4,10 @@
 
 ## 悬空待办（按优先级）
 
-### P0 — 阻塞性缺陷
-- [ ] **backupinfo tree 扫描源目录**：`backup_ops.py:258,263` — `build_dir_tree_with_hashes` 当前扫描 `backup_dir`，需改为扫描源目录并做 `isbackuped` 对照
-- [ ] **backup `run_differential_backup` 目录处理**：`backup_ops.py:472` — `if src.is_dir(): shutil.copytree(...)` 违反 D15 file-to-file 约束，需删除
-- [ ] **CLI restore 绕过 orchestrator**：`cli.py:338` — 调 `backup_ops.restore_from_backup` 直接，应为 `dispatch(Intent.RESTORE)`
+### P0 — 阻塞性缺陷 ✅
+- [x] **backupinfo tree 扫描源目录**：`backup_ops.py` — `build_dir_tree_with_hashes` 改为扫描 source_root + backup_dir 对照
+- [x] **backup `run_differential_backup` 目录处理**：删除 `copytree`，增加 `_assert_is_file` 守卫
+- [x] **CLI restore 绕过 orchestrator**：`cli.py` — `_handle_restore` 改为 `dispatch(Intent.RESTORE)`，从 backupinfo 构造 minimal final_mapping
 
 ### P1 — `.kmmignore` 升级 ✅
 - [x] 新建 `orchestrator/ignore_rules.py`（gitignore-parser 封装 + 三层规则收集）
