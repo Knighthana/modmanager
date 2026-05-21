@@ -172,11 +172,20 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
     for i, (backup_dir, dir_entries) in enumerate(plan.entries_by_backup_dir.items()):
         _notify(on_progress, "backup", i + 1, total_dirs, f"Backing up {backup_dir}")
         files_to_backup = plan.backup_dirs.get(backup_dir, [])
+        # Load existing tree to skip already-backed-up files
+        tree: dict | None = None
+        try:
+            from modmanager.backup_ops import load_backup_info as _lbi
+            info = _lbi(backup_dir)
+            tree = info.get("tree") if info else None
+        except Exception:
+            tree = None
         dir_result = run_differential_backup(
             backup_dir,
             files_to_backup,
             dry_run=plan.dry_run,
             on_progress=on_progress,
+            tree=tree,
         )
         backed_up.extend(dir_result.get("backed_up", []))
         skipped.extend(dir_result.get("skipped", []))

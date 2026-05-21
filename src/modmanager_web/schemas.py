@@ -174,6 +174,7 @@ class WorkspaceBackupRequest(BaseModel):
 class WorkspaceRestoreRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/pipeline/restore``."""
     force: bool = False
+    dry_run: bool = False
 
 
 class SaveDecisionsRequest(BaseModel):

@@ -423,11 +423,15 @@ def run_differential_backup(
     on_progress: Any = None,
     dry_run: bool = False,
     content_root: str = "",
+    tree: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Copy each file in *files_to_backup* (if it exists) into *backup_dir*.
 
     Files are stored relative to *content_root* under *backup_dir*
     (e.g. ``/mnt/d/contentid/some/file.mod`` → ``<backup_dir>/some/file.mod``).
+
+    If *tree* is provided, files whose tree node has ``isbackuped=true``
+    are skipped (already backed up).
 
     Calls ``finalize_backup_dir`` after all copies to produce status=ready.
 
@@ -491,6 +495,14 @@ def run_differential_backup(
         if on_progress:
             on_progress("backup", len(backed_up) + len(skipped) + len(errors) + 1, len(files_to_backup), target)
         src = Path(target)
+
+        # ── Tree check: skip if already backed up ─────────────────
+        if tree is not None:
+            rel_for_tree = normalize_posix(str(src)).removeprefix(cr).lstrip("/") if normalize_posix(str(src)).startswith(cr) else normalize_posix(str(src)).lstrip("/")
+            if _tree_node_is_backuped(tree, rel_for_tree):
+                skipped.append({"path": target, "reason": "already backed up (isbackuped=true in tree)"})
+                continue
+
         if not src.exists():
             skipped.append({"path": target, "reason": "source not found"})
             continue
@@ -754,6 +766,20 @@ def _assert_is_file(path: Path | str, context: str = "") -> None:
     if p.is_dir():
         label = f" ({context})" if context else ""
         raise IsADirectoryError(f"E_BACKUP_DIRECTORY_NOT_ALLOWED{label}: {p}")
+
+
+def _tree_node_is_backuped(tree: dict[str, Any], rel_path: str) -> bool:
+    """Walk the tree and check if the node at *rel_path* has isbackuped=true."""
+    parts = rel_path.split("/")
+    node = tree
+    for part in parts:
+        if node.get("type") != "dir":
+            return False
+        found = next((c for c in node.get("children", []) if c.get("name") == part), None)
+        if found is None:
+            return False
+        node = found
+    return node.get("isbackuped", False) is True
 
 
 __all__ = [

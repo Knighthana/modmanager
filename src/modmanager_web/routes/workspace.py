@@ -362,12 +362,13 @@ async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
 
     def do_work(*, on_progress):
         force = req.force if hasattr(req, 'force') else False
+        dry_run = req.dry_run if hasattr(req, 'dry_run') else False
         request = TaskRequest(
             identity="web",
             intent=Intent.RESTORE,
             resolver_type="workspace",
             resolver_args={"workspace_id": workspace_id},
-            flags={"force": force},
+            flags={"force": force, "dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)
 
