@@ -43,8 +43,8 @@ class TestRestorePerDesign:
             tgt.parent.mkdir(parents=True)
             tgt.write_text("should be deleted")
 
-            backup_dir = root / "backup"
-            backup_dir.mkdir()
+            backup_dir = root / "target" / "backup"
+            backup_dir.mkdir(parents=True)
             tree = _make_tree_with_file("target", "other.txt")  # tree has "other.txt", not "file.txt"
 
             entries = {str(backup_dir) + "/": [{
@@ -61,17 +61,16 @@ class TestRestorePerDesign:
         """§四-4: isbackuped=false → skip 并记录详细警告."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            backup_dir = root / "backup"
-            backup_dir.mkdir()
-            backup_file = backup_dir / "target" / "file.txt"
-            backup_file.parent.mkdir(parents=True)
+            backup_dir = root / "target" / "backup"
+            backup_dir.mkdir(parents=True)
+            backup_file = backup_dir / "file.txt"
             backup_file.write_text("backup content")
 
             tgt = root / "target" / "file.txt"
             tgt.parent.mkdir(parents=True, exist_ok=True)
             tgt.write_text("current content")
 
-            tree = _make_tree_with_file("target", "target/file.txt", isbackuped=False)
+            tree = _make_tree_with_file("target", "file.txt", isbackuped=False)
 
             entries = {str(backup_dir) + "/": [{
                 "path": str(tgt),
@@ -87,17 +86,16 @@ class TestRestorePerDesign:
         """§四-4: hashtype='invalid' 或 hashvalue='0' → skip 并记录警告."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            backup_dir = root / "backup"
-            backup_dir.mkdir()
-            backup_file = backup_dir / "target" / "file.txt"
-            backup_file.parent.mkdir(parents=True)
+            backup_dir = root / "target" / "backup"
+            backup_dir.mkdir(parents=True)
+            backup_file = backup_dir / "file.txt"
             backup_file.write_text("backup content")
 
             tgt = root / "target" / "file.txt"
             tgt.parent.mkdir(parents=True, exist_ok=True)
             tgt.write_text("current content")
 
-            tree = _make_tree_with_file("target", "target/file.txt",
+            tree = _make_tree_with_file("target", "file.txt",
                                         isbackuped=True,
                                         hashtype="invalid",
                                         hashvalue="0")
@@ -119,17 +117,16 @@ class TestRestorePerDesign:
             content = b"same content"
             hv = hashlib.sha256(content).hexdigest()
 
-            backup_dir = root / "backup"
-            backup_dir.mkdir()
-            backup_file = backup_dir / "target" / "file.txt"
-            backup_file.parent.mkdir(parents=True)
+            backup_dir = root / "target" / "backup"
+            backup_dir.mkdir(parents=True)
+            backup_file = backup_dir / "file.txt"
             backup_file.write_bytes(content)
 
             tgt = root / "target" / "file.txt"
             tgt.parent.mkdir(parents=True, exist_ok=True)
             tgt.write_bytes(content)
 
-            tree = _make_tree_with_file("target", "target/file.txt",
+            tree = _make_tree_with_file("target", "file.txt",
                                         isbackuped=True,
                                         hashtype="sha256",
                                         hashvalue=hv)
@@ -152,17 +149,16 @@ class TestRestorePerDesign:
             current_content = b"current version"
             hv = hashlib.sha256(backup_content).hexdigest()
 
-            backup_dir = root / "backup"
-            backup_dir.mkdir()
-            backup_file = backup_dir / "target" / "file.txt"
-            backup_file.parent.mkdir(parents=True)
+            backup_dir = root / "target" / "backup"
+            backup_dir.mkdir(parents=True)
+            backup_file = backup_dir / "file.txt"
             backup_file.write_bytes(backup_content)
 
             tgt = root / "target" / "file.txt"
             tgt.parent.mkdir(parents=True, exist_ok=True)
             tgt.write_bytes(current_content)  # different content
 
-            tree = _make_tree_with_file("target", "target/file.txt",
+            tree = _make_tree_with_file("target", "file.txt",
                                         isbackuped=True,
                                         hashtype="sha256",
                                         hashvalue=hv)
@@ -185,17 +181,16 @@ class TestRestorePerDesign:
             current_content = b"current version"
             hv = hashlib.sha256(backup_content).hexdigest()
 
-            backup_dir = root / "backup"
-            backup_dir.mkdir()
-            backup_file = backup_dir / "target" / "file.txt"
-            backup_file.parent.mkdir(parents=True)
+            backup_dir = root / "target" / "backup"
+            backup_dir.mkdir(parents=True)
+            backup_file = backup_dir / "file.txt"
             backup_file.write_bytes(backup_content)
 
             tgt = root / "target" / "file.txt"
             tgt.parent.mkdir(parents=True, exist_ok=True)
             tgt.write_bytes(current_content)
 
-            tree = _make_tree_with_file("target", "target/file.txt",
+            tree = _make_tree_with_file("target", "file.txt",
                                         isbackuped=True,
                                         hashtype="sha256",
                                         hashvalue=hv)

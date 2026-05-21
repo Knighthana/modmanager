@@ -126,7 +126,12 @@ class TestRestoreEntries:
             backup_dir = root / "bk"
             backup_dir.mkdir()
 
-            backupinfo = {"tree": {"name": "root", "type": "dir", "children": []}}
+            backupinfo = {"tree": {
+                "name": "root", "type": "dir", "children": [
+                    {"name": "gone.txt", "type": "file", "isbackuped": False,
+                     "hashtype": "sha256", "hashvalue": ""}
+                ]
+            }}
             entries = {str(backup_dir) + "/": [{
                 "path": str(root / "gone.txt"),
                 "request": {"path": "!", "action": "replace",
@@ -138,12 +143,12 @@ class TestRestoreEntries:
             result = restore_entries(entries, {str(backup_dir) + "/": backupinfo})
             assert result["ok"]
             assert len(result["warnings"]) >= 1
-            assert any("W_RESTORE_NO_BACKUP_COPY" in w for w in result["warnings"])
+            assert any("W_RESTORE_NOT_BACKED_UP" in w for w in result["warnings"])
 
     def test_return_contract_fields(self):
         """Result contains all required fields."""
         result = restore_entries({}, {})
-        for key in ("ok", "restored", "skipped", "orphans", "errors", "warnings", "dry_run", "force"):
+        for key in ("ok", "restored", "skipped", "deleted", "orphans", "errors", "warnings", "dry_run", "force"):
             assert key in result, f"missing field: {key}"
 
     def test_force_false_hash_match_skips(self):
