@@ -161,13 +161,21 @@ def restore_entries(
 
 
 def _find_tree_node(tree: dict[str, Any], rel_path: str) -> dict[str, Any] | None:
-    """Walk *tree* by *rel_path* components and return the leaf node, or None."""
+    """Walk *tree* by *rel_path* components and return the leaf node, or None.
+
+    Matching is case-insensitive — Windows game/mod files may have
+    inconsistent casing between the file system and Steam metadata.
+    """
     parts = rel_path.split("/")
     node = tree
     for part in parts:
         if node.get("type") != "dir":
             return None
-        found = next((c for c in node.get("children", []) if c.get("name") == part), None)
+        found = next(
+            (c for c in node.get("children", [])
+             if c.get("name", "").lower() == part.lower()),
+            None
+        )
         if found is None:
             return None
         node = found

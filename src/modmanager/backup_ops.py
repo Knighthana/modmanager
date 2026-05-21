@@ -598,13 +598,21 @@ def _assert_is_file(path: Path | str, context: str = "") -> None:
 
 
 def _tree_node_is_backuped(tree: dict[str, Any], rel_path: str) -> bool:
-    """Walk the tree and check if the node at *rel_path* has isbackuped=true."""
+    """Walk the tree and check if the node at *rel_path* has isbackuped=true.
+
+    Matching is case-insensitive — Windows game/mod files may have
+    inconsistent casing.
+    """
     parts = rel_path.split("/")
     node = tree
     for part in parts:
         if node.get("type") != "dir":
             return False
-        found = next((c for c in node.get("children", []) if c.get("name") == part), None)
+        found = next(
+            (c for c in node.get("children", [])
+             if c.get("name", "").lower() == part.lower()),
+            None
+        )
         if found is None:
             return False
         node = found
@@ -614,17 +622,19 @@ def _tree_node_is_backuped(tree: dict[str, Any], rel_path: str) -> bool:
 def _update_tree_node(tree: dict[str, Any], rel_path: str, hashtype: str, hashvalue: str) -> None:
     """Walk *tree* to the node at *rel_path* and update its backup fields.
 
-    Only updates if current values allow the transition:
-    - isbackuped: false → true
-    - hashtype: "invalid" → meaningful
-    - hashvalue: "0" → meaningful hex
+    Matching is case-insensitive.
+    Only updates if current values allow the transition.
     """
     parts = rel_path.split("/")
     node = tree
     for part in parts:
-        found = next((c for c in node.get("children", []) if c.get("name") == part), None)
+        found = next(
+            (c for c in node.get("children", [])
+             if c.get("name", "").lower() == part.lower()),
+            None
+        )
         if found is None:
-            return  # node not in tree — don't modify
+            return
         node = found
     if node.get("isbackuped") is False:
         node["isbackuped"] = True
