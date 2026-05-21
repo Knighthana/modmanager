@@ -145,73 +145,6 @@ def _serialize_output_path(path: str, *, is_dir: bool) -> str:
 
 
 
-def build_dir_tree_with_hashes(
-    source_root: str,
-    backup_dir: str,
-    *,
-    skip_names: frozenset[str] | None = None,
-    ignore_rules: Any = None,
-) -> dict[str, Any]:
-    """扫描 *source_root*（源目录），生成完整文件结构镜像。
-
-    每个文件节点通过检查 *backup_dir* 中是否有对应副本来标记 ``isbackuped``：
-    - 有副本 → ``isbackuped=True``，``hashtype`` / ``hashvalue`` 取自备份副本
-    - 无副本 → ``isbackuped=False``，``hashtype="sha256"``，``hashvalue=""``
-
-    *skip_names* 默认排除 ``backupinfo.json``。
-    *ignore_rules* 为可选的 ``IgnoreRuleSet``，匹配的文件不进入 tree。
-    """
-    if skip_names is None:
-        skip_names = frozenset({"backupinfo.json"})
-
-    src = Path(source_root)
-    bak = Path(backup_dir)
-
-    def _scan(path: Path) -> dict[str, Any]:
-        if path.is_file():
-            # Check if this file has a backup copy
-            rel = str(path).removeprefix(str(src)).lstrip("/")
-            backup_copy = bak / rel
-            if backup_copy.is_file():
-                return {
-                    "name": path.name,
-                    "type": "file",
-                    "isbackuped": True,
-                    "hashtype": "sha256",
-                    "hashvalue": _sha256_file(backup_copy),
-                }
-            else:
-                return {
-                    "name": path.name,
-                    "type": "file",
-                    "isbackuped": False,
-                    "hashtype": "sha256",
-                    "hashvalue": "",
-                }
-
-        children: list[dict[str, Any]] = []
-        try:
-            for child in sorted(path.iterdir()):
-                if child.name in skip_names:
-                    continue
-                if child.name.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX):
-                    continue
-                # Check ignore rules
-                if ignore_rules is not None:
-                    try:
-                        from .orchestrator.ignore_rules import should_ignore
-                        if should_ignore(str(child), ignore_rules):
-                            continue
-                    except Exception:
-                        pass
-                children.append(_scan(child))
-        except PermissionError:
-            pass
-        return {"name": path.name, "type": "dir", "children": children}
-
-    return _scan(src)
-
-
 def load_backup_info(backup_dir: str) -> dict[str, Any]:
     """Load *backupinfo.json* from *backup_dir*. Returns ``{}`` on any error."""
     info_path = Path(backup_dir) / "backupinfo.json"
@@ -224,46 +157,6 @@ def load_backup_info(backup_dir: str) -> dict[str, Any]:
         return {}
 
 
-def _flatten_tree_file_hashes(node: dict[str, Any], prefix: str = "") -> dict[str, str]:
-    """将快照树拍平成 rel_path -> hashvalue 映射。"""
-    name = str(node.get("name", ""))
-    node_type = str(node.get("type", ""))
-    current = f"{prefix}/{name}" if prefix and name else (name or prefix)
-
-    if node_type == "file":
-        rel = current.lstrip("/")
-        return {rel: str(node.get("hashvalue", "0"))} if rel else {}
-
-    out: dict[str, str] = {}
-    for child in node.get("children", []):
-        if isinstance(child, dict):
-            out.update(_flatten_tree_file_hashes(child, current))
-    return out
-
-
-def _collect_backup_original_paths(backup_dir: str, content_root: str = "") -> list[str]:
-    """Collect original paths for files in *backup_dir*.
-
-    *content_root* is the root directory under which files were backed up.
-    Defaults to the parent of *backup_dir* (matching ``run_differential_backup``).
-    """
-    if not content_root:
-        content_root = str(Path(backup_dir).parent)
-    backup_path = Path(backup_dir)
-    cr = Path(content_root)
-    originals: list[str] = []
-    for bak_file in sorted(backup_path.rglob("*")):
-        if not bak_file.is_file() or bak_file.name == "backupinfo.json":
-            continue
-        rel = bak_file.relative_to(backup_path)
-        # Loop protection: skip files inside *.kmmbackup directories
-        if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
-            continue
-        original = cr / rel
-        originals.append(_normalized(str(original)))
-    return originals
-
-
 def _write_backup_info(backup_dir: str, info: dict[str, Any]) -> None:
     backup_path = Path(backup_dir)
     backup_path.mkdir(parents=True, exist_ok=True)
@@ -272,29 +165,6 @@ def _write_backup_info(backup_dir: str, info: dict[str, Any]) -> None:
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(info, f, ensure_ascii=False, indent=2)
     tmp.replace(info_path)
-
-
-def init_backup_dir(backup_dir: str) -> None:
-    """Create *backup_dir* and write an initial *backupinfo.json* (status=error).
-
-    Status is set to ``"error"`` until ``finalize_backup_dir`` completes the
-    tree scan and flips it to ``"ready"``.
-    """
-    assert_directory_path(backup_dir, label="backup_dir")
-    _write_backup_info(backup_dir, {"schema_namespace": "KMM_BackupInfo", "tree": {}, "snapshot_time": "", "last_modified_time": "", "schema_version": "knighthana@0.1.0"})
-
-
-def finalize_backup_dir(backup_dir: str) -> dict[str, Any]:
-    """扫描源目录（backup_dir 父目录）生成完整文件结构镜像，写入 backupinfo.json。
-
-    返回完整 backupinfo dict。
-    """
-    assert_directory_path(backup_dir, label="backup_dir")
-    source_root = str(Path(backup_dir).parent)
-    tree = build_dir_tree_with_hashes(source_root, backup_dir)
-    info: dict[str, Any] = {"schema_namespace": "KMM_BackupInfo", "tree": tree, "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "schema_version": "knighthana@0.1.0"}
-    _write_backup_info(backup_dir, info)
-    return info
 
 
 # ── Phase 13: Dirty state and conflict governance ────────────────────────────
@@ -698,57 +568,6 @@ def restore_from_backup(
     }
 
 
-def _list_orphans(
-    backup_dir: str,
-    backed_files: list[str],
-    target_set: set[str] | None,
-) -> list[str]:
-    """Return candidate orphan files conservatively.
-
-    Rules:
-    - Only scan parent dirs of backed files
-    - Only include files newer than backup metadata write time
-    - If target_set is provided, keep only files in target_set parents
-    """
-    backed_set = {_normalized(p) for p in backed_files}
-    if not backed_set:
-        return []
-
-    info_path = Path(backup_dir) / "backupinfo.json"
-    try:
-        baseline = info_path.stat().st_mtime
-    except OSError:
-        baseline = time.time()
-
-    allowed_dirs: set[str] | None = None
-    if target_set is not None:
-        allowed_dirs = {_normalized(str(Path(p).parent)) for p in target_set}
-
-    scan_dirs = {_normalized(str(Path(p).parent)) for p in backed_set}
-    out: set[str] = set()
-
-    for d in sorted(scan_dirs):
-        if allowed_dirs is not None and d not in allowed_dirs:
-            continue
-        dir_path = Path(d)
-        if not dir_path.exists() or not dir_path.is_dir():
-            continue
-        for f in dir_path.rglob("*"):
-            if not f.is_file():
-                continue
-            f_norm = _normalized(str(f))
-            if f_norm in backed_set:
-                continue
-            try:
-                if f.stat().st_mtime < baseline:
-                    continue
-            except OSError:
-                continue
-            out.add(f_norm)
-
-    return sorted(out)
-
-
 def delete_orphan_files(orphan_paths: list[str]) -> dict[str, Any]:
     """Delete orphan files after explicit user confirmation."""
     deleted: list[str] = []
@@ -818,10 +637,7 @@ def _update_tree_node(tree: dict[str, Any], rel_path: str, hashtype: str, hashva
 __all__ = [
     "get_game_backup_id",
     "get_workshop_timestamphex",
-    "build_dir_tree_with_hashes",
     "load_backup_info",
-    "init_backup_dir",
-    "finalize_backup_dir",
     "detect_dirty_state",
     "inspect_conflict",
     "check_backup_gate",
