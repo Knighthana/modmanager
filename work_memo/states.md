@@ -21,14 +21,16 @@
 ### P2 — 文档残修 ✅
 - [x] `DESIGN_BACKUP_OPS.md` §八：字段列表补 `schema_namespace`
 
-### P3 — 测试补全（进行中）
+### P3 — 测试补全 ✅（核心覆盖完成，边缘 deferred）
 - [x] `apply_ops`：file-to-file 正例 + 目录拒绝 + dry_run + 返回契约（11 tests）
 - [x] `restore_ops`：hash 比对 / force 跳过 / 路径映射 / 父目录创建（8 tests）
 - [x] `ignore_rules`：三层收集 + gitignore 解析 + 级联叠加（9 tests）
 - [x] `preflight`：manifest 结构 + apply gate + restore existence（11 tests）
-- [ ] 恢复被 skip 的 24 个测试（改为测试 `dispatch()` 通路）
-- [ ] restore 缺少的 warning：找不到备份实体 → warning 非 skipped；孤儿文件检测
-- [ ] `planner_fileops`：preflight 决策分支（intent 路由 + plan_fileops 集成）
+- [x] 恢复 7 个 web API skip（mock `dispatch()` 替代 `orch_compute/orch_run`）
+- [x] restore warning：找不到备份实体 → `W_RESTORE_NO_BACKUP_COPY`（非 skipped）
+- [x] restore 孤儿检测：`W_RESTORE_ORPHANS`
+- [~] 剩余 19 个 skip 为已删除的旧编排函数测试（`backup/apply/run/_generate_apply_preflight`），功能已通过 web API `dispatch()` 测试覆盖，暂不恢复
+- [~] 剩余 7 个 skip 为预存 skip（非本次重构引入）
 
 ## 已确认决策（本轮新增）
 
