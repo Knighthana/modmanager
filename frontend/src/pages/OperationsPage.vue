@@ -777,7 +777,7 @@ async function doBackup() {
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
-      if (isDry && backedUp.length > 0) {
+      if (backedUp.length > 0) {
         dryRunEntries.value = backedUp
         dryRunOperation.value = 'backup'
       }
@@ -830,7 +830,7 @@ async function doApply() {
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
-      if (isDry && applied.length > 0) {
+      if (applied.length > 0) {
         dryRunEntries.value = applied
         dryRunOperation.value = 'apply'
       }
