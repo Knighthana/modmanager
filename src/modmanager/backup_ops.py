@@ -146,40 +146,70 @@ def _serialize_output_path(path: str, *, is_dir: bool) -> str:
 
 
 def build_dir_tree_with_hashes(
-    root_dir: str,
+    source_root: str,
+    backup_dir: str,
     *,
     skip_names: frozenset[str] | None = None,
+    ignore_rules: Any = None,
 ) -> dict[str, Any]:
-    """递归扫描 *root_dir*，生成符合 schema 的快照树 dict。
+    """扫描 *source_root*（源目录），生成完整文件结构镜像。
 
-    文件节点 isbackuped=True，hashtype=sha256。*skip_names* 默认排除 backupinfo.json。
+    每个文件节点通过检查 *backup_dir* 中是否有对应副本来标记 ``isbackuped``：
+    - 有副本 → ``isbackuped=True``，``hashtype`` / ``hashvalue`` 取自备份副本
+    - 无副本 → ``isbackuped=False``，``hashtype="sha256"``，``hashvalue=""``
+
+    *skip_names* 默认排除 ``backupinfo.json``。
+    *ignore_rules* 为可选的 ``IgnoreRuleSet``，匹配的文件不进入 tree。
     """
     if skip_names is None:
         skip_names = frozenset({"backupinfo.json"})
 
+    src = Path(source_root)
+    bak = Path(backup_dir)
+
     def _scan(path: Path) -> dict[str, Any]:
         if path.is_file():
-            return {
-                "name": path.name,
-                "type": "file",
-                "isbackuped": True,
-                "hashtype": "sha256",
-                "hashvalue": _sha256_file(path),
-            }
+            # Check if this file has a backup copy
+            rel = str(path).removeprefix(str(src)).lstrip("/")
+            backup_copy = bak / rel
+            if backup_copy.is_file():
+                return {
+                    "name": path.name,
+                    "type": "file",
+                    "isbackuped": True,
+                    "hashtype": "sha256",
+                    "hashvalue": _sha256_file(backup_copy),
+                }
+            else:
+                return {
+                    "name": path.name,
+                    "type": "file",
+                    "isbackuped": False,
+                    "hashtype": "sha256",
+                    "hashvalue": "",
+                }
+
         children: list[dict[str, Any]] = []
         try:
             for child in sorted(path.iterdir()):
                 if child.name in skip_names:
                     continue
-                # 跳过.kmmbackup子目录
                 if child.name.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX):
                     continue
+                # Check ignore rules
+                if ignore_rules is not None:
+                    try:
+                        from .orchestrator.ignore_rules import should_ignore
+                        if should_ignore(str(child), ignore_rules):
+                            continue
+                    except Exception:
+                        pass
                 children.append(_scan(child))
         except PermissionError:
             pass
         return {"name": path.name, "type": "dir", "children": children}
 
-    return _scan(Path(root_dir))
+    return _scan(src)
 
 
 def load_backup_info(backup_dir: str) -> dict[str, Any]:
@@ -255,12 +285,13 @@ def init_backup_dir(backup_dir: str) -> None:
 
 
 def finalize_backup_dir(backup_dir: str) -> dict[str, Any]:
-    """扫描 *backup_dir*，生成快照树，写入 backupinfo.json。
+    """扫描源目录（backup_dir 父目录）生成完整文件结构镜像，写入 backupinfo.json。
 
     返回完整 backupinfo dict。
     """
     assert_directory_path(backup_dir, label="backup_dir")
-    tree = build_dir_tree_with_hashes(backup_dir)
+    source_root = str(Path(backup_dir).parent)
+    tree = build_dir_tree_with_hashes(source_root, backup_dir)
     info: dict[str, Any] = {"schema_namespace": "KMM_BackupInfo", "tree": tree, "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "schema_version": "knighthana@0.1.0"}
     _write_backup_info(backup_dir, info)
     return info
@@ -468,10 +499,8 @@ def run_differential_backup(
         dest = backup_path / rel
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            if src.is_dir():
-                shutil.copytree(str(src), str(dest), dirs_exist_ok=True)
-            else:
-                shutil.copy2(str(src), str(dest))
+            _assert_is_file(src, "backup")
+            shutil.copy2(str(src), str(dest))
             backed_up.append(target)
         except OSError as exc:
             errors.append(f"E_BACKUP_COPY_FAILED: {target}: {exc}")
@@ -703,6 +732,14 @@ def delete_orphan_files(orphan_paths: list[str]) -> dict[str, Any]:
             errors.append(f"E_ORPHAN_DELETE_FAILED: {norm}: {exc}")
 
     return {"ok": not errors, "deleted": deleted, "skipped": skipped, "errors": errors}
+
+
+def _assert_is_file(path: Path | str, context: str = "") -> None:
+    """Raise IsADirectoryError if *path* is a directory (backup is file-to-file only)."""
+    p = Path(path)
+    if p.is_dir():
+        label = f" ({context})" if context else ""
+        raise IsADirectoryError(f"E_BACKUP_DIRECTORY_NOT_ALLOWED{label}: {p}")
 
 
 __all__ = [

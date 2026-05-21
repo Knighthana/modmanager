@@ -32,9 +32,8 @@
 - **D17**: 不采用状态机——Orchestrator 核心为 dispatch + phase 序列
 - **D18**: `compute` 管线单独拆到 `orchestrator/compute_pipeline.py`，只搬不改逻辑
 - **D19**: `preflight` 为 `orchestrator/preflight.py` 单文件
-- **D20**: `.kmmbakignore` 语义保留为 backup 专属，不改名，不扩展到 apply/restore
+- **D20**: `.kmmbakignore` → `.kmmignore` 语义升级——从「不备份」→「不参与 mod 管理」；归属 Planner 层；独立模块 `orchestrator/ignore_rules.py`
 - **D21**: 实施顺序为「先建新文件，再改调用方，最后删旧代码」——避免中间态不可构建
-
-### 禁区
-
-- 不跑测试
+- **D22**: `user_config.bakignore` → `user_config.ignore`
+- **D23**: backupinfo `tree` 扫描源目录（非 backup_dir），`isbackuped` 标记对照 backup_dir 副本
+- **D24**: backup / apply / restore 严格 file-to-file，运行时 `_assert_is_file()` 拒绝目录

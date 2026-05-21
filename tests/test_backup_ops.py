@@ -77,7 +77,7 @@ class TestBuildDirTree(TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             f = Path(tmp) / "hello.txt"
             f.write_bytes(b"hello")
-            tree = build_dir_tree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp, tmp)
             self.assertEqual(tree["type"], "dir")
             self.assertEqual(len(tree["children"]), 1)
             child = tree["children"][0]
@@ -92,7 +92,7 @@ class TestBuildDirTree(TestCase):
             sub = Path(tmp) / "sub"
             sub.mkdir()
             (sub / "file.txt").write_bytes(b"data")
-            tree = build_dir_tree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp, tmp)
             self.assertEqual(tree["children"][0]["name"], "sub")
             self.assertEqual(tree["children"][0]["children"][0]["name"], "file.txt")
 
@@ -100,14 +100,14 @@ class TestBuildDirTree(TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / "backupinfo.json").write_bytes(b"{}")
             (Path(tmp) / "real.txt").write_bytes(b"x")
-            tree = build_dir_tree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp, tmp)
             names = [c["name"] for c in tree["children"]]
             self.assertNotIn("backupinfo.json", names)
             self.assertIn("real.txt", names)
 
     def test_empty_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
-            tree = build_dir_tree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp, tmp)
             self.assertEqual(tree["type"], "dir")
             self.assertEqual(tree["children"], [])
 
@@ -115,8 +115,8 @@ class TestBuildDirTree(TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             f = Path(tmp) / "f.bin"
             f.write_bytes(b"\x00" * 1024)
-            t1 = build_dir_tree_with_hashes(tmp)
-            t2 = build_dir_tree_with_hashes(tmp)
+            t1 = build_dir_tree_with_hashes(tmp, tmp)
+            t2 = build_dir_tree_with_hashes(tmp, tmp)
             self.assertEqual(
                 t1["children"][0]["hashvalue"],
                 t2["children"][0]["hashvalue"],
@@ -248,6 +248,7 @@ class TestRunDifferentialBackup(TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(len(result["backed_up"]), 3)
 
+    @pytest.mark.skip(reason="D15/D24: file-to-file only — directory backup removed")
     def test_backs_up_existing_directory_tree(self):
         with tempfile.TemporaryDirectory() as tmp:
             src_dir = Path(tmp) / "orig" / "dir1"
@@ -263,6 +264,7 @@ class TestRunDifferentialBackup(TestCase):
             self.assertTrue((Path(bdir) / "orig" / "dir1" / "a.txt").exists())
             self.assertTrue((Path(bdir) / "orig" / "dir1" / "nested" / "b.txt").exists())
 
+    @pytest.mark.skip(reason="D15/D24: file-to-file only — directory backup removed")
     def test_dry_run_directory_path_has_single_trailing_slash(self):
         with tempfile.TemporaryDirectory() as tmp:
             src_dir = Path(tmp) / "orig" / "maps" / "lobby"
@@ -659,7 +661,7 @@ class TestLoopProtectionCollectPaths(TestCase):
             nested.parent.mkdir(parents=True)
             nested.write_bytes(b"keep")
 
-            tree = build_dir_tree_with_hashes(tmp)
+            tree = build_dir_tree_with_hashes(tmp, tmp)
             child_names = [c["name"] for c in tree["children"]]
 
             self.assertIn("normal.txt", child_names)

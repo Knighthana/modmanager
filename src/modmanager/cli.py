@@ -7,7 +7,6 @@ from typing import Any
 from .backup_ops import (
     delete_orphan_files,
     detect_dirty_state,
-    restore_from_backup,
 )
 from .database_ops import (
     add_manual_steamlib,
@@ -332,31 +331,91 @@ def _handle_apply(args: argparse.Namespace) -> int:
 def _handle_restore(args: argparse.Namespace) -> int:
     target_files = args.files or None
     dirty = detect_dirty_state(args.backup_dir)
+
+    # Build a minimal final_mapping from backup_dir for dispatch
     try:
-        result = restore_from_backup(args.backup_dir, target_files)
+        from .backup_ops import load_backup_info
+        info = load_backup_info(args.backup_dir)
+        tree = info.get("tree", {})
+        # Walk tree to collect all backed-up file paths
+        def _collect_files(node: dict, prefix: str) -> list[str]:
+            if node.get("type") == "file":
+                return [f"{prefix}/{node['name']}" if prefix else node["name"]]
+            files = []
+            for child in node.get("children", []):
+                child_prefix = f"{prefix}/{node['name']}" if prefix else node["name"]
+                files.extend(_collect_files(child, child_prefix))
+            return files
+
+        file_list = _collect_files(tree, "")
+        content_root = str(Path(args.backup_dir).parent)
+        final_mapping = [{
+            "path": f"{content_root}/{f}",
+            "request": {
+                "path": f"{args.backup_dir}/{f}",
+                "action": "replace",
+                "action_order": 0,
+                "provenance_ref": "cli-restore",
+                "sidecar_ref": "cli-restore",
+                "mixed_id": "0:0",
+                "hashtype": "sha256",
+                "hashvalue": "",
+            }
+        } for f in file_list]
+        if target_files:
+            final_mapping = [e for e in final_mapping
+                             if any(e["path"].endswith(tf) for tf in target_files)]
+    except Exception:
+        final_mapping = []
+
+    try:
+        from .bootstrap import discover_user_config
+        user_config = discover_user_config()
+        result = dispatch(
+            TaskRequest(
+                identity="cli",
+                intent=Intent.RESTORE,
+                resolver_type="raw_dict",
+                resolver_args={
+                    "final_mapping": final_mapping,
+                    "database": {"game": [], "mod": [], "steamlib": []},
+                    "user_config": user_config,
+                },
+                flags={"force": True},
+            ),
+        )
+        # Convert PipelineResult to dict for _print_or_write
+        result_dict = {
+            "ok": result.ok,
+            "restored": result.restore_result.get("restored", []) if result.restore_result else [],
+            "skipped": result.restore_result.get("skipped", []) if result.restore_result else [],
+            "errors": result.errors,
+            "warnings": result.warnings,
+        }
     except Exception as exc:
         return _emit_error(f"restore failed: {exc}")
 
     if dirty.get("dirty"):
-        warnings = list(result.get("warnings", []))
+        warnings = list(result_dict.get("warnings", []))
         warnings.extend(dirty.get("errors", []))
-        result["warnings"] = warnings
-        result["dirty_state"] = {
+        result_dict["warnings"] = warnings
+        result_dict["dirty_state"] = {
             "dirty": True,
             "partial_files": dirty.get("partial_files", []),
         }
 
-    if args.delete_orphans and result.get("orphans"):
-        delete_result = delete_orphan_files(result["orphans"])
-        result["orphan_deletion"] = delete_result
+    if args.delete_orphans and result.restore_result and result.restore_result.get("orphans"):
+        from .backup_ops import delete_orphan_files
+        delete_result = delete_orphan_files(result.restore_result["orphans"])
+        result_dict["orphan_deletion"] = delete_result
         if not delete_result.get("ok", False):
-            result["ok"] = False
-            result_errors = list(result.get("errors", []))
+            result_dict["ok"] = False
+            result_errors = list(result_dict.get("errors", []))
             result_errors.extend(delete_result.get("errors", []))
-            result["errors"] = result_errors
+            result_dict["errors"] = result_errors
 
-    _print_or_write(result, args.out)
-    return 0 if result.get("ok") else 2
+    _print_or_write(result_dict, args.out)
+    return 0 if result_dict.get("ok") else 2
 
 
 def _handle_visualize(args: argparse.Namespace) -> int:
