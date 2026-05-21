@@ -22,7 +22,7 @@
 
 ### 2.1 backup 负责产出可恢复输入
 
-- backup 的目标不是维护状态机，而是产出可供 restore 消费的执行输入。
+- backup 的目标是在backup dir下提供懒的增量备份。
 - 这些输入包括：完整的 `backup_dir`、`backup_dir` 根目录中的 `backupinfo.json`、可用于恢复的实体文件集合。
 
 ### 2.2 backup_dir 结构以 DESIGN_BACKUP_DIR 为准
@@ -50,9 +50,8 @@ backup 执行至少需要：
 
 ignore 的计算非常常用。Planner 在 `plan_fileops()` 阶段计算出的 ignore 结果必须以某种形式缓存并提供给 backup 和 restore 原语直接消费，不允许 backup 或 restore 原语重新计算 ignore 规则。
 
-缓存形式可以是：
+缓存形式是：
 - Planner 直接将 `IgnoreRuleSet` 对象放入 `FileOpsPlan`，backup 原语从 plan 中取用
-- Planner 在过滤阶段直接不命中对应的文件，使被忽略文件不进入 `entries_by_backup_dir`
 
 ## 五、backup_dir 的推导与创建
 

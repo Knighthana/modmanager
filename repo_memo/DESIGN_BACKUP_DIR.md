@@ -194,7 +194,7 @@ tree 创建之后 node 的结构本身为 const，FileNode 的字段变更遵循
 - `tree` 根节点必须是 `dir`
 - 目录节点只能是 `dir`，文件节点只能是 `file`
 - `FileNode` 必须带 `isbackuped`、`hashtype`、`hashvalue`
-- **首次备份**：backup_dir 不存在 → 建树 → 所有文件 `isbackuped=false`，`hashtype="invalid"`，`hashvalue="0"`
+- **首次备份**：backup_dir 不存在 → 建树（所有文件 `isbackuped=false`，`hashtype="invalid"`，`hashvalue="0"`）→ **接着执行备份操作**（更新 hash、备份文件、改 `false` 为 `true`）。首次备份 = 一次建树 + 一次备份，建树不可跳过备份步骤
 - **后续备份**：tree 已存在且完整 → 不重建树，只更新已有结点的状态
 - `isbackuped` 只能 `false→true`，不能反向
 - `hashtype` 只能 `"invalid"→"sha256"`，不能反向

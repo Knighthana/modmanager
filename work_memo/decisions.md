@@ -13,3 +13,4 @@
 - **P6**: `backupinfo.tree` 为源目录完整结构镜像，`isbackuped` 对照 backup_dir 标记
 - **P7**: 不采用状态机——`dispatch` + phase 序列足够
 - **P8**: `compute` 管线独立文件，逻辑暂不动；`DESIGN_MIGRATION_LAYERS.md` 定义 Rust 迁移分层
+- **P9**: `prep` 原语独立——创建 backup_dir + 建初始 tree + 写 `backupinfo.json`；Planner 决定是否需要建树；backup/restore/apply 彻底不接触 ignore
