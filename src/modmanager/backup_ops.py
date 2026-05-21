@@ -483,8 +483,8 @@ def run_differential_backup(
     assert_directory_path(backup_dir, label="backup_dir")
     init_backup_dir(backup_dir)
     backup_path = Path(backup_dir)
-    backed_up: list[str] = []
-    skipped: list[str] = []
+    backed_up: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
     errors: list[str] = []
 
     for target in files_to_backup:
@@ -492,16 +492,30 @@ def run_differential_backup(
             on_progress("backup", len(backed_up) + len(skipped) + len(errors) + 1, len(files_to_backup), target)
         src = Path(target)
         if not src.exists():
-            skipped.append(target)
+            skipped.append({"path": target, "reason": "source not found"})
             continue
         norm = normalize_posix(str(src))
         rel = norm.removeprefix(cr).lstrip("/") if norm.startswith(cr) else norm.lstrip("/")
         dest = backup_path / rel
+        is_dir = src.is_dir()
+        path_out = _serialize_output_path(target, is_dir=is_dir)
+        backup_path_out = _serialize_output_path(
+            f"{dir_basename}/{rel}",
+            is_dir=is_dir,
+        )
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             _assert_is_file(src, "backup")
             shutil.copy2(str(src), str(dest))
-            backed_up.append(target)
+            st = src.stat()
+            backed_up.append({
+                "action": "copy",
+                "path": path_out,
+                "backup_path": backup_path_out,
+                "size": st.st_size,
+                "mtime": st.st_mtime,
+                "is_dir": is_dir,
+            })
         except OSError as exc:
             errors.append(f"E_BACKUP_COPY_FAILED: {target}: {exc}")
 
