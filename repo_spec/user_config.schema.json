@@ -22,8 +22,8 @@
             "type": "string",
             "default": "kmmbackup"
         },
-        "bakignore": {
-            "description": "备份扫描时忽略的目录名后缀列表（用于防循环备份）。",
+        "ignore": {
+            "description": "全局忽略模式列表（apply/backup/restore 均生效）。默认排除 .kmmbackup 后缀目录。",
             "type": "array",
             "default": [".kmmbackup"],
             "items": {

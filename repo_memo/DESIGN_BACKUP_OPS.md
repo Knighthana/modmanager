@@ -101,21 +101,11 @@ backup 执行至少需要：
 
 ## 七、循环防护与忽略规则
 
-### 7.1 三层忽略规则
+忽略规则由 Orchestrator Planner 层统一管理，对所有操作（backup / apply / restore）生效。完整规范见 `DESIGN_IGNORE_RULES.md`。
 
-backup 扫描与复制时适用以下忽略层：
+backup 原语自身不处理忽略——由 Planner 在构建 `FileOpsPlan` 时过滤。
 
-| 层 | 来源 | 粒度 | 说明 |
-|----|------|------|------|
-| 硬编码底线 | `.kmmbackup` | 目录后缀 | 始终生效 |
-| 用户配置 | `user_config.bakignore` | 后缀 / 模式 | 用户附加忽略 |
-| 文件规则 | `.kmmbakignore` | gitignore 模式 | 文件级忽略 |
-
-### 7.2 .kmmbakignore 文件本身
-
-- `.kmmbakignore` 本身属于应被保留的规则文件。
-- backup 时，各级 `.kmmbakignore` 文件应被复制进对应 `backup_dir`。
-- `backupinfo.json` 不属于源规则文件，不参与这套复制语义。
+`backupinfo.json` 生成时的 tree 扫描同样应用 IgnoreRuleSet，确保被忽略文件不进入 tree。
 
 ## 八、backupinfo 的生成与回写
 

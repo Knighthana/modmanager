@@ -67,6 +67,7 @@
 | `orchestrator/resolver.py` | 资源收集策略 | `WorkspaceResolver`, `FilePathResolver`, `RawDictResolver`, `CleanContext` |
 | `orchestrator/planner_fileops.py` | 推导 + preflight 决策 | `plan_fileops()`, `FileOpsPlan`, `_collect_ignore_rules()` |
 | `orchestrator/preflight.py` | 门禁检查 | `run_apply_preflight()`, `run_restore_preflight()` |
+| `orchestrator/ignore_rules.py` | 忽略规则收集 | `collect_rules()`, `should_ignore()` |
 | `orchestrator/_common.py` | 共享数据结构 | `PipelineResult`, `ProgressCallback` |
 
 ### 文件操作原语

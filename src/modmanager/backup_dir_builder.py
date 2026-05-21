@@ -191,13 +191,13 @@ def build_backup_dir(
 
 
 def load_dir_suffixes(user_config: dict[str, Any]) -> list[str]:
-    """合并硬编码底线 + user_config.bakignore，去重返回目录名后缀列表。
+    """合并硬编码底线 + user_config.ignore，去重返回目录名后缀列表。
 
     硬编码底线 ``".kmmbackup"`` 始终在列表中。
-    user_config.bakignore 中的条目自动补前导 ``.``（若缺失）。
+    user_config.ignore 中的条目自动补前导 ``.``（若缺失）。
     """
     suffixes = [".kmmbackup"]
-    config_ignore = user_config.get("bakignore")
+    config_ignore = user_config.get("ignore")
     if isinstance(config_ignore, list):
         for item in config_ignore:
             if isinstance(item, str) and item.strip():

@@ -3,7 +3,7 @@
 """测试 orchestrator 引擎函数（不依赖工作区上下文）。
 
 直接构造 final_mapping / database / user_config 调用引擎函数，
-验证 dry_run 输出格式、gate check、bakignore 过滤、restore HASH 比对。
+验证 dry_run 输出格式、gate check、ignore 过滤、restore HASH 比对。
 """
 
 import json
@@ -71,7 +71,7 @@ def sample_database(fixture_dir):
 
 @pytest.fixture
 def sample_user_config():
-    return {"baksuffix": "kmmbackup", "bakignore": []}
+    return {"baksuffix": "kmmbackup", "ignore": []}
 
 
 @pytest.fixture
@@ -112,8 +112,8 @@ def test_load_dir_suffixes_default():
 
 
 def test_load_dir_suffixes_with_custom():
-    """user_config.bakignore 条目合并去重，自动补前导点。"""
-    cfg = {"bakignore": ["test", ".other", "test"]}
+    """user_config.ignore 条目合并去重，自动补前导点。"""
+    cfg = {"ignore": ["test", ".other", "test"]}
     result = load_dir_suffixes(cfg)
     assert ".kmmbackup" in result
     assert ".test" in result

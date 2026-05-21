@@ -149,10 +149,7 @@
 2. **节点标记**：遍历到的每个文件，检查其在 `backup_dir` 中是否有对应副本：
    - 有副本 → `isbackuped: true`，`hashtype` / `hashvalue` 取自备份副本
    - 无副本 → `isbackuped: false`，`hashtype` / `hashvalue` 为占位值（`"sha256"` / `""` 或 `"0"`）
-3. **排除规则**（三层忽略，由 Orchestrator Planner 层在 `plan_fileops()` 中统一收集后传入）：
-   - 硬编码底线：`.kmmbackup` 后缀目录始终排除
-   - 用户配置：`user_config.bakignore` 中的后缀 / 模式
-   - 文件规则：源目录各级 `.kmmbakignore` 文件（gitignore 语法）
+3. **排除规则**：由 Planner 层通过 `ignore_rules.collect_rules()` 统一收集 `IgnoreRuleSet` 后传入。详见 `DESIGN_IGNORE_RULES.md`。
    - `backupinfo.json` 自身不进入 tree 递归
 
 ## 六、backupinfo 与 schema 的关系
