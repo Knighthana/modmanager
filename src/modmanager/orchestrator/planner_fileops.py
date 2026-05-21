@@ -126,9 +126,14 @@ def plan_fileops(
 
 
 def _collect_ignore_rules(context: CleanContext) -> IgnoreRuleSet:
-    """Collect ignore rules from all three layers via ignore_rules module."""
+    """Collect ignore rules from all three layers via ignore_rules module.
+
+    Only scans directories that are ancestors of files in final_mapping,
+    avoiding expensive full-tree walks of large game directories.
+    """
     source_roots = _derive_source_roots(context)
-    return collect_rules(context.user_config, source_roots)
+    relevant_paths = [e.get("path", "") for e in context.final_mapping if e.get("path")]
+    return collect_rules(context.user_config, source_roots, relevant_paths=relevant_paths)
 
 
 def _derive_source_roots(context: CleanContext) -> list[str]:

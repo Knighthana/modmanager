@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from gitignore_parser import parse_gitignore
@@ -44,13 +43,17 @@ class IgnoreRuleSet:
 def collect_rules(
     user_config: dict[str, Any],
     source_roots: list[str],
+    *,
+    relevant_paths: list[str] | None = None,
 ) -> IgnoreRuleSet:
     """Collect ignore rules from all three layers.
 
     Args:
         user_config: The resolved user_config dict.
-        source_roots: List of root directories to scan for ``.kmmignore`` files.
-                      Each root is walked recursively.
+        source_roots: List of root directories that define the scope.
+        relevant_paths: Optional list of file paths actually being processed.
+            When provided, only directories that are ancestors of these paths
+            are scanned for ``.kmmignore`` files, avoiding full-tree walks.
 
     Returns:
         IgnoreRuleSet ready for matching.
@@ -58,14 +61,37 @@ def collect_rules(
     rules = IgnoreRuleSet()
 
     # ── Layer 1: hardcoded ─────────────────────────────────────────
-    # Already in default; nothing to add.
 
     # ── Layer 2: user_config.ignore ─────────────────────────────────
     rules.user_patterns = list(user_config.get("ignore", []))
 
     # ── Layer 3: .kmmignore files ───────────────────────────────────
-    for root in source_roots:
-        _collect_gitignore_files(Path(root), rules)
+    dirs_to_check: set[str] = set()
+    if relevant_paths:
+        # Only scan directories that are ancestors of relevant files
+        for p in relevant_paths:
+            d = os.path.dirname(p)
+            while d and any(d.startswith(r.rstrip("/")) for r in source_roots):
+                dirs_to_check.add(d)
+                parent = os.path.dirname(d)
+                if parent == d:
+                    break
+                d = parent
+    else:
+        # Fallback: walk full source roots (used in tests / standalone)
+        for root in source_roots:
+            for dirpath, _dirnames, filenames in os.walk(root):
+                if _IGNORE_FILENAME in filenames:
+                    dirs_to_check.add(dirpath)
+
+    for d in sorted(dirs_to_check):
+        ignore_file = os.path.join(d, _IGNORE_FILENAME)
+        if os.path.isfile(ignore_file):
+            try:
+                parsed = parse_gitignore(ignore_file)
+                rules.gitignore_rules[d + "/"] = parsed
+            except Exception:
+                pass
 
     return rules
 
@@ -105,26 +131,6 @@ def should_ignore(path: str, rules: IgnoreRuleSet) -> bool:
 
 
 # ── Internal helpers ────────────────────────────────────────────────────
-
-
-def _collect_gitignore_files(root: Path, rules: IgnoreRuleSet) -> None:
-    """Walk *root* and parse every ``.kmmignore`` file found.
-
-    Each directory's .kmmignore provides rules applicable to files
-    at or below that directory.  We store them keyed by the directory
-    path so ``should_ignore`` can select the most specific one.
-    """
-    if not root.is_dir():
-        return
-
-    for dirpath, _dirnames, filenames in os.walk(str(root)):
-        if _IGNORE_FILENAME in filenames:
-            full_path = os.path.join(dirpath, _IGNORE_FILENAME)
-            try:
-                parsed = parse_gitignore(full_path)
-                rules.gitignore_rules[dirpath + "/"] = parsed
-            except Exception:
-                pass
 
 
 def _any_path_component_ends_with(path: str, suffixes: list[str]) -> bool:
