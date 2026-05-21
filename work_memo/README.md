@@ -10,7 +10,7 @@
 
 ## 状态文件格式
 
-`states.md` 由arch维护，smith可以向其中添加条目，建议格式：
+`states.md` 由arch维护，smith可以向其中添加条目，要求格式：
 
 ```markdown
 # 工作状态

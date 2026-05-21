@@ -1,39 +1,15 @@
 # 当前决策记录
 
-> 本文件由 arch 维护，smith 在每次任务前检查 L1 约束是否与既有决策冲突。
-> 本文件不是契约权威来源；若与 `repo_memo/` 冲突，以 `repo_memo/` 为准。
+> 本文件由 arch 维护。只记录当前有效的架构原则。
+> 已完成的施工决策见 `repo_logs/2026-05-21.md`。
 
-## 2026-05-20 术语与接口清退
+## 架构原则（active）
 
-### 已确认决策
-
-- **D1**: 删除整个 `cli-hmi/` 目录，同时清理所有外部文档中的 `cli-hmi` 路径引用
-- **D2**: `engine.py` 中 `_check_dir_tree_transition()` 移除 `"directory"` → `"dir"` 向后兼容代码，强制仅接受 `"dir"`
-- **D3**: `tests/test_orchestrator.py:352` `"kmmbackup_"` → `"kmmbackup"`（非违例测试，属旧值残留）
-- **D4**: 前端 `RulesOverviewPage.vue`：`rulenamespace` 空时回退 `"anonymousnamespace"`，`rulename` 空时回退 `"unknownrulename"`（不再回退到 `file.name`）
-- **D5**: 全仓库文档中清除 `appitemid`、`dommod`、`islbfdvdflocate` 三个历史别名的所有出现
-- **D6**: `engine.py` 私有 dataclass `ForestTree` 不重命名
-- **D7**: 警告码 `W_FOREST_BRANCHING` 不重命名（报错是给人看的）
-- **D8**: `description/` 目录下的示例文件由用户自行修改，仅提供修改建议；与 D5 冲突时 D8 优先（即 `description/database.json.example` 由 arch 输出建议，smith 不直接编辑）
-
-- **D9**: `repo_spec/` schema 补全与字段统一施工——新增 9 个 schema + 修改 10 个既有 schema（原禁区"不修改 schema 文件 / repo_spec JSON"已由 user 直接指令覆盖，开发阶段无生产数据）
-
-## 2026-05-21 架构重构 — Orchestrator 四层模型
-
-### 已确认决策
-
-- **D10**: Orchestrator 采用 Entry → Resolver → Planner → Primitive 四层模型
-- **D11**: Entry 层只拼装 `TaskRequest` object，不做语义解析；`resolver_args` 为 opaque dict，语义由 Resolver 自决
-- **D12**: Resolver 只收集「资源」（database / mapping / user_config 等磁盘文件内容），不读取「状态」（backupinfo）——backupinfo 由 Planner 或其 helper 负责
-- **D13**: Planner 根据 `intent` 自主决策是否做 preflight：apply / restore 必须做，run 豁免（backup 紧耦合 apply），backup 不需要；preflight 用 enum 分支
-- **D14**: 备份/应用/恢复三大原语各自独立为 `*_ops.py`（`backup_ops.py`、`apply_ops.py`、`restore_ops.py`），`run` 为组合原语
-- **D15**: 所有原语严格 file-to-file，删除全部目录处理代码（`rmtree` / `copytree` 等）
-- **D16**: Orchestrator 是唯一入口，Web API 和 CLI 全部通过它调度，内部细节零对外暴露
-- **D17**: 不采用状态机——Orchestrator 核心为 dispatch + phase 序列
-- **D18**: `compute` 管线单独拆到 `orchestrator/compute_pipeline.py`，只搬不改逻辑
-- **D19**: `preflight` 为 `orchestrator/preflight.py` 单文件
-- **D20**: `.kmmbakignore` → `.kmmignore` 语义升级——从「不备份」→「不参与 mod 管理」；归属 Planner 层；独立模块 `orchestrator/ignore_rules.py`
-- **D21**: 实施顺序为「先建新文件，再改调用方，最后删旧代码」——避免中间态不可构建
-- **D22**: `user_config.bakignore` → `user_config.ignore`
-- **D23**: backupinfo `tree` 扫描源目录（非 backup_dir），`isbackuped` 标记对照 backup_dir 副本
-- **D24**: backup / apply / restore 严格 file-to-file，运行时 `_assert_is_file()` 拒绝目录
+- **P1**: Orchestrator 为星形拓扑核心，唯一入口 `dispatch()`——Web / CLI 全部通过它调度
+- **P2**: 文件操作四层模型——Entry（`TaskRequest`）→ Resolver（`CleanContext`）→ Planner（`FileOpsPlan`）→ Primitive（`*_ops.py`）
+- **P3**: Planner 按 `intent` 自主决定 preflight：apply/restore 必须，run 豁免，backup 不需要
+- **P4**: 原语严格 file-to-file，运行时 `_assert_is_file()` 拒绝目录
+- **P5**: `.kmmignore`（gitignore 语法）由 Planner 统一收集，对所有操作生效
+- **P6**: `backupinfo.tree` 为源目录完整结构镜像，`isbackuped` 对照 backup_dir 标记
+- **P7**: 不采用状态机——`dispatch` + phase 序列足够
+- **P8**: `compute` 管线独立文件，逻辑暂不动；`DESIGN_MIGRATION_LAYERS.md` 定义 Rust 迁移分层
