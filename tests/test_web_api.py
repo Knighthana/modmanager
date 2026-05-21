@@ -130,9 +130,10 @@ class TestGenerateDatabase:
         """SSE stream returns progress + result for successful generation."""
 
         def fake_generate(**kwargs):
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("scan", 0, -1, "Discovering...")
-                kwargs["on_progress"]("scan", 1, 1, "Complete")
+            cb = kwargs.get("on_progress")
+            if cb:
+                cb("scan", 0, -1, "Discovering...")
+                cb("scan", 1, 1, "Complete")
             return self.SAMPLE_DB
 
         monkeypatch.setattr(
@@ -259,16 +260,15 @@ class TestGenerateDatabase:
 class TestComputePipeline:
     """POST /api/pipeline/compute — SSE stream"""
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_compute_pipeline_sse(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """SSE stream returns progress + result for compute pipeline."""
 
-        def fake_compute(**kwargs):
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("compute", 0, 1, "Computing...")
-                kwargs["on_progress"]("compute", 1, 1, "Done")
+        def fake_compute(request, *, on_progress=None):
+            if on_progress:
+                on_progress("compute", 0, 1, "Computing...")
+                on_progress("compute", 1, 1, "Done")
             return PipelineResult(
                 ok=True,
                 trees=[{"path": "/a.txt", "ops": []}],
@@ -289,7 +289,7 @@ class TestComputePipeline:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.pipeline.dispatch", fake_compute
         )
 
         resp = client.post(
@@ -313,17 +313,16 @@ class TestComputePipeline:
         assert result_events[0]["data"]["ok"] is True
         assert "trees" in result_events[0]["data"]["data"]
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_compute_with_managed_entries(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """managed_entries is passed through to orchestrator compute()."""
         captured_kwargs: dict = {}
 
-        def fake_compute(**kwargs):
-            captured_kwargs.update(kwargs)
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("compute", 1, 1, "Done")
+        def fake_compute(request, *, on_progress=None):
+            captured_kwargs.update(request.resolver_args)
+            if on_progress:
+                on_progress("compute", 1, 1, "Done")
             return PipelineResult(
                 ok=True,
                 trees=[],
@@ -340,7 +339,7 @@ class TestComputePipeline:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.pipeline.dispatch", fake_compute
         )
 
         managed_entries = {
@@ -359,17 +358,16 @@ class TestComputePipeline:
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_compute_with_aggregated_rule_set(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """aggregated_rule_set dict is passed through to orchestrator compute()."""
         captured_kwargs: dict = {}
 
-        def fake_compute(**kwargs):
-            captured_kwargs.update(kwargs)
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("compute", 1, 1, "done")
+        def fake_compute(request, *, on_progress=None):
+            captured_kwargs.update(request.resolver_args)
+            if on_progress:
+                on_progress("compute", 1, 1, "done")
             return PipelineResult(
                 ok=True,
                 trees=[],
@@ -386,7 +384,7 @@ class TestComputePipeline:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.pipeline.dispatch", fake_compute
         )
 
         rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
@@ -423,20 +421,19 @@ class TestComputePipeline:
 class TestRunPipeline:
     """POST /api/pipeline/run — SSE stream"""
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_run_pipeline_sse(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """SSE stream returns progress + result for full pipeline."""
 
-        def fake_run(**kwargs):
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("compute", 0, 1, "Computing...")
-                kwargs["on_progress"]("compute", 1, 1, "Done")
-                kwargs["on_progress"]("backup", 0, 2, "Backing up...")
-                kwargs["on_progress"]("backup", 2, 2, "Backup done")
-                kwargs["on_progress"]("apply", 0, 1, "Applying...")
-                kwargs["on_progress"]("apply", 1, 1, "Apply done")
+        def fake_run(request, *, on_progress=None):
+            if on_progress:
+                on_progress("compute", 0, 1, "Computing...")
+                on_progress("compute", 1, 1, "Done")
+                on_progress("backup", 0, 2, "Backing up...")
+                on_progress("backup", 2, 2, "Backup done")
+                on_progress("apply", 0, 1, "Applying...")
+                on_progress("apply", 1, 1, "Apply done")
             return PipelineResult(
                 ok=True,
                 trees=[{"path": "/a.txt", "ops": []}],
@@ -467,7 +464,7 @@ class TestRunPipeline:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
+            "modmanager_web.routes.pipeline.dispatch", fake_run
         )
 
         resp = client.post(
@@ -495,18 +492,17 @@ class TestRunPipeline:
         assert stats["backed_up"] == 1
         assert stats["applied"] == 1
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_run_with_managed_entries(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """managed_entries is passed through to orchestrator run()."""
         captured_kwargs: dict = {}
 
-        def fake_run(**kwargs):
-            captured_kwargs.update(kwargs)
-            if kwargs.get("on_progress"):
+        def fake_run(request, *, on_progress=None):
+            captured_kwargs.update(request.resolver_args)
+            if on_progress:
                 for step in ["compute", "backup", "apply"]:
-                    kwargs["on_progress"](step, 1, 1, "done")
+                    on_progress(step, 1, 1, "done")
             return PipelineResult(
                 ok=True, trees=[], final_mapping=[], mapping_result={},
                 backup_result={"ok": True, "backed_up": [], "skipped": []},
@@ -522,7 +518,7 @@ class TestRunPipeline:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
+            "modmanager_web.routes.pipeline.dispatch", fake_run
         )
 
         managed_entries = {
@@ -540,18 +536,17 @@ class TestRunPipeline:
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_run_with_aggregated_rule_set(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """aggregated_rule_set dict is passed through to orchestrator run()."""
         captured_kwargs: dict = {}
 
-        def fake_run(**kwargs):
-            captured_kwargs.update(kwargs)
-            if kwargs.get("on_progress"):
+        def fake_run(request, *, on_progress=None):
+            captured_kwargs.update(request.resolver_args)
+            if on_progress:
                 for step in ["compute", "backup", "apply"]:
-                    kwargs["on_progress"](step, 1, 1, "done")
+                    on_progress(step, 1, 1, "done")
             return PipelineResult(
                 ok=True, trees=[], final_mapping=[], mapping_result={},
                 backup_result={"ok": True, "backed_up": [], "skipped": []},
@@ -567,7 +562,7 @@ class TestRunPipeline:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_run", fake_run
+            "modmanager_web.routes.pipeline.dispatch", fake_run
         )
 
         rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
@@ -681,7 +676,6 @@ class TestAdapters:
 class TestSseDisconnect:
     """Client disconnection does not crash the server."""
 
-    @pytest.mark.skip(reason="routes refactored to use dispatch() — test needs rewrite")
     def test_sse_stream_disconnect(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -697,10 +691,10 @@ class TestSseDisconnect:
 
         # We need to test at the StreamResponse level.
         # The easiest way is to stream the response with a timeout.
-        def fake_compute(**kwargs):
+        def fake_compute(request, *, on_progress=None):
             # Simulate work that reports progress then returns
-            if kwargs.get("on_progress"):
-                kwargs["on_progress"]("compute", 0, 1, "Computing...")
+            if on_progress:
+                on_progress("compute", 0, 1, "Computing...")
             return PipelineResult(
                 ok=True,
                 forest=[],
@@ -721,7 +715,7 @@ class TestSseDisconnect:
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.orch_compute", fake_compute
+            "modmanager_web.routes.pipeline.dispatch", fake_compute
         )
 
         # Send a normal request — the important thing is that it does not
