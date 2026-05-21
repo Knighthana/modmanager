@@ -144,3 +144,78 @@ class TestRestoreEntries:
         result = restore_entries({}, {})
         for key in ("ok", "restored", "skipped", "orphans", "errors", "dry_run", "force"):
             assert key in result, f"missing field: {key}"
+
+    def test_force_false_hash_match_skips(self):
+        """force=False skips file when hash matches backup (unchanged)."""
+        import hashlib
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            content = "same content"
+            hv = hashlib.sha256(content.encode()).hexdigest()
+
+            # Create backup with matching hash in backupinfo
+            backup_dir = root / "backup"
+            backup_copy = backup_dir / "target" / "file.txt"
+            backup_copy.parent.mkdir(parents=True)
+            backup_copy.write_text(content)
+
+            tgt = root / "target" / "file.txt"
+            tgt.parent.mkdir(parents=True, exist_ok=True)
+            tgt.write_text(content)  # same content → hash should match
+
+            # Tree must mirror the directory structure:
+            # source_root has subdir "target" containing "file.txt"
+            backupinfo = {"tree": {
+                "name": "root",
+                "type": "dir",
+                "children": [{
+                    "name": "target", "type": "dir", "children": [{
+                        "name": "file.txt", "type": "file",
+                        "isbackuped": True, "hashtype": "sha256", "hashvalue": hv,
+                    }]
+                }]
+            }}
+
+            entries = {str(backup_dir) + "/": [{
+                "path": str(tgt),
+                "request": {"path": "!", "action": "replace",
+                            "action_order": 0, "provenance_ref": "t",
+                            "sidecar_ref": "t", "mixed_id": "0:0",
+                            "hashtype": "sha256", "hashvalue": ""},
+            }]}
+
+            result = restore_entries(entries, {str(backup_dir) + "/": backupinfo}, force=False)
+            assert result["ok"], result["errors"]
+            # Should be skipped because hash matches
+            assert len(result["skipped"]) == 1
+            assert len(result["restored"]) == 0
+
+    def test_creates_parent_directories(self):
+        """Restore creates parent dirs when target path doesn't exist."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            backup_dir = root / "backup"
+            backup_copy = backup_dir / "deep" / "nested" / "file.txt"
+            backup_copy.parent.mkdir(parents=True)
+            backup_copy.write_text("deep content")
+
+            # Target doesn't exist at all
+            tgt = root / "deep" / "nested" / "file.txt"
+
+            backupinfo = {"tree": _make_backupinfo(
+                str(root), {"deep/nested/file.txt": "deep content"},
+            )}
+
+            entries = {str(backup_dir) + "/": [{
+                "path": str(tgt),
+                "request": {"path": "!", "action": "replace",
+                            "action_order": 0, "provenance_ref": "t",
+                            "sidecar_ref": "t", "mixed_id": "0:0",
+                            "hashtype": "sha256", "hashvalue": ""},
+            }]}
+
+            result = restore_entries(entries, {str(backup_dir) + "/": backupinfo}, force=True)
+            assert result["ok"], result["errors"]
+            assert len(result["restored"]) == 1
+            assert tgt.read_text() == "deep content"

@@ -118,10 +118,23 @@ def _flatten_hash_lookup(
     base_dir: str,
     lookup: dict[str, tuple[str, str]],
     prefix: str = "",
+    is_root: bool = True,
 ) -> None:
-    """Walk the backupinfo tree and collect (hashtype, hashvalue) per file."""
+    """Walk the backupinfo tree and collect (hashtype, hashvalue) per file.
+
+    Hash keys are relative paths matching the content_root-relative layout
+    used by ``_relative_to_backup_root``.  The tree root's name is not
+    included in keys — only paths below the source root are.
+    """
     node_type = tree_node.get("type", "")
     name = tree_node.get("name", "")
+
+    # Root node: skip its name, start from children
+    if is_root:
+        for child in tree_node.get("children", []):
+            _flatten_hash_lookup(child, base_dir, lookup, prefix="", is_root=False)
+        return
+
     current = f"{prefix}/{name}" if prefix else name
 
     if node_type == "file":
@@ -131,7 +144,7 @@ def _flatten_hash_lookup(
             lookup[current] = (ht, hv)
     elif node_type == "dir":
         for child in tree_node.get("children", []):
-            _flatten_hash_lookup(child, base_dir, lookup, current)
+            _flatten_hash_lookup(child, base_dir, lookup, current, is_root=False)
 
 
 def _relative_to_backup_root(target_path: str, backup_dir: str) -> str:

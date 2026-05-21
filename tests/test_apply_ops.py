@@ -198,3 +198,48 @@ class TestApplyEntries:
             result = apply_entries({})
             for key in ("ok", "applied", "skipped", "errors", "warnings", "diagnostics", "dry_run"):
                 assert key in result, f"missing field: {key}"
+
+    def test_missing_target_creates_parents(self):
+        """replace action creates parent directories when needed."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "src.txt"
+            src.write_text("x")
+            tgt = root / "nonexistent" / "tgt.txt"
+            # Parent doesn't exist — makedirs should handle it
+
+            entries = {str(root) + "/": [{
+                "path": str(tgt),
+                "request": {
+                    "path": str(src), "action": "replace",
+                    "action_order": 0, "provenance_ref": "t",
+                    "sidecar_ref": "t", "mixed_id": "0:0",
+                    "hashtype": "sha256", "hashvalue": "",
+                }
+            }]}
+
+            result = apply_entries(entries)
+            assert result["ok"], result["errors"]
+            assert len(result["applied"]) == 1
+            assert tgt.read_text() == "x"
+
+    def test_delete_nonexistent_target_errors(self):
+        """E_APPLY_MISSING_TARGET when deleting non-existent file."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            tgt = root / "gone.txt"
+            # File doesn't exist
+
+            entries = {str(root) + "/": [{
+                "path": str(tgt),
+                "request": {
+                    "path": "!", "action": "delete",
+                    "action_order": 0, "provenance_ref": "t",
+                    "sidecar_ref": "t", "mixed_id": "0:0",
+                    "hashtype": "sha256", "hashvalue": "",
+                }
+            }]}
+
+            result = apply_entries(entries)
+            # FileNotFoundError → E_APPLY_MISSING_SOURCE or similar
+            assert not result["ok"]
