@@ -143,14 +143,31 @@
 
 ### 5.4 tree 的生成规则
 
-`tree` 是**源目录的完整结构镜像**，而非 `backup_dir` 的快照。
+`tree` 是**源目录的完整结构镜像**，而非 `backup_dir` 的快照。扫描完整结构是有意设计。
 
-1. **扫描对象**：以源根目录（`backup_dir` 的父目录，即 `content_root`）为根，递归遍历。
-2. **节点标记**：遍历到的每个文件，检查其在 `backup_dir` 中是否有对应副本：
-   - 有副本 → `isbackuped: true`，`hashtype` / `hashvalue` 取自备份副本
-   - 无副本 → `isbackuped: false`，`hashtype` / `hashvalue` 为占位值（`"sha256"` / `""` 或 `"0"`）
-3. **排除规则**：由 Planner 层通过 `ignore_rules.collect_rules()` 统一收集 `IgnoreRuleSet` 后传入。详见 `DESIGN_IGNORE_RULES.md`。
-   - `backupinfo.json` 自身不进入 tree 递归
+**建树时机**：
+
+tree 在 backup_dir 首次创建时一次性建立。后续备份不重建 tree——只更新已有结点的 `isbackuped` / `hashtype` / `hashvalue` 字段。tree 在首次建树之后结构为 const，不允许新增或删除结点。
+
+**建树流程**：
+
+1. **扫描对象**：以源根目录（`backup_dir` 的父目录，即 `content_root`）为根，在 ignore 的基础上，迭代扫描源 `mixed_id`（base 或者 mod）目录中**所有**的目录和文件放入树上的相应结点。
+
+2. **初始节点状态**：建树时所有文件的 hash 对象的 `hashtype` 标记为 `"invalid"`，`hashvalue` 标记为 `"0"`，`isbackuped` 标记为 `false`。
+
+3. **排除规则**：由 Planner 层通过 `ignore_rules.collect_rules()` 统一收集 `IgnoreRuleSet` 后传入。详见 `DESIGN_IGNORE_RULES.md`。`backupinfo.json` 自身不进入 tree 递归。
+
+### 5.5 树节点的状态机约束
+
+tree 创建之后 node 的结构本身为 const，FileNode 的字段变更遵循以下不可逆规则：
+
+- `isbackuped` 只能从 `false` 变成 `true`，不能反向
+- `hashtype` 只能从 `"invalid"` 变成有意义的值（如 `"sha256"`），不能反向
+- `hashvalue` 只能从 `"0"` 变成有意义的 hash hex string，不能反向
+
+**只有文件拷贝完成之后**，才能将 `isbackuped` 转变为 `true`。如果拷贝过程被异常打断，那么不允许提前修改 `isbackuped` 的值。
+
+这些约束是 FileNode 的运行时强制规则，与 `repo_spec/backupinfo.schema.json` 的结构约束互补。
 
 ## 六、backupinfo 与 schema 的关系
 
@@ -177,5 +194,11 @@
 - `tree` 根节点必须是 `dir`
 - 目录节点只能是 `dir`，文件节点只能是 `file`
 - `FileNode` 必须带 `isbackuped`、`hashtype`、`hashvalue`
+- **首次备份**：backup_dir 不存在 → 建树 → 所有文件 `isbackuped=false`，`hashtype="invalid"`，`hashvalue="0"`
+- **后续备份**：tree 已存在且完整 → 不重建树，只更新已有结点的状态
+- `isbackuped` 只能 `false→true`，不能反向
+- `hashtype` 只能 `"invalid"→"sha256"`，不能反向
+- `hashvalue` 只能 `"0"→有效 hex string`，不能反向
+- 拷贝失败时 `isbackuped` 保持 `false`
 
 反例、异常构造与违规输入枚举，不属于本文档职责。

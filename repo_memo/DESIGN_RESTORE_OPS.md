@@ -1,99 +1,61 @@
 # DESIGN_RESTORE_OPS — Restore 执行设计
 
 > Status: active
-> Last update: 2026-05-21 — restore_ops.py as independent module
 > Authority: authoritative
 > Read-Tier: task-scoped
-> Purpose: 定义 restore 如何消费当前 mapping、backupinfo 与 backup_dir 执行恢复，不承担上层流程门禁职责
+> Purpose: 定义 restore 如何消费当前 mapping、backupinfo 与 backup_dir 执行恢复
 > Supersedes: DESIGN_BACKUP.md
+> Last update: 2026-05-21 — 重新规定 restore 流程：批量操作列表、树上无结点则删除源文件、严格按 tree 状态判断
 
 ## 一、职责边界
-
-实现文件：`src/modmanager/restore_ops.py`（独立原语模块）。
 
 本文档只描述 restore 如何执行。
 
 本文档不负责定义：
-
-- backup_dir 应该长什么样
-- backupinfo 应该长什么样
+- `backup_dir` 的目录结构
+- `backupinfo` 的 schema 结构
 - 如何执行 backup
-- 是否要求用户在产品流程上先做 backup
 
-这些问题分别由 `DESIGN_BACKUP_DIR.md`、`DESIGN_BACKUP_OPS.md` 与上层产品流程决定。
+这些问题分别由 `DESIGN_BACKUP_DIR.md`、`DESIGN_BACKUP_OPS.md` 负责。
 
 ## 二、总原则
 
-### 2.1 restore 是执行原语，只干活
+### 2.1 restore 是执行原语
 
-- restore 不负责检查更高层状态。
-- restore 不负责判断用户是否“应该先 backup”。
-- restore 不承担上层流程门禁职责。
-
-restore 只消费当前可见输入并执行恢复：
-
-- 当前 mapping
-- 对应 backup_dir
-- 该 backup_dir 根目录中的 `backupinfo.json`
+- restore 不负责检查更高层状态，不负责判断用户是否"应该先 backup"。
+- restore 只消费当前可见输入并执行恢复：当前 mapping、对应 backup_dir、`backupinfo.json`。
 
 ### 2.2 mapping 只决定 scope，backupinfo 只决定 truth
 
-- 当前 mapping 只用于判定这次 restore 里哪些文件“被命中过”。
-- `backupinfo.json` 只用于提供这些已备份实体“应该是什么样”的结构与 hash 权威。
+- 当前 mapping 只用于判定这次 restore 里哪些文件「被命中过」。
+- `backupinfo.json` 只用于提供这些文件的 schema 与 hash 权威。
 - 二者职责不可混用。
 
-换言之：
+### 2.3 Ignore 规则缓存
 
-- mapping 决定 restore scope
-- backupinfo 决定 restore truth
-
-### 2.3 切换 mapping 后再 restore 是设计内功能
-
-- restore 与 backup 解耦。
-- 切换到另一份当前生效的 mapping 后再执行 restore，属于设计内允许的行为。
-- restore 不关心这份 mapping 是否与创建 backup 时的 mapping 相同；它只关心当前命中集合，以及 backup_dir 中是否存在可恢复实体。
+ignore 的计算非常常用。Planner 在 `plan_fileops()` 阶段计算出的 ignore 结果必须以某种形式缓存并提供给 restore 原语直接消费，不允许 restore 原语重新计算 ignore 规则。
 
 ## 三、执行输入
 
-### 3.1 当前 mapping
+- 当前 mapping（来自 Planner 构建的 `CleanContext.final_mapping`）
+- 对应 backup_dir
+- `backupinfo.json`
 
-restore 消费当前 mapping，用于从目标路径集合中确定本次 restore 的命中集合。
+## 四、Restore 执行流程
 
-对每个候选文件而言，只有两种状态：
+1. 根据 mapping 所确定的 scope（被命中的文件），在 ignore 的基础上，获取要操作的文件列表。
 
-- 命中：参与本次 restore
-- 未命中：不参与本次 restore
+2. 将 `backupinfo.json` 中的树加载进内存。
 
-### 3.2 backup_dir
+3. 如果 tree 上根本就没有对应的文件结点，那么直接删除源目录中的对应文件。
 
-- restore 从 `build_backup_dirs()` 或等效机制定位对应的 `backup_dir`。
-- `backup_dir` 提供实际可复制回目标位置的文件实体。
+4. 如果 tree 上的对应文件的 `isbackuped` 为 `false`，那么跳过这个操作并记录一条详细警告。如果 `hashtype` 和 `hashvalue` 不是有意义的值（即 `hashtype` 为 `"invalid"` 或 `hashvalue` 为 `"0"`），那么同样跳过并记录对应的详细警告。
 
-### 3.3 backupinfo
+5. 如果 tree 上有对应文件且 `isbackuped` 为 `true`，并且有有效的 `hashtype` 和 `hashvalue`，那么计算外面目录（源目录）中该文件在对应 `hashtype` 下的 `hashvalue`，并与 `backupinfo.json` tree 上的值对比：
+   - 如果相同，跳过。
+   - 如果不相同，记录这个文件进入文件批量操作列表。
 
-- restore 读取 `backup_dir/backupinfo.json`。
-- `backupinfo.json` 的结构与节点定义由 `DESIGN_BACKUP_DIR.md` 规定。
-- restore 使用其中的 `tree`、`hashtype`、`hashvalue` 进行结构与 hash 对照。
-
-## 四、执行语义
-
-### 4.1 命中集行为
-
-- 命中=true：该文件参与本次 restore，按 backup_dir 和 backupinfo 执行恢复。
-- 命中=false：该文件与本次 restore 无关，不处理。
-
-### 4.2 hash 行为
-
-- 默认模式下，也就是 `force=false` 时，restore 可以对目标文件与 backup 实体做 hash 比对。
-- 若目标文件与 backup 文件 hash 一致，可跳过实际复制。
-- `force=true` 时，应直接跳过 hash 计算并执行文件操作，而不是先计算 hash 再决定是否跳过。
-- `force` 只改变执行策略，不改变 backupinfo 的权威地位。
-
-### 4.3 文件恢复行为
-
-- restore 按命中集合找到目标路径。
-- 对于可恢复的目标，从 `backup_dir` 中取对应实体文件复制回目标位置。
-- 若父目录不存在，restore 可创建所需父目录后再复制。
+6. 当 mapping 被 ignore 之后的 scope 确认完毕之后，执行整个文件批量操作列表的工作。从 `backup_dir` 中取对应实体文件复制回目标位置。若父目录不存在，restore 可创建所需父目录后再复制。
 
 ## 五、warning 与 error 的边界
 
@@ -101,15 +63,16 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 
 ### 5.1 warning
 
-以下情况原则上记为 warning：
+以下情况记为 warning：
 
-- 某目标在当前 restore scope 内，但在对应 `backup_dir` 中找不到可恢复实体
+- 某目标在当前 restore scope 内，但树上对应文件的 `isbackuped` 为 `false`
+- 某目标在树上存在，但 `hashtype` 为 `"invalid"` 或 `hashvalue` 为 `"0"`（无有效 hash）
 - 某个 backup_dir 无法通过可恢复性检查，因此该目录下目标整体跳过
 - 存在本次 restore 未命中的外部文件或孤儿文件，需要提示但不阻断其它恢复
 
 ### 5.2 error
 
-以下情况原则上记为 error：
+以下情况记为 error：
 
 - 复制回目标位置时发生不可恢复的 I/O 失败
 - 当前 restore 动作无法继续执行该条目
@@ -117,31 +80,38 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 
 具体错误码与默认严重级别以 `TERMS_ERROR_CODES.md` 为准。
 
-## 六、当前实现应遵循的最小流程
+## 六、hash 行为
+
+- `force=true` 时，应直接跳过 hash 计算并执行文件操作，不改变 backupinfo 的权威地位。
+- `force=false` 时（默认），restore 按照 §四 步骤 5 中的方式做 hash 比对。比对的对象是**源目录中文件的 hash** 与 **tree 上记录的值**。
+
+## 七、当前实现应遵循的最小流程
 
 ```text
 读取当前 mapping
-  -> 定位本次命中集合
-  -> 推导对应 backup_dir
-  -> 读取 backup_dir/backupinfo.json
-  -> 若 force=false，则对命中条目执行 hash 对照
-  -> 若 hash 一致，则 skip
-  -> 若 force=true，则直接跳过 hash 计算
-  -> 需恢复则从 backup_dir 复制回目标位置
+  -> 根据 mapping 确定 scope（被命中的文件），应用 ignore 规则
+  -> 定位对应 backup_dir
+  -> 读取 backup_dir/backupinfo.json，将树加载进内存
+  -> 遍历 scope 内每个文件：
+       树上无对应结点 → 直接删除源目录中的对应文件
+       isbackuped=false 或 hash 无效 → skip + warning
+       isbackuped=true 且有有效 hash → 计算源文件 hash 与树上值对比
+         相同 → skip
+         不同 → 加入批量操作列表
+  -> scope 确认完毕后，执行批量操作列表（从 backup_dir 复制回目标位置）
   -> 找不到可恢复实体则 warning
   -> 确实执行失败则 error
 ```
 
-## 七、测试组可据此断言的“应该是什么样”
+## 八、测试断言
 
-测试组可以直接据此编写正例断言：
+测试组可以据本文档编写正例断言：
 
 - restore 只处理当前 mapping 命中的文件
-- 未命中的文件不参与本次 restore
-- restore 依赖 `backup_dir` 与 `backupinfo.json` 执行，不负责上层门禁判断
-- `force=true` 时直接跳过 hash 计算并执行文件操作，不改变 backupinfo 的 truth 地位
+- 树上无对应结点时：直接删除源目录中的对应文件
+- `isbackuped=false` 时：skip 并记录 warning
+- `hashtype` 为 `"invalid"` 或 `hashvalue` 为 `"0"` 时：skip 并记录 warning
+- `force=true` 时直接跳过 hash 计算并执行文件操作
+- hash 相同时 skip，不同时加入批量操作列表并最终执行
 - 找不到可恢复实体时应产生 warning，而不是隐式成功
-- 不可继续执行的复制失败应产生 error
-- restore 相关错误码与警告码统一以 `TERMS_ERROR_CODES.md` 为准
-
-反例、异常构造和产品层“是否允许点击 restore”的策略，不属于本文档职责。
+- 复制失败应产生 error
