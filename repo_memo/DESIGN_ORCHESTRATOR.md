@@ -61,6 +61,7 @@ class ProgressCallback(Protocol):
 
 | 阶段 | step 值 | 说明 |
 |------|---------|------|
+| 准备 | `"prepare"` | Resolver → Planner → Preflight，3 个子阶段（0/3 → 1/3 → 2/3 → 3/3） |
 | 备份 | `"backup"` | `_execute_backup_plan` |
 | 应用 | `"apply"` | `_execute_apply_plan` |
 | 恢复 | `"restore"` | `_execute_restore_plan` |

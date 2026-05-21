@@ -2,9 +2,10 @@
   <el-footer style="padding: 8px 16px; border-top: 1px solid var(--el-border-color-light); background: var(--el-bg-color);">
     <div style="display: flex; align-items: center; gap: 12px;">
       <el-progress
-        :percentage="percentage"
+        :percentage="Math.round((store.progress.finished / Math.max(store.progress.total, 1)) * 100)"
         :stroke-width="16"
         :text-inside="false"
+        :format="() => progressText"
         style="flex: 1;"
       />
       <span style="font-size: 13px; color: var(--el-text-color-secondary); white-space: nowrap;">
@@ -23,6 +24,7 @@ const store = useForestStore()
 const progressLabel: Record<string, string> = {
   'aggregate': '聚合规则',
   'compute': '计算映射',
+  'prepare': '准备中',
   'backup': '差异备份',
   'apply': '应用替换',
   'scan': '扫描 Steam 库',
@@ -33,9 +35,8 @@ const displayStep = computed(() => {
   return progressLabel[store.progress.step] || store.progress.step
 })
 
-const percentage = computed(() => {
+const progressText = computed(() => {
   const { finished, total } = store.progress
-  if (total <= 0) return 0
-  return Math.round((finished / total) * 100)
+  return `${finished ?? 0}/${total ?? 1}`
 })
 </script>

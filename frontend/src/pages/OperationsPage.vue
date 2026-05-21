@@ -128,7 +128,7 @@
         <template #header>
           {{ operationLabel(operating) }}
         </template>
-        <el-progress :percentage="progressPct" :stroke-width="16" />
+        <el-progress :percentage="progressPct" :stroke-width="16" :format="() => progressText" />
         <p style="margin-top: 8px; font-size: 13px; color: var(--el-text-color-secondary);">
           {{ progress.message || '处理中...' }}
         </p>
@@ -431,6 +431,12 @@ const progressPct = computed(() => {
   const { finished, total } = progress.value
   if (total <= 0) return 0
   return Math.round((finished / total) * 100)
+})
+
+/** 进度文本 {finish}/{total} */
+const progressText = computed(() => {
+  const { finished, total } = progress.value
+  return `${finished ?? 0}/${total ?? 1}`
 })
 
 const gateFailedDirs = computed(() => {
