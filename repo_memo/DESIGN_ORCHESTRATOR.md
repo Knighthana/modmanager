@@ -49,6 +49,24 @@ class ProgressCallback(Protocol):
         ...
 ```
 
+**进度事件契约（SSE 隐含要求，显式写入）**：
+
+每个执行阶段（prepare / backup / apply / restore）**必须**至少发送一次进度事件，即便该阶段无条目需处理。
+
+- 阶段开始时：发送 `finished=0, total=N`（N 为条目数，无条目时 `total=1`）
+- 阶段结束时：发送 `finished=N, total=N`（最终进度）
+- 禁止出现「零进度事件直接返回 result」的情况——前端依赖首个 `progress` 确认工作已启动，若永远等不到则 UI 卡在「准备中...」
+
+各阶段推荐的 step 标识：
+
+| 阶段 | step 值 | 说明 |
+|------|---------|------|
+| 环境解析 | `"prepare"` | Resolver → Planner，发送 `"Resolving context..."` |
+| 备份 | `"backup"` | `_execute_backup_plan` |
+| 应用 | `"apply"` | `_execute_apply_plan` |
+| 恢复 | `"restore"` | `_execute_restore_plan` |
+| 全流水线 | `"run"` | 组合备份+应用，逐阶段发送 |
+
 ---
 
 ## 三、公开接口
