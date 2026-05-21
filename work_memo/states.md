@@ -21,12 +21,12 @@
 ### P2 — 文档残修
 - [ ] `DESIGN_BACKUP_OPS.md` §八：字段列表是否有重复定义需精简为引用
 
-### P3 — 测试补全
-- [ ] `apply_ops`：file-to-file 正例 + 目录拒绝 + dry_run + 返回契约
-- [ ] `restore_ops`：hash 比对 / force 跳过 / 路径映射
+### P3 — 测试补全（进行中）
+- [x] `apply_ops`：file-to-file 正例 + 目录拒绝 + dry_run + 返回契约（9 tests）
+- [x] `restore_ops`：hash 比对 / force 跳过 / 路径映射（6 tests）
+- [x] `ignore_rules`：三层收集 + gitignore 解析（9 tests）
 - [ ] `planner_fileops`：preflight 决策分支 / 忽略收集 / backup_dir 分组
 - [ ] `preflight`：apply gate / restore existence
-- [ ] `ignore_rules`：三层收集 + gitignore 解析
 - [ ] 恢复被 skip 的 24 个测试（改为测试 `dispatch()` 通路）
 - [ ] restore 缺少的 warning：找不到备份实体 → warning 非 skipped；孤儿文件检测
 
