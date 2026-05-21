@@ -754,6 +754,8 @@ async function confirmRestore() {
 /** 差异备份 */
 async function doBackup() {
   operating.value = 'backup'
+  dryRunEntries.value = []
+  dryRunOperation.value = ''
   applyDiagnostics.value = null
   diagExpandedPanels.value = []
   diagFocusedPath.value = ''
@@ -775,7 +777,7 @@ async function doBackup() {
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
-      if (isDry && backedUp.length > 0) {
+      if (backedUp.length > 0) {
         dryRunEntries.value = backedUp
         dryRunOperation.value = 'backup'
       }
@@ -798,6 +800,8 @@ async function doBackup() {
 /** 应用映射 */
 async function doApply() {
   operating.value = 'apply'
+  dryRunEntries.value = []
+  dryRunOperation.value = ''
   progress.value = { step: 'apply', finished: 0, total: -1, message: '准备中...' }
 
   await streamSse(`/workspace/${workspaceId.value}/pipeline/apply`, {
@@ -826,7 +830,7 @@ async function doApply() {
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
-      if (isDry && applied.length > 0) {
+      if (applied.length > 0) {
         dryRunEntries.value = applied
         dryRunOperation.value = 'apply'
       }
@@ -855,6 +859,8 @@ async function doApply() {
 /** 恢复备份 */
 async function doRestore() {
   operating.value = 'restore'
+  dryRunEntries.value = []
+  dryRunOperation.value = ''
   applyDiagnostics.value = null
   diagExpandedPanels.value = []
   diagFocusedPath.value = ''
@@ -875,6 +881,10 @@ async function doRestore() {
       operationWarnings.value = warns
       operationErrors.value = errs
       selectedErrorCode.value = ''
+      if (restored.length > 0) {
+        dryRunEntries.value = restored
+        dryRunOperation.value = 'restore'
+      }
       if (errs.length > 0) {
         ElMessage.warning(`恢复完成：${restored.length} 个文件恢复，${skipped.length} 个跳过，${errs.length} 个错误`)
       } else {
