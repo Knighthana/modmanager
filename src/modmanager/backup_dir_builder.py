@@ -2,7 +2,7 @@
 
 Provides functions to build a backup directory path from final_mapping,
 database, and user_config, including workshop/custom backup ID generation
-and .kmmbakignore rule loading.
+and .kmmignore rule loading.
 """
 
 from __future__ import annotations

@@ -37,7 +37,7 @@
 
 ## 7. 备份目录命名与过滤
 - `baksuffix`：备份目录名后缀（默认建议 `kmmbackup`）
-- `bakignore`：备份/恢复扫描时的忽略规则集合（路径/通配）
+- `bakignore` → ：全局忽略规则集合（apply/backup/restore 均生效，详见 DESIGN_IGNORE_RULES.md）
 - 约束：`backup_ops` 只消费最终目录字符串，不负责生成规则
 
 ## 7.1 backup_dir 与 backupinfo

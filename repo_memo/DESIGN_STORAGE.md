@@ -100,7 +100,7 @@
 | `schema_namespace` | `string` | **是** | Schema 命名空间标识，固定为 `"KMM_UserConfig"` |
 | `schema_version` | `string` | **是** | Schema 版本号，如 `"knighthana@0.1.0"` |
 | `baksuffix` | `string` | 否 | 备份目录名后缀，默认 `"kmmbackup"` |
-| `bakignore` | `string[]` | 否 | 备份扫描忽略模式列表 |
+| `ignore` | `string[]` | 否 | 全局忽略模式列表（apply/backup/restore 均生效，详见 `DESIGN_IGNORE_RULES.md`） |
 | `aggregated_ruleset_output_path` | `string \| null` | 否 | `aggregated_rule_set.json` 输出路径。`null` 时使用默认位置 |
 | `rule_sources` | `string[]` | 否 | 规则文件来源列表。目录以 `/` 结尾（后端自动扫描 `*.kmmrule.json`），或以 `.kmmrule.json` 结尾的文件直接加载。后端保存时自动归一化：检测到目录路径缺 `/` 则补齐 |
 | `path_alias` | `object[]` | 否 | 路径别名列表（当前无消费者，保留供未来扩展） |

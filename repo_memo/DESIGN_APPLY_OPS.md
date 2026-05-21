@@ -131,7 +131,7 @@ apply 不负责以下事项：
 
 - 不生产 preflight / gate 结果
 - 不定义 preflight manifest 或 cache policy
-- 不触碰 `.kmmbakignore`
+- 不触碰 `.kmmignore`
 - 不做 restore 安全性判定
 - 不重新裁决 mapping 正确性
 
@@ -152,7 +152,7 @@ apply 本体至少涉及以下条目：
 
 - apply 只消费 file-to-file 输入
 - dry_run 与正式执行返回稳定的结构化结果
-- `.kmmbakignore` 不属于 apply 的执行范围
+- `.kmmignore` 不属于 apply 的执行范围
 - 非法目录输入由 schema 与测试层阻断，不由 apply 本体扩展解释
 
 更高层门禁、缓存策略与 engine 内部路径构造，不属于本文档职责。

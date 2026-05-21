@@ -15,7 +15,7 @@
       "items": { "$ref": "dry_run_output.schema.json#/$defs/BackupDryRunEntry" }
     },
     "skipped": {
-      "description": "Entries that were skipped (e.g. bakignore match, already backed up).",
+      "description": "Entries that were skipped (e.g. ignore match, already backed up).",
       "type": "array",
       "items": { "type": "object", "additionalProperties": true }
     },
