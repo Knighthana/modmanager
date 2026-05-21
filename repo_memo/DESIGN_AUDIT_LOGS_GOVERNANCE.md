@@ -103,7 +103,7 @@ topic: Architecture Design Finalization
 status: FINALIZED
 scope: Storage, Python Layers, Frontend Independence, API Stability
 fixated_into:
-  - repo_memo/DESIGN_PYTHON_LAYERS.md (complete file)
+  - repo_memo/DESIGN_MIGRATION_LAYERS.md (complete file)
   - repo_memo/DESIGN_FRONTEND_LAYER_INDEPENDENCE.md (complete file)
   - repo_memo/DESIGN_REST_API.md (§1.6-1.7 冻结部分)
   - repo_memo/TERMS_FIELD_FREEZE.md (§新增冻结字段)
@@ -135,7 +135,7 @@ cleanup_actions:
 标记为 FINALIZED 前，必须完成以下验证：
 
 - [ ] 所有讨论的结论都已转换为 repo_memo/ 的文档
-- [ ] 新增文档（如 DESIGN_PYTHON_LAYERS.md）都已创建
+- [ ] 新增文档（如 DESIGN_MIGRATION_LAYERS.md）都已创建
 - [ ] 现有文档的更新（删除旧术语、加新冻结字段）都已完成
 - [ ] `cleanup_actions` 中列出的删除/更新都已执行
 - [ ] 检查 repo_memo/ 中的引用是否指向正确的文件和章节
@@ -228,7 +228,7 @@ cleanup_actions:
 时间线：
 - **2026-05-14 09:00** — 讨论开始，创建 `audit_logs/2026-05-14_Storage-XX.md`，status=ACTIVE
 - **2026-05-14 11:00** — 讨论结束，决定已明确，开始转换为设计文档
-- **2026-05-14 12:30** — 创建 DESIGN_PYTHON_LAYERS.md, DESIGN_FRONTEND_LAYER_INDEPENDENCE.md
+- **2026-05-14 12:30** — 创建 DESIGN_MIGRATION_LAYERS.md, DESIGN_FRONTEND_LAYER_INDEPENDENCE.md
 - **2026-05-14 13:00** — 更新 TERMS_FIELD_FREEZE.md, PATTERNS_ENGINEERING.md 等
 - **2026-05-14 13:30** — 审计文档改为 status=FINALIZED，加 fixated_into 列表
 - **2026-05-14 14:00** — Plan 验收：新成员只读 repo_memo/，能否理解新架构？✅

@@ -297,7 +297,7 @@ Tauri 迁移时，组件代码完全不动：
 - 提前做好分层约束，防止代码耦合加深
 
 ### 中期（未来 6-12 个月）
-- 准备 Rust 后端（使用 DESIGN_PYTHON_LAYERS.md 的规则）
+- 准备 Rust 后端（使用 DESIGN_MIGRATION_LAYERS.md 的规则）
 - 新建 `src/api/transport-tauri.ts` 实现 Tauri 版本的 apiPost/streamSse
 
 ### 长期（迁移启动）
