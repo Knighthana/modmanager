@@ -76,3 +76,22 @@ class TestShouldIgnore:
         """Normal files are not matched by any layer."""
         rules = IgnoreRuleSet()
         assert not should_ignore("/path/to/file.txt", rules)
+
+    def test_gitignore_cascade_parent_and_child(self):
+        """Parent and child .kmmignore rules both apply (gitignore cascading)."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            # Parent rule: ignore *.log
+            (root / ".kmmignore").write_text("*.log\n")
+            # Child rule: ignore *.tmp (adds to parent, not replaces)
+            sub = root / "sub"
+            sub.mkdir()
+            (sub / ".kmmignore").write_text("*.tmp\n")
+
+            rules = collect_rules({}, [str(root)])
+            # Parent rule applies to files in subdirectory
+            assert should_ignore(str(sub / "error.log"), rules)
+            # Child rule applies
+            assert should_ignore(str(sub / "data.tmp"), rules)
+            # Unmatched file
+            assert not should_ignore(str(sub / "keep.txt"), rules)

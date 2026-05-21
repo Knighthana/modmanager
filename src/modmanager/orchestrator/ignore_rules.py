@@ -84,19 +84,19 @@ def should_ignore(path: str, rules: IgnoreRuleSet) -> bool:
         if path.endswith(pattern):
             return True
 
-    # Layer 3: gitignore rules
-    # Find the most specific matching gitignore rule set
-    gitignore_matched = None
-    best_prefix_len = 0
-    for root_dir, rule in rules.gitignore_rules.items():
-        if path.startswith(root_dir) and len(root_dir) > best_prefix_len:
-            gitignore_matched = rule
-            best_prefix_len = len(root_dir)
-
-    if gitignore_matched is not None:
-        # gitignore_parser's rule objects are callable
+    # Layer 3: gitignore rules — check all matching rule sets from
+    # deepest (most specific) to shallowest (least specific).
+    # Child .kmmignore rules add to parent rules per standard gitignore
+    # semantics; the first match wins.
+    matching_rules = sorted(
+        [(root_dir, rule) for root_dir, rule in rules.gitignore_rules.items()
+         if path.startswith(root_dir)],
+        key=lambda x: len(x[0]),
+        reverse=True,  # deepest first
+    )
+    for _root_dir, rule in matching_rules:
         try:
-            if gitignore_matched(path):
+            if rule(path):
                 return True
         except Exception:
             pass
