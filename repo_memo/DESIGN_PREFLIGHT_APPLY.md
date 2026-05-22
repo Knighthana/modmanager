@@ -154,9 +154,16 @@ preflight 主要复用以下条目：
 
 ## 十一、测试组可据此断言的“应该是什么样”
 
-测试组可以据本文档编写断言：
+测试组可以据本文档编写正例断言：
 
-- preflight 独立于 apply 原语
-- manifest 结构稳定且可被 orchestrator 消费
-- cache 只是优化层，不改变决策语义
+- preflight 独立于 apply 原语——preflight 不调用 apply，不执行文件替换，不改动磁盘
+- manifest 必须包含 ok、backup_dirs、errors、warnings、timestamp
+- backup_dirs 每个条目必须包含 path、gate_pass、gate_errors、applicable_entries
+- apply preflight：backup_dir 不存在 → gate_pass=false，记录 E_BACKUP_DIR_MISSING
+- apply preflight：backupinfo.json 不存在 → gate_pass=false，记录 E_BACKUP_INFO_MISSING
+- apply preflight：backupinfo.json 存在但 tree 缺失 → gate_pass=false
+- restore preflight：backup_dir 不存在 → manifest.ok=false，记录 E_BACKUP_DIR_MISSING
+- restore preflight：backup_dir 存在 → gate_pass=true，gate_errors=[]
+- 空 backup_dirs 时 trivially pass（ok=true，backup_dirs=[]）
 - manifest 失败时 orchestrator 不调用 apply
+- cache 只是优化层，不改变决策语义

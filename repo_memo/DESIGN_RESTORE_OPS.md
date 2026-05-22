@@ -113,5 +113,6 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 - `hashtype` 为 `"invalid"` 或 `hashvalue` 为 `"0"` 时：skip 并记录 warning
 - `force=true` 时直接跳过 hash 计算并执行文件操作
 - hash 相同时 skip，不同时加入批量操作列表并最终执行
+- `dry_run=true` 时：不修改文件，但仍产出完整的操作报告（`restored`、`deleted`、`skipped`、`warnings`）
 - 找不到可恢复实体时应产生 warning，而不是隐式成功
 - 复制失败应产生 error

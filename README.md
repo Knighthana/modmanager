@@ -38,7 +38,7 @@ The Knighthana's Mod Manager(简称KMM)通过对"文件迁移过程"进行脱离
 pip install modmgr
 
 # 安装 Web 界面（可选）
-pip install modmgr[web]
+pip install "modmgr[web]"
 
 # 启动 Web 服务（需先安装 web 依赖）
 modmgr-web          # → http://127.0.0.1:8000
@@ -110,6 +110,8 @@ modmgr-cli --help
 欢迎提出更多的想法，比如“我想用它管理Minecraft模组”，或者“我想用它管理我的本地音乐收藏”，或者“我有一个嵌入式设备中需要这样的管理器对规则集合进行管理”；
 
 项目还在成长，接受各种想法；
+
+---------------------------
 
 Knighthana
 
