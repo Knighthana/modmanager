@@ -110,6 +110,8 @@
 - DataSourcePage 降为纯 database 管理，无页面间跳转逻辑。
 - ~~"保存当前选择"按钮已删除~~——扫描已顺带保存，无需独立保存按钮。
 - **database 下拉组件**：用户选择要操作的目标 database。选项来自 `user_config.databases`。选中值仅作为组件本地状态——不改 localStorage、不改后端文件。操作时作为 `database_name?` 参数传入请求。**DataSourcePage 上不显示"有历史决策"标签。**
+- **自动读取 database**：页面挂载时，以及用户切换 database 下拉选项时，自动调用 `POST /api/database/read` 读取所选 database 的 JSON 内容，并通过已有 `_populateFromDatabase()` 渲染库表/游戏表/MOD 表。用户无需先点"扫描"即可查看已有 database 的结构。
+- **手动路径输入**：当前支持文本输入 `steamapps` 目录路径。未来新增 Windows 下 `<input type="file">` 选择 `steam.exe` → 后端推导 VDF 路径（参见 `DESIGN_BOOTSTRAP.md` §二）。
 - 重复 appid/mixed_id 条目自然展示，无额外处理
 - 游戏表列顺序：序号 → 可见性 → appid → 名称 → MOD数 → 所属库 → 路径
 - 点击游戏表的"所属库"→ 滚到库表对应行；点击 MOD 表的"所属APPID"→ 滚到游戏表对应行；点击游戏表的 MOD 数→ 滚到该游戏第一个 MOD 处
@@ -402,12 +404,11 @@
 ```
 ┌ 高级 ────────────────────────────────────────────────────────┐
 │                                                              │
-│  [Database] [Aggregated Rules] [User Config]                  │  ← el-tabs
+│  选择的数据库: [default ▼]     工作区: [workspace_abc123 ▼]   │
+│                                                              │
+│  [Database] [Aggregated Rules] [User Config] [LocalStorage]   │  ← el-tabs
 │                                                              │
 │  ┌ Database JSON ──────────────────────────────────────────┐ │
-│  │                                                          │ │
-│  │  文件路径: /tmp/modmanager_database_generated.json        │ │
-│  │  文件大小: 45.2 KB    最后修改: 2026-05-13 15:30          │ │
 │  │                                                          │ │
 │  │  ┌──────────────────────────────────────────────────┐   │ │
 │  │  │ {                                                │   │ │
@@ -428,7 +429,7 @@
 | Tab | 数据来源 | 写入端点 |
 |-----|---------|---------|
 | Database | `POST /api/database/read` | `POST /api/database/save` |
-| Aggregated Rules | `POST /api/rules/load-aggregated` | 不需要（聚合自动生成） |
+| Aggregated Rules | `GET /api/workspace/{id}/rules/aggregated` | 不需要（聚合自动生成） |
 | User Config | `POST /api/config/discover` | `POST /api/config/save` |
 | LocalStorage | `window.localStorage (modmanager:*)` | 不支持编辑（只读 dump） |
 
@@ -437,6 +438,8 @@
 - [刷新] 从后端重新加载
 - 标签切换时自动刷新当前标签（database / aggregated / userConfig / localStorage）
 - Database JSON 编辑独立模块，可随时迁移
+- **工作区下拉**：Aggregated Rules 标签不再死绑当前工作区。用户通过工作区下拉独立选择要查看的工作区。若未选择工作区，标签显示"请先选择一个工作区"。
+- **数据库标签**："选择的数据库"说明文字紧邻 DatabaseSelector 组件左侧。
 
 ---
 

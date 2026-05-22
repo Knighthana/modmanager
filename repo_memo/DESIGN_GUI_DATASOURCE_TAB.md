@@ -64,6 +64,7 @@
 ```
 ┌─ 数据源 ────────────────────────────────────────────────────────┐
 │                                                                    │
+│  选择的数据库: [default ▼]                                         │
 │  ○ 全部   ○ 仅自动   ○ 仅手动                                    │
 │                                                                    │
 │  Working: [auto ▼]  Greedy: [○]  Cache: [/tmp/...]              │
@@ -145,7 +146,43 @@
 
 ---
 
-## 4. Persistence 模块
+## 3.4 自动读取 database
+
+DataSourcePage **不再是纯扫描页**——用户选择 database 后应能立即查看其内容，无需先点"扫描"。
+
+**触发时机**：
+1. 页面挂载（`onMounted`）——读取 `DatabaseSelector` 默认值对应的 database
+2. 用户切换 `DatabaseSelector` 下拉选项（`watch`）——自动读取新选中的 database
+
+**数据流**：
+```
+DatabaseSelector 变化
+  → POST /api/database/read { database_name }
+  → 后端返回 database JSON（含 steamlib / game / mod）
+  → 前端调用 _populateFromDatabase(db) 渲染三张表格
+  → 可见性 toggle 重置为全部可见
+```
+
+**与"扫描"按钮的关系**：
+- 扫描 (= `POST /api/database/generate`) 仍然是**重新生成** database 的唯一方式
+- 自动读取只展示当前 database 的**已有内容**，不触发扫描
+- 扫描完成后，扫描结果自动覆盖当前展示
+
+### 3.5 steam.exe 手动指定（Windows）
+
+当前手动模式仅支持输入 `steamapps/` 目录路径（文本输入）。Windows 用户更倾向于"选 `steam.exe`"的交互。
+
+**前端**：新增文件选择器 `<input type="file" accept=".exe">`（仅 Windows 平台显示）。用户选择 `steam.exe` → 前端将路径传入 API。
+
+**后端**：`GenerateDatabaseRequest` 新增 `steam_exe_path: str | None` 字段。当此字段非空时，后端按 `DESIGN_BOOTSTRAP.md` §2.1 推导 SteamRoot → 定位 `libraryfolders.vdf` → 展开库列表。
+
+**UI 交互**：
+- 手动路径表保留（Linux/macOS 用户继续使用文本输入）
+- Windows 下额外显示文件选择器按钮：`[📁 选择 steam.exe]`
+- 选中的 steam.exe 路径展示在选择器下方，可清空
+- 与现有"全部/仅自动/仅手动"模式选择器正交——steam.exe 仅在手动路径生效时参与
+
+> 实现文件选择器无需额外依赖——`<input type="file">` 是浏览器标准 API。
 
 ### 4.1 接口抽象
 
@@ -230,6 +267,8 @@ const saved = pers.load<DataSourceState>('datasource');
 | 重复 appid 警告 | 同 appid 跨库 → warnings 字段中存在，前端 radio 可选 |
 | 跨 tab 暂存 | 切换到 Forest 再切回 DataSource → 状态不丢失 |
 | 可见性筛选 | 隐藏某库 → 其游戏+MOD 消失（AND 逻辑） |
+| 自动读取 database | 页面挂载时自动加载选中 database；切换 database 下拉自动刷新表格 |
+| steam.exe 选择 | Windows 下显示文件选择器，选中后路径传入 API 请求 |
 
 ---
 
@@ -245,3 +284,5 @@ const saved = pers.load<DataSourceState>('datasource');
 | D6 | 定长表格 | `.horizontal-cell-scroll` CSS 类 |
 | D7 | 可见性 | `displayForLibrary AND displayForGame` 决定 MOD 显示 |
 | D8 | ForestPage database | 自动传入（store），可解锁手动编辑 |
+| D9 | 自动读取 database | 页面挂载 + database 切换时自动调 `/database/read`，无需先扫描 |
+| D10 | steam.exe 路径 | Windows 下用 `<input type="file">` 选择，后端按 `DESIGN_BOOTSTRAP.md` §2.1 推导 |
