@@ -531,6 +531,19 @@ database 下拉组件在 DataSourcePage 使用：
 - ForestPage / DataSourcePage / ConflictsPage 保持真实 API
 - 详见 `DESIGN_MOCK_INFRA.md`
 
+### 7.1 组件级 Stub 原则
+
+当页面测试需要 mock 子组件时，stub 必须遵守以下规则：
+
+| 规则 | 说明 |
+|------|------|
+| **语义模板** | stub 的 template 必须包含 `data-test` 属性，允许 DOM 层验证组件挂载 |
+| **契约保留** | stub 必须通过 `defineExpose` 暴露与被替换组件一致的 ref，确保父组件通过 `ref.value.xxx` 的访问不静默失败 |
+| **独立测试** | 被 mock 的组件必须有**独立的测试文件**（`__tests__/components/`）覆盖其真实行为，mock 仅用于隔离页面级测试 |
+
+**反模式**：`template: '<div class="stub"></div>'`（无 data-test，无 expose，无独立测试）
+**正例**：`template: '<div data-test="ws-selector"></div>'` + `defineExpose({ selectedWorkspaceId })` + `WorkspaceSelector.test.ts`
+
 ---
 
 ## 八、实现顺序

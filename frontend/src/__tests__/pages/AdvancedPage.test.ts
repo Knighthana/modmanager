@@ -16,7 +16,10 @@ vi.mock('../../stores/app', () => ({
 vi.mock('../../components/WorkspaceSelector.vue', () => ({
   default: {
     name: 'WorkspaceSelector',
-    template: '<div class="workspace-selector-stub"></div>',
+    template: '<div data-test="workspace-selector" class="workspace-selector-stub"></div>',
+    setup() {
+      return { selectedWorkspaceId: '' }
+    },
   },
 }))
 
