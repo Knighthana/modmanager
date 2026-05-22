@@ -7,6 +7,12 @@ vi.mock('../../api/client', () => ({
   apiGet: vi.fn(),
 }))
 
+vi.mock('../../stores/app', () => ({
+  useAppStore: vi.fn(() => ({
+    currentWorkspaceId: 'test-ws-1',
+  })),
+}))
+
 import AdvancedPage from '../../pages/AdvancedPage.vue'
 import { apiPost, apiGet } from '../../api/client'
 
@@ -44,12 +50,6 @@ describe('AdvancedPage', () => {
     vi.clearAllMocks()
     localStorage.clear()
     sessionStorage.clear()
-
-    // Mock sessionStorage to simulate an active workspace
-    vi.spyOn(sessionStorage, 'getItem').mockImplementation((key: string) => {
-      if (key === 'currentWorkspaceId') return 'test-ws-1'
-      return null
-    })
 
     mockedApiPost.mockImplementation(async (path: string) => {
       if (path === '/database/read') {

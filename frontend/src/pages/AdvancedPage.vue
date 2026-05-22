@@ -101,6 +101,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
+import { useAppStore } from '../stores/app'
 import { apiPost, apiGet } from '../api/transport'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
@@ -172,7 +173,7 @@ async function refreshTab(tab: string) {
         break
       }
       case 'aggregated': {
-        const workspaceId = sessionStorage.getItem('currentWorkspaceId')
+        const workspaceId = useAppStore().currentWorkspaceId
         if (!workspaceId) {
           tabStatus.aggregated = { type: 'info', msg: '请先选择一个工作区' }
           return
