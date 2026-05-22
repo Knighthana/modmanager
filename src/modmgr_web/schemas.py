@@ -114,12 +114,6 @@ class RulesReadRequest(BaseModel):
     path: str
 
 
-class RulesAggregateRequest(BaseModel):
-    """Request body for ``POST /api/workspace/{id}/rules/aggregate``."""
-
-    paths: list[str]
-
-
 class RulesAffectedEntriesRequest(BaseModel):
     """Request body for ``POST /api/rules/affected-entries``."""
 
@@ -151,6 +145,12 @@ class RestoreRequest(BaseModel):
 
 
 # ── Workspace endpoints ────────────────────────────────────────────────────
+
+
+class RulesAggregateRequest(BaseModel):
+    """Request body for ``POST /api/workspace/{id}/rules/aggregate``."""
+
+    paths: list[str]
 
 
 class CreateWorkspaceRequest(BaseModel):
