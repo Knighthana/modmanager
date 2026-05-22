@@ -2,7 +2,7 @@
 """Diagnosis script: identify root cause of excessive branch conflicts in the mapping engine.
 
 Usage:
-    cd /home/knighthana/workspace/modmanager
+    cd /home/knighthana/workspace/modmanager  # 项目根目录
     PYTHONPATH=src python diagnose_conflicts.py
 """
 
@@ -15,8 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from modmanager.rule_aggregator import aggregate
-from modmanager.engine import compute_mapping
+from modmgr.rule_aggregator import aggregate
+from modmgr.engine import compute_mapping
 
 KMM_RULE_PATH = str(Path(__file__).parent.parent / "description" / "kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example")
 STEAM_WORKSHOP = "/mnt/d/Games/steamapps/workshop/content/270150"

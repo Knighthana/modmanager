@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-modmanager 测试 Fixture 生成器
+modmgr 测试 Fixture 生成器
 从用户真实的 Windows Steam 游戏目录镜像生成 mock 测试环境。
 
 两种模式:
@@ -411,7 +411,7 @@ def mode_hot(output_dir: Path, clean: bool) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="modmanager 测试 Fixture 生成器",
+        description="modmgr 测试 Fixture 生成器",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
  模式说明:
@@ -483,8 +483,8 @@ def main():
         print("=" * 60)
 
         output_steamapps_dir = str(output_dir / "steamapps")
-        from modmanager.bootstrap import generate_database
-        from modmanager.iojson import write_json_file
+        from modmgr.bootstrap import generate_database
+        from modmgr.iojson import write_json_file
 
         db = generate_database(
             "manual",
