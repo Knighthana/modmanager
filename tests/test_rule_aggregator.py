@@ -603,35 +603,6 @@ class TestAggregatorErrorHandling(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(errors, [])
 
-    def test_output_file_write(self) -> None:
-        """Provide output_path, verify file is written with correct content."""
-        with tempfile.TemporaryDirectory() as td:
-            rule = _make_temp_kmm_rule(td, "rule.json", {
-                "game": [
-                    {"appid": "270150", "modid": ["100"]},
-                ],
-                "mod": [
-                    {
-                        "mixed_id": "270150:100",
-                        "def_destin": "270150:0",
-                        "def_action": "replace",
-                        "actionlist": [
-                            {"action": "replace", "destin": "270150:0", "from": ["a.txt"], "from_type": "file", "into": ["d/"], "into_type": "dir"},
-                        ],
-                    }
-                ]
-            })
-            output_path = Path(td) / "output.json"
-
-            result, errors, warnings = aggregate([rule], output_path=str(output_path))
-
-            self.assertIsNotNone(result)
-            self.assertEqual(errors, [])
-            self.assertTrue(output_path.exists())
-            written = json.loads(output_path.read_text(encoding="utf-8"))
-            self.assertEqual(written["operation"][0]["mixed_id"], "270150:100")
-            self.assertEqual(written["operation"][0]["actionlist"][0]["action"], "replace")
-
 
 class TestAggregatorEmptyActions(unittest.TestCase):
     """Edge cases — empty actionlists after filtering."""

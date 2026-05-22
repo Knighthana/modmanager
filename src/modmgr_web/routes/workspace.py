@@ -183,7 +183,6 @@ async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateReques
 
         result, errors, warnings = rule_aggregate(
             [expand_path(p) for p in req.paths],
-            output_path=None,  # Don't write to external file
         )
 
         if errors:

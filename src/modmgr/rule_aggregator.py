@@ -19,7 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .iojson import load_json_file, write_json_file
+from .iojson import load_json_file
 from .paths import split_mixed_id
 from .validation import validate_aggregated_rule_set
 
@@ -468,7 +468,6 @@ def aggregate(
     *,
     action_orders: dict[str, int] | None = None,
     sidecar_refs: dict[str, dict[str, dict[int, str]]] | None = None,
-    output_path: str | None = None,
 ) -> tuple[dict[str, Any] | None, list[str], list[str]]:
     """Aggregate multiple kmm_rule JSON files into a single aggregated_rule_set.
 
@@ -485,8 +484,6 @@ def aggregate(
             Optional 3-level mapping
             ``{file_abs_path: {mixed_id: {action_index: sidecar_ref}}}``
             for injecting sidecar references.
-        output_path:
-            If provided, the aggregated rule set is written to this path.
 
     Returns:
         ``(aggregated_rule_set_or_None, errors, warnings)``.
@@ -576,16 +573,5 @@ def aggregate(
     if val_errors:
         all_errors.extend(val_errors)
         return None, all_errors, all_warnings
-
-    # Write output
-    if output_path is not None:
-        try:
-            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-            write_json_file(output_path, result)
-        except Exception as exc:
-            all_errors.append(
-                f"E_OUTPUT_WRITE_FAILED: {output_path}: {exc}"
-            )
-            return None, all_errors, all_warnings
 
     return result, all_errors, all_warnings
