@@ -105,3 +105,45 @@
 
 - 允许通过 `user_config` 显式指定 database 和 workspace 路径（已支持 `workspace_dir` 和 `databases[name].path`）
 - macOS Steam 自动发现当前为推测路径（`~/Library/Application Support/Steam/`），需实际验证
+
+---
+
+## 八、测试断言
+
+测试组可以据本文档编写正例断言：
+
+### 平台识别
+
+- Linux 下 `user_config` 默认路径为 `~/.config/kmm/user_config.json`
+- Windows 下 `user_config` 默认路径为 `%APPDATA%/kmm/user_config.json`
+- macOS 下 `user_config` 默认路径为 `~/Library/Preferences/kmm/user_config.json`
+- 各平台下 `database`、`workspace` 默认路径符合 §1.3 表
+
+### 显式传入路径
+
+- 通过参数显式传入 `user_config.json` 路径时，bootstrap 直接使用该路径，不搜索默认目录
+- 显式路径加载成功后 `source_path` 返回该路径，`first_use=false`
+- 显式路径不存在时，bootstrap 在**该指定位置**创建默认文件，`first_use=true`
+
+### 默认目录首次创建
+
+- 默认目录下不存在 `user_config.json` 时，bootstrap 自动创建
+- 创建的文件须包含 §1.2 规定的全部默认字段
+- `databases` 默认值为 `{"default": {"path": "<平台默认 database 路径>"}}`——该路径指向 §1.3 表中对应平台的 database 默认位置
+- `first_use=true` 仅当文件由 bootstrap 首次创建时为真
+
+### Databases 解析
+
+- 若 `user_config.databases` 中填入了非默认路径的 database，bootstrap 返回的 `databases` 字典应**完整保留用户填写的路径**，不回落默认
+- 若 `user_config.databases` 中填入了多个 database（如 `"default"`、`"secondary"`），bootstrap 应全部保留
+
+### 规则文件来源（rule_sources）
+
+- `user_config.rule_sources` 中填写的路径应被完整保留并返回
+- 以 `/` 结尾的目录路径表示「自动扫描该目录下的 `*.kmmrule.json` 文件」
+- 以 `.kmmrule.json` 结尾的文件路径表示「直接加载该文件」
+- 后端保存时自动归一化：检测到目录路径缺 `/` 则补齐
+
+### 工作区根目录
+
+- `user_config.workspace_dir` 为空或未设置时，按 §1.3 表中对应平台默认值解析
