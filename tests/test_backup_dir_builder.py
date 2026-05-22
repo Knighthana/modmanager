@@ -6,13 +6,13 @@ import time
 from pathlib import Path
 from unittest import TestCase
 
-from modmanager.backup_dir_builder import (
+from hana_modmgr.backup_dir_builder import (
     build_backup_dir,
     build_backup_dirs,
     get_custom_backup_id,
     load_dir_suffixes,
 )
-from modmanager.backup_ops import get_game_backup_id, get_workshop_timestamphex
+from hana_modmgr.backup_ops import get_game_backup_id, get_workshop_timestamphex
 
 
 # ── P1-02: get_workshop_timestamphex ─────────────────────────────────────────

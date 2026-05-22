@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
-from modmanager.bootstrap import discover_user_config
-from modmanager.iojson import write_json_file
+from hana_modmgr.bootstrap import discover_user_config
+from hana_modmgr.iojson import write_json_file
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import DiscoverUserConfigRequest, SaveConfigRequest

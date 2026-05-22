@@ -16,8 +16,8 @@ import pytest
 
 import pytest
 
-from modmanager.backup_dir_builder import build_backup_dirs, load_dir_suffixes
-from modmanager.backup_ops import get_game_backup_id, get_workshop_timestamphex
+from hana_modmgr.backup_dir_builder import build_backup_dirs, load_dir_suffixes
+from hana_modmgr.backup_ops import get_game_backup_id, get_workshop_timestamphex
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

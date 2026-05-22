@@ -4,7 +4,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-from modmanager.forest_visual import VisualizationError, visualize_payload
+from hana_modmgr.forest_visual import VisualizationError, visualize_payload
 
 
 class ForestVisualTests(unittest.TestCase):
@@ -98,7 +98,7 @@ class ForestVisualTests(unittest.TestCase):
             stdout=b"<svg xmlns='http://www.w3.org/2000/svg'></svg>",
             stderr=b"",
         )
-        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+        with patch("hana_modmgr.forest_visual.subprocess.run", return_value=completed):
             out = visualize_payload(payload, "svg")
         self.assertIn("<svg", out)
 
@@ -114,7 +114,7 @@ class ForestVisualTests(unittest.TestCase):
 
     def test_svg_missing_dot_raises_code_4(self) -> None:
         payload = {"trees": [{"root_path": "/dst/a.txt", "changerequest": [], "refs": [], "resolved_state": ""}]}
-        with patch("modmanager.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
+        with patch("hana_modmgr.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
             with self.assertRaises(VisualizationError) as ctx:
                 visualize_payload(payload, "svg")
         self.assertEqual(ctx.exception.code, 4)
@@ -343,7 +343,7 @@ class ForestVisualTests(unittest.TestCase):
             stdout=svg_input.encode("utf-8"),
             stderr=b"",
         )
-        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+        with patch("hana_modmgr.forest_visual.subprocess.run", return_value=completed):
             out = visualize_payload(payload, "svg")
         self.assertIn("data-tree-node", out)
         self.assertIn("data-tree-pending", out)
@@ -391,7 +391,7 @@ class ForestVisualTests(unittest.TestCase):
             stdout=svg_input.encode("utf-8"),
             stderr=b"",
         )
-        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+        with patch("hana_modmgr.forest_visual.subprocess.run", return_value=completed):
             svg = visualize_payload({"trees": trees}, "svg", show_m1_details=False)
         self.assertIn('data-tree-refs', svg)
         self.assertIn('/modA/file.png', svg)
@@ -434,7 +434,7 @@ class ForestVisualTests(unittest.TestCase):
             stdout=svg_input.encode("utf-8"),
             stderr=b"",
         )
-        with patch("modmanager.forest_visual.subprocess.run", return_value=completed):
+        with patch("hana_modmgr.forest_visual.subprocess.run", return_value=completed):
             svg = visualize_payload({"trees": trees}, "svg", show_m1_details=False)
         self.assertIn('data-tree-referenced-by', svg)
         # t1 (/modA/file.png) is referenced by t0 (/game/target.png)

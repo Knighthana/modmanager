@@ -2,7 +2,7 @@
 
 import unittest
 
-from modmanager.validation import validate_aggregated_rule_set, validate_database
+from hana_modmgr.validation import validate_aggregated_rule_set, validate_database
 
 
 class ValidateAggregatedRuleSetTests(unittest.TestCase):

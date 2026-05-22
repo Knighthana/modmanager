@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from modmanager.backup_ops import run_differential_backup, load_backup_info
-from modmanager.prep import prep_backup_dir
-from modmanager.orchestrator.ignore_rules import IgnoreRuleSet
+from hana_modmgr.backup_ops import run_differential_backup, load_backup_info
+from hana_modmgr.prep import prep_backup_dir
+from hana_modmgr.orchestrator.ignore_rules import IgnoreRuleSet
 
 
 def _make_initial_tree(source_root: str, backup_dir: str) -> dict:

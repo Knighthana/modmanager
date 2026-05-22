@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from modmanager.orchestrator import PipelineResult
+from hana_modmgr.orchestrator import PipelineResult
 
 
 def adapt_pipeline_result(pr: PipelineResult) -> dict:

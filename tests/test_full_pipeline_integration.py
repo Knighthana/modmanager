@@ -12,12 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from modmanager.engine import compute_mapping
-from modmanager.orchestrator.ignore_rules import IgnoreRuleSet
-from modmanager.prep import prep_backup_dir
-from modmanager.backup_ops import run_differential_backup, load_backup_info
-from modmanager.restore_ops import restore_entries
-from modmanager.apply_ops import apply_entries
+from hana_modmgr.engine import compute_mapping
+from hana_modmgr.orchestrator.ignore_rules import IgnoreRuleSet
+from hana_modmgr.prep import prep_backup_dir
+from hana_modmgr.backup_ops import run_differential_backup, load_backup_info
+from hana_modmgr.restore_ops import restore_entries
+from hana_modmgr.apply_ops import apply_entries
 
 
 # ── Fixture: two mods under same appid ────────────────────────────────
@@ -185,7 +185,7 @@ class TestFullPipelineNoCrossContamination:
             # Write rule to temp file (aggregate expects file paths)
             rule_file = root / "rule.kmmrule.json"
             rule_file.write_text(json.dumps(RULE, ensure_ascii=False), encoding="utf-8")
-            from modmanager.rule_aggregator import aggregate as _agg
+            from hana_modmgr.rule_aggregator import aggregate as _agg
             agg_dict, _warns, _errs = _agg([str(rule_file)])
             assert agg_dict is not None, f"Aggregation failed: {_errs}"
 
@@ -195,7 +195,7 @@ class TestFullPipelineNoCrossContamination:
 
             # ── Step 2: Apply ────────────────────────────────────────
             user_config = {"baksuffix": "kmmbackup", "bakignore": []}
-            from modmanager.backup_dir_builder import build_backup_dirs
+            from hana_modmgr.backup_dir_builder import build_backup_dirs
             backup_dirs, _w = build_backup_dirs(final_mapping, database, user_config)
 
             entries_by_dir: dict = {}
@@ -248,7 +248,7 @@ class TestFullPipelineNoCrossContamination:
 
             rule_file = root / "rule.kmmrule.json"
             rule_file.write_text(json.dumps(RULE, ensure_ascii=False), encoding="utf-8")
-            from modmanager.rule_aggregator import aggregate as _agg2
+            from hana_modmgr.rule_aggregator import aggregate as _agg2
             agg_dict, _warns, _errs = _agg2([str(rule_file)])
             assert agg_dict is not None, f"Aggregation failed: {_errs}"
 
@@ -256,7 +256,7 @@ class TestFullPipelineNoCrossContamination:
             final_mapping = mapping_result.get("final_mapping", [])
 
             user_config = {"baksuffix": "kmmbackup", "bakignore": []}
-            from modmanager.backup_dir_builder import build_backup_dirs
+            from hana_modmgr.backup_dir_builder import build_backup_dirs
             backup_dirs, _w = build_backup_dirs(final_mapping, database, user_config)
 
             entries_by_dir: dict = {}

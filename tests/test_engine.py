@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modmanager.engine import (
+from hana_modmgr.engine import (
     ForestTree,
     _any_ancestor_deleted,
     _build_forest_trees,

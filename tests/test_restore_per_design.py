@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from modmanager.restore_ops import restore_entries
+from hana_modmgr.restore_ops import restore_entries
 
 
 def _make_tree_with_file(

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from modmanager.iojson import dumps_pretty, load_json_file, write_json_file
+from hana_modmgr.iojson import dumps_pretty, load_json_file, write_json_file
 
 
 class IoJsonTests(unittest.TestCase):

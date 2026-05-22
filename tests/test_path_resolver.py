@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from modmanager.path_resolver import resolve_directory_path, resolve_file_path
+from hana_modmgr.path_resolver import resolve_directory_path, resolve_file_path
 
 
 # =============================================================================

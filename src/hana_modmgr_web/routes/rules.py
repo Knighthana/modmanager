@@ -14,10 +14,10 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
-from modmanager.bootstrap import discover_user_config
-from modmanager.iojson import load_json_file
-from modmanager.path_resolver import expand_path, resolve_directory_path, resolve_file_path
-from modmanager.rule_aggregator import aggregate as rule_aggregate
+from hana_modmgr.bootstrap import discover_user_config
+from hana_modmgr.iojson import load_json_file
+from hana_modmgr.path_resolver import expand_path, resolve_directory_path, resolve_file_path
+from hana_modmgr.rule_aggregator import aggregate as rule_aggregate
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import (
@@ -186,7 +186,7 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
         db_entry = user_config.get("databases", {}).get(req.database_name)
         if db_entry:
             db_path = db_entry["path"]
-            from modmanager.iojson import load_json_file as ljf
+            from hana_modmgr.iojson import load_json_file as ljf
             database = ljf(db_path)
         else:
             database = {"steamlib": [], "game": [], "mod": []}

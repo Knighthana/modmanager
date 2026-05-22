@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
-from modmanager.apply_ops import apply_entries
-from modmanager.backup_ops import (
+from hana_modmgr.apply_ops import apply_entries
+from hana_modmgr.backup_ops import (
     _HARDCODED_BACKUP_SKIP_SUFFIX,
     check_backup_gate,
     delete_orphan_files,
@@ -356,7 +356,7 @@ class TestApplyFinalMapping(TestCase):
             dest.write_bytes(b"old")
 
             bdir = self.ready_backup_dir(tmp)
-            with patch("modmanager.backup_ops.check_backup_gate") as mock_check_backup_gate:
+            with patch("hana_modmgr.backup_ops.check_backup_gate") as mock_check_backup_gate:
                 result = apply_entries({bdir: [self._entry(str(dest), str(src))]})
 
             self.assertTrue(result["ok"])

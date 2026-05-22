@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from modmanager.bootstrap import discover_user_config, generate_database
-from modmanager.iojson import load_json_file, write_json_file
-from modmanager.path_resolver import expand_path
+from hana_modmgr.bootstrap import discover_user_config, generate_database
+from hana_modmgr.iojson import load_json_file, write_json_file
+from hana_modmgr.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import GenerateDatabaseRequest, ReadDatabaseRequest, SaveDatabaseRequest

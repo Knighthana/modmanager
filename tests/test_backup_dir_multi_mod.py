@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from modmanager.backup_dir_builder import build_backup_dirs
+from hana_modmgr.backup_dir_builder import build_backup_dirs
 
 
 def _make_acf_files(steamapps: Path) -> None:
@@ -132,9 +132,9 @@ class TestBackupDirMultiMod:
             backup_dirs, _warnings = build_backup_dirs(final_mapping, database, user_config)
 
             # Backup file_a
-            from modmanager.backup_ops import run_differential_backup
-            from modmanager.prep import prep_backup_dir
-            from modmanager.orchestrator.ignore_rules import IgnoreRuleSet
+            from hana_modmgr.backup_ops import run_differential_backup
+            from hana_modmgr.prep import prep_backup_dir
+            from hana_modmgr.orchestrator.ignore_rules import IgnoreRuleSet
 
             for backup_dir, files in backup_dirs.items():
                 rules = IgnoreRuleSet()
@@ -142,8 +142,8 @@ class TestBackupDirMultiMod:
                 run_differential_backup(backup_dir, files, tree=None)
 
             # Now restore and check that mod_b directory stays clean
-            from modmanager.restore_ops import restore_entries
-            from modmanager.backup_ops import load_backup_info
+            from hana_modmgr.restore_ops import restore_entries
+            from hana_modmgr.backup_ops import load_backup_info
 
             entries_by_dir: dict = {}
             backupinfos: dict = {}

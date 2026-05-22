@@ -13,8 +13,8 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from modmanager.orchestrator import PipelineResult
-from modmanager_web.app import create_app
+from hana_modmgr.orchestrator import PipelineResult
+from hana_modmgr_web.app import create_app
 
 
 # ── Fixtures ───────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ class TestDiscoverUserConfig:
     ) -> None:
         """Return merged config when user_config.json exists."""
         monkeypatch.setattr(
-            "modmanager_web.routes.config.discover_user_config",
+            "hana_modmgr_web.routes.config.discover_user_config",
             lambda home_dir=None: {"game": "valheim", "language": "en"},
         )
         resp = client.post("/api/config/discover", json={"home_dir": None})
@@ -98,7 +98,7 @@ class TestDiscoverUserConfig:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.config.discover_user_config", _raise
+            "hana_modmgr_web.routes.config.discover_user_config", _raise
         )
         resp = client.post("/api/config/discover", json={"home_dir": None})
         assert resp.status_code == 200  # FastAPI returns 200; ok=false in body
@@ -137,7 +137,7 @@ class TestGenerateDatabase:
             return self.SAMPLE_DB
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.generate_database", fake_generate
+            "hana_modmgr_web.routes.database.generate_database", fake_generate
         )
 
         resp = client.post(
@@ -174,7 +174,7 @@ class TestGenerateDatabase:
             }
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.generate_database", fake_generate
+            "hana_modmgr_web.routes.database.generate_database", fake_generate
         )
 
         resp = client.post(
@@ -211,7 +211,7 @@ class TestGenerateDatabase:
             }
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.generate_database", fake_generate
+            "hana_modmgr_web.routes.database.generate_database", fake_generate
         )
 
         resp = client.post(
@@ -235,7 +235,7 @@ class TestGenerateDatabase:
             raise ValueError("mode must be 'auto' or 'manual', got 'invalid'")
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.generate_database", fake_generate
+            "hana_modmgr_web.routes.database.generate_database", fake_generate
         )
 
         resp = client.post(
@@ -277,19 +277,19 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.discover_user_config",
+            "hana_modmgr_web.routes.database.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_compute
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_compute
         )
 
         resp = client.post(
@@ -331,15 +331,15 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_compute
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_compute
         )
 
         managed_entries = {
@@ -376,15 +376,15 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_compute
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_compute
         )
 
         rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
@@ -452,19 +452,19 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.discover_user_config",
+            "hana_modmgr_web.routes.database.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_run
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_run
         )
 
         resp = client.post(
@@ -510,15 +510,15 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_run
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_run
         )
 
         managed_entries = {
@@ -554,15 +554,15 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_run
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_run
         )
 
         rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
@@ -599,7 +599,7 @@ class TestAdapters:
     """Direct unit tests for adapter functions."""
 
     def test_adapt_pipeline_result_ok(self) -> None:
-        from modmanager_web.adapters import adapt_pipeline_result
+        from hana_modmgr_web.adapters import adapt_pipeline_result
 
         pr = PipelineResult(
             ok=True,
@@ -614,7 +614,7 @@ class TestAdapters:
         assert result["warnings"] == []
 
     def test_adapt_pipeline_result_fail(self) -> None:
-        from modmanager_web.adapters import adapt_pipeline_result
+        from hana_modmgr_web.adapters import adapt_pipeline_result
 
         pr = PipelineResult(
             ok=False,
@@ -627,7 +627,7 @@ class TestAdapters:
         assert "W_CAREFUL" in result["warnings"]
 
     def test_adapt_pipeline_result_with_apply_diagnostics(self) -> None:
-        from modmanager_web.adapters import adapt_pipeline_result
+        from hana_modmgr_web.adapters import adapt_pipeline_result
 
         pr = PipelineResult(
             ok=True,
@@ -654,7 +654,7 @@ class TestAdapters:
         assert result["data"]["apply_diagnostics"]["total_backup_dirs"] == 1
 
     def test_adapt_dict_result(self) -> None:
-        from modmanager_web.adapters import adapt_dict_result
+        from hana_modmgr_web.adapters import adapt_dict_result
 
         result = adapt_dict_result({"foo": "bar"})
         assert result["ok"] is True
@@ -662,7 +662,7 @@ class TestAdapters:
         assert result["errors"] == []
 
     def test_adapt_error(self) -> None:
-        from modmanager_web.adapters import adapt_error
+        from hana_modmgr_web.adapters import adapt_error
 
         result = adapt_error("Something went wrong")
         assert result["ok"] is False
@@ -703,19 +703,19 @@ class TestSseDisconnect:
             )
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.discover_user_config",
+            "hana_modmgr_web.routes.database.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.discover_user_config",
+            "hana_modmgr_web.routes.pipeline.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.load_json_file",
+            "hana_modmgr_web.routes.pipeline.load_json_file",
             lambda path: {"steamlib": []},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.dispatch", fake_compute
+            "hana_modmgr_web.routes.pipeline.dispatch", fake_compute
         )
 
         # Send a normal request — the important thing is that it does not
@@ -852,10 +852,10 @@ class TestRulesAggregateEndpoint:
             return {"schema_namespace": "KMM_RuleSet", "operation": []}, [], []
 
         monkeypatch.setattr(
-            "modmanager_web.routes.rules.rule_aggregate", fake_aggregate
+            "hana_modmgr_web.routes.rules.rule_aggregate", fake_aggregate
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.rules.discover_user_config",
+            "hana_modmgr_web.routes.rules.discover_user_config",
             lambda home_dir=None: {},
         )
 
@@ -886,10 +886,10 @@ class TestRulesAggregateEndpoint:
             return {"schema_namespace": "KMM_RuleSet", "operation": []}, [], []
 
         monkeypatch.setattr(
-            "modmanager_web.routes.rules.rule_aggregate", fake_aggregate
+            "hana_modmgr_web.routes.rules.rule_aggregate", fake_aggregate
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.rules.discover_user_config",
+            "hana_modmgr_web.routes.rules.discover_user_config",
             lambda home_dir=None: {
                 "aggregated_ruleset_output_path": "/tmp/custom_aggregated_rule_set.json",
                 "source_path": "/home/test/.config/kmm/user_config.json",
@@ -960,7 +960,7 @@ class TestRulesAffectedEntries:
 
         # Mock user_config to return the database path via database_name
         monkeypatch.setattr(
-            "modmanager_web.routes.rules.discover_user_config",
+            "hana_modmgr_web.routes.rules.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": str(db_file)}}},
         )
 
@@ -1127,7 +1127,7 @@ class TestPipelineRestore:
             }
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.restore_from_backup", fake_restore
+            "hana_modmgr_web.routes.pipeline.restore_from_backup", fake_restore
         )
 
         resp = client.post(
@@ -1154,7 +1154,7 @@ class TestPipelineRestore:
             raise ValueError("backup gate failed")
 
         monkeypatch.setattr(
-            "modmanager_web.routes.pipeline.restore_from_backup", fake_restore
+            "hana_modmgr_web.routes.pipeline.restore_from_backup", fake_restore
         )
 
         resp = client.post(
@@ -1177,7 +1177,7 @@ class TestAdaptersExtended:
     """Additional adapter tests for new endpoints."""
 
     def test_adapt_restore_result_ok(self) -> None:
-        from modmanager_web.adapters import adapt_restore_result
+        from hana_modmgr_web.adapters import adapt_restore_result
 
         raw = {
             "ok": True,
@@ -1193,7 +1193,7 @@ class TestAdaptersExtended:
         assert result["errors"] == []
 
     def test_adapt_restore_result_fail(self) -> None:
-        from modmanager_web.adapters import adapt_restore_result
+        from hana_modmgr_web.adapters import adapt_restore_result
 
         raw = {
             "ok": False,
@@ -1221,11 +1221,11 @@ class TestReadDatabase:
         fake_db = {"game": [{"appid": "270150"}], "mod": []}
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.discover_user_config",
+            "hana_modmgr_web.routes.database.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
         )
         monkeypatch.setattr(
-            "modmanager_web.routes.database.load_json_file",
+            "hana_modmgr_web.routes.database.load_json_file",
             lambda path: fake_db,
         )
 
@@ -1238,7 +1238,7 @@ class TestReadDatabase:
     def test_read_database_not_found(self, client, monkeypatch):
         """read returns error when database_name is not in user_config."""
         monkeypatch.setattr(
-            "modmanager_web.routes.database.discover_user_config",
+            "hana_modmgr_web.routes.database.discover_user_config",
             lambda home_dir=None: {"databases": {}},
         )
 
@@ -1259,7 +1259,7 @@ class TestSaveDatabase:
         db_data = {"game": [{"appid": "270150"}], "mod": []}
 
         monkeypatch.setattr(
-            "modmanager_web.routes.database.discover_user_config",
+            "hana_modmgr_web.routes.database.discover_user_config",
             lambda home_dir=None: {"databases": {"default": {"path": str(db_file)}}},
         )
 
@@ -1301,7 +1301,7 @@ class TestConfigSaveRuleSources:
         # Mock discover_user_config to return a source_path pointing to tmp_path
         output = tmp_path / "user_config.json"
         monkeypatch.setattr(
-            "modmanager_web.routes.config.discover_user_config",
+            "hana_modmgr_web.routes.config.discover_user_config",
             lambda home_dir=None: {
                 "databases": {},
                 "source_path": str(output),

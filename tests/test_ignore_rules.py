@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from modmanager.orchestrator.ignore_rules import (
+from hana_modmgr.orchestrator.ignore_rules import (
     IgnoreRuleSet,
     collect_rules,
     should_ignore,

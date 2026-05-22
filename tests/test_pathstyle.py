@@ -1,7 +1,7 @@
 """Tests for the pathstyle module."""
 import unittest
 
-from modmanager.pathstyle import PathStyle, convert_path, detect_pathstyle, normalize
+from hana_modmgr.pathstyle import PathStyle, convert_path, detect_pathstyle, normalize
 
 
 class TestDetectPathstyle(unittest.TestCase):
