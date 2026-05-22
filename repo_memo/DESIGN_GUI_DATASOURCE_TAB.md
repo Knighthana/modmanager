@@ -71,6 +71,10 @@
 │  ┌─ 手动路径（"仅手动"/"全部"时显示）───────────────────────┐    │
 │  │ /tmp/fixture/steamapps                                     │    │
 │  └───────────────────────────────────────────────────────────┘    │
+│  ┌─ steam.exe（Windows 专属）─────────────────────────────────┐    │
+│  │ [📁 选择 steam.exe]  [D:\Games\Steam\steam.exe___________] │    │
+│  │ 请从文件管理器复制完整路径补全                                │    │
+│  └───────────────────────────────────────────────────────────┘    │
 │                                                                    │
 │  [🔍 扫描 Steam 库]                                               │
 │                                                                    │
@@ -172,17 +176,27 @@ DatabaseSelector 变化
 
 当前手动模式仅支持输入 `steamapps/` 目录路径（文本输入）。Windows 用户更倾向于"选 `steam.exe`"的交互。
 
-**前端**：新增文件选择器 `<input type="file" accept=".exe">`（仅 Windows 平台显示）。用户选择 `steam.exe` → 前端将路径传入 API。
+**前端布局**：文件选择器 + 文本框并排：
+
+```
+[📁 选择 steam.exe]  [D:\Games\Steam\steam.exe________________]
+```
+
+- 文件输入 `<input type="file" accept=".exe">` 仅作为辅助——用户点选后，文件名自动填入右侧文本框
+- 文本框是实际值的权威来源——用户手动补全完整路径
+- 标准浏览器环境：文件输入只返回文件名（如 `steam.exe`），提示用户从文件管理器复制完整路径补上
+- Tauri2 环境（将来）：原生文件对话框直接返回完整路径，一步到位
+
+**环境检测**：前端检测 `window.__TAURI__` 是否存在。若为标准浏览器，文件输入旁显示提示文字"请从文件管理器复制完整路径补全"。
 
 **后端**：`GenerateDatabaseRequest` 新增 `steam_exe_path: str | None` 字段。当此字段非空时，后端按 `DESIGN_BOOTSTRAP.md` §2.1 推导 SteamRoot → 定位 `libraryfolders.vdf` → 展开库列表。
 
 **UI 交互**：
-- 手动路径表保留（Linux/macOS 用户继续使用文本输入）
-- Windows 下额外显示文件选择器按钮：`[📁 选择 steam.exe]`
-- 选中的 steam.exe 路径展示在选择器下方，可清空
+- 手动路径表保留（Linux/macOS 用户继续使用文本输入，以及 Windows 用户输入 `steamapps/` 目录）
+- Windows 下额外显示 steam.exe 选择行（文件输入 + 文本框 + 提示）
 - 与现有"全部/仅自动/仅手动"模式选择器正交——steam.exe 仅在手动路径生效时参与
 
-> 实现文件选择器无需额外依赖——`<input type="file">` 是浏览器标准 API。
+> 文件输入 `<input type="file">` 是浏览器标准 API，无需额外依赖。
 
 ### 4.1 接口抽象
 
