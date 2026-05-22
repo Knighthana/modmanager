@@ -2,7 +2,7 @@
 status: active
 concept: readme
 applicable-to: human
-update: 2026-05-20
+update: 2026-05-22
 ---
 
 The Knighthana's Mod Manager
