@@ -13,7 +13,7 @@
     }
   ],
   "baksuffix": "kmmbackup",
-  "bakignore": [
+  "ignore": [
     "*.tmp",
     "__pycache__/"
   ],
@@ -22,7 +22,6 @@
       "path": "/home/knighthana/.local/share/kmm/database.json"
     }
   },
-  "aggregated_ruleset_output_path": "/home/knighthana/.local/share/kmm/aggregated_rule_set.json",
   "rule_sources": [
     "~/workspace/modmanager/description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example"
   ]
