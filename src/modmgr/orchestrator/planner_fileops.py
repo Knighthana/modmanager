@@ -29,6 +29,7 @@ class FileOpsPlan:
     backup_dirs: dict[str, list[str]] = field(default_factory=dict)
     entries_by_backup_dir: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     ignore_rules: IgnoreRuleSet = field(default_factory=IgnoreRuleSet)
+    needs_tree_build: bool = False
     dry_run: bool = False
     force: bool = False
     preflight_ok: bool | None = None
@@ -60,6 +61,21 @@ def plan_fileops(
         context.user_config,
     )
     warnings: list[str] = list(dir_warnings)
+
+    # Determine if any backup_dir needs initial tree build
+    needs_tree_build = False
+    if request.intent == Intent.BACKUP:
+        for backup_dir in backup_dirs:
+            try:
+                from modmgr.backup_ops import load_backup_info as _lbi
+                info = _lbi(backup_dir)
+                tree = info.get("tree") if info else None
+                if not tree or not tree.get("children"):
+                    needs_tree_build = True
+                    break
+            except Exception:
+                needs_tree_build = True
+                break
 
     # Group final_mapping entries by backup_dir
     _notify(on_progress, "prepare", 1, 4, "Grouping entries by backup directory...")
@@ -117,6 +133,7 @@ def plan_fileops(
         backup_dirs=backup_dirs,
         entries_by_backup_dir=entries_by_backup_dir,
         ignore_rules=ignore_rules,
+        needs_tree_build=needs_tree_build,
         dry_run=request.flags.get("dry_run", False),
         force=request.flags.get("force", False),
         preflight_ok=preflight_ok,

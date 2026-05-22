@@ -10,6 +10,8 @@ Provides:
 
 from __future__ import annotations
 
+import os
+
 from ._common import (
     PipelineResult,
     ProgressCallback,
@@ -117,77 +119,84 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
         return PipelineResult(
             ok=False,
             errors=plan.preflight_manifest.get("errors", []),
-            warnings=plan.warnings,
+            warnings=[],
             trees=[],
-            final_mapping=context.final_mapping,
+            final_mapping=[],
             mapping_result={},
             backup_result={
                 "ok": False,
                 "backed_up": [],
                 "skipped": [],
                 "errors": plan.preflight_manifest.get("errors", []),
-                "dry_run": plan.dry_run,
+                "dry_run": dry_run,
             } if request.intent == Intent.APPLY else None,
             apply_result={
                 "ok": False,
                 "applied": [],
                 "skipped": [],
                 "errors": plan.preflight_manifest.get("errors", []),
-                "warnings": plan.warnings,
+                "warnings": [],
                 "diagnostics": plan.preflight_manifest,
-                "dry_run": plan.dry_run,
+                "dry_run": dry_run,
             } if request.intent == Intent.APPLY else None,
         )
 
     _notify(on_progress, "prepare", 6, 6, "Ready")
 
+    # ── Build initial tree if needed (prep) ──────────────────────────
+    if request.intent == Intent.BACKUP and plan.needs_tree_build:
+        for backup_dir in plan.backup_dirs:
+            prep_backup_dir(backup_dir, plan.ignore_rules)
+
     # ── 5. Execute primitive ───────────────────────────────────────
     if request.intent == Intent.BACKUP:
-        return _execute_backup_plan(plan, context, on_progress)
+        return _execute_backup_plan(
+            plan.entries_by_backup_dir, plan.backup_dirs,
+            plan.dry_run, on_progress
+        )
     elif request.intent == Intent.APPLY:
-        return _execute_apply_plan(plan, context, on_progress)
+        return _execute_apply_plan(
+            plan.entries_by_backup_dir, plan.dry_run,
+            plan.warnings, on_progress
+        )
     elif request.intent == Intent.RESTORE:
-        return _execute_restore_plan(plan, context, on_progress)
+        return _execute_restore_plan(
+            plan.entries_by_backup_dir, plan.backup_dirs,
+            plan.dry_run, plan.force, on_progress
+        )
     elif request.intent == Intent.RUN:
         return _execute_run_plan(plan, context, request, on_progress)
 
     return PipelineResult(
         ok=False,
         errors=[f"E_BAD_INTENT: {request.intent}"],
-        warnings=plan.warnings,
+        warnings=[],
         trees=[],
-        final_mapping=context.final_mapping,
+        final_mapping=[],
         mapping_result={},
     )
 
 
-def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
+def _execute_backup_plan(entries_by_backup_dir, backup_dirs, dry_run, on_progress) -> PipelineResult:
     """Execute backup using plan.backup_dirs."""
     backed_up: list[dict] = []
     skipped: list[dict] = []
     errors: list[str] = []
 
-    total_dirs = len(plan.entries_by_backup_dir)
+    total_dirs = len(entries_by_backup_dir)
     _notify(on_progress, "backup", 0, max(total_dirs, 1), "Starting backup...")
 
-    for i, (backup_dir, dir_entries) in enumerate(plan.entries_by_backup_dir.items()):
+    for i, (backup_dir, dir_entries) in enumerate(entries_by_backup_dir.items()):
         _notify(on_progress, "backup", i + 1, total_dirs, f"Backing up {backup_dir}")
-        files_to_backup = plan.backup_dirs.get(backup_dir, [])
+        files_to_backup = backup_dirs.get(backup_dir, [])
         # Load existing tree or build initial tree
         tree: dict | None = None
         info = load_backup_info(backup_dir)
         tree = info.get("tree") if info else None
-        if not tree or not tree.get("children"):
-            # Tree missing or empty — build initial tree via prep
-            _notify(on_progress, "prep", 0, 1, "Building initial tree...")
-            prep_backup_dir(backup_dir, plan.ignore_rules)
-            info = load_backup_info(backup_dir)
-            tree = info.get("tree") if info else None
-            _notify(on_progress, "prep", 1, 1, "Tree built")
         dir_result = run_differential_backup(
             backup_dir,
             files_to_backup,
-            dry_run=plan.dry_run,
+            dry_run=dry_run,
             on_progress=on_progress,
             tree=tree,
         )
@@ -200,44 +209,44 @@ def _execute_backup_plan(plan, context, on_progress) -> PipelineResult:
     return PipelineResult(
         ok=len(errors) == 0,
         errors=errors,
-        warnings=plan.warnings,
+        warnings=[],
         trees=[],
-        final_mapping=context.final_mapping,
+        final_mapping=[],
         mapping_result={},
         backup_result={
             "ok": len(errors) == 0,
             "backed_up": backed_up,
             "skipped": skipped,
             "errors": errors,
-            "dry_run": plan.dry_run,
+            "dry_run": dry_run,
         },
     )
 
 
-def _execute_apply_plan(plan, context, on_progress) -> PipelineResult:
+def _execute_apply_plan(entries_by_backup_dir, dry_run, plan_warnings, on_progress) -> PipelineResult:
     """Execute apply using apply_ops.apply_entries."""
-    total = sum(len(v) for v in plan.entries_by_backup_dir.values())
+    total = sum(len(v) for v in entries_by_backup_dir.values())
     _notify(on_progress, "apply", 0, max(total, 1), "Starting apply...")
     result = apply_entries(
-        plan.entries_by_backup_dir,
-        dry_run=plan.dry_run,
+        entries_by_backup_dir,
+        dry_run=dry_run,
         on_progress=on_progress,
     )
 
     return PipelineResult(
         ok=result["ok"],
         errors=result["errors"],
-        warnings=list(set(result["warnings"] + plan.warnings)),
+        warnings=list(set(result["warnings"] + [])),
         trees=[],
-        final_mapping=context.final_mapping,
+        final_mapping=[],
         mapping_result={},
         apply_result=result,
     )
 
 
-def _execute_restore_plan(plan, context, on_progress) -> PipelineResult:
+def _execute_restore_plan(entries_by_backup_dir, backup_dirs, dry_run, force, on_progress) -> PipelineResult:
     """Execute restore using restore_ops.restore_entries."""
-    total = sum(len(v) for v in plan.entries_by_backup_dir.values())
+    total = sum(len(v) for v in entries_by_backup_dir.values())
     _notify(on_progress, "restore", 0, max(total, 1), "Starting restore...")
 
     # Pre-load backupinfos (Planner responsibility, but loaded here for now)
@@ -253,19 +262,19 @@ def _execute_restore_plan(plan, context, on_progress) -> PipelineResult:
         pass
 
     result = restore_entries(
-        plan.entries_by_backup_dir,
+        entries_by_backup_dir,
         backupinfos,
         force=plan.force,
-        dry_run=plan.dry_run,
+        dry_run=dry_run,
         on_progress=on_progress,
     )
 
     return PipelineResult(
         ok=result["ok"],
         errors=result["errors"],
-        warnings=plan.warnings,
+        warnings=[],
         trees=[],
-        final_mapping=context.final_mapping,
+        final_mapping=[],
         mapping_result={},
         restore_result=result,
     )
@@ -274,19 +283,19 @@ def _execute_restore_plan(plan, context, on_progress) -> PipelineResult:
 def _execute_run_plan(plan, context, request, on_progress) -> PipelineResult:
     """Execute full run: backup + apply (no preflight, by design)."""
     # Backup phase
-    backup_result = _execute_backup_plan(plan, context, on_progress)
+    backup_result = _execute_backup_plan(plan.entries_by_backup_dir, plan.backup_dirs, plan.dry_run, on_progress)
     if not backup_result.ok:
         return backup_result
 
     # Apply phase
-    apply_result = _execute_apply_plan(plan, context, on_progress)
+    apply_result = _execute_apply_plan(plan.entries_by_backup_dir, plan.dry_run, plan.warnings, on_progress)
 
     return PipelineResult(
         ok=apply_result.ok,
         errors=backup_result.errors + apply_result.errors,
         warnings=list(set(backup_result.warnings + apply_result.warnings)),
         trees=[],
-        final_mapping=context.final_mapping,
+        final_mapping=[],
         mapping_result={},
         backup_result=backup_result.backup_result,
         apply_result=apply_result.apply_result,
@@ -306,3 +315,44 @@ __all__ = [
     "Intent",
     "TaskRequest",
 ]
+
+
+def _copy_kmmignore_to_backup(backup_dirs: dict) -> None:
+    """Collect .kmmignore files from source directories and copy into backup_dir."""
+    import shutil
+    from pathlib import Path
+
+    for backup_dir in backup_dirs:
+        source_root = str(Path(backup_dir).parent)
+        d = Path(source_root)
+        while True:
+            ignore_file = d / ".kmmignore"
+            if ignore_file.is_file():
+                rel = str(d).removeprefix(source_root).lstrip("/")
+                dest_dir = Path(backup_dir) / rel if rel else Path(backup_dir)
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    shutil.copy2(str(ignore_file), str(dest_dir / ".kmmignore"))
+                except OSError:
+                    pass
+            if d.parent == d:
+                break
+            d = d.parent
+
+
+def _copy_kmmignore_from_backup(backup_dirs: dict) -> None:
+    """Copy .kmmignore files from backup_dir back to source directories."""
+    import shutil
+    from pathlib import Path
+
+    for backup_dir in backup_dirs:
+        for dirpath, _dirs, filenames in os.walk(backup_dir):
+            if ".kmmignore" in filenames:
+                rel = dirpath.removeprefix(str(Path(backup_dir).parent)).lstrip("/")
+                src = Path(dirpath) / ".kmmignore"
+                dest = Path(backup_dir).parent / rel / ".kmmignore"
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    shutil.copy2(str(src), str(dest))
+                except OSError:
+                    pass
