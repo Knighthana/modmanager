@@ -1,4 +1,4 @@
-"""Rules routes — scan / read / aggregate / affected-entries / load-aggregated.
+"""Rules routes — scan / read / affected-entries.
 
 All endpoints operate on the local file system and return simple JSON
 responses wrapped in the standard ``ApiResponse`` envelope.
@@ -17,12 +17,9 @@ from fastapi import APIRouter
 from modmgr.bootstrap import discover_user_config
 from modmgr.iojson import load_json_file
 from modmgr.path_resolver import expand_path, resolve_directory_path, resolve_file_path
-from modmgr.rule_aggregator import aggregate as rule_aggregate
-
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import (
     RulesAffectedEntriesRequest,
-    RulesAggregateRequest,
     RulesReadRequest,
     RulesScanRequest,
 )
@@ -97,50 +94,6 @@ async def rules_read(req: RulesReadRequest):
         })
     except (OSError, UnicodeDecodeError) as exc:
         return adapt_error(f"cannot read file: {file_path}: {exc}")
-
-
-@router.post("/aggregate")
-async def rules_aggregate(req: RulesAggregateRequest):
-    """Aggregate multiple kmm_rule files into a single aggregated_rule_set.
-
-    Accepts ``{ paths: [文件路径列表] }``.  The result is written to the
-    aggregated rule set path (derived from user_config or default) and returned.
-
-    Returns an ``ApiResponse`` with the aggregated rule set dict.
-    """
-    if not req.paths:
-        return adapt_error("paths list is required and must not be empty")
-
-    output_path = "aggregated_rule_set.json"
-
-    result, errors, warnings = rule_aggregate(
-        [expand_path(p) for p in req.paths],
-        output_path=output_path,
-    )
-
-    if errors:
-        return {
-            "ok": False,
-            "data": None,
-            "errors": errors,
-            "warnings": warnings,
-        }
-
-    aggregated_hash = hashlib.sha256(
-        json.dumps(result, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    ).hexdigest()
-
-    return {
-        "ok": True,
-        "data": {
-            **result,
-            "output_path": output_path,
-            "aggregated_hash": aggregated_hash,
-            "aggregated_at": datetime.now(timezone.utc).isoformat(),
-        },
-        "errors": [],
-        "warnings": warnings,
-    }
 
 
 @router.post("/affected-entries")
@@ -336,20 +289,3 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
     }
 
 
-@router.post("/load-aggregated")
-async def rules_load_aggregated(req: RulesReadRequest):
-    """Load and return the raw content of an aggregated_rule_set.json file.
-
-    Accepts ``{ path }`` — returns the full file content for advanced viewing.
-    """
-    if not req.path:
-        return adapt_error("path is required")
-
-    try:
-        file_path = resolve_file_path(req.path, Path(req.path).name)
-        data = load_json_file(file_path)
-        return adapt_dict_result(data)
-    except (FileNotFoundError, IsADirectoryError, ValueError) as exc:
-        return adapt_error(str(exc))
-    except Exception as exc:
-        return adapt_error(f"cannot load aggregated rule set: {exc}")

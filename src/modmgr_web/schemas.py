@@ -115,7 +115,7 @@ class RulesReadRequest(BaseModel):
 
 
 class RulesAggregateRequest(BaseModel):
-    """Request body for ``POST /api/rules/aggregate``."""
+    """Request body for ``POST /api/workspace/{id}/rules/aggregate``."""
 
     paths: list[str]
 

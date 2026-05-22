@@ -168,20 +168,6 @@ export const rulesHandlers = [
     })
   }),
 
-  // POST /api/rules/aggregate — 聚合已选规则
-  http.post('/api/rules/aggregate', async ({ request }) => {
-    return HttpResponse.json({
-      ok: true,
-      data: {
-        aggregated: true,
-        rule_count: 2,
-        timestamp: new Date().toISOString(),
-      },
-      errors: [],
-      warnings: [],
-    })
-  }),
-
   // POST /api/rules/validate — 验证规则文件
   http.post('/api/rules/validate', async ({ request }) => {
     return HttpResponse.json({
@@ -195,16 +181,6 @@ export const rulesHandlers = [
     return HttpResponse.json({
       ok: true,
       data: { saved: true, timestamp: new Date().toISOString() },
-    })
-  }),
-
-  // POST /api/rules/load-aggregated — 加载聚合规则集
-  http.post('/api/rules/load-aggregated', async ({ request }) => {
-    return HttpResponse.json({
-      ok: true,
-      data: {},
-      errors: [],
-      warnings: [],
     })
   }),
 

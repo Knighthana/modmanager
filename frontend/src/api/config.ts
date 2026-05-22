@@ -30,9 +30,7 @@ export const API_ENDPOINTS = {
   PIPELINE_VISUALIZE: '/pipeline/visualize',
   RULES_SCAN: '/rules/scan',
   RULES_READ: '/rules/read',
-  RULES_AGGREGATE: '/rules/aggregate',
   RULES_AFFECTED: '/rules/affected-entries',
-  RULES_LOAD_AGGREGATED: '/rules/load-aggregated',
   BACKUPS_LIST: '/backups/list',
   BACKUPS_INSPECT: '/backups/inspect',
   // Workspace

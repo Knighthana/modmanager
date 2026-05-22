@@ -4,10 +4,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 vi.mock('../../api/client', () => ({
   apiPost: vi.fn(),
+  apiGet: vi.fn(),
 }))
 
 import AdvancedPage from '../../pages/AdvancedPage.vue'
-import { apiPost } from '../../api/client'
+import { apiPost, apiGet } from '../../api/client'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +33,7 @@ const stubs = {
 }
 
 const mockedApiPost = vi.mocked(apiPost)
+const mockedApiGet = vi.mocked(apiGet)
 
 function vmAny(wrapper: VueWrapper): Record<string, unknown> {
   return wrapper.vm as unknown as Record<string, unknown>
@@ -41,6 +43,13 @@ describe('AdvancedPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    sessionStorage.clear()
+
+    // Mock sessionStorage to simulate an active workspace
+    vi.spyOn(sessionStorage, 'getItem').mockImplementation((key: string) => {
+      if (key === 'currentWorkspaceId') return 'test-ws-1'
+      return null
+    })
 
     mockedApiPost.mockImplementation(async (path: string) => {
       if (path === '/database/read') {
@@ -56,7 +65,11 @@ describe('AdvancedPage', () => {
           warnings: [],
         }
       }
-      if (path === '/rules/load-aggregated') {
+      return { ok: true, data: {}, errors: [], warnings: [] }
+    })
+
+    mockedApiGet.mockImplementation(async (path: string) => {
+      if (path === '/workspace/test-ws-1/rules/aggregated') {
         return { ok: true, data: { schema_namespace: 'KMM_RuleSet', operation: [] }, errors: [], warnings: [] }
       }
       return { ok: true, data: {}, errors: [], warnings: [] }
@@ -83,9 +96,8 @@ describe('AdvancedPage', () => {
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)
 
-    const calls = mockedApiPost.mock.calls.map((c) => c[0])
-    expect(calls).toContain('/config/discover')
-    expect(calls).toContain('/rules/load-aggregated')
+    const calls = mockedApiGet.mock.calls.map((c) => c[0])
+    expect(calls).toContain('/workspace/test-ws-1/rules/aggregated')
   })
 
   it('auto refreshes user config tab when switched', async () => {

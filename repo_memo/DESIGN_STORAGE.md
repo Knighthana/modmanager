@@ -18,7 +18,7 @@
 | **用户配置** | 控制工具行为的首选项，用户可编辑 | `user_config.json` |
 | **磁盘扫描数据** | 工具扫描磁盘产生的客观数据 | `database.json` |
 | **工作区** | 用户创建的任务容器，内含规则/决策/结果/SVG | `~/.cache/kmm/workspace/{id}/` |
-| **运行产出** | 流水线运行的中间文件 | `aggregated_rule_set.json` |
+| **运行产出** | 流水线运行的中间文件 | 无（聚合结果已迁移至工作区） |
 | **备份产物** | 文件替换前的安全副本，不可自动丢弃 | `*.kmmbackup` 目录 |
 | **前端浏览器存储** | 纯 UI 偏好 + Tab 级导航状态 | `localStorage:uiState` / `sessionStorage:currentWorkspaceId` |
 
@@ -220,11 +220,10 @@ database 扫描可能发现同一个 appid 出现在多个 Steam 库中（重复
 
 ---
 
-## 6. aggregated_rule_set.json — 运行产出
+## 6. aggregated_rule_set.json — 已迁移
 
-### 6.1 输出路径
-
-聚合结果现在写入工作区目录（`{workspace_dir}/{workspace_id}/aggregated_rule.json`），不再支持通过 `aggregated_ruleset_output_path` 自定义输出路径。详细路径规则见 `DESIGN_WORKSPACE_MODEL.md`。
+聚合结果现写入工作区目录（`{workspace_dir}/{workspace_id}/aggregated_rule.json`）。
+详见 `DESIGN_WORKSPACE_MODEL.md`。
 
 ---
 

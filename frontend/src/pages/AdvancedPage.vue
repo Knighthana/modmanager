@@ -101,7 +101,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { apiPost } from '../api/transport'
+import { apiPost, apiGet } from '../api/transport'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
@@ -172,10 +172,12 @@ async function refreshTab(tab: string) {
         break
       }
       case 'aggregated': {
-        const resp = await apiPost<Record<string, unknown>>(
-          '/rules/load-aggregated',
-          { path: 'aggregated_rule_set.json' },
-        )
+        const workspaceId = sessionStorage.getItem('currentWorkspaceId')
+        if (!workspaceId) {
+          tabStatus.aggregated = { type: 'info', msg: '请先选择一个工作区' }
+          return
+        }
+        const resp = await apiGet<Record<string, unknown>>(`/workspace/${workspaceId}/rules/aggregated`)
         if (resp.ok && resp.data) {
           raw = resp.data
         }
