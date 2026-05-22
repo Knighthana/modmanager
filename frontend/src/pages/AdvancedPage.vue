@@ -2,8 +2,11 @@
   <div class="advanced-page gui-page">
     <h2>👨‍💻 进阶用户</h2>
 
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 13px; color: #606266;">选择的数据库</span>
       <DatabaseSelector ref="databaseSelectorRef" />
+      <span style="font-size: 13px; color: #606266; margin-left: 8px;">工作区</span>
+      <WorkspaceSelector ref="workspaceSelectorRef" />
     </div>
 
     <el-card shadow="never">
@@ -104,8 +107,10 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { useAppStore } from '../stores/app'
 import { apiPost, apiGet } from '../api/transport'
 import DatabaseSelector from '../components/DatabaseSelector.vue'
+import WorkspaceSelector from '../components/WorkspaceSelector.vue'
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
+const workspaceSelectorRef = ref<InstanceType<typeof WorkspaceSelector> | null>(null)
 const databaseName = ref('')
 
 const activeTab = ref('database')
@@ -173,7 +178,7 @@ async function refreshTab(tab: string) {
         break
       }
       case 'aggregated': {
-        const workspaceId = useAppStore().currentWorkspaceId
+        const workspaceId = workspaceSelectorRef.value?.selectedWorkspaceId
         if (!workspaceId) {
           tabStatus.aggregated = { type: 'info', msg: '请先选择一个工作区' }
           return

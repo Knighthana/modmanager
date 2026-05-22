@@ -13,6 +13,13 @@ vi.mock('../../stores/app', () => ({
   })),
 }))
 
+vi.mock('../../components/WorkspaceSelector.vue', () => ({
+  default: {
+    name: 'WorkspaceSelector',
+    template: '<div class="workspace-selector-stub"></div>',
+  },
+}))
+
 import AdvancedPage from '../../pages/AdvancedPage.vue'
 import { apiPost, apiGet } from '../../api/client'
 
@@ -92,6 +99,8 @@ describe('AdvancedPage', () => {
 
     await new Promise(process.nextTick)
     const vm = vmAny(wrapper)
+    // Set up workspace selector stub
+    ;(wrapper.vm as any).workspaceSelectorRef = { selectedWorkspaceId: 'test-ws-1' }
     vm.activeTab = 'aggregated'
     await wrapper.vm.$nextTick()
     await new Promise(process.nextTick)

@@ -362,6 +362,20 @@ watch(
   { immediate: true, deep: true },
 )
 
+// Refresh tables when user switches database
+watch(
+  () => databaseSelectorRef.value?.selectedDatabase,
+  async (newDb) => {
+    if (!newDb) return
+    try {
+      const resp = await apiPost<Record<string, unknown>>('/database/read', { database_name: newDb })
+      if (resp.ok && resp.data) {
+        store.updateDatabase(resp.data as Record<string, unknown>)
+      }
+    } catch { /* ignore */ }
+  },
+)
+
 // ── radio change handlers ──
 function onGameManagedChange(row: GameRow) {
   // Set all games with same appid to false, then current to true
@@ -486,6 +500,15 @@ function saveUiStateToStorage() {
 
 onMounted(async () => {
   loadUiStateFromStorage()
+
+  // Auto-load selected database content
+  const dbName = databaseSelectorRef.value?.selectedDatabase ?? 'default'
+  try {
+    const resp = await apiPost<Record<string, unknown>>('/database/read', { database_name: dbName })
+    if (resp.ok && resp.data) {
+      store.updateDatabase(resp.data as Record<string, unknown>)
+    }
+  } catch { /* ignore load errors on mount */ }
 })
 
 onBeforeUnmount(() => {

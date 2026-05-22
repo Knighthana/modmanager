@@ -54,6 +54,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SseStatusBar: typeof import('./components/SseStatusBar.vue')['default']
+    WorkspaceSelector: typeof import('./components/WorkspaceSelector.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

@@ -5,6 +5,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DataSourcePage from '../../pages/DataSourcePage.vue'
 import { useDataSourceStore } from '../../stores/datasource'
 
+vi.mock('../../api/client', () => ({
+  apiPost: vi.fn(),
+}))
+
 // Stub router
 const router = createRouter({
   history: createWebHistory(),
@@ -34,11 +38,39 @@ const elStubs = {
   'router-link': { template: '<a class="router-link-stub"><slot /></a>' },
 }
 
+import { apiPost } from '../../api/client'
+const mockedApiPost = vi.mocked(apiPost)
+
 describe('DataSourcePage', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.clear()
     vi.restoreAllMocks()
+
+    // Default mock for /database/read (used by auto-load)
+    mockedApiPost.mockImplementation(async (path: string) => {
+      if (path === '/database/read') {
+        return {
+          ok: true,
+          data: {
+            steamlib: [{ path: '/steam', game: [{ appid: '270150' }] }],
+            game: [
+              {
+                appid: '270150',
+                name: 'RWR',
+                modpath: '/steam/RWR',
+                basepath: '/steam',
+                mods_found: [],
+              },
+            ],
+            mod: [],
+          },
+          errors: [],
+          warnings: [],
+        }
+      }
+      return { ok: true, data: {}, errors: [], warnings: [] }
+    })
   })
 
   it('renders mode radio group with three options', () => {
@@ -216,6 +248,25 @@ describe('DataSourcePage', () => {
     const scanBtn = buttons.find(b => b.text().includes('扫描'))
     // Should not be disabled
     expect(scanBtn?.attributes('disabled')).toBeUndefined()
+  })
+
+  it('auto-loads database on mount and renders tables', async () => {
+    const wrapper = mount(DataSourcePage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+
+    // Wait for onMounted to complete
+    await new Promise(process.nextTick)
+    await wrapper.vm.$nextTick()
+
+    // Verify /database/read was called with default database
+    const readCalls = mockedApiPost.mock.calls.filter(([path]) => path === '/database/read')
+    expect(readCalls.length).toBeGreaterThanOrEqual(1)
+
+    // Verify tables render with loaded data (steamlib/game)
+    const store = useDataSourceStore()
+    expect(store.libraries.length).toBeGreaterThan(0)
+    expect(store.games.length).toBeGreaterThan(0)
   })
 
 
