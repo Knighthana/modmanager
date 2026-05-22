@@ -54,16 +54,23 @@ modmgr-cli --help
 待程序运行之后，请打开浏览器在[KMM面板](127.0.0.1:8000)进行操作：
 
 1. 在“数据来源”点击“扫描Steam库”等待其完成，这一步是为了创建游戏-MOD数据库；
+![scan_steam_lib](description/ref/webuse03.png)
 2. 在“设置面板”的“规则来源”下方，点击“➕ 添加来源”创建一个新的空行，将Modder交给你的kmmrule文件的路径填写在空行中，点击“保存”；
+![rule_sources](description/ref/webuse04.png)
 3. **务必**点击下方的“保存设置”按钮，对设定进行保存；
 4. 进入“工作区”页面，点击右上方的“新建工作区”，输入必要的信息来创建一个工作区，每个工作区各自保存了一种替换模式，尽可能为每类不同的任务创建不同的工作区；
+![work_save_space1](description/ref/webuse01.png) ![work_save_space2](description/ref/webuse02.png)
 5. 在面板中点击工作区条目的“进入”来进入一个工作区；
 6. 在“发现的规则文件”勾选Modder提供给你的kmmrule文件前方的复选框，如果感兴趣可以点击右侧的“展开”以查看这个规则的详细信息；
+![select_rules](description/ref/webuse05.png)
 7. 点击“进入计算准备”，系统会自动将你导航到“计算准备”页面；
 8. 仅保留想要替换的库/游戏/MOD前方的复选框，之后点击“开始计算”或者“计算查看”；复选框用于确定实际影响的游戏/MOD，可见按钮仅仅用于调整视觉效果，不影响最终结果；
+![prepare_for_compute](description/ref/webuse06.png)
 9. 自行点击或等待系统导航进入“森林可视”界面，可以放大映射图，检查这些映射是不是你所想要的；
+![forest_view](description/ref/webuse07.png)
 10. 如果有必要，在“冲突裁决”页面进行手动裁决；
 11. 进入“文件操作”页面，如果这是首次操作，必须先点击“备份”，如果心存疑虑，务必打开"dry run"开关进行模拟；"dry run"不会进行任何实际的文件操作；
+![file_operation](description/ref/webuse08.png)
 12. “备份”完成后，可以点击“应用”进行文件替换，等待操作完成；
 13. 如果您的游戏/MOD需要分时间使用多个不同的规则，那么下次请在“备份”前先点击“恢复”，然后再“备份”和“应用”；
 
