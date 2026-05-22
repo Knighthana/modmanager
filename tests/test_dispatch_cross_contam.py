@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from hana_modmgr.orchestrator import dispatch
-from hana_modmgr.orchestrator.entry import Intent, TaskRequest
+from modmgr.orchestrator import dispatch
+from modmgr.orchestrator.entry import Intent, TaskRequest
 
 
 MOD_A = "2606099273"
@@ -109,11 +109,11 @@ class TestDispatchPipelineCrossContam:
             # Aggregate + compute
             rule_file = root / "rule.kmmrule.json"
             rule_file.write_text(json.dumps(RULE, ensure_ascii=False), encoding="utf-8")
-            from hana_modmgr.rule_aggregator import aggregate
+            from modmgr.rule_aggregator import aggregate
             agg, _w, _e = aggregate([str(rule_file)])
             assert agg is not None, f"Agg failed: {_e}"
 
-            from hana_modmgr.engine import compute_mapping
+            from modmgr.engine import compute_mapping
             mapping_result = compute_mapping(database=database, aggregated_rule_set=agg)
             final_mapping = mapping_result.get("final_mapping", [])
 
@@ -145,7 +145,7 @@ class TestDispatchPipelineCrossContam:
             )
 
             # ── Also dump backup_dirs to verify assignment ──────────
-            from hana_modmgr.backup_dir_builder import build_backup_dirs
+            from modmgr.backup_dir_builder import build_backup_dirs
             backup_dirs, _ = build_backup_dirs(final_mapping, database, user_config)
             for bd, files in backup_dirs.items():
                 assert MOD_B not in bd or all(

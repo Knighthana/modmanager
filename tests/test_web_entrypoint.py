@@ -6,7 +6,7 @@ import builtins
 import unittest
 from unittest.mock import patch
 
-from hana_modmgr_web.__main__ import main
+from modmgr_web.__main__ import main
 
 
 class WebEntrypointTests(unittest.TestCase):

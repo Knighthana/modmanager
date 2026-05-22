@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from hana_modmgr.cli import main
-from hana_modmgr.iojson import load_json_file, write_json_file
+from modmgr.cli import main
+from modmgr.iojson import load_json_file, write_json_file
 
 
 class CliDatabaseOpsTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "visualize",
                     "--forest",
                     str(forest_path),
@@ -61,7 +61,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "visualize",
                     "--forest",
                     str(forest_path),
@@ -80,11 +80,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
             forest_path = Path(td) / "forest.json"
             write_json_file(forest_path, {"trees": [{"root_path": "/dst/a.txt", "changerequest": [], "refs": [], "resolved_state": ""}]})
 
-            with patch("hana_modmgr.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
+            with patch("modmgr.forest_visual.subprocess.run", side_effect=FileNotFoundError()):
                 with patch(
                     "sys.argv",
                     [
-                        "hana-modmgr-cli",
+                        "modmgr-cli",
                         "visualize",
                         "--forest",
                         str(forest_path),
@@ -124,11 +124,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 },
             )
 
-            with patch("hana_modmgr.cli.Path.write_text", side_effect=OSError("disk full")):
+            with patch("modmgr.cli.Path.write_text", side_effect=OSError("disk full")):
                 with patch(
                     "sys.argv",
                     [
-                        "hana-modmgr-cli",
+                        "modmgr-cli",
                         "visualize",
                         "--forest",
                         str(forest_path),
@@ -182,7 +182,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "visualize",
                     "--forest",
                     str(forest_path),
@@ -206,7 +206,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "steamlib",
                     "add",
                     "--database",
@@ -229,7 +229,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "steamlib",
                     "remove",
                     "--database",
@@ -248,7 +248,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
         with patch(
             "sys.argv",
             [
-                "hana-modmgr-cli",
+                "modmgr-cli",
                 "steamlib",
                 "list",
                 "--database",
@@ -284,11 +284,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 "errors": [],
             }
 
-            with patch("hana_modmgr.cli.liveupdate_database", return_value=mocked_result):
+            with patch("modmgr.cli.liveupdate_database", return_value=mocked_result):
                 with patch(
                     "sys.argv",
                     [
-                        "hana-modmgr-cli",
+                        "modmgr-cli",
                         "liveupdate",
                         "--database",
                         str(db_path),
@@ -315,7 +315,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "liveupdate",
                     "--database",
                     str(db_path),
@@ -349,11 +349,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
                 "errors": [],
             }
 
-            with patch("hana_modmgr.cli.regen_database", return_value=mocked_result):
+            with patch("modmgr.cli.regen_database", return_value=mocked_result):
                 with patch(
                     "sys.argv",
                     [
-                        "hana-modmgr-cli",
+                        "modmgr-cli",
                         "regen",
                         "--database",
                         str(db_path),
@@ -380,7 +380,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "regen",
                     "--database",
                     str(db_path),
@@ -399,11 +399,11 @@ class CliDatabaseOpsTests(unittest.TestCase):
             write_json_file(aggregated_rule_set_path, {"operation": []})
             write_json_file(db_path, {"game": []})
 
-            with patch("hana_modmgr.cli.compute_mapping", return_value={"trees": [], "final_mapping": []}):
+            with patch("modmgr.cli.compute_mapping", return_value={"trees": [], "final_mapping": []}):
                 with patch(
                     "sys.argv",
                     [
-                        "hana-modmgr-cli",
+                        "modmgr-cli",
                         "--aggregated-rule-set",
                         str(aggregated_rule_set_path),
                         "--database",
@@ -424,7 +424,7 @@ class CliDatabaseOpsTests(unittest.TestCase):
             with patch(
                 "sys.argv",
                 [
-                    "hana-modmgr-cli",
+                    "modmgr-cli",
                     "--aggregated-rule-set",
                     str(aggregated_rule_set_path),
                     "--database",

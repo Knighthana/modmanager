@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from hana_modmgr.apply_ops import apply_entries
+from modmgr.apply_ops import apply_entries
 
 
 class TestApplyEntries:

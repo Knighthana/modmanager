@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from hana_modmgr.restore_ops import restore_entries
+from modmgr.restore_ops import restore_entries
 
 
 def _make_backupinfo(source_root: str, files: dict[str, str]) -> dict:

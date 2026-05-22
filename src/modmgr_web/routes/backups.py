@@ -11,8 +11,8 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
-from hana_modmgr.backup_ops import load_backup_info, detect_dirty_state, inspect_conflict
-from hana_modmgr.path_resolver import resolve_directory_path
+from modmgr.backup_ops import load_backup_info, detect_dirty_state, inspect_conflict
+from modmgr.path_resolver import resolve_directory_path
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import BackupListRequest, BackupInspectRequest

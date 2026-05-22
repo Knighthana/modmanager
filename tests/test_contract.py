@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from hana_modmgr.engine import compute_mapping
-from hana_modmgr.schema import get_output_schema, validate_output, validate_output_collect
+from modmgr.engine import compute_mapping
+from modmgr.schema import get_output_schema, validate_output, validate_output_collect
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ class SchemaLoadTests(unittest.TestCase):
         self.assertSetEqual(required, {"warnings", "errors", "trees", "final_mapping"})
 
     def test_schema_change_request_enum_matches_engine(self) -> None:
-        from hana_modmgr.engine import VALID_ACTIONS
+        from modmgr.engine import VALID_ACTIONS
         schema = get_output_schema()
         schema_enum = set(schema["$defs"]["ChangeRequest"]["properties"]["action"]["enum"])
         # "hold" is a valid INPUT action (engine skips it silently) but must NEVER

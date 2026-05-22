@@ -9,13 +9,13 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from hana_modmgr.bootstrap import (
+from modmgr.bootstrap import (
     _detect_software_dir,
     discover_user_config,
     generate_database,
 )
-from hana_modmgr import bootstrap as bootstrap_module
-from hana_modmgr.iojson import write_json_file
+from modmgr import bootstrap as bootstrap_module
+from modmgr.iojson import write_json_file
 
 
 class TestDetectSoftwareDir(TestCase):

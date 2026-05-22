@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from hana_modmgr.database_ops import (
+from modmgr.database_ops import (
     add_manual_game,
     add_manual_steamlib,
     discover_with_fallback,
@@ -19,7 +19,7 @@ from hana_modmgr.database_ops import (
     update_manual_steamlib,
     verify_database_integrity,
 )
-from hana_modmgr.steam_scanner import GameInfo, SteamLibraryInfo
+from modmgr.steam_scanner import GameInfo, SteamLibraryInfo
 
 
 class DatabaseOpsTests(unittest.TestCase):
@@ -70,9 +70,9 @@ class DatabaseOpsTests(unittest.TestCase):
     def test_discover_with_fallback_uses_manual_when_auto_fails(self) -> None:
         manual = [{"path": "/mnt/d/Games", "contains_libraryfolders_vdf": False}]
 
-        with patch("hana_modmgr.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
-            with patch("hana_modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-                with patch("hana_modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmgr.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
+            with patch("modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+                with patch("modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                     mock_games.return_value = {
                         "270150": GameInfo(
                             appid="270150",
@@ -95,7 +95,7 @@ class DatabaseOpsTests(unittest.TestCase):
         self.assertEqual(database["game"][0]["mods_found"], ["2606099273"])
 
     def test_discover_with_fallback_requires_working_directory(self) -> None:
-        with patch("hana_modmgr.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
+        with patch("modmgr.database_ops.SteamScanner.discover_steam_libraries", return_value=[]):
             with self.assertRaises(ValueError):
                 discover_with_fallback(working_pathstyle="linux", manual_override_steamlibs=[])
 
@@ -128,8 +128,8 @@ class DatabaseOpsTests(unittest.TestCase):
             ],
         }
 
-        with patch("hana_modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-            with patch("hana_modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+            with patch("modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                 mock_games.return_value = {
                     "270150": GameInfo(
                         appid="270150",
@@ -167,8 +167,8 @@ class DatabaseOpsTests(unittest.TestCase):
             "mod": [{"mixed_id": "old:old", "path": "/x", "localdate": 0}],
         }
 
-        with patch("hana_modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-            with patch("hana_modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+            with patch("modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                 mock_games.return_value = {
                     "270150": GameInfo(
                         appid="270150",
@@ -205,9 +205,9 @@ class DatabaseOpsTests(unittest.TestCase):
         """manual_only=True → auto_libraries is empty (no auto discover)."""
         manual = [{"path": "/mnt/d/Games", "contains_libraryfolders_vdf": False}]
 
-        with patch("hana_modmgr.database_ops.SteamScanner.discover_steam_libraries") as mock_auto:
-            with patch("hana_modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
-                with patch("hana_modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
+        with patch("modmgr.database_ops.SteamScanner.discover_steam_libraries") as mock_auto:
+            with patch("modmgr.database_ops.SteamScanner.discover_games_in_library") as mock_games:
+                with patch("modmgr.database_ops.SteamScanner.discover_mods_for_game") as mock_mods:
                     mock_auto.return_value = [SteamLibraryInfo(
                         path="/auto/steamapps",
                         contains_libraryfolders_vdf=True,
@@ -238,8 +238,8 @@ class DatabaseOpsTests(unittest.TestCase):
 
     def test_scan_from_libraries_detects_duplicate_appid(self) -> None:
         """Same appid in two different libraries → warning, first wins."""
-        from hana_modmgr.database_ops import _scan_from_libraries
-        from hana_modmgr.steam_scanner import SteamScanner
+        from modmgr.database_ops import _scan_from_libraries
+        from modmgr.steam_scanner import SteamScanner
 
         scanner = SteamScanner(working_pathstyle="linux")
         lib1 = SteamLibraryInfo(

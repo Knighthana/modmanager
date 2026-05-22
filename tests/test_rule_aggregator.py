@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from hana_modmgr.rule_aggregator import aggregate
+from modmgr.rule_aggregator import aggregate
 
 
 # ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 try:
-    from hana_modmgr.backup_ops import check_backup_gate
+    from modmgr.backup_ops import check_backup_gate
 except ImportError:
     from ..backup_ops import check_backup_gate
 

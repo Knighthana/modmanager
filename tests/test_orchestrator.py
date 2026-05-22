@@ -11,11 +11,11 @@ from unittest.mock import patch
 
 import pytest
 
-from hana_modmgr.orchestrator import (
+from modmgr.orchestrator import (
     PipelineResult,
     compute,
 )
-from hana_modmgr.orchestrator.compute_pipeline import _apply_managed_filter
+from modmgr.orchestrator.compute_pipeline import _apply_managed_filter
 
 class TestPipelineResult(TestCase):
     """Tests for PipelineResult dataclass."""
@@ -104,8 +104,8 @@ class TestApply(TestCase):
                 dry_run=False,
             )
 
-    @patch("hana_modmgr.orchestrator.apply_final_mapping")
-    @patch("hana_modmgr.orchestrator.build_backup_dirs")
+    @patch("modmgr.orchestrator.apply_final_mapping")
+    @patch("modmgr.orchestrator.build_backup_dirs")
     def test_apply_matches_paths_after_normalization(
         self,
         mock_build_backup_dirs,
@@ -148,8 +148,8 @@ class TestApply(TestCase):
             "/tmp/fixture//content//2606099273/file.txt",
         )
 
-    @patch("hana_modmgr.orchestrator.apply_final_mapping")
-    @patch("hana_modmgr.orchestrator.build_backup_dirs")
+    @patch("modmgr.orchestrator.apply_final_mapping")
+    @patch("modmgr.orchestrator.build_backup_dirs")
     def test_apply_warns_when_backup_dir_has_no_matched_entries(
         self,
         mock_build_backup_dirs,
@@ -197,8 +197,8 @@ class TestApply(TestCase):
         )
         mock_apply_final_mapping.assert_not_called()
 
-    @patch("hana_modmgr.orchestrator.apply_final_mapping")
-    @patch("hana_modmgr.orchestrator.build_backup_dirs")
+    @patch("modmgr.orchestrator.apply_final_mapping")
+    @patch("modmgr.orchestrator.build_backup_dirs")
     def test_apply_does_not_restore_kmmbakignore(
         self,
         mock_build_backup_dirs,
@@ -232,8 +232,8 @@ class TestApply(TestCase):
 
 @pytest.mark.skip(reason="_generate_apply_preflight/orchestrate_apply removed in orchestrator refactor")
 class TestApplyPreflight(TestCase):
-    @patch("hana_modmgr.orchestrator.check_backup_gate")
-    @patch("hana_modmgr.orchestrator.build_backup_dirs")
+    @patch("modmgr.orchestrator.check_backup_gate")
+    @patch("modmgr.orchestrator.build_backup_dirs")
     def test_generate_apply_preflight_collects_gate_failures(
         self,
         mock_build_backup_dirs,
@@ -257,11 +257,11 @@ class TestApplyPreflight(TestCase):
         self.assertEqual(manifest["backup_dirs"][0]["applicable_entries"], 1)
         self.assertTrue(any("W_BACKUP_GATE_FAILED" in w for w in manifest["warnings"]))
 
-    @patch("hana_modmgr.orchestrator.apply")
-    @patch("hana_modmgr.orchestrator._generate_apply_preflight")
-    @patch("hana_modmgr.orchestrator._resolve_database")
-    @patch("hana_modmgr.orchestrator._get_workspace_manager")
-    @patch("hana_modmgr.orchestrator.discover_user_config")
+    @patch("modmgr.orchestrator.apply")
+    @patch("modmgr.orchestrator._generate_apply_preflight")
+    @patch("modmgr.orchestrator._resolve_database")
+    @patch("modmgr.orchestrator._get_workspace_manager")
+    @patch("modmgr.orchestrator.discover_user_config")
     def test_orchestrate_apply_returns_preflight_failure_without_running_apply(
         self,
         mock_discover_user_config,
@@ -295,11 +295,11 @@ class TestApplyPreflight(TestCase):
         self.assertIn("preflight", result.apply_result["diagnostics"])
         mock_apply.assert_not_called()
 
-    @patch("hana_modmgr.orchestrator.apply")
-    @patch("hana_modmgr.orchestrator._generate_apply_preflight")
-    @patch("hana_modmgr.orchestrator._resolve_database")
-    @patch("hana_modmgr.orchestrator._get_workspace_manager")
-    @patch("hana_modmgr.orchestrator.discover_user_config")
+    @patch("modmgr.orchestrator.apply")
+    @patch("modmgr.orchestrator._generate_apply_preflight")
+    @patch("modmgr.orchestrator._resolve_database")
+    @patch("modmgr.orchestrator._get_workspace_manager")
+    @patch("modmgr.orchestrator.discover_user_config")
     def test_orchestrate_apply_runs_apply_after_preflight_success(
         self,
         mock_discover_user_config,

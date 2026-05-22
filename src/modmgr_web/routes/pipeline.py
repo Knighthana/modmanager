@@ -8,11 +8,11 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from hana_modmgr.backup_ops import restore_from_backup
-from hana_modmgr.bootstrap import discover_user_config
-from hana_modmgr.iojson import load_json_file
-from hana_modmgr.orchestrator import dispatch
-from hana_modmgr.orchestrator.entry import Intent, TaskRequest
+from modmgr.backup_ops import restore_from_backup
+from modmgr.bootstrap import discover_user_config
+from modmgr.iojson import load_json_file
+from modmgr.orchestrator import dispatch
+from modmgr.orchestrator.entry import Intent, TaskRequest
 
 from ..adapters import adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
 from ..schemas import ComputeRequest, RunRequest, VisualizeRequest, RestoreRequest
@@ -69,7 +69,7 @@ async def pipeline_visualize(req: VisualizeRequest):
 
     Returns a plain JSON ``ApiResponse`` with the rendered output.
     """
-    from hana_modmgr.forest_visual import visualize_payload
+    from modmgr.forest_visual import visualize_payload
 
     if not req.trees and req.mapping_result:
         # Fall back to extracting trees from mapping_result

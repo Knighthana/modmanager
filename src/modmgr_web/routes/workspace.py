@@ -9,16 +9,16 @@ from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import Response, StreamingResponse
-from hana_modmgr.bootstrap import discover_user_config
-from hana_modmgr.core.workspacemanager import WorkspaceManager
-from hana_modmgr.orchestrator import dispatch, compute_ws
-from hana_modmgr.orchestrator.entry import Intent, TaskRequest
-from hana_modmgr.path_resolver import expand_path
+from modmgr.bootstrap import discover_user_config
+from modmgr.core.workspacemanager import WorkspaceManager
+from modmgr.orchestrator import dispatch, compute_ws
+from modmgr.orchestrator.entry import Intent, TaskRequest
+from modmgr.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
 from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
 from ..sse import stream_with_progress
-from hana_modmgr.rule_aggregator import aggregate as rule_aggregate
+from modmgr.rule_aggregator import aggregate as rule_aggregate
 import hashlib
 import json
 from datetime import datetime, timezone

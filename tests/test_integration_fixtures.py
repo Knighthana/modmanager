@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from hana_modmgr.engine import compute_mapping
+from modmgr.engine import compute_mapping
 
 
 class IntegrationFixture:

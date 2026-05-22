@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from hana_modmgr.rule_aggregator import aggregate
-from hana_modmgr.engine import compute_mapping
-from hana_modmgr.backup_dir_builder import build_backup_dirs
+from modmgr.rule_aggregator import aggregate
+from modmgr.engine import compute_mapping
+from modmgr.backup_dir_builder import build_backup_dirs
 
 
 # Same fixture but with UNIQUE markers in every file

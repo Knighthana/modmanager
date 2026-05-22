@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from hana_modmgr.orchestrator.preflight import (
+from modmgr.orchestrator.preflight import (
     run_apply_preflight,
     run_restore_preflight,
 )
-from hana_modmgr.orchestrator.resolver import CleanContext
+from modmgr.orchestrator.resolver import CleanContext
 
 
 def _make_context() -> CleanContext:
