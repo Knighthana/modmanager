@@ -30,11 +30,6 @@
                 "type": "string"
             }
         },
-        "aggregated_ruleset_output_path": {
-            "description": "aggregated_rule_set.json 的输出路径。为 null 时使用平台默认位置。",
-            "type": ["string", "null"],
-            "default": null
-        },
         "rule_sources": {
             "description": "规则文件来源列表。目录以 / 结尾（自动扫描 *.kmmrule.json），或以 .kmmrule.json 结尾的文件直接加载。后端保存时自动归一化：检测目录路径缺 / 则补齐。",
             "type": "array",

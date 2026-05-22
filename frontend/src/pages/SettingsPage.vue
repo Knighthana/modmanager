@@ -159,11 +159,6 @@
           </div>
         </el-form-item>
 
-        <!-- Aggregated Rules 输出路径 -->
-        <el-form-item label="Aggregated Rules 输出路径">
-          <el-input v-model="form.aggregatedOutputPath" placeholder="/tmp/aggregated_rule_set.json" />
-        </el-form-item>
-
         <!-- User Config 路径（只读，由系统确定） -->
         <el-form-item label="用户配置文件路径">
           <el-input v-model="form.userConfigPath" readonly placeholder="由系统确定" />
@@ -263,7 +258,6 @@ interface SettingsForm {
   baksuffix: string
   bakignore: string[]
   databases: DbEntry[]
-  aggregatedOutputPath: string
   userConfigPath: string   // read-only, populated from backend source_path
   ruleSources: string[]
   firstUse: boolean
@@ -275,7 +269,6 @@ const form = ref<SettingsForm>({
   baksuffix: 'kmmbackup',
   bakignore: [],
   databases: [{ key: 'default', value: DEFAULT_DB_PATH }],
-  aggregatedOutputPath: '',
   userConfigPath: '',
   ruleSources: [],
   firstUse: false,
@@ -317,7 +310,6 @@ onMounted(async () => {
       if (form.value.databases.length === 0) {
         form.value.databases = [{ key: 'default', value: DEFAULT_DB_PATH }]
       }
-      form.value.aggregatedOutputPath = (uc.aggregated_ruleset_output_path as string) || ''
       form.value.ruleSources = (uc.rule_sources as string[]) || []
       form.value.userConfigPath = (uc.source_path as string) || ''
       form.value.firstUse = (uc.first_use as boolean) || false
@@ -343,7 +335,6 @@ async function onSaveConfig() {
         baksuffix: form.value.baksuffix,
         bakignore: form.value.bakignore,
         databases,
-        aggregated_ruleset_output_path: form.value.aggregatedOutputPath || null,
         rule_sources: form.value.ruleSources,
       },
     })

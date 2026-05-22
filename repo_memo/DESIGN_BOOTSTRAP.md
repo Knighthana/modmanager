@@ -87,13 +87,21 @@
 
 ---
 
-## 五、与 storage 文档的关系
+## 五、关于 `source_path`
+
+`source_path` 是 bootstrap 返回结构中的**正式参数**，记录 `user_config.json` 实际加载/创建的绝对路径。该参数由 orchestrator 消费（用于日志、路径解析等场景），前端仅做只读展示。
+
+用户可将 `user_config.json` 存储在任何位置（通过显式传入 `user_config_path` 参数），bootstrap 均会返回对应的 `source_path`。
+
+---
+
+## 六、与 storage 文档的关系
 
 本文档是存储路径的**运行时权威**。`DESIGN_STORAGE.md` 描述存储分类与生命周期。两者互补——本文档定义「默认位置在哪」，`DESIGN_STORAGE.md` 定义「各类数据属于哪种存储」。
 
 ---
 
-## 六、未来扩展
+## 七、未来扩展
 
 - 允许通过 `user_config` 显式指定 database 和 workspace 路径（已支持 `workspace_dir` 和 `databases[name].path`）
 - macOS Steam 自动发现当前为推测路径（`~/Library/Application Support/Steam/`），需实际验证

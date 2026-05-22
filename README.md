@@ -8,9 +8,16 @@ update: 2026-05-20
 The Knighthana's Mod Manager
 ============================
 
+**项目仍然处于开发阶段，包含多个已经检查到的问题正在解决中，欢迎开发者加入，但目前不建议一般用户使用**
+
+因个人工作变动，项目短期内将进入低活跃维护状态，欢迎有兴趣的开发者参与。
+
 This repository provides the full source tree, including the frontend and build tooling.
 For PyPI, the current release path is intentionally narrower: install the core package first,
 and use GitHub for the full web-enabled development experience.
+
+如果你希望获得完整的 Web 界面和前端源码，请直接使用本仓库的 GitHub 版本。
+如果你只是想先通过 PyPI 安装核心能力，目前发布物会优先保证 CLI / 后端逻辑可用。
 
 # 简介
 
@@ -22,8 +29,7 @@ The Knighthana's Mod Manager(简称KMM)通过对"文件迁移过程"进行脱离
 
 # 作为普通用户
 
-如果你希望获得完整的 Web 界面和前端源码，请直接使用本仓库的 GitHub 版本。
-如果你只是想先通过 PyPI 安装核心能力，目前发布物会优先保证 CLI / 后端逻辑可用。
+(这段是预留给未来的说明，请普通用户在正式发布也就是版本号达到1.0.0之前，不要使用，现在不能对执行预期和稳定性做出任何保证)
 
 如果要作为普通用户使用这个项目，请前往[release]()页面，下载符合自己系统平台的分发文件，遵守指引安装；
 

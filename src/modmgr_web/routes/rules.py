@@ -111,21 +111,7 @@ async def rules_aggregate(req: RulesAggregateRequest):
     if not req.paths:
         return adapt_error("paths list is required and must not be empty")
 
-    try:
-        # Prefer explicit configured output path; otherwise derive a stable
-        # default path next to user_config for cross-page recovery.
-        user_config = discover_user_config()
-        configured_output_path = user_config.get("aggregated_ruleset_output_path", "")
-        if configured_output_path:
-            output_path = expand_path(configured_output_path)
-        else:
-            source_path = str(user_config.get("source_path", "")).strip()
-            if source_path:
-                output_path = str(Path(source_path).parent / "aggregated_rule_set.json")
-            else:
-                output_path = "aggregated_rule_set.json"
-    except Exception:
-        output_path = "aggregated_rule_set.json"
+    output_path = "aggregated_rule_set.json"
 
     result, errors, warnings = rule_aggregate(
         [expand_path(p) for p in req.paths],

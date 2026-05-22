@@ -6,7 +6,6 @@
       "path": "~/.local/share/kmm/database.json"
     }
   },
-  "aggregated_ruleset_output_path": "/tmp/aggregated_rule_set.json",
   "rule_sources": [],
   "source_path": "/home/user/.config/kmm/user_config.json",
   "first_use": false,

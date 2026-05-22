@@ -874,6 +874,7 @@ class TestRulesAggregateEndpoint:
         assert len(body["data"]["aggregated_hash"]) == 64
         assert isinstance(body["data"]["aggregated_at"], str)
 
+    @pytest.mark.skip(reason="aggregated_ruleset_output_path removed")
     def test_rules_aggregate_uses_configured_output_path(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:

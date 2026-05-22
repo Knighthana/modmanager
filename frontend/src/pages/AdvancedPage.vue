@@ -172,22 +172,9 @@ async function refreshTab(tab: string) {
         break
       }
       case 'aggregated': {
-        // 先从配置获取 aggregated_ruleset_output_path
-        let path = 'aggregated_rule_set.json'
-        try {
-          const configResp = await apiPost<Record<string, unknown>>('/config/discover', {})
-          if (configResp.ok && configResp.data) {
-            const config = configResp.data as Record<string, unknown>
-            if (config.aggregated_ruleset_output_path) {
-              path = config.aggregated_ruleset_output_path as string
-            }
-          }
-        } catch {
-          // 使用默认路径
-        }
         const resp = await apiPost<Record<string, unknown>>(
           '/rules/load-aggregated',
-          { path },
+          { path: 'aggregated_rule_set.json' },
         )
         if (resp.ok && resp.data) {
           raw = resp.data

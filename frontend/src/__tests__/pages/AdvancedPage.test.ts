@@ -50,7 +50,6 @@ describe('AdvancedPage', () => {
         return {
           ok: true,
           data: {
-            aggregated_ruleset_output_path: '/tmp/aggregated_rule_set.json',
             databases: { default: { path: '/tmp/database.json' } },
           },
           errors: [],

@@ -62,7 +62,6 @@ const mockConfigData = {
   databases: {
     'default': { path: '/custom/path/database.json' },
   },
-  aggregated_ruleset_output_path: '/custom/path/aggregated.json',
   rule_sources: ['/home/user/rules/', '/home/user/custom.kmmrule.json'],
   source_path: '/home/user/.config/kmm/user_config.json',
   first_use: false,
@@ -104,7 +103,6 @@ describe('SettingsPage', () => {
     expect(form.bakignore).toEqual(['*.log', 'node_modules/'])
     // Verify databases loaded correctly
     expect((form.databases as any)[0]?.key).toBe('default')
-    expect(form.aggregatedOutputPath).toBe('/custom/path/aggregated.json')
     expect(form.ruleSources).toEqual(['/home/user/rules/', '/home/user/custom.kmmrule.json'])
     // Verify apiPost was called with the discover endpoint
     expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', {})
@@ -130,7 +128,6 @@ describe('SettingsPage', () => {
 
     form.bakignore = ['*.tmp']
     form.databases = [{ key: 'default', value: '/test/db.json' }]
-    form.aggregatedOutputPath = '/test/agg.json'
     form.ruleSources = ['/test/rules/']
 
     // Call save
@@ -142,7 +139,6 @@ describe('SettingsPage', () => {
         baksuffix: 'testsuffix',
         bakignore: ['*.tmp'],
         databases: { 'default': { path: '/test/db.json' } },
-        aggregated_ruleset_output_path: '/test/agg.json',
         rule_sources: ['/test/rules/'],
       },
     })
