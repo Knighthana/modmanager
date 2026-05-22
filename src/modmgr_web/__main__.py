@@ -1,4 +1,4 @@
-"""Entry point for ``python -m modmanager_web`` and the ``modmanager-web`` script.
+"""Entry point for ``python -m modmgr_web`` and the ``modmgr-web`` script.
 
 Starts a uvicorn server on ``127.0.0.1:8000``.
 """
@@ -9,14 +9,14 @@ import sys
 
 
 def main() -> None:
-    """Launch the ModManager Web API server."""
+    """Launch the modmgr Web API server."""
     try:
         import uvicorn
         from .app import create_app
     except ImportError as exc:
         print(
-            "modmanager_web requires the optional web dependencies. "
-            "Install with `pip install modmanager[web]` or use the GitHub source tree.",
+            "modmgr_web requires the optional web dependencies. "
+            "Install with `pip install modmgr[web]`.",
             file=sys.stderr,
         )
         raise SystemExit(2) from exc

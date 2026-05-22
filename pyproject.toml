@@ -19,7 +19,8 @@ file = "README.md"
 content-type = "text/markdown; charset=UTF-8"
 
 [project.scripts]
-modmgr-cli = "hana_modmgr.cli:main"
+modmgr-cli = "modmgr.cli:main"
+modmgr-web = "modmgr_web.__main__:main"
 
 [project.optional-dependencies]
 web = [

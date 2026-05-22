@@ -8,9 +8,9 @@ update: 2026-05-20
 The Knighthana's Mod Manager
 ============================
 
-**项目仍然处于开发阶段，包含多个已经检查到的问题正在解决中，欢迎开发者加入，但目前不建议一般用户使用**
+**项目仍然处于开发阶段，部分核心功能正在深度重构和优化，欢迎开发者加入讨论和贡献，但目前不建议一般用户直接用于生产环境**
 
-因个人工作变动，项目短期内将进入低活跃维护状态，欢迎有兴趣的开发者参与。
+探索性开发已告一段落，因个人工作变动，项目短期内将进入低活跃维护状态，欢迎有兴趣的开发者参与。
 
 This repository provides the full source tree, including the frontend and build tooling.
 For PyPI, the current release path is intentionally narrower: install the core package first,
@@ -29,7 +29,25 @@ The Knighthana's Mod Manager(简称KMM)通过对"文件迁移过程"进行脱离
 
 # 作为普通用户
 
-(这段是预留给未来的说明，请普通用户在正式发布也就是版本号达到1.0.0之前，不要使用，现在不能对执行预期和稳定性做出任何保证)
+## Quickstart（开发者 / 尝鲜用户）
+
+```bash
+# 安装核心包
+pip install modmgr
+
+# 安装 Web 界面（可选）
+pip install modmgr[web]
+
+# 启动 Web 服务（需先安装 web 依赖）
+modmgr-web          # → http://127.0.0.1:8000
+
+# CLI 模式
+modmgr-cli --help
+```
+
+首次启动会自动在平台默认位置创建 `user_config.json`（Linux: `~/.config/kmm/`，Windows: `%APPDATA%/kmm/`，macOS: `~/Library/Preferences/kmm/`）。
+
+(以下是预留给未来的说明，作为需求的一部分，请普通用户在正式发布也就是版本号达到1.0.0之前，或者这段话被删掉之前，不要在生产环境中使用，现在项目还在深度重构中，不能对执行预期和稳定性做出任何保证)
 
 如果要作为普通用户使用这个项目，请前往[release]()页面，下载符合自己系统平台的分发文件，遵守指引安装；
 
@@ -92,3 +110,7 @@ The Knighthana's Mod Manager(简称KMM)通过对"文件迁移过程"进行脱离
 欢迎提出更多的想法，比如“我想用它管理Minecraft模组”，或者“我想用它管理我的本地音乐收藏”，或者“我有一个嵌入式设备中需要这样的管理器对规则集合进行管理”；
 
 项目还在成长，接受各种想法；
+
+Knighthana
+
+2026/05/22
