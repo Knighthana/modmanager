@@ -73,13 +73,22 @@ def discover_user_config(home_dir: str | None = None) -> dict:
     """Discover ``user_config.json`` via single-level search with first-use creation.
 
     Searches **only** the platform-default location:
+
       - Linux:   ``~/.config/kmm/user_config.json``
       - Windows: ``%APPDATA%/kmm/user_config.json``
+      - macOS:   ``~/Library/Preferences/kmm/user_config.json``
 
     If the file exists and contains a valid JSON dict it is loaded and returned
     (``first_use=false``).  If the file does not exist (or contains invalid
     content), a default configuration is created at that location with an empty
     ``databases`` object (``first_use=true``) and returned.
+
+    The default ``databases`` entry points to the platform-default database
+    location (see ``DESIGN_BOOTSTRAP.md`` for the full table):
+
+      - Linux:   ``~/.local/share/kmm/database.json``
+      - Windows: ``%LOCALAPPDATA%/kmm/database/database.json``
+      - macOS:   ``~/Library/Application Support/kmm/database.json``
 
     Args:
         home_dir:
@@ -101,6 +110,8 @@ def discover_user_config(home_dir: str | None = None) -> dict:
     # Platform-specific config directory
     if sys.platform == "win32":
         config_dir = Path(os.environ.get("APPDATA", str(Path(home_dir) / "AppData" / "Roaming")))
+    elif sys.platform == "darwin":
+        config_dir = Path(home_dir) / "Library" / "Preferences"
     else:
         config_dir = Path(home_dir) / ".config"
 
@@ -121,9 +132,18 @@ def discover_user_config(home_dir: str | None = None) -> dict:
     # --- File does not exist or is invalid — create default ---
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
-    default_db_path = normalize_posix(
-        str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json")
-    )
+    # Platform-specific default database path
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA", str(Path(home_dir) / "AppData" / "Local"))
+        default_db_path = normalize_posix(str(Path(local_appdata) / "kmm" / "database" / "database.json"))
+    elif sys.platform == "darwin":
+        default_db_path = normalize_posix(
+            str(Path(home_dir) / "Library" / "Application Support" / "kmm" / "database.json")
+        )
+    else:
+        default_db_path = normalize_posix(
+            str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json")
+        )
     default_config: dict[str, Any] = {
         "schema_namespace": "KMM_UserConfig",
         "schema_version": "knighthana@0.1.0",

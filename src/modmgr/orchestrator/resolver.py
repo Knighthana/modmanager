@@ -98,5 +98,19 @@ def _resolve_database(database_name: str, user_config: dict[str, Any]) -> dict[s
 
 
 def _default_ws_dir() -> str:
-    """Platform-default workspace root directory."""
-    return str(Path.home() / ".cache" / "kmm" / "workspace")
+    """Platform-default workspace root directory.
+
+    Linux: ~/.cache/kmm/workspace
+    Windows: %LOCALAPPDATA%/kmm/workspace
+    macOS: ~/Library/Caches/kmm/workspace
+    """
+    import sys
+    home = str(Path.home())
+    if sys.platform == "win32":
+        import os
+        local_appdata = os.environ.get("LOCALAPPDATA", f"{home}/AppData/Local")
+        return str(Path(local_appdata) / "kmm" / "workspace")
+    elif sys.platform == "darwin":
+        return str(Path(home) / "Library" / "Caches" / "kmm" / "workspace")
+    else:
+        return str(Path(home) / ".cache" / "kmm" / "workspace")
