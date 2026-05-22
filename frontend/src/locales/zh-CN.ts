@@ -162,8 +162,6 @@ export const STR = {
     colBelongingAppid: '所属 APPID',
     scanWarning: '扫描警告',
     duplicateAppidHint: '— 请在游戏表中选择需要保留的库',
-    applyBtn: '🚀 应用此数据源 → 前往 Forest',
-    confirmToRulesOverview: '✅ 确认并进入规则概览',
     databaseJsonAdvanced: 'Database JSON（高级）',
     saveCurrentSelection: '💾 保存当前选择',
   },

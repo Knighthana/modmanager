@@ -78,25 +78,6 @@ describe('DataSourcePage', () => {
     expect(scanBtn).toBeTruthy()
   })
 
-  it('shows "确认并进入规则概览" button when lastResult is set', async () => {
-    const wrapper = mount(DataSourcePage, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-    const store = useDataSourceStore()
-
-    // Button is always visible but disabled when no lastResult
-    const confirmBtn = wrapper.findAll('.el-button-stub').find(b => b.text().includes('确认并进入规则概览'))
-    expect(confirmBtn?.attributes('disabled')).toBeDefined()
-
-    // Set lastResult
-    store.lastResult = { steamlib: [], game: [], mod: [] }
-    await wrapper.vm.$nextTick()
-
-    // Button should now be enabled
-    const confirmBtn2 = wrapper.findAll('.el-button-stub').find(b => b.text().includes('确认并进入规则概览'))
-    expect(confirmBtn2?.attributes('disabled')).toBeUndefined()
-  })
-
   it('setLibraryVisibility toggles library visibility via store', () => {
     const store = useDataSourceStore()
     store.libraryVisibility = { 0: true }
@@ -237,34 +218,5 @@ describe('DataSourcePage', () => {
     expect(scanBtn?.attributes('disabled')).toBeUndefined()
   })
 
-  it('confirm button calls save API and shows errors on failure', async () => {
-    const wrapper = mount(DataSourcePage, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-    const store = useDataSourceStore()
 
-    store.lastResult = { steamlib: [], game: [], mod: [] }
-    await wrapper.vm.$nextTick()
-
-    // Mock fetch (apiPost uses fetch + res.json)
-    const mockFetch = vi.fn()
-    vi.stubGlobal('fetch', mockFetch)
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        ok: false,
-        errors: ['E_DUPLICATE_APPID: conflict on appid 270150'],
-        data: null,
-        warnings: [],
-      }),
-    })
-
-    const vm = wrapper.vm as any
-    await vm.onConfirm()
-    await wrapper.vm.$nextTick()
-
-    // Save errors should be displayed
-    expect(vm.saveErrors.length).toBeGreaterThan(0)
-    expect(vm.saveErrors[0]).toContain('E_DUPLICATE_APPID')
-  })
 })

@@ -201,7 +201,7 @@ const saved = pers.load<DataSourceState>('datasource');
 | F1 | 新建 `utils/persistence.ts` — 抽象存储层（接口 + localStorage + 预留 Tauri） | 前端新文件 |
 | F2 | 新建 `utils/scroll.ts` — `scrollintotabitem()` 封装 | 前端新文件 |
 | F3 | 新建 `stores/datasource.ts` — `useDataSourceStore`（状态 + 持久化 + 筛选逻辑） | 前端新文件 |
-| F4 | 新建 `pages/DataSourcePage.vue` — 扫描面板 + 三表 + 警告 + 跳转 | 前端新文件 |
+| F4 | 新建 `pages/DataSourcePage.vue` — 扫描面板 + 三表 + 警告 | 前端新文件 |
 | F5 | ForestPage 移除数据源面板，database 路径改为可解锁编辑 | `pages/ForestPage.vue` |
 | F6 | 路由新增 `/data-source`，导航栏加"数据源"选项 | `router/` + `App.vue` |
 | F7 | DataSourceStore → ForestStore 跨 store 传递 database 数据 | 前端 stores |

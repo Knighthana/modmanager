@@ -96,14 +96,6 @@
           >
             {{ store.isScanning ? STR.dataSourcePage.scanning : STR.dataSourcePage.scanBtn }}
           </el-button>
-          <el-button
-            type="primary"
-            size="default"
-            :disabled="!store.lastResult"
-            @click="onConfirm"
-          >
-            {{ STR.dataSourcePage.confirmToRulesOverview }}
-          </el-button>
           <span v-if="isDiscoverDisabled" style="margin-left: 8px; font-size: 12px; color: #999;">
             {{ STR.dataSourcePage.manualPathRequired }}
           </span>
@@ -309,7 +301,6 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
 import { useDataSourceStore } from '../stores/datasource'
 import { useForestStore } from '../stores/forest'
 import { apiPost } from '../api/transport'
@@ -324,7 +315,6 @@ import DatabaseSelector from '../components/DatabaseSelector.vue'
 
 const store = useDataSourceStore()
 const forestStore = useForestStore()
-const router = useRouter()
 const appStore = useAppStore()
 
 const databaseSelectorRef = ref<InstanceType<typeof DatabaseSelector> | null>(null)
@@ -456,19 +446,6 @@ async function doSave(): Promise<boolean> {
     return false
   } finally {
     isSaving.value = false
-  }
-}
-
-// ── save only (no navigation) ──
-// ── confirm & navigate to rules overview ──
-async function onConfirm() {
-  const ok = await doSave()
-  if (ok) {
-    if (appStore.currentWorkspaceId) {
-      router.push(`/workspace/${appStore.currentWorkspaceId}/rules`)
-    } else {
-      router.push('/')
-    }
   }
 }
 

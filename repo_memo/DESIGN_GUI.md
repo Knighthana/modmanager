@@ -94,7 +94,7 @@
 │  目标数据库: [default ▼]                                      │
 │  ○ 全部   ○ 仅自动   ○ 仅手动                                │
 │                                                              │
-│  [🔍 扫描 Steam 库]  [✅ 确认并进入规则概览]                    │
+│  [🔍 扫描 Steam 库]                                           │
 │                                                              │
 │  ▶ 📊 库摘要表（可见性 👀/🙈 toggle）                          │
 │  ▶ 📋 游戏表（appid / 名称 / MOD 数 / 所属库 / 路径）          │
@@ -107,7 +107,7 @@
 - DataSourcePage 仅展示扫描结果。重复条目客观展示，不做裁决。裁决在计算准备页完成。
 - 可见性筛选（库/游戏 toggle，👀可见 / 🙈隐藏）为 UI 状态，通过 persistence.ts 持久化
 - "扫描 Steam 库"按钮 → `POST /api/database/generate` → 后端扫描并写入 database → 返回数据。**每次均重新扫描，不走缓存。**
-- "确认并进入规则概览"按钮（已废弃——DataSourcePage 降为纯 database 管理，跳转逻辑已移除）
+- DataSourcePage 降为纯 database 管理，无页面间跳转逻辑。
 - ~~"保存当前选择"按钮已删除~~——扫描已顺带保存，无需独立保存按钮。
 - **database 下拉组件**：用户选择要操作的目标 database。选项来自 `user_config.databases`。选中值仅作为组件本地状态——不改 localStorage、不改后端文件。操作时作为 `database_name?` 参数传入请求。**DataSourcePage 上不显示"有历史决策"标签。**
 - 重复 appid/mixed_id 条目自然展示，无额外处理
