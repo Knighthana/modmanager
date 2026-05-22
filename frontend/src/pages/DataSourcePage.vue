@@ -84,6 +84,31 @@
             </div>
           </div>
         </el-form-item>
+        <!-- steam.exe 手动选择（Windows 专属） -->
+        <div v-if="isWindows" style="margin-top: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <input
+              type="file"
+              accept=".exe"
+              style="display: none;"
+              ref="steamExeFileInput"
+              @change="onSteamExeFilePicked"
+            />
+            <el-button size="small" @click="($refs.steamExeFileInput as HTMLInputElement)?.click()">
+              📁 选择 steam.exe
+            </el-button>
+            <el-input
+              v-model="steamExePath"
+              placeholder="D:\Games\Steam\steam.exe"
+              size="small"
+              style="flex: 1;"
+              clearable
+            />
+          </div>
+          <span v-if="!isTauri" style="font-size: 11px; color: #909399;">
+            请从文件管理器复制完整路径补全
+          </span>
+        </div>
         <el-form-item label="目标数据库">
           <DatabaseSelector ref="databaseSelectorRef" :showDecisionsTag="false" />
         </el-form-item>
@@ -330,6 +355,20 @@ const editingManualPathIdx = ref(-1)
 const editingManualPathVal = ref('')
 const isAddingManualPath = ref(false)
 
+// ── steam.exe ──
+const isWindows = ref(navigator.platform.toLowerCase().includes('win'))
+const isTauri = ref(typeof (window as any).__TAURI__ !== 'undefined')
+const steamExePath = ref('')
+const steamExeFileInput = ref<HTMLInputElement | null>(null)
+
+function onSteamExeFilePicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    steamExePath.value = file.name  // Browser only gives filename
+  }
+}
+
 // ── local managed state (independent of store, not persisted) ──
 const localManagedGames = reactive<Record<string, boolean>>({})
 const localManagedMods = reactive<Record<string, boolean>>({})
@@ -475,6 +514,7 @@ function loadUiStateFromStorage() {
   const ds = appStore.loadUiStateFor<{
     discoveryMode?: string
     manualPaths?: string[]
+    steamExePath?: string
     greedyParsing?: boolean
     libraryVisibility?: Record<number, boolean>
     gameVisibility?: Record<number, boolean>
@@ -482,6 +522,7 @@ function loadUiStateFromStorage() {
   if (!ds) return
   if (ds.discoveryMode) store.discoveryMode = ds.discoveryMode as DiscoverMode
   if (ds.manualPaths) store.manualPaths = ds.manualPaths
+  if (ds.steamExePath) steamExePath.value = ds.steamExePath
   if (ds.greedyParsing !== undefined) store.greedyParsing = ds.greedyParsing
   if (ds.libraryVisibility) store.libraryVisibility = ds.libraryVisibility
   if (ds.gameVisibility) store.gameVisibility = ds.gameVisibility
@@ -492,6 +533,7 @@ function saveUiStateToStorage() {
   appStore.saveUiStateFor('datasource', {
     discoveryMode: store.discoveryMode,
     manualPaths: [...store.manualPaths],
+    steamExePath: steamExePath.value,
     greedyParsing: store.greedyParsing,
     libraryVisibility: { ...store.libraryVisibility },
     gameVisibility: { ...store.gameVisibility },
@@ -518,7 +560,7 @@ onBeforeUnmount(() => {
 async function onScan() {
   saveUiStateToStorage()
   const selectedDb = databaseSelectorRef.value?.selectedDatabase ?? 'default'
-  await store.scan(selectedDb)
+  await store.scan(selectedDb, steamExePath.value || undefined)
 }
 
 // ── manual path management ──

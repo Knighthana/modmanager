@@ -66,6 +66,66 @@ def _detect_software_dir() -> str:
     return normalize_posix(str(current))
 
 
+# ── Steam.exe helper ─────────────────────────────────────────────────────────────
+
+
+def _derive_steamapps_from_steam_exe(steam_exe_path: str) -> list[str]:
+    """Derive steamapps paths from a steam.exe location.
+
+    Per DESIGN_BOOTSTRAP.md §2.1:
+      1. SteamRoot = directory containing steam.exe
+      2. Check SteamRoot/steamapps/libraryfolders.vdf (newer Steam)
+      3. Otherwise check SteamRoot/config/libraryfolders.vdf (older Steam)
+      4. Parse VDF to expand all library paths
+      5. SteamRoot/steamapps/ itself is always included as default library
+
+    Returns:
+        List of steamapps directory paths.
+    Raises:
+        ValueError: if steam.exe path is invalid or VDF cannot be found/parsed.
+    """
+    steam_root = Path(steam_exe_path).parent
+
+    if not steam_root.is_dir():
+        raise ValueError(f"Steam root directory not found: {steam_root}")
+
+    # Try to locate libraryfolders.vdf
+    vdf_paths = [
+        steam_root / "steamapps" / "libraryfolders.vdf",  # newer Steam
+        steam_root / "config" / "libraryfolders.vdf",      # older Steam
+    ]
+
+    libraries: list[str] = []
+    vdf_found = False
+
+    for vdf_path in vdf_paths:
+        if vdf_path.is_file():
+            try:
+                from .vdf_parser import parse_libraryfolders_vdf
+                parsed = parse_libraryfolders_vdf(str(vdf_path))
+                for lib in parsed.get("libraries", []):
+                    lib_path = lib.get("path", "")
+                    if lib_path:
+                        # VDF stores the Steam root dir, append steamapps/
+                        sp = str(Path(lib_path) / "steamapps")
+                        libraries.append(normalize_posix(sp))
+                vdf_found = True
+            except Exception:
+                pass  # Continue trying next vdf path
+
+    if not vdf_found:
+        raise ValueError(
+            f"Cannot find libraryfolders.vdf in {steam_root}/steamapps/ or {steam_root}/config/"
+        )
+
+    # Always include SteamRoot/steamapps/ itself
+    default_steamapps = str(steam_root / "steamapps")
+    if normalize_posix(default_steamapps) not in libraries:
+        libraries.insert(0, normalize_posix(default_steamapps))
+
+    return libraries
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
@@ -162,6 +222,7 @@ def generate_database(
     mode: str,
     *,
     paths: list[str] | None = None,
+    steam_exe_path: str | None = None,  # NEW
     greedy_parsing: bool = False,
     on_progress: ProgressCallback | None = None,
     database_name: str = "default",
@@ -184,6 +245,10 @@ def generate_database(
         paths:
             List of VDF file paths or ``steamapps`` directory paths (only used
             when ``mode="manual"``).
+        steam_exe_path:
+            Windows steam.exe path for VDF derivation (optional). When
+            provided, steamapps paths are derived via ``_derive_steamapps_from_steam_exe``
+            and merged into *paths*.
         working_pathstyle:
             ``"linux"`` or ``"windows"`` path style.
         greedy_parsing:
@@ -220,6 +285,14 @@ def generate_database(
 
     if mode == "manual" and not paths:
         raise ValueError("manual mode requires at least one path")
+
+    # ── Derive Steam libs from steam.exe if provided ─────────────────────
+    if steam_exe_path:
+        derived_paths = _derive_steamapps_from_steam_exe(steam_exe_path)
+        if paths is None:
+            paths = derived_paths
+        else:
+            paths = list(paths) + derived_paths
 
     # ── Generate database ─────────────────────────────────────────────────
     if mode == "auto" and not paths:

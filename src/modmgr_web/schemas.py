@@ -51,6 +51,7 @@ class GenerateDatabaseRequest(BaseModel):
 
     mode: str = "auto"  # "auto" | "manual"
     paths: list[str] | None = None
+    steam_exe_path: str | None = None  # Windows steam.exe path for VDF derivation
     greedy_parsing: bool = False
     database_name: str = "default"
 

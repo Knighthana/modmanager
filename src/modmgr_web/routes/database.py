@@ -48,6 +48,7 @@ async def generate(req: GenerateDatabaseRequest):
         return generate_database(
             mode=req.mode,
             paths=req.paths,
+            steam_exe_path=req.steam_exe_path,
             greedy_parsing=req.greedy_parsing,
             on_progress=on_progress,
             database_name=req.database_name,

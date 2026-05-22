@@ -62,7 +62,7 @@ export const useDataSourceStore = defineStore('datasource', () => {
   })
 
   // ── actions ───────────────────────────────────────────────────────────
-  async function scan(database_name: string = 'default') {
+  async function scan(database_name: string = 'default', steamExePath?: string) {
     isScanning.value = true
     warnings.value = []
     errors.value = []
@@ -84,11 +84,14 @@ export const useDataSourceStore = defineStore('datasource', () => {
       apiPaths = null
     }
 
-    const params = {
+    const params: Record<string, unknown> = {
       mode: apiMode,
       paths: apiPaths,
       greedy_parsing: greedyParsing.value,
       database_name,
+    }
+    if (steamExePath) {
+      params.steam_exe_path = steamExePath
     }
 
     await streamSse('/database/generate', params, {
