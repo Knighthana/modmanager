@@ -1,0 +1,7 @@
+{
+    "comment": "clean_backups.py 示例配置文件。将路径替换为你的实际 steamapps 目录。",
+    "steamapps_paths": [
+        "/mnt/d/SteamLibrary/steamapps",
+        "/mnt/e/SteamLibrary/steamapps"
+    ]
+}
