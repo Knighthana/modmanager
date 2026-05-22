@@ -1,7 +1,7 @@
 # PLAN — prep 原语拆分 + ignore 下传阻断
 
 > 创建：2026-05-21 by arch
-> 状态：confirmed — 待施工
+> 状态：completed — 全部 4 项差距已修复
 
 ## 目标
 
