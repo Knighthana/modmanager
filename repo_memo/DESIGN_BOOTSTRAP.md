@@ -6,6 +6,7 @@
 > Purpose: 定义 bootstrap 模块的初始化流程、三平台默认路径、Steam 发现顺序、首次使用行为
 
 创建：2026-05-21
+更新：2026-05-23 — §二 重写为 P1/P2 优先级模型；新增 steam.exe 推导、注册表、WSL 桥接、pathstyle 写入
 
 ---
 
@@ -47,27 +48,66 @@
 
 ---
 
-## 二、Steam 库自动发现
+## 二、Steam 库发现
 
-### 2.1 Linux
+### 2.0 总体原则：用户意图优先于自动推导
 
-按以下顺序搜索，命中第一个存在的目录即停止：
+| 优先级 | 方式 | 说明 |
+|--------|------|------|
+| **P1** | 用户显式指定路径 | 用户通过 UI 或 `user_config` 提供的路径，可信度最高。只要提供，**必须**使用。 |
+| **P2** | 自动推导 | 仅在用户未提供 P1 路径时生效。含注册表、硬编码默认路径、WSL 桥接扫描。 |
+
+### 2.1 用户显式指定（P1，全平台通用）
+
+**Windows**：用户通过文件选择器定位 `steam.exe`。系统据此推导：
+
+```
+steam.exe 所在目录 = SteamRoot
+  → 检查 SteamRoot/steamapps/libraryfolders.vdf（新版 Steam）
+  → 否则检查 SteamRoot/config/libraryfolders.vdf（旧版 Steam）
+  → 解析 VDF 展开所有库
+  → SteamRoot/steamapps/ 本身作为默认库
+  → 均失败 → 报错"无法从此 steam.exe 推断 Steam 库位置"
+```
+
+> 不要求用户直接输入 VDF 路径——普通用户不知道 VDF 是什么。"选 steam.exe"是 Windows 用户都能理解的交互。
+
+**Linux / macOS**：用户直接输入 `steamapps/` 目录路径（现有方式）。
+
+所有平台均支持用户通过 `user_config` 持久化手动指定的路径，后续扫描自动读取。
+
+### 2.2 自动推导（P2）
+
+仅在用户未提供 P1 路径时生效。各平台自动搜索顺序：
+
+#### Windows
+
+1. 注册表 `HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam\InstallPath` → 推导 SteamRoot → vdf 展开（读注册表不需要 UAC 提权）
+2. `%PROGRAMFILES(X86)%/Steam/steamapps/`（默认安装）
+3. `%PROGRAMFILES%/Steam/steamapps/`（备选）
+
+#### Linux
 
 1. `~/.steam/steam/steamapps/`（默认安装）
 2. `~/.local/share/Steam/steamapps/`（Flatpak / 部分发行版）
-3. `/mnt/*/SteamLibrary/steamapps/`（外部库，扫描 `/mnt/` 下第一层目录）
-4. 用户通过 `user_config` 手动指定的路径
+3. WSL 桥接：将 `/mnt/<drive>/` 转换为 Windows 起始路径后执行一次 Windows 自动推导（覆盖 `/mnt/c/Program Files (x86)/Steam/` 等场景）
+4. `/mnt/*/SteamLibrary/steamapps/`（外部库，扫描 `/mnt/` 下第一层目录）
 
-### 2.2 Windows
-
-1. `%PROGRAMFILES(X86)%/Steam/steamapps/`（默认安装）
-2. 从注册表 `HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam\InstallPath` 读取 Steam 安装目录 → `steamapps/`
-3. 用户通过 `user_config` 手动指定的路径
-
-### 2.3 macOS
+#### macOS
 
 1. `~/Library/Application Support/Steam/steamapps/`（默认安装）
-2. 用户通过 `user_config` 手动指定的路径
+
+### 2.3 扫描完成后：pathstyle 写入 user_config
+
+扫描完成后，系统须将检测到的路径风格（`steamlib_pathstyle`）写入 `user_config`，作为后续路径归一化的默认值：
+
+| 字段 | 含义 | 可能值 |
+|------|------|--------|
+| `steamlib_pathstyle` | Steam 库的主路径风格（由首个成功解析的 VDF 判定） | `"windows"` / `"linux"` |
+
+此字段供 orchestrator 的 `_detect_pathstyle()` 消费——当用户未在操作参数中显式指定 pathstyle 时，回退到此配置值。
+
+> WSL 场景：若在 Linux 下通过 WSL 桥接扫描到 Windows 库，`steamlib_pathstyle` 可能为 `"windows"`——此时 orchestrator 需要同时支持 WSL 路径映射（`/mnt/c/...` ↔ `C:\...`）。
 
 ---
 
@@ -104,7 +144,9 @@
 ## 七、未来扩展
 
 - 允许通过 `user_config` 显式指定 database 和 workspace 路径（已支持 `workspace_dir` 和 `databases[name].path`）
-- macOS Steam 自动发现当前为推测路径（`~/Library/Application Support/Steam/`），需实际验证
+- macOS Steam 自动发现需实际验证（路径 `~/Library/Application Support/Steam/` 为推测值）
+- 注册表读取需在 Windows 环境下实测，确认 64/32 位注册表视图行为
+- `steam.exe` 推导 → VDF 展开链路需处理新版/旧版 Steam 目录结构差异
 
 ---
 
@@ -147,3 +189,10 @@
 ### 工作区根目录
 
 - `user_config.workspace_dir` 为空或未设置时，按 §1.3 表中对应平台默认值解析
+
+### Steam 库发现（§二）
+
+- 用户提供了 P1 路径时，自动推导（P2）**不得**执行——跳过注册表、硬编码路径、WSL 桥接
+- Windows 下 `steam.exe` 推导：从 `steam.exe` 所在目录成功定位到 `libraryfolders.vdf`（新版/旧版）时，VDF 展开结果须包含 `SteamRoot/steamapps/`
+- Linux WSL 桥接：`/mnt/c/Program Files (x86)/Steam/` 存在时，应能解析其下 `steamapps/libraryfolders.vdf`
+- 扫描完成后 `user_config.steamlib_pathstyle` 被写入，值为 `"windows"` 或 `"linux"`
