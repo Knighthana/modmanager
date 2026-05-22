@@ -20,15 +20,20 @@ interface WorkspaceInfo {
   name: string
 }
 
+interface WorkspaceListResponse {
+  workspaces: WorkspaceInfo[]
+}
+
 const options = ref<WorkspaceOption[]>([])
 const selectedWorkspaceId = ref('')
 
 onMounted(async () => {
   try {
-    const resp = await apiGet<WorkspaceInfo[]>('/workspace/list')
-    if (resp.ok && resp.data && Array.isArray(resp.data) && resp.data.length > 0) {
-      options.value = resp.data.map(w => ({ label: w.name, value: w.workspace_id }))
-      selectedWorkspaceId.value = resp.data[0].workspace_id
+    const resp = await apiGet<WorkspaceListResponse>('/workspace/list')
+    const workspaces = resp.data?.workspaces
+    if (resp.ok && workspaces && workspaces.length > 0) {
+      options.value = workspaces.map(w => ({ label: w.name, value: w.workspace_id }))
+      selectedWorkspaceId.value = workspaces[0].workspace_id
     }
   } catch {
     // 接口不可用时 dropdown 显示占位符 "无可用工作区"
