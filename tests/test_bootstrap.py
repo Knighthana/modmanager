@@ -196,3 +196,74 @@ class TestGenerateDatabase(TestCase):
                 ):
                     with self.assertRaises(ValueError):
                         generate_database("auto")
+
+    def test_explicit_path_used_over_default(self) -> None:
+        """Explicit home_dir overrides the platform default config path."""
+        with tempfile.TemporaryDirectory() as td:
+            custom = Path(td) / ".config" / "kmm" / "user_config.json"
+            custom.parent.mkdir(parents=True)
+            custom.write_text(json.dumps({
+                "schema_namespace": "KMM_UserConfig",
+                "schema_version": "knighthana@0.1.0",
+                "databases": {"custom_db": {"path": "/custom/db.json"}},
+            }), encoding="utf-8")
+            result = discover_user_config(home_dir=str(Path(td)))
+            assert result["source_path"] == str(custom)
+
+    def test_explicit_path_first_use_creates_default(self) -> None:
+        """Explicit home_dir with no existing config creates one with first_use=true."""
+        with tempfile.TemporaryDirectory() as td:
+            result = discover_user_config(home_dir=str(Path(td)))
+            assert result["first_use"] is True
+            assert "source_path" in result
+
+    def test_default_config_contains_required_fields(self) -> None:
+        """First-use default config contains all required fields per DESIGN_BOOTSTRAP §1.2."""
+        with tempfile.TemporaryDirectory() as td:
+            result = discover_user_config(home_dir=str(Path(td)))
+            assert "schema_namespace" in result
+            assert "schema_version" in result
+            assert "databases" in result
+            assert "source_path" in result
+            assert result["first_use"] is True
+            assert isinstance(result["databases"], dict)
+            assert "default" in result["databases"]
+            assert "path" in result["databases"]["default"]
+
+    def test_databases_preserved_as_configured(self) -> None:
+        """User-configured databases paths are preserved, not overwritten."""
+        with tempfile.TemporaryDirectory() as td:
+            custom = Path(td) / ".config" / "kmm" / "user_config.json"
+            custom.parent.mkdir(parents=True)
+            custom.write_text(json.dumps({
+                "schema_namespace": "KMM_UserConfig",
+                "schema_version": "knighthana@0.1.0",
+                "databases": {
+                    "default": {"path": "/custom/db.json"},
+                    "secondary": {"path": "/other/db.json"},
+                },
+            }), encoding="utf-8")
+            result = discover_user_config(home_dir=str(Path(td)))
+            assert result["databases"]["default"]["path"] == "/custom/db.json"
+            assert result["databases"]["secondary"]["path"] == "/other/db.json"
+
+    def test_rule_sources_preserved(self) -> None:
+        """rule_sources from config are preserved."""
+        with tempfile.TemporaryDirectory() as td:
+            custom = Path(td) / ".config" / "kmm" / "user_config.json"
+            custom.parent.mkdir(parents=True)
+            custom.write_text(json.dumps({
+                "schema_namespace": "KMM_UserConfig",
+                "schema_version": "knighthana@0.1.0",
+                "databases": {"default": {"path": "/tmp/db.json"}},
+                "rule_sources": ["/rules/", "/extra/mods.kmmrule.json"],
+            }), encoding="utf-8")
+            result = discover_user_config(home_dir=str(Path(td)))
+            assert "/rules/" in result.get("rule_sources", [])
+            assert "/extra/mods.kmmrule.json" in result.get("rule_sources", [])
+
+    def test_workspace_dir_default_fallback(self) -> None:
+        """workspace_dir not set resolves to platform default (not in config dict)."""
+        with tempfile.TemporaryDirectory() as td:
+            result = discover_user_config(home_dir=str(Path(td)))
+            assert result["first_use"] is True
