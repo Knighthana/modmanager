@@ -23,7 +23,10 @@ def create_app() -> FastAPI:
     )
 
     # Determine build output early — used for both CORS and static-file mounting.
+    # Priority: 1. Source-tree frontend/dist/ (dev), 2. Packaged static/ (pip install)
     static_dir = Path(__file__).parent.parent.parent / "frontend" / "dist"
+    if not (static_dir.exists() and (static_dir / "index.html").exists()):
+        static_dir = Path(__file__).parent / "static"
     prod_build = static_dir.exists() and (static_dir / "index.html").exists()
 
     # CORS — only needed in development (Vite dev server).
