@@ -4,18 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modmanager"
-version = "0.1.0"
+version = "0.0.1"
 description = "File mapping and backup rule engine for workshop mods"
 requires-python = ">=3.10"
+keywords = ["mod", "manager", "game", "backup"]
 dependencies = [
     "vdf>=0.4.0",
     "jsonschema>=3.2.0",
     "gitignore-parser>=0.1.0",
 ]
 
+[project.readme]
+file = "README.md"
+content-type = "text/markdown; charset=UTF-8"
+
 [project.scripts]
 modmanager-cli = "modmanager.cli:main"
-modmanager-web = "modmanager_web.__main__:main"
 
 [project.optional-dependencies]
 web = [
@@ -28,6 +32,11 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.urls]
+Homepage = "https://github.com/Knighthana/modmanager"
+Repository = "https://github.com/Knighthana/modmanager"
+Issues = "https://github.com/Knighthana/modmanager/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

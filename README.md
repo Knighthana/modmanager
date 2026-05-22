@@ -8,6 +8,10 @@ update: 2026-05-20
 The Knighthana's Mod Manager
 ============================
 
+This repository provides the full source tree, including the frontend and build tooling.
+For PyPI, the current release path is intentionally narrower: install the core package first,
+and use GitHub for the full web-enabled development experience.
+
 # 简介
 
 The Knighthana's Mod Manager(简称KMM)通过对"文件迁移过程"进行脱离具体环境的语义化定义和简单执行，实现对MOD->本体，MOD->MOD，还包括诸如MOD->MOD->MOD->本体这样嵌套方式的支持；
@@ -17,6 +21,9 @@ The Knighthana's Mod Manager(简称KMM)通过对"文件迁移过程"进行脱离
 作为“文件操作语义定义与管理”的雏形想法，这个项目初期在Steam游戏本体<->Steam创意工坊这样的环境上进行实践；
 
 # 作为普通用户
+
+如果你希望获得完整的 Web 界面和前端源码，请直接使用本仓库的 GitHub 版本。
+如果你只是想先通过 PyPI 安装核心能力，目前发布物会优先保证 CLI / 后端逻辑可用。
 
 如果要作为普通用户使用这个项目，请前往[release]()页面，下载符合自己系统平台的分发文件，遵守指引安装；
 
