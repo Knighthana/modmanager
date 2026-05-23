@@ -85,8 +85,11 @@
           </div>
         </el-form-item>
         <!-- steam.exe 手动选择（Windows 专属） -->
-        <div v-if="isWindows" style="margin-top: 12px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <el-form-item
+          v-if="isWindows"
+          :label="STR.dataSourcePage.steamExeLabel"
+        >
+          <div style="width: 100%; display: flex; flex-direction: column; gap: 6px;">
             <input
               type="file"
               accept=".exe"
@@ -94,21 +97,21 @@
               ref="steamExeFileInput"
               @change="onSteamExeFilePicked"
             />
-            <el-button size="small" @click="($refs.steamExeFileInput as HTMLInputElement)?.click()">
-              📁 选择 steam.exe
+            <el-button size="small" style="align-self: flex-start;" @click="($refs.steamExeFileInput as HTMLInputElement)?.click()">
+              📂 选择 steam.exe
             </el-button>
             <el-input
               v-model="steamExePath"
               placeholder="D:\Games\Steam\steam.exe"
               size="small"
-              style="flex: 1;"
+              style="width: 100%;"
               clearable
             />
+            <span v-if="!isTauri" style="font-size: 12px; color: #909399;">
+              {{ STR.dataSourcePage.steamExeHint }}
+            </span>
           </div>
-          <span v-if="!isTauri" style="font-size: 11px; color: #909399;">
-            请从文件管理器复制完整路径补全
-          </span>
-        </div>
+        </el-form-item>
         <el-form-item label="目标数据库">
           <DatabaseSelector ref="databaseSelectorRef" :showDecisionsTag="false" />
         </el-form-item>

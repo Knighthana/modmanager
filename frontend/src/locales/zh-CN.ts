@@ -145,6 +145,8 @@ export const STR = {
     scanBtn: '🔍 扫描 Steam 库',
     scanning: '扫描中...',
     manualPathRequired: '请输入手动路径',
+    steamExeLabel: '指定发现路径',
+    steamExeHint: '💡 请从文件管理器复制完整路径粘贴至文本输入框，留空以使用自动发现模式',
     libSummary: (n: number) => `📊 库摘要 (${n})`,
     gameTable: (n: number) => `📋 游戏 (${n})`,
     modTable: (n: number) => `📦 MOD (${n})`,
