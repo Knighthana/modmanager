@@ -107,6 +107,8 @@ class PipelineResult:
     backup_dir: str | None
 ```
 
+内部契约（`dry_run` 穿透、适配器同步、`__post_init__` 校验）见 `DESIGN_ORCHESTRATOR_CONTRACT.md`。
+
 ---
 
 ## 四、内部流程
