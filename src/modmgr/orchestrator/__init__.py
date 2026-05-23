@@ -128,7 +128,7 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
                 "backed_up": [],
                 "skipped": [],
                 "errors": plan.preflight_manifest.get("errors", []),
-                "dry_run": dry_run,
+                "dry_run": plan.dry_run,
             } if request.intent == Intent.APPLY else None,
             apply_result={
                 "ok": False,
@@ -137,14 +137,15 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
                 "errors": plan.preflight_manifest.get("errors", []),
                 "warnings": [],
                 "diagnostics": plan.preflight_manifest,
-                "dry_run": dry_run,
+                "dry_run": plan.dry_run,
             } if request.intent == Intent.APPLY else None,
         )
 
     _notify(on_progress, "prepare", 6, 6, "Ready")
 
     # ── Build initial tree if needed (prep) ──────────────────────────
-    if request.intent == Intent.BACKUP and plan.needs_tree_build:
+    # Skip prep in dry_run mode — no disk writes, no directory creation.
+    if request.intent == Intent.BACKUP and plan.needs_tree_build and not plan.dry_run:
         for backup_dir in plan.backup_dirs:
             prep_backup_dir(backup_dir, plan.ignore_rules)
 
@@ -253,7 +254,7 @@ def _execute_restore_plan(entries_by_backup_dir, backup_dirs, dry_run, force, on
     backupinfos: dict[str, dict] = {}
     try:
         from ..backup_ops import load_backup_info
-        for backup_dir in plan.backup_dirs:
+        for backup_dir in backup_dirs:
             try:
                 backupinfos[backup_dir] = load_backup_info(backup_dir)
             except Exception:
@@ -264,7 +265,7 @@ def _execute_restore_plan(entries_by_backup_dir, backup_dirs, dry_run, force, on
     result = restore_entries(
         entries_by_backup_dir,
         backupinfos,
-        force=plan.force,
+        force=force,
         dry_run=dry_run,
         on_progress=on_progress,
     )

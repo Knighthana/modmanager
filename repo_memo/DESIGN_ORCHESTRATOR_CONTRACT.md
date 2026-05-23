@@ -26,3 +26,16 @@
 TypedDict 仅在静态检查时生效（mypy/pyright），不阻止运行时构造不合规的 dict。`__post_init__` 在每次 `PipelineResult(...)` 构造时执行，当场拦截。
 
 此约束不替代测试——测试仍需覆盖干跑开/关两种场景。约束是防御层，测试是验证层。
+
+### X.4 `dry_run` 禁止所有磁盘写操作
+
+**不变式**：`plan.dry_run == True` 时，整个 pipeline 不得产生任何磁盘写操作。包括但不限于：
+
+| 阶段 | 操作 | dry_run 行为 |
+|------|------|-------------|
+| prep | `os.makedirs(backup_dir)` | **跳过** |
+| prep | 写 `backupinfo.json` | **跳过** |
+| execute | `shutil.copy2` / `shutil.copytree` | 已有守卫（原语内部 `if not dry_run`） |
+| execute | `os.remove` / `shutil.rmtree` | 已有守卫 |
+
+**实现**：`_dispatch_fileops` 中 prep 调用前加 `and not plan.dry_run` 守卫。
