@@ -443,11 +443,16 @@ class TestRunPipeline:
                     "ok": True,
                     "backed_up": ["/a.txt.bak"],
                     "skipped": [],
+                    "errors": [],
+                    "dry_run": False,
                 },
                 apply_result={
                     "ok": True,
                     "applied": ["/a.txt"],
                     "skipped": [],
+                    "errors": [],
+                    "warnings": [],
+                    "dry_run": False,
                 },
             )
 
@@ -505,8 +510,8 @@ class TestRunPipeline:
                     on_progress(step, 1, 1, "done")
             return PipelineResult(
                 ok=True, trees=[], final_mapping=[], mapping_result={},
-                backup_result={"ok": True, "backed_up": [], "skipped": []},
-                apply_result={"ok": True, "applied": [], "skipped": []},
+                backup_result={"ok": True, "backed_up": [], "skipped": [], "errors": [], "dry_run": False},
+                apply_result={"ok": True, "applied": [], "skipped": [], "errors": [], "warnings": [], "dry_run": False},
             )
 
         monkeypatch.setattr(
@@ -549,8 +554,8 @@ class TestRunPipeline:
                     on_progress(step, 1, 1, "done")
             return PipelineResult(
                 ok=True, trees=[], final_mapping=[], mapping_result={},
-                backup_result={"ok": True, "backed_up": [], "skipped": []},
-                apply_result={"ok": True, "applied": [], "skipped": []},
+                backup_result={"ok": True, "backed_up": [], "skipped": [], "errors": [], "dry_run": False},
+                apply_result={"ok": True, "applied": [], "skipped": [], "errors": [], "warnings": [], "dry_run": False},
             )
 
         monkeypatch.setattr(
@@ -643,6 +648,7 @@ class TestAdapters:
                     "gate_failed_dirs": ["/tmp/fixture/270150.abcd.kmmbackup/"],
                     "no_matched_entry_dirs": [],
                 },
+                "dry_run": False,
             },
         )
         result = adapt_pipeline_result(pr)

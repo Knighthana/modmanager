@@ -128,7 +128,7 @@
           "provenance_ref": "404",
           "sidecar_ref": "404",
           "from": ["media/packages/vanilla/maps/lobby/"],
-          "from_type": "path",
+          "from_type": "dir",
           "into": ["media/packages/vanilla/maps/"],
           "into_type": "dir"
         },
@@ -163,7 +163,7 @@
           "provenance_ref": "404",
           "sidecar_ref": "404",
           "from": ["shiplander v1.9/*/"],
-          "from_type": "path",
+          "from_type": "dir",
           "into": ["media/packages/GFL_Castling/maps/"],
           "into_type": "dir"
         },

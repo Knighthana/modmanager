@@ -37,13 +37,13 @@ class TestPipelineResult(TestCase):
             trees=[{"path": "/a.txt"}],
             final_mapping=[{"path": "/b.txt"}],
             mapping_result={"key": "val"},
-            backup_result={"ok": True},
-            apply_result={"ok": True},
+            backup_result={"ok": True, "dry_run": False},
+            apply_result={"ok": True, "dry_run": False},
         )
         self.assertFalse(result.ok)
         self.assertEqual(result.errors, ["E_SOMETHING"])
         self.assertEqual(result.trees, [{"path": "/a.txt"}])
-        self.assertEqual(result.backup_result, {"ok": True})
+        self.assertEqual(result.backup_result, {"ok": True, "dry_run": False})
 
 
 class TestCompute(TestCase):

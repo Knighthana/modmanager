@@ -39,16 +39,27 @@
 
 **检查项**：
 
-| 检查项 | 规则 | 不合格行为 |
-|--------|------|-----------|
-| `from_type` / `into_type` | 仅允许 `"file"`、`"dir"` | **拒绝**（语义不明，无法继续） |
-| `action` | 仅允许 `"copy"`、`"replace"`、`"delete"`、`"create"`、`"hold"` | **拒绝** |
-| `from` 路径 | 不以 `..` 起始（禁止目录穿越） | **拒绝** |
-| `into` 路径 | 不以 `..` 起始 | **拒绝** |
-| `mixed_id` 格式 | `"<appid>:<modid>"`（非空数字字符串） | **警告**（可继续，但可能匹配不上） |
-| `def_destin` 格式 | `"<appid>:<modid>"` 或 `"<appid>:0"`（base game） | **警告** |
-| `sub` 条目格式 | 同 `mixed_id` | **警告** |
-| `from` / `into` 空列表 | 不允许（`delete` 无 `from` 除外） | **拒绝** |
+| # | 检查 | 验证逻辑 | 不合格 | 级别 |
+|---|------|---------|--------|------|
+| C1 | `from_type` 值域 | `value in ("file", "dir")` | `E_INVALID_FROM_TYPE: {value}` | **拒绝** |
+| C2 | `into_type` 值域 | `value in ("file", "dir")` | `E_INVALID_INTO_TYPE: {value}` | **拒绝** |
+| C3 | `action` 值域 | `value in ("hold", "replace", "copy", "delete", "create")` | `E_INVALID_ACTION: {value}` | **拒绝** |
+| C4 | `from` 路径安全 | 不含 `".."` 路径穿越 | `E_PATH_TRAVERSAL: from` | **拒绝** |
+| C5 | `into` 路径安全 | 同 C4 | `E_PATH_TRAVERSAL: into` | **拒绝** |
+| C6 | `from` 非空（需要时） | `action not in ("delete", "hold") → len(from) > 0` | `E_MISSING_FROM` | **拒绝** |
+| C7 | `into` 非空（需要时） | `action != "hold" → len(into) > 0` | `E_MISSING_INTO` | **拒绝** |
+| C8 | `mixed_id` 格式 | `"<appid>:<modid>"` | `W_MIXED_ID_FORMAT` | **警告** |
+| C9 | `def_destin` 格式 | `"<appid>:<modid>"` 或 `"<appid>:0"` | `W_DESTIN_FORMAT` | **警告** |
+| C10 | `sub[]` 格式 | 同 C8 | `W_SUB_FORMAT` | **警告** |
+
+**检查级别定义**：
+
+| 级别 | 行为 |
+|------|------|
+| **拒绝** | 文件不可聚合。错误记录到 `rejected`。 |
+| **警告** | 文件可聚合但标记为有歧义。记录到 `warnings`。 |
+
+**类型术语**：`"file"` = 操作对象为单个或多个具名文件；`"dir"` = 操作对象为目录及其全部内容（递归展开）。`"path"` 不在允许值域中，参见下文设计决策。
 
 **实现细节**：
 - `"path"` 作为历史遗留值，在精筛阶段**被拒绝**（不自动归一化）——原因：`"path"` 的语义取决于规则的 DSL 版本，自动归一化会掩盖规则作者的意图。应让用户在规则文件中明确修正为 `"dir"` 或 `"file"`。
@@ -58,13 +69,18 @@
 
 ### 3.1 模块位置
 
-扩展 `src/modmgr/validation.py`。该模块已有 `validate_aggregated_rule_set()`（聚合后校验），新增：
+**独立模块** `src/modmgr/rule_validator.py`。不与 `validation.py`（聚合后校验）合并——漏斗是聚合器的前置，职责独立，便于单独测试和维护。
 
 ```python
+# src/modmgr/rule_validator.py
+
 def validate_kmm_rule_files(
     rule_paths: list[str],
 ) -> tuple[list[str], list[dict], list[dict]]:
     """两阶段漏斗校验规则文件列表。
+
+    Stage 1: JSON Schema 粗筛（kmm_rule.schema.json）
+    Stage 2: 语义精筛（C1-C10）
 
     Returns:
         (passed_paths, rejected, warnings)
@@ -100,17 +116,26 @@ def aggregate(kmm_rule_paths, *, action_orders=None, sidecar_refs=None):
 
 ## 五、与现有校验的关系
 
-| 函数 | 阶段 | 职责 |
-|------|------|------|
-| `validate_kmm_rule_files()` ← **新增** | 聚合前 | 两阶段漏斗，过滤不合法文件 |
-| `validate_aggregated_rule_set()`（已有） | 聚合后 | 验证聚合结果结构完整性 |
-| `validate_database()`（已有） | 引擎前 | 验证数据库结构 |
+| 函数 | 模块 | 阶段 | 职责 |
+|------|------|------|------|
+| `validate_kmm_rule_files()` ← **新增** | `rule_validator.py` | 聚合前 | 两阶段漏斗，过滤不合法文件 |
+| `validate_aggregated_rule_set()`（已有） | `validation.py` | 聚合后 | 验证聚合结果结构完整性 |
+| `validate_database()`（已有） | `validation.py` | 引擎前 | 验证数据库结构 |
 
 三者不冲突——漏斗在聚合前拦截，`validate_aggregated_rule_set` 在聚合后二次确认，`validate_database` 在引擎入口再确认。
 
-## 六、测试断言
+## 六、实现映射
 
-- `"path"` 作为 `from_type` 的文件被拒绝，附带 `E_INVALID_FROM_TYPE: "path" not in ["file", "dir"]`
-- 合法规则文件全部通过，`passed` 包含所有输入路径
-- 混合输入（部分合法、部分不合法）→ `passed` 仅含合法文件，`rejected` 含不合法文件详情
-- `rejected` 不影响合法文件的聚合结果
+| C# | 代码落点 |
+|----|---------|
+| C1-C3 值域检查 | `rule_validator.py::_validate_field_enum()` |
+| C4-C5 路径安全 | `rule_validator.py::_validate_path_safety()` |
+| C6-C7 必填性 | `rule_validator.py::_validate_required_fields()` |
+| C8-C10 格式 | `rule_validator.py::_validate_id_format()` |
+| Schema 粗筛 | `rule_validator.py::_schema_check()` |
+| 漏斗入口 | `rule_validator.py::validate_kmm_rule_files()` |
+| 聚合器调用 | `rule_aggregator.py::aggregate()` 入口 |
+
+## 七、测试断言
+
+详见 `repo_test/rule_validation.md`。

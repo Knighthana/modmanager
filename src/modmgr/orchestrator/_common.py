@@ -63,6 +63,16 @@ class PipelineResult:
     restore_result: dict[str, Any] | None = None
     backup_dir: str | None = None
 
+    def __post_init__(self) -> None:
+        """Enforce dry_run contract on all operation result dicts."""
+        for field_name in ("backup_result", "apply_result", "restore_result"):
+            result = getattr(self, field_name)
+            if result is not None:
+                if "dry_run" not in result:
+                    raise ValueError(
+                        f"PipelineResult.{field_name} missing required 'dry_run' key"
+                    )
+
 
 # ── Workspace helpers ─────────────────────────────────────────────────
 

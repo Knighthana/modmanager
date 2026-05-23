@@ -45,6 +45,9 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
     if pr.apply_result:
         stats["applied"] = len(pr.apply_result.get("applied", []))
         stats["apply_skipped"] = len(pr.apply_result.get("skipped", []))
+    if pr.restore_result:
+        stats["restored"] = len(pr.restore_result.get("restored", []))
+        stats["restore_skipped"] = len(pr.restore_result.get("skipped", []))
     if stats:
         data["stats"] = stats
 
@@ -54,6 +57,8 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
         data["skipped"] = pr.restore_result.get("skipped", [])
         if pr.restore_result.get("force"):
             data["force"] = True
+        if pr.restore_result.get("dry_run"):
+            data["dry_run"] = True
         data["restore_errors"] = pr.restore_result.get("errors", [])
 
     if pr.backup_dir:
