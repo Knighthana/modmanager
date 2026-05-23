@@ -25,3 +25,9 @@
 - **P18**: `PipelineResult` 所有非空 `*_result` 必须含 `"dry_run": bool`——`__post_init__` 运行时报错；适配器必须提取
 - **P19**: `dry_run=True` 禁止一切磁盘写操作——prep 阶段的 `os.makedirs` + `backupinfo.json` 写入在 `_dispatch_fileops` 中受 `not plan.dry_run` 守卫
 - **P20**: 树节点 hash 字段统一为 `hashtype` / `hashvalue`（扁平键名），禁用 `type` / `value` 或 `hash.type` / `hash.value` 写法
+- **P21**: bootstrap 职责收缩为"环境探测 + 校验"——不写文件，不创建目录，不生成数据库；`discover_user_config` 拆分三步：
+  - bootstrap 读取文件 → 判断 complete/合法 → 发现不完整则调 `userconfig_init(path)` 补全
+  - `userconfig_init` 只补空值键（以 schema `required` 为准），不覆盖已有值；若值非法则退回 bootstrap 报错
+  - `userconfig_save(config_index, data)` 处理前端修改（编辑/保存），与 bootstrap 无关
+  - `config_index` 替代 `source_path`——bootstrap 出参，前端透明传回，后端解析
+- **P22**: `user_config.schema.json` 的 `required` 扩容为全部 9 个必填键（`schema_namespace`/`schema_version`/`baksuffix`/`ignore`/`bakignore`/`rule_sources`/`path_alias`/`workspace_dir`/`databases`），以保证"schema 认为 complete"与"业务需要 complete"一致
