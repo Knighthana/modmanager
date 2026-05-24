@@ -22,7 +22,7 @@ DEFAULTS: dict[str, Any] = {
     "workspace_dir": None,
     "databases": {"default": {"path": ""}},
 }
-REQUIRED_KEYS = list(DEFAULTS.keys())
+REQUIRED_KEYS = [k for k in DEFAULTS if k != "path_alias"]  # optional future-use field
 
 _SCHEMA_PATH = Path(__file__).parent.parent.parent / "repo_spec" / "user_config.schema.json"
 

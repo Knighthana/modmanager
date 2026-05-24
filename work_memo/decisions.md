@@ -31,4 +31,4 @@
   - `userconfig_save(config_index, data)` 处理前端修改（编辑/保存），与 bootstrap 无关
   - **`config_index` 是 `discover_user_config()` 的必填参数**——调用方必须传入完整路径；bootstrap 不执行平台默认路径猜测
   - 平台默认路径（`workspace_dir`、`database`）由 `userconfig_ops._detect_platform_defaults()` 内部维护
-- **P22**: `user_config.schema.json` 的 `required` 包含全部 8 个必填键（`schema_namespace`/`schema_version`/`baksuffix`/`bakignore`/`rule_sources`/`path_alias`/`workspace_dir`/`databases`），以保证"schema 认为 complete"与"业务需要 complete"一致
+- **P22**: `user_config.schema.json` 的 `required` 包含 7 个必填键（`schema_namespace`/`schema_version`/`baksuffix`/`bakignore`/`rule_sources`/`workspace_dir`/`databases`）；`path_alias` 为可选字段

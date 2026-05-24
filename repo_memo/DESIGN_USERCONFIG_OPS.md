@@ -53,7 +53,7 @@ DEFAULTS = {
     "workspace_dir": None,       # 由 _detect_platform_defaults() 填入
     "databases": {"default": {"path": ""}},  # 同上
 }
-REQUIRED_KEYS = list(DEFAULTS.keys())
+REQUIRED_KEYS = [k for k in DEFAULTS if k != "path_alias"]  # optional
 ```
 
 ### 3.2 平台默认值（`_detect_platform_defaults()`）
@@ -70,7 +70,7 @@ REQUIRED_KEYS = list(DEFAULTS.keys())
 
 ## 四、不变式
 
-- `REQUIRED_KEYS` 与 `user_config.schema.json` 的 `required` 数组**完全一致**
+- `REQUIRED_KEYS` 是 `user_config.schema.json` 的 `required` 数组（不含 `path_alias`）
 - `DEFAULTS["bakignore"]` 初始值与 `DEFAULTS["baksuffix"]` 一致
 - `userconfig_init` 永远只**补空**，不覆盖已有值
 - `userconfig_save` 在 `baksuffix` 变更时自动同步 `bakignore`

@@ -66,7 +66,7 @@ bootstrap 在确定路径后执行 schema verify（依据 `user_config.schema.js
 | `baksuffix` | `"kmmbackup"` | 备份目录后缀 |
 | `bakignore` | `["kmmbackup"]` | 备份时忽略的目录后缀；初始值与 baksuffix 默认值一致，保证首次创建的配置同步；与 `baksuffix` 联动——每添加一个新 baksuffix 值，bakignore 自动追加同名条目 |
 | `rule_sources` | `{}` | `{name: {paths: [...]}}` 对象——与 `databases` 格式一致 |
-| `path_alias` | `[]` | 路径别名列表，当前无消费者，保留供未来扩展 |
+| `path_alias` | `[]` | 路径别名列表，当前无消费者，保留供未来扩展；不在 required 中——缺失不触发补全 |
 | `workspace_dir` | `<平台默认>` | bootstrap 按平台填入默认值后**固化**——运行时以此为准，不再做平台回退 |
 | `databases` | `{"default": {"path": "<平台默认 database 路径>"}}` | |
 

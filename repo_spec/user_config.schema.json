@@ -10,7 +10,6 @@
         "baksuffix",
         "bakignore",
         "rule_sources",
-        "path_alias",
         "workspace_dir",
         "databases"
     ],

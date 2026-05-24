@@ -101,7 +101,7 @@
 | `baksuffix` | `string` | **是** | 备份目录名后缀 |
 | `bakignore` | `string[]` | **是** | 备份时忽略的目录后缀（系统自动维护，与 `baksuffix` 联动） |
 | `rule_sources` | `{name: {paths: [...]}}` | **是** | 规则文件来源映射——与 `databases` 格式一致。前端只传 name，后端按名解析路径 |
-| `path_alias` | `object[]` | **是** | 路径别名列表（当前无消费者，保留供未来扩展） |
+| `path_alias` | `object[]` | 否 | 路径别名列表（当前无消费者，保留供未来扩展） |
 | `workspace_dir` | `string \| null` | **是** | 工作区根目录。bootstrap 首次创建时按平台填入默认值并固化 |
 | `databases` | `{name: {path}}` | **是** | database 名称→路径映射 |
 
