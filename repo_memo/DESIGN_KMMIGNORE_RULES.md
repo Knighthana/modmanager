@@ -3,28 +3,27 @@
 > Status: active
 > Authority: authoritative
 > Read-Tier: task-scoped
-> Purpose: 定义三层忽略规则体系——来源、收集、匹配。归属 Orchestrator Planner 层。
+> Purpose: 定义 `.kmmignore` 文件规则——来源、收集、匹配。归属 Orchestrator Planner 层。
 >
-> Last update: 2026-05-25 — `kmmignore` 以 `.kmmignore` 文件形式存在，不再来自 `user_config`
+> Last update: 2026-05-25 — 移除硬编码 `.kmmbackup` 层（归属 bakignore/备份专属），kmmignore 仅含 `.kmmignore` 文件规则
 
 ---
 
 ## 一、定位
 
-忽略规则决定**哪些文件不参与 mod 管理**。规则在 Planner 层统一收集，对所有操作（backup / apply / restore）生效。
+kmmignore 决定**哪些文件不参与 mod 管理**。规则由 `.kmmignore` 文件（gitignore 语法）定义，在 Planner 层统一收集，对所有操作（backup / apply / restore）生效。
+
+> `.kmmbackup` 目录的备份专属排除行为见 `DESIGN_BACKUP_DIR.md`，与 kmmignore 无关。
 
 实现模块：`src/modmanager/orchestrator/ignore_rules.py`。
 
 ---
 
-## 二、两层规则
+## 二、规则来源
 
-| 层 | 来源 | 格式 | 优先级 |
-|:---:|------|------|:---:|
-| 1 | 硬编码 | `.kmmbackup` 后缀目录始终排除 | 最高 |
-| 2 | 文件规则 | 源目录各级 `.kmmignore` 文件（gitignore 语法） | 标准 |
+kmmignore 规则**仅来源于 `.kmmignore` 文件**（gitignore 语法），存放在源目录的各级子目录中。
 
-规则收集后合并为一个 `IgnoreRuleSet`，匹配时按优先级判断。
+> `.kmmbackup` 后缀目录的排除是**备份操作专属**行为，见 `DESIGN_BACKUP_DIR.md`。不属于 kmmignore 体系。
 
 ---
 

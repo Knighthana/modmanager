@@ -60,10 +60,14 @@
 **后端逻辑**：
 1. `discover_user_config()` → `rule_sources["default"]["paths"]`
 2. 对每个 path 先调 `expand_path()` 展开 `~` 和环境变量
-3. 对每个 path：
-   - 目录（以 `/` 结尾）→ 调用现有 `/rules/scan` 逻辑 → 列出 `*.kmmrule.json`
-   - 文件（任意后缀）→ 校验文件存在 → 直接加入列表
-   - 路径不存在 → 记录 warning: `W_PATH_NOT_FOUND: {path}`，继续处理其余路径
+3. 对每个 path 按以下顺序判断：
+
+| 条件 | 行为 |
+|------|------|
+| 路径以 `/` 结尾 | 视为目录。若存在 → 扫描所有 `*.kmmrule.json` 文件 |
+| 路径不以 `/` 结尾 | 检查是否存在。若为**文件** → 直接加入列表。若为**目录** → 扫描所有 `*.kmmrule.json` 文件 |
+| 路径不存在 | 记录 warning: `W_PATH_NOT_FOUND: {path}`，继续处理其余路径 |
+
 4. 按 `path` 去重后返回
 
 **请求 Schema**：

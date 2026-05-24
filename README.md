@@ -89,7 +89,7 @@ modmgr-cli --help
 |---|------|-------|-----|
 |用户配置|`~/.config/kmm/`|`%APPDATA%/kmm/`|`~/Library/Preferences/kmm/`|
 |默认数据库|`~/.local/share/kmm/`|`%LOCALAPPDATA%/kmm/database/`|`~/Library/Application Support/kmm/`|
-|默认工作区|`~/.cache/kmm/workspace/`|`%LOCALAPPDATA%/kmm/workspace/`|`%LOCALAPPDATA%/kmm/workspace/`|
+|默认工作区|`~/.cache/kmm/workspace/`|`%LOCALAPPDATA%/kmm/workspace/`|`~/Library/Caches/`|
 
 这些值是硬编码的“默认值”，但目前也支持通过“设置面板”进行自定义；
 
