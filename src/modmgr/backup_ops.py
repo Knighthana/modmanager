@@ -15,8 +15,22 @@ import hashlib
 import json
 import shutil
 import time
+from enum import IntEnum
 from pathlib import Path
 from typing import Any
+
+
+class TreeNodeStatus(IntEnum):
+    """Status of a node lookup in the backup tree.
+
+    Values:
+        NOT_FOUND:     node does not exist in tree at all
+        NOT_BACKED_UP: node exists but isbackuped=False (not yet backed up)
+        BACKED_UP:     node exists and isbackuped=True (already backed up)
+    """
+    NOT_FOUND = 0
+    NOT_BACKED_UP = 1
+    BACKED_UP = 2
 
 from .acf_parser import get_workshop_timeupdated, get_workshop_latest_timeupdated, parse_appmanifest_acf
 from .path_resolver import assert_directory_path, assert_file_path
@@ -207,6 +221,38 @@ def detect_dirty_state(backup_dir: str) -> dict[str, Any]:
     return {"dirty": False, "errors": [], "partial_files": []}
 
 
+def _flatten_tree_file_hashes(tree: dict[str, Any]) -> dict[str, str]:
+    """Flatten a backupinfo tree to {relative_path: hashvalue}.
+    
+    Only includes file nodes where isbackuped=True and hashtype="sha256".
+    Directory nodes are traversed, not included in output.
+    
+    Args:
+        tree: Root DirNode from backupinfo.json tree ({"name": "...", "type": "dir", "children": [...]})
+    
+    Returns:
+        Dict mapping relative file paths to their hashvalue hex strings.
+    """
+    result: dict[str, str] = {}
+    _flatten_tree_node(tree, "", result)
+    return result
+
+
+def _flatten_tree_node(node: dict[str, Any], prefix: str, out: dict[str, str]) -> None:
+    """Recursive helper — walk DirNode tree, collect file hashes."""
+    children = node.get("children", [])
+    for child in children:
+        child_type = child.get("type", "")
+        child_name = child.get("name", "")
+        current = f"{prefix}{child_name}" if prefix else child_name
+        
+        if child_type == "dir":
+            _flatten_tree_node(child, current + "/", out)
+        elif child_type == "file":
+            if child.get("isbackuped") and child.get("hashtype") == "sha256":
+                out[current] = child.get("hashvalue", "")
+
+
 def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Inspect logical/entity conflicts without mutating anything.
 
@@ -360,6 +406,13 @@ def run_differential_backup(
     skipped: list[dict[str, Any]] = []
     errors: list[str] = []
 
+    # ── Preserve tree_created_time; only prep writes it ──────────
+    _existing_info = load_backup_info(backup_dir)
+    _tree_created_time = (
+        _existing_info.get("tree_created_time")
+        or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    )
+
     for target in files_to_backup:
         if on_progress:
             on_progress("backup", len(backed_up) + len(skipped) + len(errors) + 1, len(files_to_backup), target)
@@ -369,8 +422,13 @@ def run_differential_backup(
         rel_for_tree = ""
         if tree is not None:
             rel_for_tree = normalize_posix(str(src)).removeprefix(cr).lstrip("/") if normalize_posix(str(src)).startswith(cr) else normalize_posix(str(src)).lstrip("/")
-            if _tree_node_is_backuped(tree, rel_for_tree):
+            status = _tree_node_status(tree, rel_for_tree)
+            if status == TreeNodeStatus.BACKED_UP:
                 skipped.append({"path": target, "reason": "already backed up (isbackuped=true in tree)"})
+                continue
+            elif status == TreeNodeStatus.NOT_FOUND:
+                errors.append(f"W_BACKUP_NODE_NOT_IN_TREE: file not in backup tree: {rel_for_tree}")
+                skipped.append({"path": target, "reason": "node not in backup tree"})
                 continue
 
         if not src.exists():
@@ -405,7 +463,7 @@ def run_differential_backup(
                 _write_backup_info(backup_dir, {
                     "schema_namespace": "KMM_BackupInfo",
                     "tree": tree,
-                    "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "tree_created_time": _tree_created_time,
                     "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     "schema_version": "knighthana@0.1.0",
                 })
@@ -597,26 +655,36 @@ def _assert_is_file(path: Path | str, context: str = "") -> None:
         raise IsADirectoryError(f"E_BACKUP_DIRECTORY_NOT_ALLOWED{label}: {p}")
 
 
-def _tree_node_is_backuped(tree: dict[str, Any], rel_path: str) -> bool:
-    """Walk the tree and check if the node at *rel_path* has isbackuped=true.
+def _tree_node_status(tree: dict[str, Any], rel_path: str) -> TreeNodeStatus:
+    """Check tree node status for a relative path.
 
-    Matching is case-insensitive — Windows game/mod files may have
-    inconsistent casing.
+    Walks the tree by splitting *rel_path* on ``/`` and matching each
+    component case-insensitively (Windows compatibility).
+
+    Returns:
+        NOT_FOUND:     node not in tree at all (or path traverses a non-dir,
+                       or final node is a dir when a file was expected)
+        NOT_BACKED_UP: node exists but isbackuped=False
+        BACKED_UP:     node exists and isbackuped=True
     """
     parts = rel_path.split("/")
     node = tree
     for part in parts:
         if node.get("type") != "dir":
-            return False
+            return TreeNodeStatus.NOT_FOUND
         found = next(
             (c for c in node.get("children", [])
              if c.get("name", "").lower() == part.lower()),
             None
         )
         if found is None:
-            return False
+            return TreeNodeStatus.NOT_FOUND
         node = found
-    return node.get("isbackuped", False) is True
+    # Reached the node at the end of the path
+    if node.get("type") == "dir":
+        # Path expected a file but found a directory
+        return TreeNodeStatus.NOT_FOUND
+    return TreeNodeStatus.BACKED_UP if node.get("isbackuped") else TreeNodeStatus.NOT_BACKED_UP
 
 
 def _update_tree_node(tree: dict[str, Any], rel_path: str, hashtype: str, hashvalue: str) -> None:

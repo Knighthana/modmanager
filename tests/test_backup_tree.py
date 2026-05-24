@@ -64,7 +64,6 @@ class TestBackupTreeStateMachine:
                        if "already backed up" in s.get("reason", "")]
             assert len(skipped) == 1
 
-    @pytest.mark.skip(reason="_tree_node_is_backuped needs refactor to distinguish 'node not found' from 'isbackuped=false'")
     def test_node_not_in_tree_produces_warning(self):
         """DESIGN_BACKUP_OPS.md §六-2: node not in tree → W_BACKUP_NODE_NOT_IN_TREE."""
         with tempfile.TemporaryDirectory() as td:
@@ -82,10 +81,18 @@ class TestBackupTreeStateMachine:
                 [str(src)],
                 tree=tree,
             )
-            assert result["ok"]
+            # Should produce a W_BACKUP_NODE_NOT_IN_TREE warning in errors
+            assert any("W_BACKUP_NODE_NOT_IN_TREE" in e for e in result["errors"])
+            # Should be skipped with "node not in backup tree" reason
             skipped = [s for s in result["skipped"]
-                       if "already backed up" in s.get("reason", "")]
+                       if "node not in backup tree" in s.get("reason", "")]
             assert len(skipped) == 1
+            # Should NOT be skipped with "already backed up" reason
+            already_backed_up = [s for s in result["skipped"]
+                                 if "already backed up" in s.get("reason", "")]
+            assert len(already_backed_up) == 0
+            # Should NOT have been copied into backed_up
+            assert len(result["backed_up"]) == 0
 
     def test_copy_failure_does_not_mark_isbackuped(self):
         """§六: isbackuped only set after successful copy."""
