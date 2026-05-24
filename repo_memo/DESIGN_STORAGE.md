@@ -98,8 +98,8 @@
 |------|------|:--:|------|
 | `schema_namespace` | `string` | **是** | Schema 命名空间标识，固定为 `"KMM_UserConfig"` |
 | `schema_version` | `string` | **是** | Schema 版本号，如 `"knighthana@0.1.0"` |
-| `baksuffix` | `string` | **是** | 备份目录名后缀，默认 `"kmmbackup"` |
-| `ignore` | `string[]` | **是** | 全局忽略模式列表（gitignore 语法，apply/backup/restore 均生效） |
+| `baksuffix` | `string` | **是** | 备份目录名后缀 |
+| `kmmignore` | `string[]` | **是** | 全局忽略模式列表（gitignore 语法，对应 .kmmignore 文件）。apply/backup/restore 均生效 |
 | `bakignore` | `string[]` | **是** | 备份时忽略的目录后缀（系统自动维护，与 `baksuffix` 联动） |
 | `rule_sources` | `{name: {paths: [...]}}` | **是** | 规则文件来源映射——与 `databases` 格式一致。前端只传 name，后端按名解析路径 |
 | `path_alias` | `object[]` | **是** | 路径别名列表（当前无消费者，保留供未来扩展） |

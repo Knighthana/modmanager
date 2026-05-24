@@ -304,7 +304,7 @@ class TestLoadDirSuffixes(TestCase):
         self.assertEqual(result, [".kmmbackup"])
 
     def test_load_dir_suffixes_with_custom(self):
-        user_config = {"ignore": ["test", ".other", "test"]}
+        user_config = {"kmmignore": ["test", ".other", "test"]}
         result = load_dir_suffixes(user_config)
         self.assertIn(".kmmbackup", result)
         self.assertIn(".test", result)
@@ -312,7 +312,7 @@ class TestLoadDirSuffixes(TestCase):
         self.assertEqual(len(result), 3)  # dedup
 
     def test_load_dir_suffixes_auto_dot(self):
-        user_config = {"ignore": ["nodot"]}
+        user_config = {"kmmignore": ["nodot"]}
         result = load_dir_suffixes(user_config)
         self.assertIn(".nodot", result)
 

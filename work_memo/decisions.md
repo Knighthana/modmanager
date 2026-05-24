@@ -30,4 +30,4 @@
   - `userconfig_init` 只补空值键（以 schema `required` 为准），不覆盖已有值；若值非法则退回 bootstrap 报错
   - `userconfig_save(config_index, data)` 处理前端修改（编辑/保存），与 bootstrap 无关
   - `config_index` 替代 `source_path`——bootstrap 出参，前端透明传回，后端解析
-- **P22**: `user_config.schema.json` 的 `required` 扩容为全部 9 个必填键（`schema_namespace`/`schema_version`/`baksuffix`/`ignore`/`bakignore`/`rule_sources`/`path_alias`/`workspace_dir`/`databases`），以保证"schema 认为 complete"与"业务需要 complete"一致
+- **P22**: `user_config.schema.json` 的 `required` 扩容为全部 9 个必填键（`schema_namespace`/`schema_version`/`baksuffix`/`kmmignore`/`bakignore`/`rule_sources`/`path_alias`/`workspace_dir`/`databases`），以保证"schema 认为 complete"与"业务需要 complete"一致

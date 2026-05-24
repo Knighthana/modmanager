@@ -64,7 +64,7 @@ class TestDiscoverUserConfig(TestCase):
                 "schema_namespace": "KMM_UserConfig",
                 "schema_version": "knighthana@0.1.0",
                 "baksuffix": "kmmbackup",
-                "ignore": [],
+                "kmmignore": [],
                 "bakignore": [],
                 "rule_sources": {},
                 "path_alias": [],
@@ -212,7 +212,7 @@ class TestGenerateDatabase(TestCase):
             "schema_namespace": "KMM_UserConfig",
             "schema_version": "knighthana@0.1.0",
             "baksuffix": "kmmbackup",
-            "ignore": [],
+            "kmmignore": [],
             "bakignore": [],
             "rule_sources": [],
             "path_alias": [],
@@ -250,7 +250,7 @@ class TestGenerateDatabase(TestCase):
             assert "schema_namespace" in config
             assert "schema_version" in config
             assert "baksuffix" in config
-            assert "ignore" in config
+            assert "kmmignore" in config
             assert "bakignore" in config
             assert "rule_sources" in config
             assert "path_alias" in config

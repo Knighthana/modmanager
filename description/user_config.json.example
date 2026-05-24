@@ -5,7 +5,7 @@
         "string1": "这是一个示例文件。所有字段均为 userconfig_init 创建的默认值或示例值。"
     },
     "baksuffix": "kmmbackup",
-    "ignore": [
+    "kmmignore": [
         "*.tmp",
         "__pycache__/"
     ],

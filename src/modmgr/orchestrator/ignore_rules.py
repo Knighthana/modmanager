@@ -3,7 +3,7 @@
 Encapsulates gitignore_parser and the three-layer ignore rule system:
 
 1. Hardcoded: ``.kmmbackup`` suffix directories
-2. User config: ``user_config.ignore`` patterns
+2. User config: ``user_config.kmmignore`` patterns
 3. File rules: ``.kmmignore`` files (gitignore syntax) in source tree
 
 Consumed by Planner to filter final_mapping entries, and by backup_ops
@@ -62,8 +62,8 @@ def collect_rules(
 
     # ── Layer 1: hardcoded ─────────────────────────────────────────
 
-    # ── Layer 2: user_config.ignore ─────────────────────────────────
-    rules.user_patterns = list(user_config.get("ignore", []))
+    # ── Layer 2: user_config.kmmignore ──────────────────────────────
+    rules.user_patterns = list(user_config.get("kmmignore", []))
 
     # ── Layer 3: .kmmignore files ───────────────────────────────────
     dirs_to_check: set[str] = set()

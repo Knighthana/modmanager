@@ -138,7 +138,7 @@ class TestDumpBackupAssignment:
             final_mapping = result.get("final_mapping", [])
             assert len(final_mapping) > 0, "No mapping entries"
 
-            user_config = {"baksuffix": "kmmbackup", "ignore": []}
+            user_config = {"baksuffix": "kmmbackup", "kmmignore": []}
             backup_dirs, _w = build_backup_dirs(final_mapping, database, user_config)
 
             # ── DUMP every assignment ────────────────────────────────

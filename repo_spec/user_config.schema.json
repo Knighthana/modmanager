@@ -8,7 +8,7 @@
         "schema_namespace",
         "schema_version",
         "baksuffix",
-        "ignore",
+        "kmmignore",
         "bakignore",
         "rule_sources",
         "path_alias",
@@ -32,8 +32,8 @@
             "type": "string",
             "default": "kmmbackup"
         },
-        "ignore": {
-            "description": "全局忽略模式列表（gitignore 语法，apply/backup/restore 均生效）。",
+        "kmmignore": {
+            "description": "全局忽略模式列表（gitignore 语法，对应 .kmmignore 文件）。apply/backup/restore 均生效。",
             "type": "array",
             "default": [],
             "items": {

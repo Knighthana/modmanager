@@ -126,7 +126,7 @@ backup 只处理当前 `final_mapping` 命中的目标文件。文件写入 back
 
 ## 九、循环防护与忽略规则
 
-忽略规则由 Orchestrator Planner 层统一管理，对所有操作（backup / apply / restore）生效。完整规范见 `DESIGN_IGNORE_RULES.md`。
+忽略规则由 Orchestrator Planner 层统一管理，对所有操作（backup / apply / restore）生效。完整规范见 `DESIGN_KMMIGNORE_RULES.md`。
 
 backup 原语自身不处理忽略——由 Planner 在构建 `FileOpsPlan` 时过滤。Planner 计算结果以 `IgnoreRuleSet` 对象形式缓存在 `FileOpsPlan` 中，backup 原语直接取用。
 

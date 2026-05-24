@@ -53,7 +53,7 @@ class TestUserconfigInit(unittest.TestCase):
             self.assertEqual(result["baksuffix"], "mybak")
             self.assertEqual(result["databases"]["default"]["path"], "/custom/path")
             # Missing key filled from DEFAULTS
-            self.assertEqual(result["ignore"], DEFAULTS["ignore"])
+            self.assertEqual(result["kmmignore"], DEFAULTS["kmmignore"])
 
     def test_preserves_existing_values(self) -> None:
         """Existing custom baksuffix value preserved, not overwritten."""
@@ -82,7 +82,7 @@ class TestUserconfigInit(unittest.TestCase):
 
             # Other fields still have DEFAULTS
             self.assertEqual(result["baksuffix"], DEFAULTS["baksuffix"])
-            self.assertEqual(result["ignore"], DEFAULTS["ignore"])
+            self.assertEqual(result["kmmignore"], DEFAULTS["kmmignore"])
 
     def test_invalid_json_raises(self) -> None:
         """Corrupt JSON file → ValueError."""

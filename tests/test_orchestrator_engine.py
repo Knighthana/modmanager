@@ -71,7 +71,7 @@ def sample_database(fixture_dir):
 
 @pytest.fixture
 def sample_user_config():
-    return {"baksuffix": "kmmbackup", "ignore": []}
+    return {"baksuffix": "kmmbackup", "kmmignore": []}
 
 
 @pytest.fixture
@@ -113,7 +113,7 @@ def test_load_dir_suffixes_default():
 
 def test_load_dir_suffixes_with_custom():
     """user_config.ignore 条目合并去重，自动补前导点。"""
-    cfg = {"ignore": ["test", ".other", "test"]}
+    cfg = {"kmmignore": ["test", ".other", "test"]}
     result = load_dir_suffixes(cfg)
     assert ".kmmbackup" in result
     assert ".test" in result

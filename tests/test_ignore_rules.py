@@ -22,8 +22,8 @@ class TestCollectRules:
         assert ".kmmbackup" in rules.hardcoded_suffixes
 
     def test_user_ignore_patterns(self):
-        """user_config.ignore patterns are collected."""
-        rules = collect_rules({"ignore": [".log", ".tmp"]}, [])
+        """user_config.kmmignore patterns are collected."""
+        rules = collect_rules({"kmmignore": [".log", ".tmp"]}, [])
         assert ".log" in rules.user_patterns
         assert ".tmp" in rules.user_patterns
 
