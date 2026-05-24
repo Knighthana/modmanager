@@ -46,6 +46,7 @@ describe('useDataSourceStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     localStorage.clear()
+    sessionStorage.setItem('modmanager:configIndex', JSON.stringify({ type: 'path', string: '/test/config.json' }))
     vi.restoreAllMocks()
   })
 

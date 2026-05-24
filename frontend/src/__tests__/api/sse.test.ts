@@ -7,6 +7,7 @@ describe('SSE stream parsing logic', () => {
   let fetchMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
+    sessionStorage.setItem('modmanager:configIndex', JSON.stringify({ type: 'path', string: '/test/config.json' }))
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
   })

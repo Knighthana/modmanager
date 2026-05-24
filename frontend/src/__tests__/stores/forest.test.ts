@@ -5,6 +5,7 @@ import { useForestStore } from '../../stores/forest'
 describe('useForestStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    sessionStorage.setItem('modmanager:configIndex', JSON.stringify({ type: 'path', string: '/test/config.json' }))
   })
 
   it('initialises with empty state', () => {

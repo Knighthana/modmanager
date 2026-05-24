@@ -60,6 +60,7 @@ describe('AdvancedPage', () => {
     vi.clearAllMocks()
     localStorage.clear()
     sessionStorage.clear()
+    sessionStorage.setItem('modmanager:configIndex', JSON.stringify({ type: 'path', string: '/test/config.json' }))
 
     mockedApiPost.mockImplementation(async (path: string) => {
       if (path === '/database/read') {
