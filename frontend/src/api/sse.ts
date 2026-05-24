@@ -3,15 +3,38 @@ import type { SseProgress, ProgressCallbacks } from './transport'
 
 export type { SseProgress, ProgressCallbacks } from './transport'
 
+const CONFIG_INDEX_KEY = 'modmanager:configIndex'
+
+function getConfigIndex(): Record<string, string> | null {
+  try {
+    const raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && parsed.string) return parsed
+    return null
+  } catch {
+    return null
+  }
+}
+
 export async function streamSse(
   path: string,
   body: unknown,
   callbacks: ProgressCallbacks,
 ): Promise<void> {
+  const idx = getConfigIndex()
+  let finalBody = body
+  if (idx && typeof body === 'object' && body !== null) {
+    const b = body as Record<string, unknown>
+    if (!('config_index' in b)) {
+      finalBody = { ...b, config_index: idx }
+    }
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(finalBody),
   })
 
   if (!response.ok) {
