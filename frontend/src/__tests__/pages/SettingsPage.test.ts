@@ -75,6 +75,7 @@ const mockConfigData = {
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.setItem('modmanager:configIndex', '/test/config.json')
   })
 
   it('renders the page title', () => {
@@ -114,7 +115,7 @@ describe('SettingsPage', () => {
       default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
     })
     // Verify apiPost was called with the discover endpoint
-    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', {})
+    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', { config_index: '/test/config.json' })
   })
 
   it('onSaveConfig calls /api/config/save with correct data', async () => {
@@ -145,7 +146,7 @@ describe('SettingsPage', () => {
 
     // onMounted calls /api/config/discover first, then onSaveConfig calls save
     expect(mockedApiPost).toHaveBeenLastCalledWith('/config/save', {
-      config_index: '',
+      config_index: '/test/config.json',
       config: {
         baksuffix: 'testsuffix',
         bakignore: ['*.tmp'],

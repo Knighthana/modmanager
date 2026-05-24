@@ -26,7 +26,7 @@ CLI / Web ──(config_index)──▶ orchestrator ──(config_index)──�
                                      │         不完整          非法
                                      │           │              │
                                      │    userconfig_init   报错退出
-                                     │    (补全默认值)     orchestrator
+                                     │    (仅调用init)     orchestrator
                                      │           │        透传给调用方
                                      │    再次 schema verify
                                      │           │

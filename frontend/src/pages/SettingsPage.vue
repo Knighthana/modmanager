@@ -146,6 +146,13 @@
           </div>
         </el-form-item>
 
+        <el-form-item label="配置文件路径">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <el-input v-model="configIndex" placeholder="/home/user/.config/kmm/user_config.json" style="flex: 1;" />
+            <el-button size="small" type="primary" @click="connectConfig">连接</el-button>
+          </div>
+        </el-form-item>
+
         <div class="section-subtitle">规则来源</div>
 
         <!-- 规则来源 -->
@@ -238,8 +245,9 @@ interface SettingsForm {
 
 const DEFAULT_DB_PATH = '~/.local/share/kmm/database.json'
 
-// config_index — not shown to user, only passed back for save operations
-const configIndex = ref('')
+// config_index — user-provided, persisted in sessionStorage
+const CONFIG_INDEX_KEY = 'modmanager:configIndex'
+const configIndex = ref(sessionStorage.getItem(CONFIG_INDEX_KEY) || '')
 
 const form = ref<SettingsForm>({
   baksuffix: 'kmmbackup',
@@ -279,14 +287,17 @@ const editingBakignoreIdx = ref(-1)
 const editingBakignoreVal = ref('')
 
 onMounted(async () => {
+  if (!configIndex.value) return  // user hasn't set a path yet
   try {
-    const result = await apiPost<Record<string, unknown>>('/config/discover', {})
+    const result = await apiPost<Record<string, unknown>>('/config/discover', {
+      config_index: configIndex.value,
+    })
     if (result.ok && result.data) {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
 
-      // Store config_index for save (not displayed to user)
-      configIndex.value = (data.config_index as string) || ''
+      sessionStorage.setItem(CONFIG_INDEX_KEY, configIndex.value)
+      form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
 
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
       form.value.bakignore = (uc.bakignore as string[]) || []
@@ -311,6 +322,44 @@ onMounted(async () => {
     // 加载失败忽略
   }
 })
+
+async function connectConfig() {
+  if (!configIndex.value) {
+    ElMessage.warning('请先输入配置文件路径')
+    return
+  }
+  try {
+    const result = await apiPost<Record<string, unknown>>('/config/discover', {
+      config_index: configIndex.value,
+    })
+    if (result.ok && result.data) {
+      const data = result.data as Record<string, unknown>
+      const uc = data.config as Record<string, unknown>
+      sessionStorage.setItem(CONFIG_INDEX_KEY, configIndex.value)
+      form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
+      form.value.bakignore = (uc.bakignore as string[]) || []
+      const dbs = uc.databases as Record<string, { path: string }> | undefined
+      if (dbs && typeof dbs === 'object') {
+        form.value.databases = Object.entries(dbs).map(([key, entry]) => ({
+          key,
+          value: (entry && typeof entry === 'object' && typeof entry.path === 'string') ? entry.path : '',
+        }))
+      }
+      if (form.value.databases.length === 0) {
+        form.value.databases = [{ key: 'default', value: DEFAULT_DB_PATH }]
+      }
+      const rs = uc.rule_sources
+      if (rs && typeof rs === 'object' && !Array.isArray(rs)) {
+        ruleSourcesMap.value = rs as Record<string, { paths: string[] }>
+      }
+      ElMessage.success('已连接')
+    } else {
+      ElMessage.error(result.errors?.[0] || '连接失败')
+    }
+  } catch {
+    ElMessage.error('连接失败')
+  }
+}
 
 async function onSaveConfig() {
   saving.value = true
