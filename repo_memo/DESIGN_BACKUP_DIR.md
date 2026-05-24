@@ -84,7 +84,7 @@
 | 字段 | 类型 | 含义 |
 |------|------|------|
 | `schema_namespace` | `string` | Schema 命名空间标识，固定为 `"KMM_BackupInfo"` |
-| `snapshot_time` | `string` | 快照创建时间，ISO8601 date-time |
+| `tree_created_time` | `string` | 首次建树时刻（prep 写入后不再修改），ISO8601 date-time |
 | `last_modified_time` | `string` | 最后一次被本项目工具写入的时间，ISO8601 date-time |
 | `schema_version` | `string` | 当前 backupinfo schema 版本 |
 | `tree` | `DirNode` | 全量快照树 |
@@ -96,7 +96,7 @@
 
 ### 4.2 根字段语义
 
-- `snapshot_time`：表示这份快照首次生成时刻。
+- `tree_created_time`：表示 tree 的首次生成时刻。由 prep 写入一次，后续增量备份不覆盖。
 - `last_modified_time`：表示本项目工具最后一次写入该 `backupinfo.json` 的时刻。
 - `schema_version`：用于标识此文件遵循的结构版本。
 - `tree`：该 backup 对应源目录的全量冻结文件结构镜像。每个文件标记 isbackuped 以区分是否已有备份副本
@@ -190,7 +190,7 @@ tree 创建之后 node 的结构本身为 const，FileNode 的字段变更遵循
 测试组可以直接基于本文档编写正例断言：
 
 - `backup_dir` 根目录应包含 `backupinfo.json`
-- `backupinfo.json` 根字段必须为 `schema_namespace`、`snapshot_time`、`last_modified_time`、`schema_version`、`tree`
+- `backupinfo.json` 根字段必须为 `schema_namespace`、`tree_created_time`、`last_modified_time`、`schema_version`、`tree`
 - `tree` 根节点必须是 `dir`
 - 目录节点只能是 `dir`，文件节点只能是 `file`
 - `FileNode` 必须带 `isbackuped`、`hashtype`、`hashvalue`

@@ -21,7 +21,7 @@
 | `currentWorkspaceId` | `string \| null` | 前端 sessionStorage 中存储的当前活跃工作区 ID | 2026-05-16 |
 | `decisions.managed_entries` | `object` | 用户对重复条目的路径筛选 `{ game: {appid: [path]}, mod: {mixed_id: [path]} }` | 2026-05-16 |
 | `decisions.branch_decisions` | `object` | 冲突裁决映射 `{ root_path: chosen_source_path }` | 2026-05-16 |
-| `backupinfo.snapshot_time` | `string` | backupinfo 快照创建时间，ISO8601 date-time | 2026-05-19 |
+| `backupinfo.tree_created_time` | `string` | 首次建树时刻（prep 写入后不再修改），ISO8601 date-time | 2026-05-23 |
 | `backupinfo.last_modified_time` | `string` | backupinfo 最后一次被本项目工具写入的时间 | 2026-05-19 |
 | `backupinfo.schema_version` | `string` | backupinfo schema 版本号 | 2026-05-19 |
 | `backupinfo.tree` | `DirNode` | backupinfo 的冻结全量快照树 | 2026-05-19 |
@@ -40,7 +40,7 @@
 - FinalMappingEntry: `path`, `request`
 
 ## backupinfo 结构冻结
-- 根字段：`snapshot_time`, `last_modified_time`, `schema_version`, `tree`
+- 根字段：`tree_created_time`, `last_modified_time`, `schema_version`, `tree`
 - `tree` 根节点类型必须为 `dir`
 - `DirNode`: `name`, `type`, `children`
 - `FileNode`: `name`, `type`, `isbackuped`, `hashtype`, `hashvalue`

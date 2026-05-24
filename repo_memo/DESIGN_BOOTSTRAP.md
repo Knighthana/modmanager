@@ -6,7 +6,7 @@
 > Purpose: 定义 bootstrap 模块的初始化流程、三平台默认路径、Steam 发现顺序、首次使用行为
 
 创建：2026-05-21
-更新：2026-05-23 — §二 重写为 P1/P2 优先级模型；新增 steam.exe 推导、注册表、WSL 桥接、pathstyle 写入
+更新：2026-05-23 — §一 重写为 bootstrap/init 拆分流程；§1.2 扩展为 9 字段默认值表；§五 `source_path` → `config_index`；§三 `workspace_dir` 固化规则；新增 §四 子节（rule_sources、bakignore）
 
 ---
 
@@ -22,19 +22,29 @@
 
 如果文件存在且内容为合法 JSON dict → 加载返回，`first_use=false`。
 
-如果文件不存在或内容无效 → 在该位置创建默认 `user_config.json`，`first_use=true`。
+如果文件存在且 schema_version 匹配 bootstrap 期望值、所有 required 字段齐备且值合法 → 加载返回，`complete=true`。
 
-### 1.2 首次创建的默认值
+如果文件存在但缺少必填键 → 调 `userconfig_init()` 补全空白字段，`complete=true`。
 
-首次创建 `user_config.json` 时，以下字段会被自动填入：
+如果文件不存在 → 调 `userconfig_init()` 在该位置创建，`complete=true`。
 
-| 字段 | 默认值 |
-|------|--------|
-| `schema_namespace` | `"KMM_UserConfig"` |
-| `schema_version` | `"knighthana@0.1.0"` |
-| `databases` | `{"default": {"path": "<平台默认 database 路径>"}}` |
-| `source_path` | user_config.json 自身的绝对路径 |
-| `first_use` | `true` |
+如果文件存在但值非法（schema validation 失败或 schema_version 高于 bootstrap 版本）→ 返回错误，不创建、不补全。
+
+### 1.2 首次创建 / 补全的默认值
+
+`userconfig_init()` 在以下字段不存在或为空时自动填入默认值：
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `schema_namespace` | `"KMM_UserConfig"` | 固定 |
+| `schema_version` | `"knighthana@0.1.0"` | bootstrap 硬编码；与 bootstrap 自身的 `EXPECTED_SCHEMA_VERSION` 常量一致 |
+| `baksuffix` | `"kmmbackup"` | 备份目录后缀 |
+| `ignore` | `[]` | 全操作忽略模式（gitignore 语法） |
+| `bakignore` | `[]` | 备份时忽略的目录后缀；与 `baksuffix` 联动——每添加一个新 baksuffix 值，bakignore 自动追加同名条目 |
+| `rule_sources` | `{}` | `{name: {paths: [...]}}` 对象——与 `databases` 格式一致 |
+| `path_alias` | `[]` | 路径别名列表，当前无消费者，保留供未来扩展 |
+| `workspace_dir` | `<平台默认>` | bootstrap 按平台填入默认值后**固化**——运行时以此为准，不再做平台回退 |
+| `databases` | `{"default": {"path": "<平台默认 database 路径>"}}` | |
 
 ### 1.3 默认路径汇总
 
@@ -42,9 +52,9 @@
 |------|-------|---------|-------|
 | `user_config` | `~/.config/kmm/` | `%APPDATA%/kmm/` | `~/Library/Preferences/kmm/` |
 | `database`（首次默认） | `~/.local/share/kmm/database.json` | `%LOCALAPPDATA%/kmm/database/database.json` | `~/Library/Application Support/kmm/database.json` |
-| `workspace`（未设置 `workspace_dir` 时） | `~/.cache/kmm/workspace/` | `%LOCALAPPDATA%/kmm/workspace/` | `~/Library/Caches/kmm/workspace/` |
+| `workspace`（首次创建时按平台填入，固化） | `~/.cache/kmm/workspace/` | `%LOCALAPPDATA%/kmm/workspace/` | `~/Library/Caches/kmm/workspace/` |
 
-> 所有路径均可通过 `user_config` 中的对应字段覆盖。上表仅定义**未显式配置时的默认值**。
+> `workspace_dir` 由 bootstrap 首次创建 `user_config` 时按平台填入默认值。之后运行时以 `user_config.workspace_dir` 的值为准，**不再执行平台回退**。用户可通过前端设置面板修改。
 
 ---
 
@@ -119,19 +129,37 @@ steam.exe 所在目录 = SteamRoot
 
 ---
 
-## 四、`databases` 配置
+## 四、`databases` 与 `rule_sources` 配置
+
+### 4.1 `databases`
 
 `user_config.databases` 是一个 `{name: {path}}` 映射。首次创建时自动填入 `{"default": {"path": "<平台默认>"}}`。
 
 用户可通过前端或手动编辑添加更多 database 条目。每个工作区创建时绑定一个 database name，后续该工作区通过此 name 解析对应的 database 文件路径。
 
+### 4.2 `rule_sources`
+
+`user_config.rule_sources` 同样使用 `{name: {paths: [...]}}` 映射——与 `databases` 格式一致。前端仅知道和传递 `name`，后端按名解析路径列表。
+
+### 4.3 `bakignore` 与 `baksuffix`
+
+`bakignore` 是**系统自动维护**的字段，与 `baksuffix` 联动——用户每次添加一个新 `baksuffix` 值时，`bakignore` 自动追加同名条目。`bakignore` 仅在 backup 操作时生效，用于屏蔽旧的备份目录（避免"改了后缀后旧备份目录被误备份"）。
+
+用户手写的全操作忽略走 `ignore` 字段（gitignore 语法），与 `bakignore` 的语义和管理周期完全不同。
+
 ---
 
-## 五、关于 `source_path`
+## 五、关于 `config_index`
 
-`source_path` 是 bootstrap 返回结构中的**正式参数**，记录 `user_config.json` 实际加载/创建的绝对路径。该参数由 orchestrator 消费（用于日志、路径解析等场景），前端仅做只读展示。
+`config_index` 是 bootstrap 的**入参兼出参**——标识当前生效的 `user_config.json` 文件位置。
 
-用户可将 `user_config.json` 存储在任何位置（通过显式传入 `user_config_path` 参数），bootstrap 均会返回对应的 `source_path`。
+**入参**：调用方在调用 bootstrap 时传入。若传入了有效的 `config_index`，bootstrap 从该位置读取/校验 user_config，**不搜索平台默认目录**。若该位置无文件 → 调 `userconfig_init()` 创建。
+
+**出参**：bootstrap 返回时携带 `config_index`，记录实际生效的文件路径。前端将此值透明保存，后续 `/config/save` 等操作原样传回。
+
+**不入 `user_config` 内部**：`config_index` 不在 `user_config.json` 文件的 JSON 内容中持久化。它是 bootstrap 返回参数，仅为后续写入操作定位文件。
+
+**与 `workspace_dir` 的区别**：`config_index` 是"这个文件在哪"（bootstrap 参数），`workspace_dir` 是"工作区放哪"（user_config 字段，固化后可修改）。
 
 ---
 

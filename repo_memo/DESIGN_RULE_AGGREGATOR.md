@@ -160,13 +160,12 @@ user_config 的字段定义与搜索策略见 `DESIGN_STORAGE.md` §3。
 
 | 输入字段 | 输出字段 | 处理 |
 |---------|---------|------|
-| `from` | `from` | 保留，保持 `list[string]` |
-| `from_type` | `from_type` | 保留 |
-| `into` | `into` | 保留，保持 `list[string]` |
-| `into_type` | `into_type` | 保留 |
+| `from` | `from` | 保留，保持 `list[string]`。`delete` 和 `hold` 无 `from` |
+| `from_type` | `from_type` | **必填**（当 `from` 存在时）。仅 `"file"` 或 `"dir"`。引擎仅在 `_expand_sources` 中消费（展开源文件），`_target_for` 不消费 |
+| `into` | `into` | 保留，保持 `list[string]`。`hold` 无 `into` |
+| `into_type` | `into_type` | **必填**（当 `into` 存在时，即 `replace`/`create`/`delete`）。仅 `"file"` 或 `"dir"` |
 | `action` | `action` | **必填**，聚合器已从 `def_action` 或显式值填入 |
 | `destin` | `destin` | **必填**，聚合器已从 `def_destin` 或显式值填入 |
-| `nwname` | — | rename_then_replace 专用字段（历史） |
 | `action_order` | `action_order` | **聚合器注入**，默认 `0` |
 | `provenance_ref` | `provenance_ref` | **聚合器注入**，永远为 kmm_rule 文件的绝对路径 |
 | `sidecar_ref` | `sidecar_ref` | 外部注入，无注入时默认 `"404"` |

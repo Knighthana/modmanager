@@ -2,38 +2,35 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BackupInfo",
   "description": "Schema for backupinfo.json — the frozen snapshot tree with backup status and hash metadata.",
-  "version": "knighthana@0.1.0",
   "type": "object",
   "required": [
     "schema_namespace",
-    "snapshot_time",
+    "tree_created_time",
     "last_modified_time",
     "schema_version",
     "tree"
   ],
   "additionalProperties": false,
   "properties": {
-    "version": {
-      "const": "knighthana@0.1.0"
-    },
     "schema_namespace": {
       "type": "string",
       "const": "KMM_BackupInfo",
       "description": "Schema namespace identifier."
     },
-    "snapshot_time": {
+    "tree_created_time": {
       "type": "string",
       "format": "date-time",
-      "description": "快照创建时间，ISO8601字符串"
+      "description": "首次建树时刻（prep 写入后不再修改），ISO8601字符串"
     },
     "last_modified_time": {
       "type": "string",
       "format": "date-time",
-      "description": "最后一次被本项目任何工具写入的时间"
+      "description": "最后一次被本项目工具写入的时刻（每次增量备份更新）"
     },
     "schema_version": {
       "type": "string",
-      "description": "schema版本号"
+      "const": "knighthana@0.1.0",
+      "description": "数据格式必须遵守的schema版本号"
     },
     "tree": {
       "$ref": "#/$defs/DirNode",
