@@ -3,19 +3,6 @@
     <h2>{{ STR.settingsPage.title }}</h2>
 
     <el-card shadow="never" style="margin-top: 16px;">
-      <!-- 首次使用提示 -->
-      <el-alert
-        v-if="form.firstUse"
-        title="首次使用"
-        type="info"
-        show-icon
-        :closable="false"
-        style="margin-bottom: 16px;"
-      >
-        <template #default>
-          请填写必要的配置信息后保存
-        </template>
-      </el-alert>
 
       <el-form label-width="220px" @submit.prevent>
         <div class="section-subtitle">基本设置</div>
@@ -159,10 +146,6 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="配置文件位置">
-          <el-input v-model="form.userConfigPath" readonly placeholder="加载中..." />
-        </el-form-item>
-
         <div class="section-subtitle">规则来源</div>
 
         <!-- 规则来源 -->
@@ -250,19 +233,18 @@ interface DbEntry {
 interface SettingsForm {
   baksuffix: string
   bakignore: string[]
-  databases: DbEntry[]
-  userConfigPath: string   // config_index from bootstrap discover
-  firstUse: boolean
+  databases: Array<{ key: string; value: string }>
 }
 
 const DEFAULT_DB_PATH = '~/.local/share/kmm/database.json'
+
+// config_index — not shown to user, only passed back for save operations
+const configIndex = ref('')
 
 const form = ref<SettingsForm>({
   baksuffix: 'kmmbackup',
   bakignore: [],
   databases: [{ key: 'default', value: DEFAULT_DB_PATH }],
-  userConfigPath: '',
-  firstUse: false,
 })
 
 const saving = ref(false)
@@ -302,10 +284,9 @@ onMounted(async () => {
     if (result.ok && result.data) {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
-      const configIndex = data.config_index as string
 
-      // Store config_index for later save
-      form.value.userConfigPath = configIndex || ''
+      // Store config_index for save (not displayed to user)
+      configIndex.value = (data.config_index as string) || ''
 
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
       form.value.bakignore = (uc.bakignore as string[]) || []
@@ -325,9 +306,8 @@ onMounted(async () => {
       if (rs && typeof rs === 'object' && !Array.isArray(rs)) {
         ruleSourcesMap.value = rs as Record<string, { paths: string[] }>
       }
-      form.value.firstUse = (uc.first_use as boolean) || false
-    }
-  } catch {
+      }
+    } catch {
     // 加载失败忽略
   }
 })
@@ -344,7 +324,7 @@ async function onSaveConfig() {
     }
 
     const result = await apiPost('/config/save', {
-      config_index: form.value.userConfigPath,
+      config_index: configIndex.value,
       config: {
         baksuffix: form.value.baksuffix,
         bakignore: form.value.bakignore,
