@@ -14,7 +14,7 @@ from modmgr.iojson import load_json_file
 from modmgr.orchestrator import dispatch
 from modmgr.orchestrator.entry import Intent, TaskRequest
 
-from ..adapters import adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
+from ..adapters import resolve_config_index, adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
 from ..schemas import ComputeRequest, RunRequest, VisualizeRequest, RestoreRequest
 from ..sse import stream_with_progress
 from .database import _resolve_database_path
@@ -38,7 +38,7 @@ async def pipeline_compute(req: ComputeRequest):
 
     def do_work(*, on_progress):
         # Resolve database from database_name
-        user_config, _ = discover_user_config(config_index=req.config_index)
+        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
@@ -52,7 +52,7 @@ async def pipeline_compute(req: ComputeRequest):
                 "action_orders": req.action_orders,
                 "branch_decisions": req.branch_decisions,
                 "managed_entries": req.managed_entries,
-                "config_index": req.config_index,
+                "config_index": resolve_config_index(req.config_index),
             },
         )
         return dispatch(request, on_progress=on_progress)
@@ -132,7 +132,7 @@ async def pipeline_run(req: RunRequest):
 
     def do_work(*, on_progress):
         # Resolve database from database_name
-        user_config, _ = discover_user_config(config_index=req.config_index)
+        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
@@ -147,7 +147,7 @@ async def pipeline_run(req: RunRequest):
                 "branch_decisions": req.branch_decisions,
                 "managed_entries": req.managed_entries,
                 "user_config": user_config,
-                "config_index": req.config_index,
+                "config_index": resolve_config_index(req.config_index),
             },
             flags={"dry_run": req.dry_run},
         )

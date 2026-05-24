@@ -28,14 +28,12 @@
             "const": "knighthana@0.1.0"
         },
         "baksuffix": {
-            "description": "备份目录名后缀。默认值 'kmmbackup'。目录格式为 {id}.{hex}.{baksuffix}/。",
-            "type": "string",
-            "default": "kmmbackup"
+            "description": "备份目录名后缀。目录格式为 {id}.{hex}.{baksuffix}/。",
+            "type": "string"
         },
         "kmmignore": {
             "description": "全局忽略模式列表（gitignore 语法，对应 .kmmignore 文件）。apply/backup/restore 均生效。",
             "type": "array",
-            "default": [],
             "items": {
                 "type": "string"
             }
@@ -43,7 +41,6 @@
         "bakignore": {
             "description": "备份时忽略的目录名后缀（系统自动维护，与 baksuffix 联动）。仅 backup 操作生效。",
             "type": "array",
-            "default": ["kmmbackup"],
             "items": {
                 "type": "string"
             }
@@ -51,7 +48,6 @@
         "rule_sources": {
             "description": "规则文件来源映射——{name: {paths: [...]}}。与 databases 格式一致。前端只传 name，后端按名解析路径列表。",
             "type": "object",
-            "default": {},
             "additionalProperties": {
                 "type": "object",
                 "required": ["paths"],
@@ -70,7 +66,6 @@
         "path_alias": {
             "description": "路径别名列表。当前无消费者，保留供未来扩展。",
             "type": "array",
-            "default": [],
             "items": {
                 "type": "object",
                 "required": ["description", "path_handle", "path_target"],
@@ -93,13 +88,11 @@
         },
         "workspace_dir": {
             "description": "工作区根目录。bootstrap 首次创建时按平台填入默认值并固化。之后运行时以 user_config.workspace_dir 为准，不做平台回退。",
-            "type": ["string", "null"],
-            "default": null
+            "type": ["string", "null"]
         },
         "databases": {
             "description": "database 名称→路径映射。key 为 database 名称，value 包含 path 属性。",
             "type": "object",
-            "default": {},
             "additionalProperties": {
                 "type": "object",
                 "required": ["path"],

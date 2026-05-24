@@ -44,14 +44,14 @@ class SaveConfigRequest(BaseModel):
 class ReadDatabaseRequest(BaseModel):
     """Request body for ``POST /api/database/read``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     database_name: str = "default"
 
 
 class GenerateDatabaseRequest(BaseModel):
     """Request body for ``POST /api/database/generate``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     mode: str = "auto"  # "auto" | "manual"
     paths: list[str] | None = None
     steam_exe_path: str | None = None  # Windows steam.exe path for VDF derivation
@@ -66,7 +66,7 @@ class SaveDatabaseRequest(BaseModel):
     and writes to the path from user_config.databases[database_name].
     """
 
-    config_index: str
+    config_index: dict[str, Any]
     database: dict[str, Any]
     database_name: str = "default"
 
@@ -77,7 +77,7 @@ class SaveDatabaseRequest(BaseModel):
 class ComputeRequest(BaseModel):
     """Request body for ``POST /api/pipeline/compute``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     database_name: str = "default"
     aggregated_rule_set: dict | None = None
     action_orders: dict[str, int] | None = None
@@ -88,7 +88,7 @@ class ComputeRequest(BaseModel):
 class RunRequest(BaseModel):
     """Request body for ``POST /api/pipeline/run``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     database_name: str = "default"
     aggregated_rule_set: dict | None = None
     action_orders: dict[str, int] | None = None
@@ -124,7 +124,7 @@ class RulesReadRequest(BaseModel):
 class RulesAffectedEntriesRequest(BaseModel):
     """Request body for ``POST /api/rules/affected-entries``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     aggregated_rule_path: str = ""
     aggregated_rule_set: dict | None = None
     database_name: str = "default"
@@ -132,12 +132,12 @@ class RulesAffectedEntriesRequest(BaseModel):
 
 class RulesListSourcesRequest(BaseModel):
     """Request body for ``POST /api/rules/list-sources``."""
-    config_index: str
+    config_index: dict[str, Any]
 
 
 class RulesScanBySourceRequest(BaseModel):
     """Request body for ``POST /api/rules/scan-by-source``."""
-    config_index: str
+    config_index: dict[str, Any]
     source_name: str
 
 
@@ -169,14 +169,14 @@ class RestoreRequest(BaseModel):
 class RulesAggregateRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/rules/aggregate``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     paths: list[str]
 
 
 class CreateWorkspaceRequest(BaseModel):
     """Request body for ``POST /api/workspace/create``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     name: str
     database_name: str
 
@@ -184,19 +184,19 @@ class CreateWorkspaceRequest(BaseModel):
 class WorkspaceApplyRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/pipeline/apply``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     dry_run: bool = False
 
 
 class WorkspaceBackupRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/pipeline/backup``."""
-    config_index: str
+    config_index: dict[str, Any]
     dry_run: bool = False
 
 
 class WorkspaceRestoreRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/pipeline/restore``."""
-    config_index: str
+    config_index: dict[str, Any]
     force: bool = False
     dry_run: bool = False
 
@@ -204,6 +204,6 @@ class WorkspaceRestoreRequest(BaseModel):
 class SaveDecisionsRequest(BaseModel):
     """Request body for ``POST /api/workspace/{id}/decisions/save``."""
 
-    config_index: str
+    config_index: dict[str, Any]
     managed_entries: dict[str, dict[str, list[str]]] | None = None
     branch_decisions: dict[str, str] | None = None

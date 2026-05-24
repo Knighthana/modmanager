@@ -15,7 +15,7 @@ from modmgr.orchestrator import dispatch, compute_ws
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.path_resolver import expand_path
 
-from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
+from ..adapters import resolve_config_index, adapt_dict_result, adapt_error, adapt_pipeline_result
 from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
 from ..sse import stream_with_progress
 from modmgr.rule_aggregator import aggregate as rule_aggregate
@@ -45,7 +45,7 @@ def _get_workspace_manager(config_index: str) -> WorkspaceManager:
 async def create_workspace(req: CreateWorkspaceRequest):
     """Create a new workspace, binding it to *database_name*."""
     try:
-        wm = _get_workspace_manager(req.config_index)
+        wm = _get_workspace_manager(resolve_config_index(req.config_index))
         workspace_id = wm.create(name=req.name, database_name=req.database_name)
         meta = wm.read_meta(workspace_id)
         return adapt_dict_result({"workspace_id": workspace_id, "meta": meta})
@@ -97,7 +97,7 @@ async def get_workspace_meta(workspace_id: str, config_index: str = Query(...)):
 async def save_decisions(workspace_id: str, req: SaveDecisionsRequest):
     """Persist user decisions into the workspace."""
     try:
-        wm = _get_workspace_manager(req.config_index)
+        wm = _get_workspace_manager(resolve_config_index(req.config_index))
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         decisions = {
@@ -170,7 +170,7 @@ async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateReques
     """Aggregate rules and store the result in the workspace."""
 
     try:
-        wm = _get_workspace_manager(req.config_index)
+        wm = _get_workspace_manager(resolve_config_index(req.config_index))
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
 
@@ -300,7 +300,7 @@ async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest):
             identity="web",
             intent=Intent.BACKUP,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": req.config_index},
+            resolver_args={"workspace_id": workspace_id, "config_index": resolve_config_index(req.config_index)},
             flags={"dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)
@@ -331,7 +331,7 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
             identity="web",
             intent=Intent.APPLY,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": req.config_index},
+            resolver_args={"workspace_id": workspace_id, "config_index": resolve_config_index(req.config_index)},
             flags={"dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)
@@ -363,7 +363,7 @@ async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
             identity="web",
             intent=Intent.RESTORE,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": req.config_index},
+            resolver_args={"workspace_id": workspace_id, "config_index": resolve_config_index(req.config_index)},
             flags={"force": force, "dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)

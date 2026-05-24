@@ -66,7 +66,7 @@ class TestListSources:
                 config_index,
             ),
         )
-        resp = client.post("/api/rules/list-sources", json={"config_index": "/fake/config.json"})
+        resp = client.post("/api/rules/list-sources", json={"config_index": {"type": "path", "string": "/fake/config.json"}})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -81,7 +81,7 @@ class TestListSources:
             "modmgr_web.routes.rules.discover_user_config",
             lambda config_index: ({"rule_sources": {}}, config_index),
         )
-        resp = client.post("/api/rules/list-sources", json={"config_index": "/fake/config.json"})
+        resp = client.post("/api/rules/list-sources", json={"config_index": {"type": "path", "string": "/fake/config.json"}})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -122,7 +122,7 @@ class TestScanBySource:
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "default", "config_index": "/fake/config.json"},
+            json={"source_name": "default", "config_index": {"type": "path", "string": "/fake/config.json"}},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -156,7 +156,7 @@ class TestScanBySource:
         )
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "nonexistent", "config_index": "/fake/config.json"},
+            json={"source_name": "nonexistent", "config_index": {"type": "path", "string": "/fake/config.json"}},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -200,7 +200,7 @@ class TestScanBySource:
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "mixed", "config_index": "/fake/config.json"},
+            json={"source_name": "mixed", "config_index": {"type": "path", "string": "/fake/config.json"}},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -238,7 +238,7 @@ class TestScanBySource:
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "default", "config_index": "/fake/config.json"},
+            json={"source_name": "default", "config_index": {"type": "path", "string": "/fake/config.json"}},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -272,7 +272,7 @@ class TestScanBySource:
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "default", "config_index": "/fake/config.json"},
+            json={"source_name": "default", "config_index": {"type": "path", "string": "/fake/config.json"}},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -332,7 +332,7 @@ class TestAggregateEndpoint:
 
         resp = client.post(
             "/api/workspace/test-ws-1/rules/aggregate",
-            json={"paths": [str(tmp_path / "some_rules")], "config_index": "/fake/config.json"},
+            json={"paths": [str(tmp_path / "some_rules")], "config_index": {"type": "path", "string": "/fake/config.json"}},
         )
         assert resp.status_code == 200
         body = resp.json()

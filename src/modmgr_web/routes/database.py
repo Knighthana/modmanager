@@ -8,7 +8,7 @@ from modmgr.bootstrap import discover_user_config, generate_database
 from modmgr.iojson import load_json_file, write_json_file
 from modmgr.path_resolver import expand_path
 
-from ..adapters import adapt_dict_result, adapt_error
+from ..adapters import resolve_config_index, adapt_dict_result, adapt_error
 from ..schemas import GenerateDatabaseRequest, ReadDatabaseRequest, SaveDatabaseRequest
 from ..sse import stream_with_progress
 
@@ -47,7 +47,7 @@ async def generate(req: GenerateDatabaseRequest):
     def do_work(*, on_progress):
         return generate_database(
             mode=req.mode,
-            config_index=req.config_index,
+            config_index=resolve_config_index(req.config_index),
             paths=req.paths,
             steam_exe_path=req.steam_exe_path,
             greedy_parsing=req.greedy_parsing,
@@ -69,7 +69,7 @@ async def read_database(req: ReadDatabaseRequest):
     Returns the database dict wrapped in ApiResponse.
     """
     try:
-        user_config, _ = discover_user_config(config_index=req.config_index)
+        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
         resolved = _resolve_database_path(req.database_name, user_config)
         data = load_json_file(resolved)
         return adapt_dict_result(data)
@@ -87,7 +87,7 @@ async def save_database(req: SaveDatabaseRequest):
     to the path resolved from user_config.databases[database_name].
     """
     try:
-        user_config, _ = discover_user_config(config_index=req.config_index)
+        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
         resolved = _resolve_database_path(req.database_name, user_config)
         write_json_file(resolved, req.database)
     except Exception as e:
