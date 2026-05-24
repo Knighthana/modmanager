@@ -952,7 +952,7 @@ class TestBackupsInspectApi:
 
         # Create a minimal backupinfo.json
         info = {
-            "snapshot_time": "2026-05-20T10:15:30Z",
+            "tree_created_time": "2026-05-20T10:15:30Z",
             "last_modified_time": "2026-05-20T10:16:02Z",
             "schema_version": "1",
             "tree": {

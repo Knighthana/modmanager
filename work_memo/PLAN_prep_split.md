@@ -42,7 +42,7 @@ def prep_backup_dir(
 2. 创建 backup_dir 目录
 3. 迭代扫描 source_root 中所有目录和文件（应用 ignore_rules 过滤）
 4. 构造 tree dict——每个 FileNode: `isbackuped=false`, `hashtype="invalid"`, `hashvalue="0"`
-5. 构造完整 backupinfo dict（含 `schema_namespace`, `snapshot_time`, `last_modified_time`, `schema_version`, `tree`）
+5. 构造完整 backupinfo dict（含 `schema_namespace`, `tree_created_time`, `last_modified_time`, `schema_version`, `tree`）
 6. 写入 `backup_dir/backupinfo.json`
 7. 返回 backupinfo dict
 

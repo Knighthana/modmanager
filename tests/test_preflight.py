@@ -39,7 +39,7 @@ class TestApplyPreflight:
             # Create valid backupinfo so gate passes
             info = {
                 "schema_namespace": "KMM_BackupInfo",
-                "snapshot_time": "2026-01-01T00:00:00Z",
+                "tree_created_time": "2026-01-01T00:00:00Z",
                 "last_modified_time": "2026-01-01T00:00:00Z",
                 "schema_version": "knighthana@0.1.0",
                 "tree": {"name": "root", "type": "dir", "children": []},
@@ -109,7 +109,7 @@ class TestApplyPreflight:
             backup_dir.mkdir()
             info = {
                 "schema_namespace": "KMM_BackupInfo",
-                "snapshot_time": "2026-01-01T00:00:00Z",
+                "tree_created_time": "2026-01-01T00:00:00Z",
                 "last_modified_time": "2026-01-01T00:00:00Z",
                 "schema_version": "knighthana@0.1.0",
                 "tree": {"name": "root", "type": "dir", "children": []},

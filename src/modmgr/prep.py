@@ -47,7 +47,7 @@ def prep_backup_dir(
     # ── Write backupinfo.json ───────────────────────────────────────
     info: dict[str, Any] = {
         "schema_namespace": "KMM_BackupInfo",
-        "snapshot_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "tree_created_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "last_modified_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "schema_version": "knighthana@0.1.0",
         "tree": tree,
