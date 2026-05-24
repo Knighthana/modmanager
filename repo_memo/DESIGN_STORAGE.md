@@ -259,6 +259,7 @@ interface PersistenceAdapter {
 
 | key | 内容 | 说明 |
 |-----|------|------|
+| `modmanager:configIndex` | `object` | 用户配置文件索引 |
 | `modmanager:sidebarCollapsed` | `boolean` | 侧边栏折叠状态 |
 | `modmanager:activeTab` | `string` | 当前标签页 |
 | `modmanager:currentWorkspaceId` | `string` | 当前活跃工作区 ID |
@@ -269,6 +270,7 @@ interface PersistenceAdapter {
 
 | key | 内容 | 说明 |
 |-----|------|------|
+| `modmanager:configIndex` | `object` | 用户配置文件索引（跨 Tab 保留） |
 | `modmanager:sidebarCollapsed` | `boolean` | 侧边栏折叠留档 |
 | `modmanager:uiState:datasource` | `object` | DataSourcePage 留档 |
 | `modmanager:uiState:{workspace_id}` | `object` | ComputePrepPage 留档 |

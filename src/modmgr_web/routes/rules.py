@@ -337,20 +337,17 @@ async def rules_scan_by_source(req: RulesScanBySourceRequest):
 
         p = Path(expanded)
 
-        if expanded.endswith(".kmmrule.json"):
-            # Direct file reference
-            if p.is_file():
-                key = str(p.resolve())
-                if key not in seen:
-                    seen.add(key)
-                    st = p.stat()
-                    files.append({
-                        "name": p.name,
-                        "path": str(p),
-                        "size": st.st_size,
-                    })
-            else:
-                warnings.append(f"W_PATH_NOT_FOUND: file not found: {expanded}")
+        if p.is_file():
+            # Direct file reference — user knows what they want, don't gate on extension
+            key = str(p.resolve())
+            if key not in seen:
+                seen.add(key)
+                st = p.stat()
+                files.append({
+                    "name": p.name,
+                    "path": str(p),
+                    "size": st.st_size,
+                })
         elif expanded.endswith("/"):
             # Directory scan
             if p.is_dir():

@@ -27,7 +27,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `<name>` | `string` | ✅ | source 别名（用户自定义，前端展示） |
-| `<name>.paths` | `list[string]` | ✅ | 路径列表——目录以 `/` 结尾（扫描 `*.kmmrule.json`），文件以 `.kmmrule.json` 结尾 |
+| `<name>.paths` | `list[string]` | ✅ | 路径列表——目录以 `/` 结尾（扫描 `*.kmmrule.json`），文件路径直接作为规则文件加载（不限制后缀） |
 
 ---
 
@@ -62,7 +62,7 @@
 2. 对每个 path 先调 `expand_path()` 展开 `~` 和环境变量
 3. 对每个 path：
    - 目录（以 `/` 结尾）→ 调用现有 `/rules/scan` 逻辑 → 列出 `*.kmmrule.json`
-   - 文件（以 `.kmmrule.json` 结尾）→ 校验文件存在 → 直接加入列表
+   - 文件（任意后缀）→ 校验文件存在 → 直接加入列表
    - 路径不存在 → 记录 warning: `W_PATH_NOT_FOUND: {path}`，继续处理其余路径
 4. 按 `path` 去重后返回
 
