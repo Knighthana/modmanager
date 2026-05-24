@@ -108,10 +108,3 @@ def adapt_error(message: str) -> dict:
         "errors": [message],
         "warnings": [],
     }
-
-
-def resolve_config_index(value: Any) -> str:
-    """Extract the file path string from a config_index object or plain string."""
-    if isinstance(value, dict):
-        return str(value.get("string", ""))
-    return str(value)

@@ -5,7 +5,7 @@ All endpoints return SSE streams with progress updates.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from modmgr.backup_ops import restore_from_backup
@@ -14,7 +14,8 @@ from modmgr.iojson import load_json_file
 from modmgr.orchestrator import dispatch
 from modmgr.orchestrator.entry import Intent, TaskRequest
 
-from ..adapters import resolve_config_index, adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
+from ..adapters import adapt_pipeline_result, adapt_restore_result, adapt_dict_result, adapt_error
+from ..dependencies import resolve_config_index
 from ..schemas import ComputeRequest, RunRequest, VisualizeRequest, RestoreRequest
 from ..sse import stream_with_progress
 from .database import _resolve_database_path
@@ -23,7 +24,7 @@ router = APIRouter()
 
 
 @router.post("/compute")
-async def pipeline_compute(req: ComputeRequest):
+async def pipeline_compute(req: ComputeRequest, ci_path: str = Depends(resolve_config_index)):
     """Compute file mapping from a pre-aggregated rule set dict.
 
     SSE events:
@@ -38,7 +39,7 @@ async def pipeline_compute(req: ComputeRequest):
 
     def do_work(*, on_progress):
         # Resolve database from database_name
-        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
+        user_config, _ = discover_user_config(config_index=ci_path)
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
@@ -52,7 +53,7 @@ async def pipeline_compute(req: ComputeRequest):
                 "action_orders": req.action_orders,
                 "branch_decisions": req.branch_decisions,
                 "managed_entries": req.managed_entries,
-                "config_index": resolve_config_index(req.config_index),
+                "config_index": ci_path,
             },
         )
         return dispatch(request, on_progress=on_progress)
@@ -117,7 +118,7 @@ async def pipeline_restore(req: RestoreRequest):
 
 
 @router.post("/run")
-async def pipeline_run(req: RunRequest):
+async def pipeline_run(req: RunRequest, ci_path: str = Depends(resolve_config_index)):
     """Execute the full pipeline: compute → backup → apply.
 
     SSE events:
@@ -132,7 +133,7 @@ async def pipeline_run(req: RunRequest):
 
     def do_work(*, on_progress):
         # Resolve database from database_name
-        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
+        user_config, _ = discover_user_config(config_index=ci_path)
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
@@ -147,7 +148,7 @@ async def pipeline_run(req: RunRequest):
                 "branch_decisions": req.branch_decisions,
                 "managed_entries": req.managed_entries,
                 "user_config": user_config,
-                "config_index": resolve_config_index(req.config_index),
+                "config_index": ci_path,
             },
             flags={"dry_run": req.dry_run},
         )

@@ -104,7 +104,7 @@ class TestDiscoverUserConfig:
             "modmgr_web.routes.config.discover_user_config",
             lambda config_index: ({"game": "valheim", "language": "en"}, config_index),
         )
-        resp = client.post("/api/config/discover", json={"config_index": {"type": "path", "string": "/fake/path"}})
+        resp = client.post("/api/config/discover", json={}, headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -124,7 +124,7 @@ class TestDiscoverUserConfig:
         monkeypatch.setattr(
             "modmgr_web.routes.config.discover_user_config", _raise
         )
-        resp = client.post("/api/config/discover", json={"config_index": {"type": "path", "string": "/fake/path"}})
+        resp = client.post("/api/config/discover", json={}, headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'})
         assert resp.status_code == 200  # FastAPI returns 200; ok=false in body
         body = resp.json()
         assert body["ok"] is False
@@ -166,7 +166,8 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "auto", "config_index": {"type": "path", "string": "/fake/path"}},
+            json={"mode": "auto"},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -203,7 +204,8 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "manual", "paths": ["/some/path"], "config_index": {"type": "path", "string": "/fake/path"}},
+            json={"mode": "manual", "paths": ["/some/path"]},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
 
@@ -240,7 +242,8 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "auto", "config_index": {"type": "path", "string": "/fake/path"}},
+            json={"mode": "auto"},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         lines = resp.text.split("\n")
@@ -264,7 +267,8 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "invalid", "config_index": {"type": "path", "string": "/fake/path"}},
+            json={"mode": "invalid"},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -321,8 +325,8 @@ class TestComputePipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -378,8 +382,8 @@ class TestComputePipeline:
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "managed_entries": managed_entries,
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
@@ -419,8 +423,8 @@ class TestComputePipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": rule_set,
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         # Verify aggregated_rule_set was passed to orchestrator
@@ -434,8 +438,8 @@ class TestComputePipeline:
             "/api/pipeline/compute",
             json={
                 "database_name": "default",
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -505,8 +509,8 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -565,8 +569,8 @@ class TestRunPipeline:
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "managed_entries": managed_entries,
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert captured_kwargs.get("managed_entries") == managed_entries
@@ -606,8 +610,8 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": rule_set,
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert captured_kwargs.get("aggregated_rule_set") == rule_set
@@ -620,8 +624,8 @@ class TestRunPipeline:
             "/api/pipeline/run",
             json={
                 "database_name": "default",
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -763,8 +767,8 @@ class TestSseDisconnect:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "config_index": {"type": "path", "string": "/fake/path"},
             },
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         # If the SSE stream is well-formed, we're good.
         assert resp.status_code == 200
@@ -853,7 +857,7 @@ class TestRulesApi:
 
     def test_rules_affected_entries_empty_path(self, client: TestClient) -> None:
         """affected-entries with empty path returns error."""
-        resp = client.post("/api/rules/affected-entries", json={"aggregated_rule_path": "", "config_index": {"type": "path", "string": "/fake/path"}})
+        resp = client.post("/api/rules/affected-entries", json={"aggregated_rule_path": ""}, headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
@@ -898,7 +902,8 @@ class TestRulesAffectedEntries:
 
         resp = client.post(
             "/api/rules/affected-entries",
-            json={"aggregated_rule_path": str(agg_file), "database_name": "default", "config_index": {"type": "path", "string": "/fake/path"}},
+            json={"aggregated_rule_path": str(agg_file), "database_name": "default"},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -1161,7 +1166,7 @@ class TestReadDatabase:
             lambda path: fake_db,
         )
 
-        resp = client.post("/api/database/read", json={"database_name": "default", "config_index": {"type": "path", "string": "/fake/path"}})
+        resp = client.post("/api/database/read", json={"database_name": "default"}, headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -1174,7 +1179,7 @@ class TestReadDatabase:
             lambda config_index: ({"databases": {}}, "/fake/path"),
         )
 
-        resp = client.post("/api/database/read", json={"database_name": "nonexistent", "config_index": {"type": "path", "string": "/fake/path"}})
+        resp = client.post("/api/database/read", json={"database_name": "nonexistent"}, headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'})
         body = resp.json()
         assert body["ok"] is False
 
@@ -1198,7 +1203,8 @@ class TestSaveDatabase:
         # Use real write_json_file so we can verify the file was written
         resp = client.post(
             "/api/database/save",
-            json={"database": db_data, "database_name": "default", "config_index": {"type": "path", "string": "/fake/path"}},
+            json={"database": db_data, "database_name": "default"},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -1241,7 +1247,8 @@ class TestConfigSaveRuleSources:
 
         resp = client.post(
             "/api/config/save",
-            json={"config": config, "config_index": {"type": "path", "string": str(output)}},
+            json={"config": config},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"' + str(output) + '"}'},
         )
         assert resp.status_code == 200
         body = resp.json()

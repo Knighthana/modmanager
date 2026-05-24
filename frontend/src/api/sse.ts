@@ -5,19 +5,14 @@ export type { SseProgress, ProgressCallbacks } from './transport'
 
 const CONFIG_INDEX_KEY = 'modmanager:configIndex'
 
-function getConfigIndex(): Record<string, string> | null {
+function getConfigIndexJson(): string | null {
+  let raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
+  if (!raw) raw = localStorage.getItem(CONFIG_INDEX_KEY)
+  if (!raw) return null
   try {
-    let raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
-    if (!raw) {
-      raw = localStorage.getItem(CONFIG_INDEX_KEY)
-    }
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (parsed && parsed.string) return parsed
-    return null
-  } catch {
-    return null
-  }
+    JSON.parse(raw) // validate
+    return raw
+  } catch { return null }
 }
 
 export async function streamSse(
@@ -25,23 +20,16 @@ export async function streamSse(
   body: unknown,
   callbacks: ProgressCallbacks,
 ): Promise<void> {
-  const idx = getConfigIndex()
+  const idx = getConfigIndexJson()
   if (!idx) {
     callbacks.onError?.('请先在设置页面连接配置文件')
     return
   }
-  let finalBody = body
-  if (idx && typeof body === 'object' && body !== null) {
-    const b = body as Record<string, unknown>
-    if (!('config_index' in b)) {
-      finalBody = { ...b, config_index: idx }
-    }
-  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(finalBody),
+    headers: { 'Content-Type': 'application/json', 'X-UserConfig-Index': idx },
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {

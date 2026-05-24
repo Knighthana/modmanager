@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
                 CORSMiddleware,
                 allow_origins=origins,
                 allow_methods=["POST", "GET"],
-                allow_headers=["Content-Type"],
+                allow_headers=["Content-Type", "X-UserConfig-Index"],
             )
 
     # ── Built-in endpoints ────────────────────────────────────────────────

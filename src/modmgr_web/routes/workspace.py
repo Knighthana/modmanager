@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends
 from fastapi.responses import Response, StreamingResponse
 from modmgr.bootstrap import discover_user_config
 from modmgr.core.workspacemanager import WorkspaceManager
@@ -15,7 +15,8 @@ from modmgr.orchestrator import dispatch, compute_ws
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.path_resolver import expand_path
 
-from ..adapters import resolve_config_index, adapt_dict_result, adapt_error, adapt_pipeline_result
+from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
+from ..dependencies import resolve_config_index
 from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
 from ..sse import stream_with_progress
 from modmgr.rule_aggregator import aggregate as rule_aggregate
@@ -29,9 +30,9 @@ router = APIRouter()
 # ── Helper ────────────────────────────────────────────────────────────────────
 
 
-def _get_workspace_manager(config_index: str) -> WorkspaceManager:
+def _get_workspace_manager(ci_path: str) -> WorkspaceManager:
     """Resolve the workspace root directory from user_config and return a ``WorkspaceManager``."""
-    config, _ = discover_user_config(config_index=config_index)
+    config, _ = discover_user_config(config_index=ci_path)
     ws_dir = config.get("workspace_dir")
     if not ws_dir:
         raise ValueError("workspace_dir is missing from user_config")
@@ -42,10 +43,10 @@ def _get_workspace_manager(config_index: str) -> WorkspaceManager:
 
 
 @router.post("/create")
-async def create_workspace(req: CreateWorkspaceRequest):
+async def create_workspace(req: CreateWorkspaceRequest, ci_path: str = Depends(resolve_config_index)):
     """Create a new workspace, binding it to *database_name*."""
     try:
-        wm = _get_workspace_manager(resolve_config_index(req.config_index))
+        wm = _get_workspace_manager(ci_path)
         workspace_id = wm.create(name=req.name, database_name=req.database_name)
         meta = wm.read_meta(workspace_id)
         return adapt_dict_result({"workspace_id": workspace_id, "meta": meta})
@@ -54,10 +55,10 @@ async def create_workspace(req: CreateWorkspaceRequest):
 
 
 @router.post("/{workspace_id}/delete")
-async def delete_workspace(workspace_id: str, config_index: str = Query(...)):
+async def delete_workspace(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Delete a workspace and all its contents."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         wm.delete(workspace_id)
@@ -67,10 +68,10 @@ async def delete_workspace(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.get("/list")
-async def list_workspaces(config_index: str = Query(...)):
+async def list_workspaces(ci_path: str = Depends(resolve_config_index)):
     """List all workspaces, most recently updated first."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         items = wm.list_all()
         return adapt_dict_result({"workspaces": items})
     except Exception as exc:
@@ -78,10 +79,10 @@ async def list_workspaces(config_index: str = Query(...)):
 
 
 @router.get("/{workspace_id}/meta")
-async def get_workspace_meta(workspace_id: str, config_index: str = Query(...)):
+async def get_workspace_meta(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Return metadata for a single workspace."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         meta = wm.read_meta(workspace_id)
@@ -94,10 +95,10 @@ async def get_workspace_meta(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.post("/{workspace_id}/decisions/save")
-async def save_decisions(workspace_id: str, req: SaveDecisionsRequest):
+async def save_decisions(workspace_id: str, req: SaveDecisionsRequest, ci_path: str = Depends(resolve_config_index)):
     """Persist user decisions into the workspace."""
     try:
-        wm = _get_workspace_manager(resolve_config_index(req.config_index))
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         decisions = {
@@ -113,10 +114,10 @@ async def save_decisions(workspace_id: str, req: SaveDecisionsRequest):
 
 
 @router.get("/{workspace_id}/decisions/load")
-async def load_decisions(workspace_id: str, config_index: str = Query(...)):
+async def load_decisions(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Read user decisions from the workspace."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         if not wm.has_decisions(workspace_id):
@@ -133,10 +134,10 @@ async def load_decisions(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.get("/{workspace_id}/forest/svg")
-async def get_forest_svg(workspace_id: str, config_index: str = Query(...)):
+async def get_forest_svg(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Return the cached forest SVG for the workspace."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         if not wm.has_svg(workspace_id):
@@ -148,10 +149,10 @@ async def get_forest_svg(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.get("/{workspace_id}/forest/mapping")
-async def get_forest_mapping(workspace_id: str, config_index: str = Query(...)):
+async def get_forest_mapping(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Return the mapping result for the workspace."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         if not wm.has_mapping(workspace_id):
@@ -166,11 +167,11 @@ async def get_forest_mapping(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.post("/{workspace_id}/rules/aggregate")
-async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateRequest):
+async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateRequest, ci_path: str = Depends(resolve_config_index)):
     """Aggregate rules and store the result in the workspace."""
 
     try:
-        wm = _get_workspace_manager(resolve_config_index(req.config_index))
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
 
@@ -206,10 +207,10 @@ async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateReques
 
 
 @router.get("/{workspace_id}/rules/aggregated")
-async def workspace_read_aggregated(workspace_id: str, config_index: str = Query(...)):
+async def workspace_read_aggregated(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Read the aggregated rule set from the workspace."""
     try:
-        wm = _get_workspace_manager(config_index)
+        wm = _get_workspace_manager(ci_path)
         if not wm.exists(workspace_id):
             return adapt_error(f"workspace '{workspace_id}' not found")
         if not wm.has_aggregated_rule(workspace_id):
@@ -224,7 +225,7 @@ async def workspace_read_aggregated(workspace_id: str, config_index: str = Query
 
 
 @router.post("/{workspace_id}/pipeline/compute")
-async def workspace_compute(workspace_id: str, config_index: str = Query(...)):
+async def workspace_compute(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Compute mapping inside a workspace context.
 
     Reads aggregated rules and decisions from the workspace directory,
@@ -240,7 +241,7 @@ async def workspace_compute(workspace_id: str, config_index: str = Query(...)):
     def do_work(*, on_progress):
         return compute_ws(
             workspace_id=workspace_id,
-            config_index=config_index,
+            config_index=ci_path,
             on_progress=on_progress,
         )
 
@@ -252,7 +253,7 @@ async def workspace_compute(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.post("/{workspace_id}/pipeline/run")
-async def workspace_run(workspace_id: str, config_index: str = Query(...)):
+async def workspace_run(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
     """Execute the full pipeline inside a workspace context.
 
     SSE events:
@@ -266,7 +267,7 @@ async def workspace_run(workspace_id: str, config_index: str = Query(...)):
             identity="web",
             intent=Intent.RUN,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": config_index},
+            resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
             flags={"dry_run": False},
         )
         return dispatch(request, on_progress=on_progress)
@@ -282,7 +283,7 @@ async def workspace_run(workspace_id: str, config_index: str = Query(...)):
 
 
 @router.post("/{workspace_id}/pipeline/backup")
-async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest):
+async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest, ci_path: str = Depends(resolve_config_index)):
     """Run differential backup in workspace context.
 
     Reads mapping from the workspace, auto-derives backup_dir, and
@@ -300,7 +301,7 @@ async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest):
             identity="web",
             intent=Intent.BACKUP,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": resolve_config_index(req.config_index)},
+            resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
             flags={"dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)
@@ -313,7 +314,7 @@ async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest):
 
 
 @router.post("/{workspace_id}/pipeline/apply")
-async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
+async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest, ci_path: str = Depends(resolve_config_index)):
     """Apply final mapping to disk in workspace context.
 
     Reads mapping and stored backup_dir from the workspace, streams
@@ -331,7 +332,7 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
             identity="web",
             intent=Intent.APPLY,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": resolve_config_index(req.config_index)},
+            resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
             flags={"dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)
@@ -344,7 +345,7 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest):
 
 
 @router.post("/{workspace_id}/pipeline/restore")
-async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
+async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest, ci_path: str = Depends(resolve_config_index)):
     """Restore files from backup in workspace context.
 
     Delegates to ``restore_ws()`` which loads workspace context and
@@ -363,7 +364,7 @@ async def workspace_restore(workspace_id: str, req: WorkspaceRestoreRequest):
             identity="web",
             intent=Intent.RESTORE,
             resolver_type="workspace",
-            resolver_args={"workspace_id": workspace_id, "config_index": resolve_config_index(req.config_index)},
+            resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
             flags={"force": force, "dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)

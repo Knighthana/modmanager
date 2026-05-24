@@ -12,12 +12,13 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from modmgr.bootstrap import discover_user_config
 from modmgr.iojson import load_json_file
 from modmgr.path_resolver import expand_path, resolve_directory_path, resolve_file_path
-from ..adapters import resolve_config_index, adapt_dict_result, adapt_error
+from ..adapters import adapt_dict_result, adapt_error
+from ..dependencies import resolve_config_index
 from ..schemas import (
     RulesAffectedEntriesRequest,
     RulesListSourcesRequest,
@@ -99,7 +100,7 @@ async def rules_read(req: RulesReadRequest):
 
 
 @router.post("/affected-entries")
-async def rules_affected_entries(req: RulesAffectedEntriesRequest):
+async def rules_affected_entries(req: RulesAffectedEntriesRequest, ci_path: str = Depends(resolve_config_index)):
     """Query the database for game/mod entries referenced by an aggregated rule set.
 
     Accepts ``{ aggregated_rule_path?, aggregated_rule_set?, database_name }``.
@@ -123,7 +124,7 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
 
     # Load database from user_config via database_name
     try:
-        user_config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
+        user_config, _ = discover_user_config(config_index=ci_path)
         db_entry = user_config.get("databases", {}).get(req.database_name)
         if db_entry:
             db_path = db_entry["path"]
@@ -292,12 +293,12 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
 
 
 @router.post("/list-sources")
-async def rules_list_sources(req: RulesListSourcesRequest):
+async def rules_list_sources(req: RulesListSourcesRequest, ci_path: str = Depends(resolve_config_index)):
     """List available rule source names from user_config.
 
     Returns source_names array — the keys of user_config.rule_sources.
     """
-    config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
+    config, _ = discover_user_config(config_index=ci_path)
     rule_sources = config.get("rule_sources", {})
     if not isinstance(rule_sources, dict):
         rule_sources = {}
@@ -306,7 +307,7 @@ async def rules_list_sources(req: RulesListSourcesRequest):
 
 
 @router.post("/scan-by-source")
-async def rules_scan_by_source(req: RulesScanBySourceRequest):
+async def rules_scan_by_source(req: RulesScanBySourceRequest, ci_path: str = Depends(resolve_config_index)):
     """Scan rule files for a named source.
 
     Reads rule_sources[name].paths from user_config, expands paths,
@@ -315,7 +316,7 @@ async def rules_scan_by_source(req: RulesScanBySourceRequest):
 
     Warnings are returned for paths that don't exist.
     """
-    config, _ = discover_user_config(config_index=resolve_config_index(req.config_index))
+    config, _ = discover_user_config(config_index=ci_path)
     rule_sources = config.get("rule_sources", {})
 
     if not isinstance(rule_sources, dict) or req.source_name not in rule_sources:
