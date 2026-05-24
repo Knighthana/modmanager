@@ -12,23 +12,25 @@
 
 ## 一、user_config.json 的发现与创建
 
-### 1.1 搜索位置（单级，不回退）
+### 1.1 发现流程
 
-| 平台 | 路径 |
-|------|------|
+bootstrap 按以下优先级确定 `user_config.json` 的位置：
+
+1. **调用方传入了 `config_index`** → 直接使用该路径，不搜索默认目录
+2. **未传入 `config_index`** → 使用平台默认路径：
+
+| 平台 | 默认路径 |
+|------|---------|
 | Linux | `~/.config/kmm/user_config.json` |
 | Windows | `%APPDATA%/kmm/user_config.json` |
 | macOS | `~/Library/Preferences/kmm/user_config.json` |
 
-如果文件存在且内容为合法 JSON dict → 加载返回，`first_use=false`。
+无论哪种方式确定了路径后，按以下规则处理：
 
-如果文件存在且 schema_version 匹配 bootstrap 期望值、所有 required 字段齐备且值合法 → 加载返回，`complete=true`。
-
-如果文件存在但缺少必填键 → 调 `userconfig_init()` 补全空白字段，`complete=true`。
-
-如果文件不存在 → 调 `userconfig_init()` 在该位置创建，`complete=true`。
-
-如果文件存在但值非法（schema validation 失败或 schema_version 高于 bootstrap 版本）→ 返回错误，不创建、不补全。
+- 文件存在且 schema_version 匹配、所有 required 字段齐备、值合法 → 加载返回
+- 文件存在但缺少必填键 → 调 `userconfig_init()` 补全后返回
+- 文件不存在 → 调 `userconfig_init()` 在该路径创建后返回
+- 文件存在但值非法（schema validation 失败或 schema_version 不匹配）→ 返回错误，不创建、不补全
 
 ### 1.2 首次创建 / 补全的默认值
 
