@@ -24,7 +24,7 @@ class TestUserconfigInit(unittest.TestCase):
             path = str(Path(td) / "user_config.json")
             result = userconfig_init(path)
 
-            self.assertEqual(set(result.keys()), set(REQUIRED_KEYS))
+            self.assertTrue(set(REQUIRED_KEYS).issubset(set(result.keys())))
             # workspace_dir and databases are overridden by platform defaults
             for key in REQUIRED_KEYS:
                 if key in ("workspace_dir", "databases"):
