@@ -124,6 +124,16 @@ class RulesAffectedEntriesRequest(BaseModel):
     database_name: str = "default"
 
 
+class RulesListSourcesRequest(BaseModel):
+    """Request body for ``POST /api/rules/list-sources``."""
+    pass
+
+
+class RulesScanBySourceRequest(BaseModel):
+    """Request body for ``POST /api/rules/scan-by-source``."""
+    source_name: str
+
+
 # ── Backups endpoints ─────────────────────────────────────────────────────
 
 

@@ -170,66 +170,60 @@
         <el-form-item label="规则来源">
           <div style="width: 100%;">
             <div style="margin-bottom: 8px; font-size: 13px; color: #888;">
-              填写目录：自动扫描目录中 <code>.kmmrule.json</code> 文件；填写文件名：单独登记该文件
+              规则来源名称 → 路径列表映射，可在弹出窗口中编辑
             </div>
-            <el-table :data="form.ruleSources" border stripe size="small" style="width: 100%;">
-              <el-table-column label="路径">
-                <template #default="{ row, $index }">
-                  <template v-if="editingRuleSourceIdx !== $index">
-                    <code
-                      style="cursor: pointer; font-size: 13px;"
-                      @click="startEditRuleSource($index, row)"
-                    >{{ row }}</code>
-                  </template>
-                  <template v-else>
-                    <div style="display: flex; gap: 4px; align-items: center;">
-                      <el-input
-                        v-model="editingRuleSourceVal"
-                        size="small"
-                        @keyup.enter="confirmEditRuleSource($index)"
-                        @keyup.esc="cancelEditRuleSource"
-                      />
-                      <el-button size="small" type="primary" @click="confirmEditRuleSource($index)">确定</el-button>
-                      <el-button size="small" @click="cancelEditRuleSource">取消</el-button>
-                    </div>
-                  </template>
+            <el-table :data="ruleSourceEntries" border stripe size="small" style="width: 100%;">
+              <el-table-column label="名称" width="200">
+                <template #default="{ row }">
+                  <code style="font-size: 13px;">{{ row.name }}</code>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="80">
+              <el-table-column label="路径列表" min-width="300">
+                <template #default="{ row }">
+                  <div style="font-size: 12px; line-height: 1.5;">
+                    <div v-for="(p, pi) in row.paths" :key="pi">
+                      <code>{{ p }}</code>
+                    </div>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
                 <template #default="{ $index }">
-                  <el-popconfirm title="确认删除？" @confirm="removeRuleSource($index)">
+                  <el-button size="small" text @click="editRuleSourceEntry($index)">{{ STR.settingsPage.editBtn }}</el-button>
+                  <el-popconfirm title="确认删除？" @confirm="removeRuleSourceEntry($index)">
                     <template #reference>
-                      <el-button size="small" type="danger" text>删除</el-button>
+                      <el-button size="small" type="danger" text>{{ STR.settingsPage.deleteBtn }}</el-button>
                     </template>
                   </el-popconfirm>
                 </template>
               </el-table-column>
-              <template #append>
-                <div style="padding: 4px 0;">
-                  <template v-if="!isAddingRuleSource">
-                    <span
-                      style="cursor: pointer; font-size: 13px; color: #409eff;"
-                      @click="isAddingRuleSource = true"
-                    >➕ 添加来源</span>
-                  </template>
-                  <template v-else>
-                    <div style="display: flex; gap: 4px; align-items: center;">
-                      <el-input
-                        v-model="newRuleSource"
-                        placeholder="添加来源"
-                        size="small"
-                        @keyup.enter="confirmAddRuleSource"
-                        @keyup.esc="cancelAddRuleSource"
-                      />
-                      <el-button size="small" type="primary" @click="confirmAddRuleSource">确定</el-button>
-                      <el-button size="small" @click="cancelAddRuleSource">取消</el-button>
-                    </div>
-                  </template>
-                </div>
-              </template>
             </el-table>
+            <el-button size="small" type="primary" style="margin-top: 8px;" @click="addRuleSourceEntry">
+              ➕ {{ STR.settingsPage.addRuleSource }}
+            </el-button>
           </div>
         </el-form-item>
+
+        <!-- 规则来源编辑对话框 -->
+        <el-dialog v-model="ruleSourceDialogVisible" :title="ruleSourceDialogTitle" width="600px">
+          <el-form>
+            <el-form-item :label="STR.settingsPage.ruleSourceName">
+              <el-input v-model="ruleSourceDialogName" :placeholder="STR.settingsPage.ruleSourceName" />
+            </el-form-item>
+            <el-form-item :label="STR.settingsPage.ruleSourcePaths">
+              <el-input
+                v-model="ruleSourceDialogPaths"
+                type="textarea"
+                :rows="6"
+                :placeholder="STR.settingsPage.ruleSourcePathsPlaceholder"
+              />
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button @click="ruleSourceDialogVisible = false">{{ STR.settingsPage.cancelBtn }}</el-button>
+            <el-button type="primary" @click="confirmRuleSourceDialog">{{ STR.settingsPage.confirmBtn }}</el-button>
+          </template>
+        </el-dialog>
 
         <!-- 保存按钮 -->
         <el-form-item>
@@ -243,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/transport'
 // workspace localStorage no longer used — backend/config API handles persistence
@@ -259,7 +253,6 @@ interface SettingsForm {
   bakignore: string[]
   databases: DbEntry[]
   userConfigPath: string   // read-only, populated from backend source_path
-  ruleSources: string[]
   firstUse: boolean
 }
 
@@ -270,7 +263,6 @@ const form = ref<SettingsForm>({
   bakignore: [],
   databases: [{ key: 'default', value: DEFAULT_DB_PATH }],
   userConfigPath: '',
-  ruleSources: [],
   firstUse: false,
 })
 
@@ -280,13 +272,26 @@ const saving = ref(false)
 const addingBakignore = ref(false)
 const newBakignore = ref('')
 
-// rule source add state
-const newRuleSource = ref('')
+// ── rule sources object state ──
 
-// rule sources inline edit state
-const editingRuleSourceIdx = ref(-1)
-const editingRuleSourceVal = ref('')
-const isAddingRuleSource = ref(false)
+/** rule_sources as {name: {paths: [...]}} */
+const ruleSourcesMap = ref<Record<string, { paths: string[] }>>({})
+
+/** Computed entry list for table display */
+const ruleSourceEntries = computed(() => {
+  return Object.entries(ruleSourcesMap.value).map(([name, entry]) => ({
+    name,
+    paths: entry.paths || [],
+  }))
+})
+
+/** Rule source dialog state */
+const ruleSourceDialogVisible = ref(false)
+const ruleSourceDialogTitle = ref('')
+const ruleSourceDialogIsAdd = ref(true)
+const ruleSourceDialogOrigName = ref('')
+const ruleSourceDialogName = ref('')
+const ruleSourceDialogPaths = ref('')
 
 // bakignore inline edit state
 const editingBakignoreIdx = ref(-1)
@@ -310,7 +315,11 @@ onMounted(async () => {
       if (form.value.databases.length === 0) {
         form.value.databases = [{ key: 'default', value: DEFAULT_DB_PATH }]
       }
-      form.value.ruleSources = (uc.rule_sources as string[]) || []
+      // Load rule_sources as {name: {paths: [...]}}
+      const rs = uc.rule_sources
+      if (rs && typeof rs === 'object' && !Array.isArray(rs)) {
+        ruleSourcesMap.value = rs as Record<string, { paths: string[] }>
+      }
       form.value.userConfigPath = (uc.source_path as string) || ''
       form.value.firstUse = (uc.first_use as boolean) || false
     }
@@ -335,7 +344,7 @@ async function onSaveConfig() {
         baksuffix: form.value.baksuffix,
         bakignore: form.value.bakignore,
         databases,
-        rule_sources: form.value.ruleSources,
+        rule_sources: ruleSourcesMap.value,
       },
     })
     if (result.ok) {
@@ -375,43 +384,64 @@ function removeBakignore(idx: number) {
   form.value.bakignore.splice(idx, 1)
 }
 
-// ── rule sources management ──
+// ── rule sources dialog management ──
 
-function confirmAddRuleSource() {
-  const val = newRuleSource.value.trim()
-  if (val) {
-    form.value.ruleSources.push(val)
+function addRuleSourceEntry() {
+  ruleSourceDialogIsAdd.value = true
+  ruleSourceDialogTitle.value = STR.settingsPage.addRuleSourceDialogTitle
+  ruleSourceDialogOrigName.value = ''
+  ruleSourceDialogName.value = ''
+  ruleSourceDialogPaths.value = ''
+  ruleSourceDialogVisible.value = true
+}
+
+function editRuleSourceEntry(idx: number) {
+  const entry = ruleSourceEntries.value[idx]
+  if (!entry) return
+  ruleSourceDialogIsAdd.value = false
+  ruleSourceDialogTitle.value = STR.settingsPage.editRuleSourceDialogTitle
+  ruleSourceDialogOrigName.value = entry.name
+  ruleSourceDialogName.value = entry.name
+  ruleSourceDialogPaths.value = entry.paths.join('\n')
+  ruleSourceDialogVisible.value = true
+}
+
+function confirmRuleSourceDialog() {
+  const name = ruleSourceDialogName.value.trim()
+  const pathsStr = ruleSourceDialogPaths.value.trim()
+  if (!name) {
+    ElMessage.warning('名称不能为空')
+    return
   }
-  newRuleSource.value = ''
-  isAddingRuleSource.value = false
-}
+  const paths = pathsStr
+    .split('\n')
+    .map((p) => p.trim())
+    .filter(Boolean)
 
-function cancelAddRuleSource() {
-  isAddingRuleSource.value = false
-  newRuleSource.value = ''
-}
-
-// ── rule sources inline edit ──
-
-function startEditRuleSource(idx: number, val: string) {
-  if (editingRuleSourceIdx.value !== -1) cancelEditRuleSource()
-  if (isAddingRuleSource.value) cancelAddRuleSource()
-  editingRuleSourceIdx.value = idx
-  editingRuleSourceVal.value = val
-}
-
-function confirmEditRuleSource(idx: number) {
-  const val = editingRuleSourceVal.value.trim()
-  if (val) {
-    form.value.ruleSources[idx] = val
+  const map = { ...ruleSourcesMap.value }
+  if (ruleSourceDialogIsAdd.value) {
+    if (map[name]) {
+      ElMessage.warning('该名称已存在')
+      return
+    }
+  } else {
+    // Editing — handle rename
+    if (name !== ruleSourceDialogOrigName.value) {
+      delete map[ruleSourceDialogOrigName.value]
+    }
   }
-  editingRuleSourceIdx.value = -1
-  editingRuleSourceVal.value = ''
+  map[name] = { paths }
+  ruleSourcesMap.value = map
+  ruleSourceDialogVisible.value = false
 }
 
-function cancelEditRuleSource() {
-  editingRuleSourceIdx.value = -1
-  editingRuleSourceVal.value = ''
+function removeRuleSourceEntry(idx: number) {
+  const entry = ruleSourceEntries.value[idx]
+  if (entry) {
+    const map = { ...ruleSourcesMap.value }
+    delete map[entry.name]
+    ruleSourcesMap.value = map
+  }
 }
 
 // ── bakignore inline edit ──
@@ -435,10 +465,6 @@ function confirmEditBakignore(idx: number) {
 function cancelEditBakignore() {
   editingBakignoreIdx.value = -1
   editingBakignoreVal.value = ''
-}
-
-function removeRuleSource(idx: number) {
-  form.value.ruleSources.splice(idx, 1)
 }
 
 // ── databases object editor ──

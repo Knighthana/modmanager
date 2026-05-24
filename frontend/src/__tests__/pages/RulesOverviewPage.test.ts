@@ -46,6 +46,14 @@ const elStubs = {
   'el-divider': { template: '<span class="el-divider-stub" />' },
   'el-alert': { template: '<div class="el-alert-stub" :class="`el-alert--${$attrs.type}`">{{ $attrs.title }}</div>' },
   'router-link': { template: '<a class="router-link-stub" :href="$attrs.to"><slot /></a>' },
+  'el-select': {
+    template: '<select class="el-select-stub" :value="$attrs.modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
+    props: ['modelValue'],
+  },
+  'el-option': {
+    template: '<option class="el-option-stub" :value="$attrs.value"><slot /></option>',
+    props: ['value'],
+  },
 }
 
 const mockedApiPost = vi.mocked(apiPost)
@@ -58,24 +66,22 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
 
 // ── Mock data ──────────────────────────────────────────────────────────
 
-const mockConfigResponse: ApiResponse<{
-  rule_sources: string[]
-  databases?: Record<string, unknown>
-}> = {
+const mockListSourcesResponse: ApiResponse<{ source_names: string[] }> = {
   ok: true,
   data: {
-    rule_sources: ['/home/user/kmm_rules/', '/home/user/special.kmmrule.json'],
-    databases: { default: { path: '/fake/db.json' } },
+    source_names: ['default', 'custom'],
   },
   errors: [],
   warnings: [],
 }
 
-const mockScanResponse: ApiResponse<{
+const mockScanBySourceResponse: ApiResponse<{
+  source_name: string
   files: Array<{ name: string; path: string }>
 }> = {
   ok: true,
   data: {
+    source_name: 'default',
     files: [
       { name: 'my_mods.kmmrule.json', path: '/home/user/kmm_rules/my_mods.kmmrule.json' },
       { name: 'extra.kmmrule.json', path: '/home/user/kmm_rules/extra.kmmrule.json' },
@@ -131,11 +137,12 @@ const mockAggregateResponse: ApiResponse<{ rule_count: number }> = {
 
 // Helper: initialize component and check files for saveSelection tests
 async function initializeAndCheckFiles(wrapper: VueWrapper): Promise<void> {
-  // Wait for initial data load (config + scan)
+  // Wait for initial data load (list-sources + auto-select)
   await new Promise(process.nextTick)
   await wrapper.vm.$nextTick()
   await wrapper.vm.$nextTick()
-  
+  await new Promise(process.nextTick)
+
   // Check the files by accessing ruleFiles in component
   const vm = wrapper.vm as any
   if (vm.ruleFiles && Array.isArray(vm.ruleFiles)) {
@@ -143,7 +150,7 @@ async function initializeAndCheckFiles(wrapper: VueWrapper): Promise<void> {
     if (vm.ruleFiles.length > 0) vm.ruleFiles[0].checked = true
     if (vm.ruleFiles.length > 1) vm.ruleFiles[1].checked = true
   }
-  
+
   await wrapper.vm.$nextTick()
 }
 
@@ -174,26 +181,9 @@ describe('RulesOverviewPage', () => {
     expect(wrapper.text()).toContain('正在加载规则来源')
   })
 
-  it('shows loading state for files while scanning', async () => {
-    // Resolve config but not scan
+  it('shows empty state for files when no source is selected', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      return new Promise(() => {}) // hang for scan
-    })
-
-    const wrapper = mount(RulesOverviewPage, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-
-    await new Promise(process.nextTick)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.text()).toContain('正在扫描规则文件')
-  })
-
-  it('shows empty state when no rule files are found', async () => {
-    mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return { ok: true, data: { rule_sources: [], databases: {} }, errors: [], warnings: [] }
+      if (path === '/rules/list-sources') return { ok: true, data: { source_names: [] }, errors: [], warnings: [] }
       return { ok: true, data: { files: [] }, errors: [], warnings: [] }
     })
 
@@ -205,16 +195,38 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.find('.el-empty-stub').exists()).toBe(true)
-    expect(wrapper.text()).toContain('未发现规则文件')
+    // With no sources, the file list should be empty
+    const emptyStubs = wrapper.findAll('.el-empty-stub')
+    expect(emptyStubs.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows loading state for files while scanning', async () => {
+    // Resolve list-sources but not scan-by-source
+    mockedApiPost.mockImplementation(async (path: string) => {
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      return new Promise(() => {}) // hang for scan
+    })
+
+    const wrapper = mount(RulesOverviewPage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+
+    await new Promise(process.nextTick)
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    // selectedSource should be auto-set to 'default', triggering scan
+    // Since scan hangs, loadingFiles should be true
+    const vm = vmAny(wrapper)
+    expect((vm as any).loadingFiles).toBe(true)
   })
 
   // ── Happy path: load and display ─────────────────────────────────────
 
-  it('loads rule sources on mount and displays them', async () => {
+  it('loads source names on mount and auto-selects first source', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       return { ok: true, data: null, errors: [], warnings: [] }
     })
 
@@ -225,15 +237,17 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
-    expect(wrapper.text()).toContain('/home/user/kmm_rules/')
-    expect(wrapper.text()).toContain('/home/user/special.kmmrule.json')
+    const vm = vmAny(wrapper) as any
+    expect(vm.sourceNames).toEqual(['default', 'custom'])
+    expect(vm.selectedSource).toBe('default')
   })
 
-  it('loads rule files on mount and displays file names', async () => {
+  it('loads rule files when source is selected', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       return { ok: true, data: null, errors: [], warnings: [] }
     })
 
@@ -244,35 +258,23 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
-
-    expect(wrapper.text()).toContain('my_mods.kmmrule.json')
-    expect(wrapper.text()).toContain('extra.kmmrule.json')
-    expect(wrapper.text()).toContain('unused.kmmrule.json')
-  })
-
-  it('loads rule files on mount and displays file names', async () => {
-    mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      return mockScanResponse
-    })
-
-    const wrapper = mount(RulesOverviewPage, {
-      global: { plugins: [router], stubs: elStubs },
-    })
-
     await new Promise(process.nextTick)
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('my_mods.kmmrule.json')
-    expect(wrapper.text()).toContain('extra.kmmrule.json')
-    expect(wrapper.text()).toContain('unused.kmmrule.json')
+    // Files should be loaded from scan-by-source
+    const vm = vmAny(wrapper) as any
+    const files = vm.ruleFiles as Array<{ name: string }>
+    expect(files.length).toBeGreaterThanOrEqual(3)
+    const fileNames = files.map((f: { name: string }) => f.name)
+    expect(fileNames).toContain('my_mods.kmmrule.json')
+    expect(fileNames).toContain('extra.kmmrule.json')
+    expect(fileNames).toContain('unused.kmmrule.json')
   })
 
-  it('displays rule source hint and settings link', async () => {
+  it('displays source hint and settings link', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
+      return { ok: true, data: null, errors: [], warnings: [] }
     })
 
     const wrapper = mount(RulesOverviewPage, {
@@ -292,8 +294,8 @@ describe('RulesOverviewPage', () => {
 
   it('expanding a file loads its detail via /rules/read', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') return mockReadResponse
       return { ok: true, data: null, errors: [], warnings: [] }
     })
@@ -305,6 +307,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     // Find the first expand button and click it
     const expandButtons = wrapper.findAll('.el-btn-stub')
@@ -322,8 +325,8 @@ describe('RulesOverviewPage', () => {
 
   it('expanded detail shows rule_meta_tag info', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') return mockReadResponse
       return { ok: true, data: null, errors: [], warnings: [] }
     })
@@ -335,6 +338,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     // Expand first file
     const expandButtons = wrapper.findAll('.el-btn-stub')
@@ -354,8 +358,8 @@ describe('RulesOverviewPage', () => {
 
   it('expanded detail shows game coverage', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') return mockReadResponse
       if (path === '/database/read') {
         return {
@@ -380,6 +384,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
     const expandBtn = expandButtons.find(b => b.text().includes('展开'))
@@ -395,8 +400,8 @@ describe('RulesOverviewPage', () => {
 
   it('expanded detail shows mod entries with preview and readme', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') return mockReadResponse
       return { ok: true, data: null, errors: [], warnings: [] }
     })
@@ -408,6 +413,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
     const expandBtn = expandButtons.find(b => b.text().includes('展开'))
@@ -425,8 +431,8 @@ describe('RulesOverviewPage', () => {
 
   it('clicking expand again collapses the detail', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') return mockReadResponse
       return { ok: true, data: null, errors: [], warnings: [] }
     })
@@ -438,6 +444,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
     const expandBtn = expandButtons.find(b => b.text().includes('展开'))
@@ -454,9 +461,7 @@ describe('RulesOverviewPage', () => {
     await expandBtn!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    // The text should still be in DOM if the detail was cached, but the detail section
-    // should be hidden. Actually with v-if, it should be gone from DOM.
-    // Let's check: the button text changes from "展开 ▾" to "收起 ▲" and back
+    // The button text changes from "展开 ▾" to "收起 ▲" and back
     const expandBtnAgain = expandButtons.find(b => b.text().includes('展开'))
     expect(expandBtnAgain).toBeTruthy()
     expect(expandBtnAgain!.text()).toContain('展开')
@@ -466,8 +471,8 @@ describe('RulesOverviewPage', () => {
 
   it('shows error when /rules/read fails', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') {
         return { ok: false, data: null, errors: ['File not found'], warnings: [] }
       }
@@ -481,6 +486,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     // Expand first file
     const expandButtons = wrapper.findAll('.el-btn-stub')
@@ -498,8 +504,9 @@ describe('RulesOverviewPage', () => {
 
   it('save button is disabled when no files are selected', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
+      return { ok: true, data: null, errors: [], warnings: [] }
     })
 
     const wrapper = mount(RulesOverviewPage, {
@@ -509,6 +516,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     // Get the vm and uncheck all
     const vm = vmAny(wrapper)
@@ -516,11 +524,7 @@ describe('RulesOverviewPage', () => {
     files.forEach((f) => { f.checked = false })
     await wrapper.vm.$nextTick()
 
-    // Find the primary button — it should be disabled
-    const primaryBtns = wrapper.findAll('.el-btn-stub')
-    // The save button should have disabled attribute
-    const saveBtn = wrapper.find('.el-btn-stub')
-    // Actually let's just check selectedCount = 0
+    // selectedCount should be 0
     const selectedCount = (vm as { selectedCount: number }).selectedCount
     expect(selectedCount).toBe(0)
   })
@@ -528,12 +532,12 @@ describe('RulesOverviewPage', () => {
 
   // ── Config discover failure ──────────────────────────────────────────
 
-  it('handles config discover failure gracefully', async () => {
+  it('handles list-sources failure gracefully', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') {
-        return { ok: false, data: null, errors: ['Config load failed'], warnings: [] }
+      if (path === '/rules/list-sources') {
+        return { ok: false, data: null, errors: ['Failed to list sources'], warnings: [] }
       }
-      return mockScanResponse
+      return { ok: true, data: null, errors: [], warnings: [] }
     })
 
     const wrapper = mount(RulesOverviewPage, {
@@ -545,16 +549,17 @@ describe('RulesOverviewPage', () => {
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
 
-    // Should show some error state — sources section won't have paths
-    // but the page should not crash
+    // Should show source select with empty options — should not crash
+    const vm = vmAny(wrapper) as any
+    expect(vm.sourceNames).toEqual([])
   })
 
   // ── Game name mapping ────────────────────────────────────────────────
 
   it('displays human-readable game names using mapping', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      if (path === '/rules/scan') return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
       if (path === '/rules/read') return mockReadResponse
       if (path === '/database/read') {
         return {
@@ -579,6 +584,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     const expandButtons = wrapper.findAll('.el-btn-stub')
     const expandBtn = expandButtons.find(b => b.text().includes('展开'))
@@ -597,8 +603,9 @@ describe('RulesOverviewPage', () => {
 
   it('all rule files are checked by default', async () => {
     mockedApiPost.mockImplementation(async (path: string) => {
-      if (path === '/config/discover') return mockConfigResponse
-      return mockScanResponse
+      if (path === '/rules/list-sources') return mockListSourcesResponse
+      if (path === '/rules/scan-by-source') return mockScanBySourceResponse
+      return { ok: true, data: null, errors: [], warnings: [] }
     })
 
     const wrapper = mount(RulesOverviewPage, {
@@ -608,6 +615,7 @@ describe('RulesOverviewPage', () => {
     await new Promise(process.nextTick)
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
+    await new Promise(process.nextTick)
 
     const vm = vmAny(wrapper)
     const files = (vm as { ruleFiles: Array<{ checked: boolean }> }).ruleFiles

@@ -46,6 +46,7 @@ const elStubs = {
   'el-popconfirm': { template: '<div class="el-popconfirm-stub"><slot name="reference" /></div>' },
   'el-table': { template: '<div class="el-table-stub"><slot /><slot name="append" /></div>' },
   'el-table-column': { template: '<div class="el-table-column-stub"><slot :row="{}" :index="0" /></div>', props: ['prop', 'label', 'width'] },
+  'el-dialog': { template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>' },
 }
 
 const mockedApiPost = vi.mocked(apiPost)
@@ -55,14 +56,16 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
   return wrapper.vm as unknown as Record<string, unknown>
 }
 
-// Mock config data matching the API response
+// Mock config data matching the API response — rule_sources as name→paths object
 const mockConfigData = {
   baksuffix: 'mybackup',
   bakignore: ['*.log', 'node_modules/'],
   databases: {
     'default': { path: '/custom/path/database.json' },
   },
-  rule_sources: ['/home/user/rules/', '/home/user/custom.kmmrule.json'],
+  rule_sources: {
+    default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
+  },
   source_path: '/home/user/.config/kmm/user_config.json',
   first_use: false,
 }
@@ -103,7 +106,11 @@ describe('SettingsPage', () => {
     expect(form.bakignore).toEqual(['*.log', 'node_modules/'])
     // Verify databases loaded correctly
     expect((form.databases as any)[0]?.key).toBe('default')
-    expect(form.ruleSources).toEqual(['/home/user/rules/', '/home/user/custom.kmmrule.json'])
+    // Verify rule_sources loaded as name→paths object
+    const ruleSourcesMap = vm.ruleSourcesMap as Record<string, { paths: string[] }>
+    expect(ruleSourcesMap).toEqual({
+      default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
+    })
     // Verify apiPost was called with the discover endpoint
     expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', {})
   })
@@ -128,7 +135,8 @@ describe('SettingsPage', () => {
 
     form.bakignore = ['*.tmp']
     form.databases = [{ key: 'default', value: '/test/db.json' }]
-    form.ruleSources = ['/test/rules/']
+    // Set rule_sources as object
+    ;(vm as any).ruleSourcesMap = { default: { paths: ['/test/rules/'] } }
 
     // Call save
     await (vm.onSaveConfig as () => Promise<void>)()
@@ -139,7 +147,7 @@ describe('SettingsPage', () => {
         baksuffix: 'testsuffix',
         bakignore: ['*.tmp'],
         databases: { 'default': { path: '/test/db.json' } },
-        rule_sources: ['/test/rules/'],
+        rule_sources: { default: { paths: ['/test/rules/'] } },
       },
     })
   })
@@ -184,37 +192,82 @@ describe('SettingsPage', () => {
     expect(form.bakignore).toEqual(['a', 'c'])
   })
 
-  it('confirmAddRuleSource adds an item to ruleSources list', async () => {
+  it('addRuleSourceEntry opens the dialog and confirmRuleSourceDialog adds a new entry', async () => {
     mockedApiPost.mockResolvedValue({ ok: true, data: null, errors: [], warnings: [] })
 
     const wrapper = mount(SettingsPage, {
       global: { plugins: [router], stubs: elStubs },
     })
 
-    const vm = vmAny(wrapper)
-    const form = vm.form as Record<string, unknown>
+    const vm = vmAny(wrapper) as any
+    // Start with empty map
+    vm.ruleSourcesMap = {}
 
-    form.ruleSources = ['/existing/']
-    vm.newRuleSource = '/new/rule/'
-    await (vm.confirmAddRuleSource as () => void)()
+    // Open add dialog
+    vm.addRuleSourceEntry()
+    expect(vm.ruleSourceDialogVisible).toBe(true)
+    expect(vm.ruleSourceDialogIsAdd).toBe(true)
 
-    expect(form.ruleSources).toEqual(['/existing/', '/new/rule/'])
+    // Fill in dialog fields
+    vm.ruleSourceDialogName = 'custom'
+    vm.ruleSourceDialogPaths = '/path/to/rules/\n/path/to/file.kmmrule.json'
+
+    // Confirm
+    vm.confirmRuleSourceDialog()
+
+    const map = vm.ruleSourcesMap as Record<string, { paths: string[] }>
+    expect(map).toHaveProperty('custom')
+    expect(map.custom.paths).toEqual(['/path/to/rules/', '/path/to/file.kmmrule.json'])
+    expect(vm.ruleSourceDialogVisible).toBe(false)
   })
 
-  it('removeRuleSource removes an item from ruleSources list', async () => {
+  it('editRuleSourceEntry opens dialog with existing data', async () => {
     mockedApiPost.mockResolvedValue({ ok: true, data: null, errors: [], warnings: [] })
 
     const wrapper = mount(SettingsPage, {
       global: { plugins: [router], stubs: elStubs },
     })
 
-    const vm = vmAny(wrapper)
-    const form = vm.form as Record<string, unknown>
+    const vm = vmAny(wrapper) as any
+    vm.ruleSourcesMap = {
+      default: { paths: ['/home/rules/', '/home/extra.kmmrule.json'] },
+    }
 
-    form.ruleSources = ['/a/', '/b/', '/c/']
-    await (vm.removeRuleSource as (idx: number) => void)(0)
+    // Trigger computed update
+    await wrapper.vm.$nextTick()
 
-    expect(form.ruleSources).toEqual(['/b/', '/c/'])
+    // Edit entry at index 0
+    vm.editRuleSourceEntry(0)
+    expect(vm.ruleSourceDialogVisible).toBe(true)
+    expect(vm.ruleSourceDialogIsAdd).toBe(false)
+    expect(vm.ruleSourceDialogName).toBe('default')
+    expect(vm.ruleSourceDialogPaths).toBe('/home/rules/\n/home/extra.kmmrule.json')
+  })
+
+  it('removeRuleSourceEntry removes an entry from ruleSourcesMap', async () => {
+    mockedApiPost.mockResolvedValue({ ok: true, data: null, errors: [], warnings: [] })
+
+    const wrapper = mount(SettingsPage, {
+      global: { plugins: [router], stubs: elStubs },
+    })
+
+    const vm = vmAny(wrapper) as any
+    vm.ruleSourcesMap = {
+      a: { paths: ['/a/'] },
+      b: { paths: ['/b/'] },
+      c: { paths: ['/c/'] },
+    }
+
+    // Trigger computed update
+    await wrapper.vm.$nextTick()
+
+    // Remove entry at index 0 ('a')
+    vm.removeRuleSourceEntry(0)
+
+    expect(vm.ruleSourcesMap).toEqual({
+      b: { paths: ['/b/'] },
+      c: { paths: ['/c/'] },
+    })
   })
 
   // syncWorkspaceDatabases test removed — workspace localStorage no longer used

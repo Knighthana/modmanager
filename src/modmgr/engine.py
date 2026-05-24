@@ -135,15 +135,14 @@ def _target_for(
     dest_root: str,
     into_expr: str,
     source_file: str,
-    nwname: str | None = None,
+    target_rel: str | None = None,
     *,
-    from_type: str = "file",
     into_type: str = "dir",
 ) -> str:
     dest = Path(dest_root) / normalize_posix(into_expr)
     if into_type == "file":
         return str(dest)
-    name = nwname if nwname else Path(source_file).name
+    name = target_rel if target_rel else Path(source_file).name
     return str(dest / name)
 
 
@@ -437,7 +436,6 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                             into_target,
                             source.source_path,
                             source.target_rel,
-                            from_type="file",
                             into_type=into_type,
                         )
                     )

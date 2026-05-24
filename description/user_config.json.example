@@ -1,28 +1,40 @@
 {
-  "schema_namespace": "KMM_UserConfig",
-  "schema_version": "knighthana@0.1.0",
-  "file_example_URL": "?",
-  "comment": {
-    "string1": "这是一个示例文件"
-  },
-  "path_alias":[
-    {
-      "description": "myalias",
-      "path_handle": "rule_base_path_1",
-      "path_target": "/home/knighthana/workspace/modmanager/"
+    "schema_namespace": "KMM_UserConfig",
+    "schema_version": "knighthana@0.1.0",
+    "comment": {
+        "string1": "这是一个示例文件。所有字段均为 userconfig_init 创建的默认值或示例值。"
+    },
+    "baksuffix": "kmmbackup",
+    "ignore": [
+        "*.tmp",
+        "__pycache__/"
+    ],
+    "bakignore": [
+        "kmmbackup"
+    ],
+    "rule_sources": {
+        "default": {
+            "paths": [
+                "~/workspace/modmanager/description/"
+            ]
+        },
+        "example": {
+            "paths": [
+                "~/workspace/modmanager/description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example"
+            ]
+        }
+    },
+    "path_alias": [
+        {
+            "description": "myalias",
+            "path_handle": "rule_base_path_1",
+            "path_target": "/home/knighthana/workspace/modmanager/"
+        }
+    ],
+    "workspace_dir": "~/.cache/kmm/workspace/",
+    "databases": {
+        "default": {
+            "path": "/home/knighthana/.local/share/kmm/database.json"
+        }
     }
-  ],
-  "baksuffix": "kmmbackup",
-  "ignore": [
-    "*.tmp",
-    "__pycache__/"
-  ],
-  "databases": {
-    "default": {
-      "path": "/home/knighthana/.local/share/kmm/database.json"
-    }
-  },
-  "rule_sources": [
-    "~/workspace/modmanager/description/kmm_rule_RWR-khn_CT-castears-z2414_Replace.json.example"
-  ]
 }

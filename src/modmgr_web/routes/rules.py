@@ -20,7 +20,9 @@ from modmgr.path_resolver import expand_path, resolve_directory_path, resolve_fi
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import (
     RulesAffectedEntriesRequest,
+    RulesListSourcesRequest,
     RulesReadRequest,
+    RulesScanBySourceRequest,
     RulesScanRequest,
 )
 
@@ -286,6 +288,99 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
         },
         "errors": [],
         "warnings": [],
+    }
+
+
+@router.post("/list-sources")
+async def rules_list_sources(req: RulesListSourcesRequest):
+    """List available rule source names from user_config.
+
+    Returns source_names array — the keys of user_config.rule_sources.
+    """
+    config, _ = discover_user_config()
+    rule_sources = config.get("rule_sources", {})
+    if not isinstance(rule_sources, dict):
+        rule_sources = {}
+    source_names = sorted(rule_sources.keys())  # sorted for stable order
+    return adapt_dict_result({"source_names": source_names})
+
+
+@router.post("/scan-by-source")
+async def rules_scan_by_source(req: RulesScanBySourceRequest):
+    """Scan rule files for a named source.
+
+    Reads rule_sources[name].paths from user_config, expands paths,
+    scans directories for *.kmmrule.json files, collects direct file refs,
+    deduplicates by path, and returns file list.
+
+    Warnings are returned for paths that don't exist.
+    """
+    config, _ = discover_user_config()
+    rule_sources = config.get("rule_sources", {})
+
+    if not isinstance(rule_sources, dict) or req.source_name not in rule_sources:
+        return adapt_error(f"E_SOURCE_NOT_FOUND: '{req.source_name}'")
+
+    source = rule_sources[req.source_name]
+    paths = source.get("paths", []) if isinstance(source, dict) else []
+
+    files: list[dict] = []
+    warnings: list[str] = []
+    seen: set[str] = set()
+
+    for raw_path in paths:
+        try:
+            expanded = expand_path(raw_path)
+        except Exception:
+            warnings.append(f"W_PATH_NOT_FOUND: failed to expand '{raw_path}'")
+            continue
+
+        p = Path(expanded)
+
+        if expanded.endswith(".kmmrule.json"):
+            # Direct file reference
+            if p.is_file():
+                key = str(p.resolve())
+                if key not in seen:
+                    seen.add(key)
+                    st = p.stat()
+                    files.append({
+                        "name": p.name,
+                        "path": str(p),
+                        "size": st.st_size,
+                    })
+            else:
+                warnings.append(f"W_PATH_NOT_FOUND: file not found: {expanded}")
+        elif expanded.endswith("/"):
+            # Directory scan
+            if p.is_dir():
+                try:
+                    for entry in sorted(p.iterdir()):
+                        if entry.name.endswith(".kmmrule.json") and entry.is_file():
+                            key = str(entry.resolve())
+                            if key not in seen:
+                                seen.add(key)
+                                st = entry.stat()
+                                files.append({
+                                    "name": entry.name,
+                                    "path": str(entry),
+                                    "size": st.st_size,
+                                })
+                except PermissionError:
+                    warnings.append(f"W_PATH_NOT_FOUND: permission denied: {expanded}")
+                except OSError as exc:
+                    warnings.append(f"W_PATH_NOT_FOUND: cannot list: {expanded}: {exc}")
+            else:
+                warnings.append(f"W_PATH_NOT_FOUND: directory not found: {expanded}")
+
+    return {
+        "ok": True,
+        "data": {
+            "source_name": req.source_name,
+            "files": files,
+        },
+        "errors": [],
+        "warnings": warnings,
     }
 
 

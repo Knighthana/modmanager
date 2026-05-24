@@ -9,13 +9,16 @@
       </template>
       <div v-if="loadingSources" class="loading-text">正在加载规则来源...</div>
       <template v-else>
-        <div class="sources-list">
-          <div v-for="src in ruleSources" :key="src" class="source-item">
-            <el-button size="small" text @click="viewSourceFile(src)">
-              <el-icon><FolderOpened /></el-icon>
-            </el-button>
-            <code class="source-path-code">{{ src }}</code>
-          </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <span style="font-size: 13px; color: #606266; white-space: nowrap;">选择来源：</span>
+          <el-select v-model="selectedSource" placeholder="请选择规则来源" style="width: 300px;">
+            <el-option
+              v-for="name in sourceNames"
+              :key="name"
+              :label="name"
+              :value="name"
+            />
+          </el-select>
         </div>
         <div class="source-hint">
           <span class="hint-text">规则来源来自 user_config，可在设置页中管理。</span>
@@ -167,27 +170,14 @@
       </transition>
     </div>
 
-    <!-- 查看源文件对话框 -->
-    <el-dialog v-model="sourceDialogVisible" title="源文件内容" width="70%" top="5vh">
-      <div v-if="sourceLoading" style="text-align:center;padding:40px;">加载中...</div>
-      <div v-else-if="sourceError" style="color:red;">{{ sourceError }}</div>
-      <el-input
-        v-else
-        v-model="sourceContent"
-        type="textarea"
-        :rows="25"
-        readonly
-        style="font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px;"
-      />
-    </el-dialog>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { FolderOpened } from '@element-plus/icons-vue'
 import { apiPost, apiGet } from '../api/transport'
 import { useAppStore } from '../stores/app'
 import { useForestStore } from '../stores/forest'
@@ -286,16 +276,13 @@ function showAuthorDetail(authors: Author[]) {
 
 // ── Reactive state ─────────────────────────────────────────────────────
 
-const ruleSources = ref<string[]>([])
+const sourceNames = ref<string[]>([])
+const selectedSource = ref('')
 const ruleFiles = ref<RuleFileItem[]>([])
 const loadingSources = ref(true)
-const loadingFiles = ref(true)
+const loadingFiles = ref(false)
 const saving = ref(false)
 const savedCount = ref<number | null>(null)
-const sourceDialogVisible = ref(false)
-const sourceContent = ref('')
-const sourceLoading = ref(false)
-const sourceError = ref('')
 
 const selectedCount = computed(() => ruleFiles.value.filter((f) => f.checked).length)
 
@@ -306,23 +293,20 @@ onMounted(async () => {
   if (workspaceId) {
     appStore.setCurrentWorkspaceId(workspaceId)
   }
-  await loadRuleSources()
-  await scanRuleFiles()
+  await loadSourceNames()
   loadGameNames()
-  await preloadDetails()
   await autoRestoreAggregated()
 })
 
-async function loadRuleSources() {
+async function loadSourceNames() {
   loadingSources.value = true
   try {
-    const resp = await apiPost<Record<string, unknown>>(
-      '/config/discover',
-      {},
-    )
+    const resp = await apiPost<{ source_names: string[] }>('/rules/list-sources', {})
     if (resp.ok && resp.data) {
-      const uc = resp.data as Record<string, unknown>
-      ruleSources.value = (uc.rule_sources as string[]) || []
+      sourceNames.value = resp.data.source_names || []
+      if (sourceNames.value.length > 0 && !selectedSource.value) {
+        selectedSource.value = sourceNames.value[0]
+      }
     }
   } catch {
     // Silently handle — page shows empty sources with hint to go to settings
@@ -331,53 +315,37 @@ async function loadRuleSources() {
   }
 }
 
-async function scanRuleFiles() {
+// Watch source selection → auto-scan files
+watch(selectedSource, async (name) => {
+  if (!name) {
+    ruleFiles.value = []
+    return
+  }
   loadingFiles.value = true
-  const allFiles: Array<{ name: string; path: string }> = []
-
   try {
-    for (const source of ruleSources.value) {
-      if (source.endsWith('/')) {
-        // Directory — scan for .kmmrule.json files
-        try {
-          const resp = await apiPost<{ files: Array<{ name: string; path: string }> }>(
-            '/rules/scan',
-            { dir: source },
-          )
-          if (resp.ok && resp.data?.files) {
-            allFiles.push(...resp.data.files)
-          }
-        } catch {
-          // Skip directories that fail to scan
-        }
-      } else {
-        // Individual file — add directly (any extension, e.g. .kmmrule.json, .json.example)
-        const name = source.split('/').pop() || source
-        allFiles.push({ name, path: source })
-      }
+    const resp = await apiPost<{ files: Array<{ name: string; path: string }> }>(
+      '/rules/scan-by-source',
+      { source_name: name },
+    )
+    if (resp.ok && resp.data?.files) {
+      ruleFiles.value = resp.data.files.map((f) => ({
+        name: f.name,
+        path: f.path,
+        checked: true,
+        expanded: false,
+        loading: false,
+        error: '',
+        detail: null,
+      }))
+      // Auto-restore aggregated if available
+      await autoRestoreAggregated()
     }
   } catch {
     // Silently handle
+  } finally {
+    loadingFiles.value = false
   }
-
-  ruleFiles.value = allFiles.map((f) => ({
-    name: f.name,
-    path: f.path,
-    checked: true,
-    expanded: false,
-    loading: false,
-    error: '',
-    detail: null,
-  }))
-
-  loadingFiles.value = false
-}
-
-// ── Preload ────────────────────────────────────────────────────────────
-
-async function preloadDetails() {
-  await Promise.all(ruleFiles.value.map(f => loadFileDetail(f)))
-}
+})
 
 async function loadFileDetail(file: RuleFileItem): Promise<void> {
   if (file.detail || file.loading) return
@@ -482,31 +450,6 @@ async function saveSelection() {
   }
 }
 
-// ── Source file viewer ────────────────────────────────────────────────
-
-async function viewSourceFile(path: string) {
-  sourceDialogVisible.value = true
-  sourceLoading.value = true
-  sourceError.value = ''
-  sourceContent.value = ''
-  try {
-    const resp = await apiPost<{ content: string }>('/rules/read', { path })
-    if (resp.ok && resp.data?.content) {
-      try {
-        sourceContent.value = JSON.stringify(JSON.parse(resp.data.content), null, 2)
-      } catch {
-        sourceContent.value = resp.data.content
-      }
-    } else {
-      sourceError.value = resp.errors?.join('; ') || '无法读取文件'
-    }
-  } catch {
-    sourceError.value = '网络错误：无法读取文件'
-  } finally {
-    sourceLoading.value = false
-  }
-}
-
 // ── Helpers ────────────────────────────────────────────────────────────
 
 function formatAuthors(authors: Author[]): string {
@@ -552,34 +495,6 @@ function describeErrors(errors: string[] | undefined): string | null {
   font-size: 13px;
 }
 
-/* ── Sources section ─────────────────────────────── */
-
-.sources-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.source-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  color: #303133;
-}
-
-.source-path-code {
-  font-size: 13px;
-  color: #303133;
-  background: #f5f7fa;
-  padding: 2px 10px;
-  border-radius: 4px;
-  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
-
 .source-hint {
   display: flex;
   align-items: center;
@@ -589,10 +504,6 @@ function describeErrors(errors: string[] | undefined): string | null {
 
 .hint-text {
   color: #909399;
-}
-
-.settings-link {
-  font-size: 13px;
 }
 
 /* ── Rule file list ─────────────────────────────── */

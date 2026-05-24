@@ -173,6 +173,16 @@ export const STR = {
     title: '⚙️ 设置面板',
     saveBtn: '保存设置',
     databaseJsonAdvanced: 'Database JSON（高级）',
+    addRuleSource: '添加来源',
+    addRuleSourceDialogTitle: '添加规则来源',
+    editRuleSourceDialogTitle: '编辑规则来源',
+    ruleSourceName: '名称',
+    ruleSourcePaths: '路径列表（每行一个）',
+    ruleSourcePathsPlaceholder: '/path/to/rules/\n/path/to/file.kmmrule.json',
+    editBtn: '编辑',
+    deleteBtn: '删除',
+    cancelBtn: '取消',
+    confirmBtn: '确定',
   },
 
   // ── LayoutShell ───────────────────────────────────────────────────────

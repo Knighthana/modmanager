@@ -238,7 +238,7 @@ def _process_file(
             }
 
             # Conditionally copy optional fields from original item
-            for field in ("from", "from_type", "into", "into_type", "nwname"):
+            for field in ("from", "from_type", "into", "into_type"):
                 if field in action_item:
                     processed_action[field] = action_item[field]
 
