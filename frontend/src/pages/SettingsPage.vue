@@ -146,10 +146,13 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="配置文件路径">
+        <el-form-item label="用户配置文件索引">
           <div style="display: flex; gap: 8px; width: 100%;">
-            <el-input v-model="configIndex" placeholder="/home/user/.config/kmm/user_config.json" style="flex: 1;" />
-            <el-button size="small" type="primary" @click="connectConfig">连接</el-button>
+            <el-select v-model="configIndex.type" style="width: 80px;" disabled>
+              <el-option label="path" value="path" />
+            </el-select>
+            <el-input v-model="configIndex.string" placeholder="/home/user/.config/kmm/user_config.json" style="flex: 1;" />
+            <el-button size="small" type="primary" @click="connectConfig">🔗 连接</el-button>
           </div>
         </el-form-item>
 
@@ -228,7 +231,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { apiPost } from '../api/transport'
+import { apiPost, apiGet } from '../api/transport'
 // workspace localStorage no longer used — backend/config API handles persistence
 import { STR } from '../locales/zh-CN'
 
@@ -245,9 +248,20 @@ interface SettingsForm {
 
 const DEFAULT_DB_PATH = '~/.local/share/kmm/database.json'
 
-// config_index — user-provided, persisted in sessionStorage
+// config_index — index object (e.g. {"type": "path", "string": "/path/to/config"}), persisted in sessionStorage
 const CONFIG_INDEX_KEY = 'modmanager:configIndex'
-const configIndex = ref(sessionStorage.getItem(CONFIG_INDEX_KEY) || '')
+
+function loadConfigIndex(): Record<string, string> | null {
+  const raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
+function saveConfigIndex(val: Record<string, string>) {
+  sessionStorage.setItem(CONFIG_INDEX_KEY, JSON.stringify(val))
+}
+
+const configIndex = ref<Record<string, string>>(loadConfigIndex() || { type: 'path', string: '' })
 
 const form = ref<SettingsForm>({
   baksuffix: 'kmmbackup',
@@ -287,7 +301,23 @@ const editingBakignoreIdx = ref(-1)
 const editingBakignoreVal = ref('')
 
 onMounted(async () => {
-  if (!configIndex.value) return  // user hasn't set a path yet
+  // If no saved config_index, fetch platform default
+  if (!configIndex.value.string) {
+    try {
+      const resp = await apiGet<Record<string, unknown>>('/os/defaults')
+      if (resp.ok && resp.data) {
+        const data = resp.data as Record<string, unknown>
+        const idx = data.userconfig_index as Record<string, string>
+        if (idx && idx.string) {
+          configIndex.value = idx
+          saveConfigIndex(idx)
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Proceed with existing discover logic if we have a path
+  if (!configIndex.value.string) return
   try {
     const result = await apiPost<Record<string, unknown>>('/config/discover', {
       config_index: configIndex.value,
@@ -296,7 +326,7 @@ onMounted(async () => {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
 
-      sessionStorage.setItem(CONFIG_INDEX_KEY, configIndex.value)
+      saveConfigIndex(configIndex.value)
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
 
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
@@ -324,10 +354,11 @@ onMounted(async () => {
 })
 
 async function connectConfig() {
-  if (!configIndex.value) {
-    ElMessage.warning('请先输入配置文件路径')
+  if (!configIndex.value.string) {
+    ElMessage.warning('请先输入配置文件索引')
     return
   }
+  saveConfigIndex(configIndex.value)
   try {
     const result = await apiPost<Record<string, unknown>>('/config/discover', {
       config_index: configIndex.value,
@@ -335,7 +366,6 @@ async function connectConfig() {
     if (result.ok && result.data) {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
-      sessionStorage.setItem(CONFIG_INDEX_KEY, configIndex.value)
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
       form.value.bakignore = (uc.bakignore as string[]) || []
       const dbs = uc.databases as Record<string, { path: string }> | undefined

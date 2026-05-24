@@ -15,6 +15,13 @@ from ..schemas import DiscoverUserConfigRequest, SaveConfigRequest
 router = APIRouter()
 
 
+def _resolve_config_index(ci: dict[str, Any]) -> str:
+    """Extract the file path from a config_index index object."""
+    if isinstance(ci, dict):
+        return ci.get("string", "")
+    return ci
+
+
 @router.post("/discover")
 async def discover_config(req: DiscoverUserConfigRequest):
     """Discover user_config.json and return it together with the file path.
@@ -22,7 +29,8 @@ async def discover_config(req: DiscoverUserConfigRequest):
     Returns an ``ApiResponse`` with ``{"config": ..., "config_index": ...}``.
     """
     try:
-        config, config_index = discover_user_config(config_index=req.config_index)
+        ci_path = _resolve_config_index(req.config_index)
+        config, config_index = discover_user_config(config_index=ci_path)
         return adapt_dict_result({"config": config, "config_index": config_index})
     except (ValueError, FileNotFoundError) as exc:
         return adapt_error(str(exc))
@@ -58,8 +66,9 @@ async def save_config(req: SaveConfigRequest):
     ``userconfig_save()``.
     """
     try:
+        ci_path = _resolve_config_index(req.config_index)
         normalized_config = _normalize_rule_sources(req.config)
-        userconfig_save(req.config_index, normalized_config)
+        userconfig_save(ci_path, normalized_config)
         return adapt_dict_result({"saved": req.config_index})
     except Exception as exc:
         return adapt_error(str(exc))

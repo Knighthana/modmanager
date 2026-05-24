@@ -28,14 +28,14 @@ class ApiResponse(BaseModel):
 class DiscoverUserConfigRequest(BaseModel):
     """Request body for ``POST /api/config/discover``."""
 
-    config_index: str
+    config_index: dict[str, Any]
 
 
 class SaveConfigRequest(BaseModel):
     """Request body for ``POST /api/config/save``."""
 
     config: dict[str, Any]
-    config_index: str
+    config_index: dict[str, Any]
 
 
 # ── Database endpoints ────────────────────────────────────────────────────

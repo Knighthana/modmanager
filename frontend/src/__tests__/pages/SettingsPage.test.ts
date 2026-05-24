@@ -5,6 +5,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Mock the API client
 vi.mock('../../api/client', () => ({
   apiPost: vi.fn(),
+  apiGet: vi.fn(),
 }))
 
 vi.mock('../../utils/persistence', () => ({
@@ -24,7 +25,7 @@ vi.mock('../../utils/persistence', () => ({
 }))
 
 import SettingsPage from '../../pages/SettingsPage.vue'
-import { apiPost } from '../../api/client'
+import { apiPost, apiGet } from '../../api/client'
 import type { ApiResponse } from '../../api/client'
 
 const router = createRouter({
@@ -47,9 +48,12 @@ const elStubs = {
   'el-table': { template: '<div class="el-table-stub"><slot /><slot name="append" /></div>' },
   'el-table-column': { template: '<div class="el-table-column-stub"><slot :row="{}" :index="0" /></div>', props: ['prop', 'label', 'width'] },
   'el-dialog': { template: '<div class="el-dialog-stub"><slot /><slot name="footer" /></div>' },
+  'el-select': { template: '<div class="el-select-stub"><slot /></div>' },
+  'el-option': { template: '<div class="el-option-stub" />' },
 }
 
 const mockedApiPost = vi.mocked(apiPost)
+const mockedApiGet = vi.mocked(apiGet)
 
 // Helper to get vm as any for accessing internal component state
 function vmAny(wrapper: VueWrapper): Record<string, unknown> {
@@ -75,7 +79,13 @@ const mockConfigData = {
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    sessionStorage.setItem('modmanager:configIndex', '/test/config.json')
+    mockedApiGet.mockResolvedValue({
+      ok: true,
+      data: { platform: 'linux', userconfig_index: { type: 'path', string: '~/.config/kmm/user_config.json' } },
+      errors: [],
+      warnings: [],
+    })
+    sessionStorage.setItem('modmanager:configIndex', JSON.stringify({ type: 'path', string: '/test/config.json' }))
   })
 
   it('renders the page title', () => {
@@ -115,7 +125,7 @@ describe('SettingsPage', () => {
       default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
     })
     // Verify apiPost was called with the discover endpoint
-    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', { config_index: '/test/config.json' })
+    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', { config_index: { type: 'path', string: '/test/config.json' } })
   })
 
   it('onSaveConfig calls /api/config/save with correct data', async () => {
@@ -146,7 +156,7 @@ describe('SettingsPage', () => {
 
     // onMounted calls /api/config/discover first, then onSaveConfig calls save
     expect(mockedApiPost).toHaveBeenLastCalledWith('/config/save', {
-      config_index: '/test/config.json',
+      config_index: { type: 'path', string: '/test/config.json' },
       config: {
         baksuffix: 'testsuffix',
         bakignore: ['*.tmp'],
