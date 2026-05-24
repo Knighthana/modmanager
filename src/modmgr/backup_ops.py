@@ -183,6 +183,29 @@ def _write_backup_info(backup_dir: str, info: dict[str, Any]) -> None:
 
 # ── Phase 13: Dirty state and conflict governance ────────────────────────────
 
+def _collect_backup_original_paths(backup_dir: str, content_root: str = "") -> list[str]:
+    """Collect original paths for files in *backup_dir*.
+
+    *content_root* is the root directory under which files were backed up.
+    Defaults to the parent of *backup_dir* (matching ``run_differential_backup``).
+    """
+    if not content_root:
+        content_root = str(Path(backup_dir).parent)
+    backup_path = Path(backup_dir)
+    cr = Path(content_root)
+    originals: list[str] = []
+    for bak_file in sorted(backup_path.rglob("*")):
+        if not bak_file.is_file() or bak_file.name == "backupinfo.json":
+            continue
+        rel = bak_file.relative_to(backup_path)
+        # Loop protection: skip files inside *.kmmbackup directories
+        if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
+            continue
+        original = cr / rel
+        originals.append(_normalized(str(original)))
+    return originals
+
+
 def detect_dirty_state(backup_dir: str) -> dict[str, Any]:
     """Detect incomplete/interrupted backup state conservatively.
 

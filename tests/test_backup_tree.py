@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from modmgr.backup_ops import run_differential_backup, load_backup_info
+from modmgr.backup_ops import run_differential_backup, load_backup_info, _flatten_tree_file_hashes
 from modmgr.prep import prep_backup_dir
 from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
 
@@ -162,3 +162,120 @@ def _mark_backuped(tree: dict, name: str, hashtype: str) -> None:
         # Don't overwrite existing hashvalue if already computed
         if node.get("hashvalue", "0") == "0":
             node["hashvalue"] = "0" * 64
+
+
+# ── _flatten_tree_file_hashes unit tests ────────────────────────────────────
+
+
+class TestFlattenTreeFileHashes:
+    """Unit tests for _flatten_tree_file_hashes()."""
+
+    def test_flatten_tree_file_hashes(self):
+        """Empty tree returns empty dict."""
+        tree = {"name": "root", "type": "dir", "children": []}
+        assert _flatten_tree_file_hashes(tree) == {}
+
+    def test_flatten_tree_single_file(self):
+        """Tree with one backed-up file returns {path: hash}."""
+        tree = {
+            "name": "root",
+            "type": "dir",
+            "children": [
+                {
+                    "name": "file.txt",
+                    "type": "file",
+                    "isbackuped": True,
+                    "hashtype": "sha256",
+                    "hashvalue": "abcdef",
+                }
+            ],
+        }
+        assert _flatten_tree_file_hashes(tree) == {"file.txt": "abcdef"}
+
+    def test_flatten_tree_skips_not_backuped(self):
+        """File with isbackuped=False is excluded."""
+        tree = {
+            "name": "root",
+            "type": "dir",
+            "children": [
+                {
+                    "name": "file.txt",
+                    "type": "file",
+                    "isbackuped": False,
+                    "hashtype": "sha256",
+                    "hashvalue": "abcdef",
+                }
+            ],
+        }
+        assert _flatten_tree_file_hashes(tree) == {}
+
+    def test_flatten_tree_skips_non_sha256(self):
+        """File with hashtype='invalid' is excluded."""
+        tree = {
+            "name": "root",
+            "type": "dir",
+            "children": [
+                {
+                    "name": "file.txt",
+                    "type": "file",
+                    "isbackuped": True,
+                    "hashtype": "invalid",
+                    "hashvalue": "abcdef",
+                }
+            ],
+        }
+        assert _flatten_tree_file_hashes(tree) == {}
+
+    def test_flatten_tree_nested_dirs(self):
+        """Files in nested directories get correct relative paths."""
+        tree = {
+            "name": "root",
+            "type": "dir",
+            "children": [
+                {
+                    "name": "sub",
+                    "type": "dir",
+                    "children": [
+                        {
+                            "name": "nested.txt",
+                            "type": "file",
+                            "isbackuped": True,
+                            "hashtype": "sha256",
+                            "hashvalue": "123456",
+                        }
+                    ],
+                }
+            ],
+        }
+        assert _flatten_tree_file_hashes(tree) == {"sub/nested.txt": "123456"}
+
+    def test_flatten_tree_mixed_backuped_and_not(self):
+        """Only isbackuped=True, sha256 files are included."""
+        tree = {
+            "name": "root",
+            "type": "dir",
+            "children": [
+                {
+                    "name": "a.txt",
+                    "type": "file",
+                    "isbackuped": True,
+                    "hashtype": "sha256",
+                    "hashvalue": "aaa",
+                },
+                {
+                    "name": "b.txt",
+                    "type": "file",
+                    "isbackuped": False,
+                    "hashtype": "sha256",
+                    "hashvalue": "bbb",
+                },
+                {
+                    "name": "c.txt",
+                    "type": "file",
+                    "isbackuped": True,
+                    "hashtype": "md5",
+                    "hashvalue": "ccc",
+                },
+            ],
+        }
+        assert _flatten_tree_file_hashes(tree) == {"a.txt": "aaa"}
