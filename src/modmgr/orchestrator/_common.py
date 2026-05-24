@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -86,20 +84,10 @@ def _get_workspace_manager(user_config: dict[str, Any] | None = None) -> Workspa
       - macOS:   ``~/Library/Caches/kmm/workspace/``
     """
     cfg = user_config or {}
-    ws_dir = cfg.get("workspace_dir") or _default_workspace_dir()
+    ws_dir = cfg.get("workspace_dir")
+    if not ws_dir:
+        raise ValueError("workspace_dir is missing from user_config")
     return WorkspaceManager(expand_path(ws_dir))
-
-
-def _default_workspace_dir() -> str:
-    """Platform-default workspace root directory."""
-    home = str(Path.home())
-    if sys.platform == "win32":
-        local_appdata = os.environ.get("LOCALAPPDATA", f"{home}/AppData/Local")
-        return str(Path(local_appdata) / "kmm" / "workspace")
-    elif sys.platform == "darwin":
-        return str(Path(home) / "Library" / "Caches" / "kmm" / "workspace")
-    else:
-        return str(Path(home) / ".cache" / "kmm" / "workspace")
 
 
 def _resolve_database(database_name: str, user_config: dict[str, Any]) -> dict[str, Any]:

@@ -68,7 +68,7 @@ async def read_database(req: ReadDatabaseRequest):
     Returns the database dict wrapped in ApiResponse.
     """
     try:
-        user_config = discover_user_config()
+        user_config, _ = discover_user_config()
         resolved = _resolve_database_path(req.database_name, user_config)
         data = load_json_file(resolved)
         return adapt_dict_result(data)
@@ -86,7 +86,7 @@ async def save_database(req: SaveDatabaseRequest):
     to the path resolved from user_config.databases[database_name].
     """
     try:
-        user_config = discover_user_config()
+        user_config, _ = discover_user_config()
         resolved = _resolve_database_path(req.database_name, user_config)
         write_json_file(resolved, req.database)
     except Exception as e:

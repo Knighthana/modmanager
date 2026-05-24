@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
 from modmgr.bootstrap import discover_user_config
-from modmgr.iojson import write_json_file
+from modmgr.userconfig_ops import userconfig_save
 
 from ..adapters import adapt_dict_result, adapt_error
 from ..schemas import DiscoverUserConfigRequest, SaveConfigRequest
@@ -18,14 +17,14 @@ router = APIRouter()
 
 @router.post("/discover")
 async def discover_config(req: DiscoverUserConfigRequest):
-    """Discover and merge user_config.json from the three-tier search paths.
+    """Discover user_config.json and return it together with the file path.
 
-    Returns the merged config dict wrapped in an ``ApiResponse`` envelope.
+    Returns an ``ApiResponse`` with ``{"config": ..., "config_index": ...}``.
     """
     try:
-        config = discover_user_config(home_dir=req.home_dir)
-        return adapt_dict_result(config)
-    except FileNotFoundError as exc:
+        config, config_index = discover_user_config(home_dir=req.home_dir)
+        return adapt_dict_result({"config": config, "config_index": config_index})
+    except (ValueError, FileNotFoundError) as exc:
         return adapt_error(str(exc))
 
 
@@ -52,22 +51,15 @@ def _normalize_rule_sources(config: dict[str, Any]) -> dict[str, Any]:
 
 @router.post("/save")
 async def save_config(req: SaveConfigRequest):
-    """Save a user_config dict to the platform default location.
+    """Save a user_config dict to the target location.
 
-    The target path is determined by ``discover_user_config()`` which returns
-    the config with its ``source_path``.  Returns an ``ApiResponse`` with
-    the saved path on success.
+    Uses ``config_index`` from the request body (returned by a prior
+    ``/discover`` call) to locate the file, then delegates persistence to
+    ``userconfig_save()``.
     """
     try:
         normalized_config = _normalize_rule_sources(req.config)
-        # Use discover_user_config to obtain the config path
-        existing = discover_user_config()
-        output_path = existing.get("source_path", "")
-        if not output_path:
-            # Fallback to platform default
-            home = os.path.expanduser("~")
-            output_path = str(Path(home) / ".config" / "kmm" / "user_config.json")
-        write_json_file(output_path, normalized_config)
-        return adapt_dict_result({"saved": output_path})
+        userconfig_save(req.config_index, normalized_config)
+        return adapt_dict_result({"saved": req.config_index})
     except Exception as exc:
         return adapt_error(str(exc))

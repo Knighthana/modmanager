@@ -36,41 +36,52 @@ class TestDiscoverUserConfig(TestCase):
     """Tests for discover_user_config()."""
 
     def test_discover_user_config_first_use_creates_default(self) -> None:
-        """No existing config → default is created with first_use=true."""
+        """No existing config → default is created."""
         with tempfile.TemporaryDirectory() as td:
             home_dir = str(td)
-            result = discover_user_config(home_dir=home_dir)
+            config, config_index = discover_user_config(home_dir=home_dir)
 
-            self.assertIn("databases", result)
-            self.assertIn("default", result["databases"])
-            self.assertIn("path", result["databases"]["default"])
-            self.assertTrue(result["databases"]["default"]["path"].endswith("database.json"))
-            self.assertIn("source_path", result)
-            self.assertTrue(result["source_path"].endswith("user_config.json"))
-            self.assertTrue(result["first_use"])
+            self.assertIn("databases", config)
+            self.assertIn("default", config["databases"])
+            self.assertIn("path", config["databases"]["default"])
+            self.assertTrue(config["databases"]["default"]["path"].endswith("database.json"))
+            self.assertNotIn("source_path", config)
+            self.assertNotIn("first_use", config)
+            self.assertTrue(config_index.endswith("user_config.json"))
 
             # Verify the file was actually written
             config_path = Path(td) / ".config" / "kmm" / "user_config.json"
             self.assertTrue(config_path.exists())
 
     def test_discover_user_config_existing_file(self) -> None:
-        """Existing user_config.json is loaded with first_use=false."""
+        """Existing user_config.json is loaded."""
         with tempfile.TemporaryDirectory() as td:
             home_dir = str(td)
             config_dir = Path(td) / ".config" / "kmm"
             config_dir.mkdir(parents=True)
             config_file = config_dir / "user_config.json"
-            data = {"key1": "value1", "databases": {"default": {"path": "/custom/path.json"}}}
+            data = {
+                "schema_namespace": "KMM_UserConfig",
+                "schema_version": "knighthana@0.1.0",
+                "baksuffix": "kmmbackup",
+                "ignore": [],
+                "bakignore": [],
+                "rule_sources": {},
+                "path_alias": [],
+                "workspace_dir": "/tmp/ws",
+                "databases": {"default": {"path": "/custom/path.json"}},
+            }
             config_file.write_text(json.dumps(data), encoding="utf-8")
 
-            result = discover_user_config(home_dir=home_dir)
-            self.assertEqual(result.get("key1"), "value1")
-            self.assertEqual(result["databases"]["default"]["path"], "/custom/path.json")
-            self.assertFalse(result["first_use"])
-            self.assertEqual(result["source_path"], str(config_file))
+            config, config_index = discover_user_config(home_dir=home_dir)
+            self.assertEqual(config.get("key1"), None)
+            self.assertEqual(config["databases"]["default"]["path"], "/custom/path.json")
+            self.assertNotIn("first_use", config)
+            self.assertNotIn("source_path", config)
+            self.assertEqual(config_index, str(config_file))
 
-    def test_discover_user_config_invalid_json_recreated(self) -> None:
-        """Invalid JSON content → file is recreated with defaults."""
+    def test_discover_user_config_invalid_json_raises(self) -> None:
+        """Invalid JSON content → ValueError."""
         with tempfile.TemporaryDirectory() as td:
             home_dir = str(td)
             config_dir = Path(td) / ".config" / "kmm"
@@ -78,28 +89,23 @@ class TestDiscoverUserConfig(TestCase):
             config_file = config_dir / "user_config.json"
             config_file.write_text("this is not valid json {{{", encoding="utf-8")
 
-            result = discover_user_config(home_dir=home_dir)
-            self.assertIn("databases", result)
-            self.assertTrue(result["first_use"])
-            # File should have been overwritten with valid JSON
-            import json as json_mod
-            reloaded = json_mod.loads(config_file.read_text(encoding="utf-8"))
-            self.assertIn("databases", reloaded)
+            with self.assertRaises(ValueError):
+                discover_user_config(home_dir=home_dir)
 
 
 class TestGenerateDatabase(TestCase):
     """Tests for generate_database()."""
 
-    def _make_user_config_override(self, td: str, db_path: str) -> dict:
-        """Build a fake user_config dict for mocking discover_user_config."""
-        return {
+    def _make_user_config_override(self, td: str, db_path: str) -> tuple[dict, str]:
+        """Build a fake (user_config, config_index) for mocking discover_user_config."""
+        config = {
             "databases": {
                 "default": {"path": db_path},
                 "custom": {"path": db_path},
             },
-            "source_path": str(Path(td) / "fake_user_config.json"),
-            "first_use": False,
         }
+        config_index = str(Path(td) / "fake_user_config.json")
+        return (config, config_index)
 
     def test_generate_database_invalid_mode(self) -> None:
         """Passing an invalid mode raises ValueError."""
@@ -197,73 +203,95 @@ class TestGenerateDatabase(TestCase):
                     with self.assertRaises(ValueError):
                         generate_database("auto")
 
+    def _complete_config(
+        self,
+        overrides: dict | None = None,
+    ) -> dict:
+        """Return a config dict with all REQUIRED_KEYS."""
+        cfg = {
+            "schema_namespace": "KMM_UserConfig",
+            "schema_version": "knighthana@0.1.0",
+            "baksuffix": "kmmbackup",
+            "ignore": [],
+            "bakignore": [],
+            "rule_sources": [],
+            "path_alias": [],
+            "workspace_dir": "/tmp/ws",
+            "databases": {"default": {"path": "/tmp/db.json"}},
+        }
+        if overrides:
+            cfg.update(overrides)
+        return cfg
+
     def test_explicit_path_used_over_default(self) -> None:
         """Explicit home_dir overrides the platform default config path."""
         with tempfile.TemporaryDirectory() as td:
             custom = Path(td) / ".config" / "kmm" / "user_config.json"
             custom.parent.mkdir(parents=True)
-            custom.write_text(json.dumps({
-                "schema_namespace": "KMM_UserConfig",
-                "schema_version": "knighthana@0.1.0",
+            custom.write_text(json.dumps(self._complete_config({
                 "databases": {"custom_db": {"path": "/custom/db.json"}},
-            }), encoding="utf-8")
-            result = discover_user_config(home_dir=str(Path(td)))
-            assert result["source_path"] == str(custom)
+            })), encoding="utf-8")
+            config, config_index = discover_user_config(home_dir=str(Path(td)))
+            assert config_index == str(custom)
 
     def test_explicit_path_first_use_creates_default(self) -> None:
-        """Explicit home_dir with no existing config creates one with first_use=true."""
+        """Explicit home_dir with no existing config creates one."""
         with tempfile.TemporaryDirectory() as td:
-            result = discover_user_config(home_dir=str(Path(td)))
-            assert result["first_use"] is True
-            assert "source_path" in result
+            config, config_index = discover_user_config(home_dir=str(Path(td)))
+            assert "source_path" not in config
+            assert "first_use" not in config
+            assert "schema_namespace" in config
+            assert config_index.endswith("user_config.json")
 
     def test_default_config_contains_required_fields(self) -> None:
         """First-use default config contains all required fields per DESIGN_BOOTSTRAP §1.2."""
         with tempfile.TemporaryDirectory() as td:
-            result = discover_user_config(home_dir=str(Path(td)))
-            assert "schema_namespace" in result
-            assert "schema_version" in result
-            assert "databases" in result
-            assert "source_path" in result
-            assert result["first_use"] is True
-            assert isinstance(result["databases"], dict)
-            assert "default" in result["databases"]
-            assert "path" in result["databases"]["default"]
+            config, _ = discover_user_config(home_dir=str(Path(td)))
+            assert "schema_namespace" in config
+            assert "schema_version" in config
+            assert "baksuffix" in config
+            assert "ignore" in config
+            assert "bakignore" in config
+            assert "rule_sources" in config
+            assert "path_alias" in config
+            assert "workspace_dir" in config
+            assert "databases" in config
+            assert "source_path" not in config
+            assert "first_use" not in config
+            assert isinstance(config["databases"], dict)
+            assert "default" in config["databases"]
+            assert "path" in config["databases"]["default"]
 
     def test_databases_preserved_as_configured(self) -> None:
         """User-configured databases paths are preserved, not overwritten."""
         with tempfile.TemporaryDirectory() as td:
             custom = Path(td) / ".config" / "kmm" / "user_config.json"
             custom.parent.mkdir(parents=True)
-            custom.write_text(json.dumps({
-                "schema_namespace": "KMM_UserConfig",
-                "schema_version": "knighthana@0.1.0",
+            custom.write_text(json.dumps(self._complete_config({
                 "databases": {
                     "default": {"path": "/custom/db.json"},
                     "secondary": {"path": "/other/db.json"},
                 },
-            }), encoding="utf-8")
-            result = discover_user_config(home_dir=str(Path(td)))
-            assert result["databases"]["default"]["path"] == "/custom/db.json"
-            assert result["databases"]["secondary"]["path"] == "/other/db.json"
+            })), encoding="utf-8")
+            config, _ = discover_user_config(home_dir=str(Path(td)))
+            assert config["databases"]["default"]["path"] == "/custom/db.json"
+            assert config["databases"]["secondary"]["path"] == "/other/db.json"
 
     def test_rule_sources_preserved(self) -> None:
         """rule_sources from config are preserved."""
         with tempfile.TemporaryDirectory() as td:
             custom = Path(td) / ".config" / "kmm" / "user_config.json"
             custom.parent.mkdir(parents=True)
-            custom.write_text(json.dumps({
-                "schema_namespace": "KMM_UserConfig",
-                "schema_version": "knighthana@0.1.0",
-                "databases": {"default": {"path": "/tmp/db.json"}},
+            custom.write_text(json.dumps(self._complete_config({
                 "rule_sources": ["/rules/", "/extra/mods.kmmrule.json"],
-            }), encoding="utf-8")
-            result = discover_user_config(home_dir=str(Path(td)))
-            assert "/rules/" in result.get("rule_sources", [])
-            assert "/extra/mods.kmmrule.json" in result.get("rule_sources", [])
+            })), encoding="utf-8")
+            config, _ = discover_user_config(home_dir=str(Path(td)))
+            assert "/rules/" in config.get("rule_sources", [])
+            assert "/extra/mods.kmmrule.json" in config.get("rule_sources", [])
 
-    def test_workspace_dir_default_fallback(self) -> None:
-        """workspace_dir not set resolves to platform default (not in config dict)."""
+    def test_workspace_dir_created_with_default(self) -> None:
+        """workspace_dir is filled with platform default when created."""
         with tempfile.TemporaryDirectory() as td:
-            result = discover_user_config(home_dir=str(Path(td)))
-            assert result["first_use"] is True
+            config, _ = discover_user_config(home_dir=str(Path(td)))
+            assert "workspace_dir" in config
+            assert config["workspace_dir"] is not None

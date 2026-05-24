@@ -43,8 +43,10 @@ class WorkspaceResolver:
 
     def resolve(self, request: Any) -> CleanContext:
         workspace_id: str = request.resolver_args["workspace_id"]
-        user_config = discover_user_config()
-        ws_dir = user_config.get("workspace_dir") or _default_ws_dir()
+        user_config, _ = discover_user_config()
+        ws_dir = user_config.get("workspace_dir")
+        if not ws_dir:
+            raise ValueError("workspace_dir is missing from user_config")
         wm = WorkspaceManager(expand_path(ws_dir))
 
         if not wm.exists(workspace_id):
@@ -68,7 +70,7 @@ class FilePathResolver:
         args = request.resolver_args
         mapping = load_json_file(expand_path(args["mapping_path"]))
         database = load_json_file(expand_path(args["database_path"]))
-        user_config = discover_user_config()
+        user_config, _ = discover_user_config()
 
         return CleanContext(
             final_mapping=mapping.get("final_mapping", []),
@@ -82,10 +84,13 @@ class RawDictResolver:
 
     def resolve(self, request: Any) -> CleanContext:
         args = request.resolver_args
+        user_config = args.get("user_config")
+        if user_config is None:
+            user_config, _ = discover_user_config()
         return CleanContext(
             final_mapping=args.get("final_mapping", []),
             database=args.get("database", {}),
-            user_config=args.get("user_config", discover_user_config()),
+            user_config=user_config,
         )
 
 
@@ -95,22 +100,3 @@ def _resolve_database(database_name: str, user_config: dict[str, Any]) -> dict[s
     if not db_entry:
         raise ValueError(f"database '{database_name}' not found in user_config.databases")
     return load_json_file(expand_path(db_entry["path"]))
-
-
-def _default_ws_dir() -> str:
-    """Platform-default workspace root directory.
-
-    Linux: ~/.cache/kmm/workspace
-    Windows: %LOCALAPPDATA%/kmm/workspace
-    macOS: ~/Library/Caches/kmm/workspace
-    """
-    import sys
-    home = str(Path.home())
-    if sys.platform == "win32":
-        import os
-        local_appdata = os.environ.get("LOCALAPPDATA", f"{home}/AppData/Local")
-        return str(Path(local_appdata) / "kmm" / "workspace")
-    elif sys.platform == "darwin":
-        return str(Path(home) / "Library" / "Caches" / "kmm" / "workspace")
-    else:
-        return str(Path(home) / ".cache" / "kmm" / "workspace")

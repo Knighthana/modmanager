@@ -38,7 +38,7 @@ async def pipeline_compute(req: ComputeRequest):
 
     def do_work(*, on_progress):
         # Resolve database from database_name
-        user_config = discover_user_config()
+        user_config, _ = discover_user_config()
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 
@@ -131,7 +131,7 @@ async def pipeline_run(req: RunRequest):
 
     def do_work(*, on_progress):
         # Resolve database from database_name
-        user_config = discover_user_config()
+        user_config, _ = discover_user_config()
         db_path = _resolve_database_path(req.database_name, user_config)
         db = load_json_file(db_path)
 

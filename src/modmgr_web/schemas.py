@@ -35,6 +35,7 @@ class SaveConfigRequest(BaseModel):
     """Request body for ``POST /api/config/save``."""
 
     config: dict[str, Any]
+    config_index: str
 
 
 # ── Database endpoints ────────────────────────────────────────────────────

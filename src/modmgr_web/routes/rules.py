@@ -121,7 +121,7 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
 
     # Load database from user_config via database_name
     try:
-        user_config = discover_user_config()
+        user_config, _ = discover_user_config()
         db_entry = user_config.get("databases", {}).get(req.database_name)
         if db_entry:
             db_path = db_entry["path"]

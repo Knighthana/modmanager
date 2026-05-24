@@ -31,15 +31,11 @@ router = APIRouter()
 
 def _get_workspace_manager() -> WorkspaceManager:
     """Resolve the workspace root directory from user_config and return a ``WorkspaceManager``."""
-    config = discover_user_config()
-    ws_dir = config.get("workspace_dir") or _default_workspace_dir()
+    config, _ = discover_user_config()
+    ws_dir = config.get("workspace_dir")
+    if not ws_dir:
+        raise ValueError("workspace_dir is missing from user_config")
     return WorkspaceManager(expand_path(ws_dir))
-
-
-def _default_workspace_dir() -> str:
-    """Platform-appropriate default workspace directory."""
-    home = Path.home()
-    return str(home / ".cache" / "kmm" / "workspace")
 
 
 # ── Workspace CRUD ─────────────────────────────────────────────────────────────

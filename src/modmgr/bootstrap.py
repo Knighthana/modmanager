@@ -126,39 +126,26 @@ def _derive_steamapps_from_steam_exe(steam_exe_path: str) -> list[str]:
     return libraries
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# ── Internal helpers (platform defaults) ──────────────────────────────────
 
 
-def discover_user_config(home_dir: str | None = None) -> dict:
-    """Discover ``user_config.json`` via single-level search with first-use creation.
+def _get_platform_defaults(home_dir: str | None = None) -> dict[str, Any]:
+    """Return platform-default *workspace_dir* and *database* path dict.
 
-    Searches **only** the platform-default location:
+    These values are passed as ``platform_defaults`` to ``userconfig_init``
+    when creating or patching a user config file.
 
-      - Linux:   ``~/.config/kmm/user_config.json``
-      - Windows: ``%APPDATA%/kmm/user_config.json``
-      - macOS:   ``~/Library/Preferences/kmm/user_config.json``
+    Per DESIGN_BOOTSTRAP.md §1.3:
 
-    If the file exists and contains a valid JSON dict it is loaded and returned
-    (``first_use=false``).  If the file does not exist (or contains invalid
-    content), a default configuration is created at that location with an empty
-    ``databases`` object (``first_use=true``) and returned.
-
-    The default ``databases`` entry points to the platform-default database
-    location (see ``DESIGN_BOOTSTRAP.md`` for the full table):
-
-      - Linux:   ``~/.local/share/kmm/database.json``
-      - Windows: ``%LOCALAPPDATA%/kmm/database/database.json``
-      - macOS:   ``~/Library/Application Support/kmm/database.json``
-
-    Args:
-        home_dir:
-            User home directory.  When ``None``, resolved from environment
-            variables ``$HOME`` / ``%USERPROFILE%``, falling back to
-            ``pathlib.Path.home()``.
-
-    Returns:
-        User config dictionary (always contains ``databases``, ``source_path``,
-        and ``first_use`` keys).
+      Linux:
+        workspace: ~/.cache/kmm/workspace/
+        database:  ~/.local/share/kmm/database.json
+      Windows:
+        workspace: %LOCALAPPDATA%/kmm/workspace/
+        database:  %LOCALAPPDATA%/kmm/database/database.json
+      macOS:
+        workspace: ~/Library/Caches/kmm/workspace/
+        database:  ~/Library/Application Support/kmm/database.json
     """
     if home_dir is None:
         home_dir = (
@@ -167,55 +154,138 @@ def discover_user_config(home_dir: str | None = None) -> dict:
             or str(Path.home())
         )
 
-    # Platform-specific config directory
     if sys.platform == "win32":
-        config_dir = Path(os.environ.get("APPDATA", str(Path(home_dir) / "AppData" / "Roaming")))
+        local_appdata = os.environ.get(
+            "LOCALAPPDATA", str(Path(home_dir) / "AppData" / "Local")
+        )
+        workspace_dir = normalize_posix(str(Path(local_appdata) / "kmm" / "workspace"))
+        db_path = normalize_posix(
+            str(Path(local_appdata) / "kmm" / "database" / "database.json")
+        )
     elif sys.platform == "darwin":
-        config_dir = Path(home_dir) / "Library" / "Preferences"
-    else:
-        config_dir = Path(home_dir) / ".config"
-
-    config_path = config_dir / "kmm" / "user_config.json"
-
-    # --- File exists, load it ---
-    if config_path.exists():
-        try:
-            data = load_json_file(str(config_path))
-            if isinstance(data, dict):
-                data["source_path"] = str(config_path)
-                data["first_use"] = False
-                return data
-        except Exception:
-            pass
-        # Invalid content — fall through to recreate
-
-    # --- File does not exist or is invalid — create default ---
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Platform-specific default database path
-    if sys.platform == "win32":
-        local_appdata = os.environ.get("LOCALAPPDATA", str(Path(home_dir) / "AppData" / "Local"))
-        default_db_path = normalize_posix(str(Path(local_appdata) / "kmm" / "database" / "database.json"))
-    elif sys.platform == "darwin":
-        default_db_path = normalize_posix(
+        workspace_dir = normalize_posix(
+            str(Path(home_dir) / "Library" / "Caches" / "kmm" / "workspace")
+        )
+        db_path = normalize_posix(
             str(Path(home_dir) / "Library" / "Application Support" / "kmm" / "database.json")
         )
     else:
-        default_db_path = normalize_posix(
+        workspace_dir = normalize_posix(
+            str(Path(home_dir) / ".cache" / "kmm" / "workspace")
+        )
+        db_path = normalize_posix(
             str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json")
         )
-    default_config: dict[str, Any] = {
-        "schema_namespace": "KMM_UserConfig",
-        "schema_version": "knighthana@0.1.0",
-        "databases": {
-            "default": {"path": default_db_path},
-        },
-        "source_path": str(config_path),
-        "first_use": True,
+
+    return {
+        "workspace_dir": workspace_dir,
+        "databases": {"default": {"path": db_path}},
     }
 
-    write_json_file(str(config_path), default_config)
-    return dict(default_config)
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+
+def discover_user_config(
+    config_index: str | None = None,
+    home_dir: str | None = None,
+) -> tuple[dict[str, Any], str]:
+    """Discover user_config at *config_index* or platform default location.
+
+    If *config_index* is provided, look there.  Otherwise use the
+    platform-default location (per DESIGN_BOOTSTRAP.md §1.1).
+
+    Behaviour:
+
+    1. File exists + complete (all REQUIRED_KEYS present, valid
+       schema_namespace) → return ``(loaded_dict, path)``.
+    2. File exists + incomplete (missing keys)
+       → call ``userconfig_init(path, platform_defaults)``
+       → return ``(patched_dict, path)``.
+    3. File does not exist
+       → call ``userconfig_init(path, platform_defaults)``
+       → return ``(created_dict, path)``.
+    4. File exists but invalid (wrong namespace, corrupt JSON)
+       → raise ``ValueError`` with the reason.
+
+    The returned ``config_dict`` does **not** contain ``source_path`` or
+    ``first_use`` keys.
+
+    *platform_defaults* includes:
+        ``workspace_dir``: platform default per DESIGN_BOOTSTRAP.md §1.3
+        ``databases.default.path``: platform default database path
+
+    Args:
+        config_index:
+            Explicit path to ``user_config.json``.  When ``None``, the
+            platform-default location is used.
+        home_dir:
+            User home directory for platform path resolution.  When ``None``,
+            resolved from environment variables.
+
+    Returns:
+        ``(config_dict, config_index)`` tuple where *config_index* is the
+        absolute file path of the discovered or created file.
+
+    Raises:
+        ValueError:
+            If the file exists but has wrong ``schema_namespace`` or contains
+            corrupt / non-dict JSON.
+    """
+    from .userconfig_ops import DEFAULTS, REQUIRED_KEYS, userconfig_init
+
+    if home_dir is None:
+        home_dir = (
+            os.environ.get("HOME")
+            or os.environ.get("USERPROFILE")
+            or str(Path.home())
+        )
+
+    platform_defaults = _get_platform_defaults(home_dir)
+
+    # ── Resolve config_index ──────────────────────────────────────────────
+    if config_index is None:
+        if sys.platform == "win32":
+            config_dir = Path(
+                os.environ.get("APPDATA", str(Path(home_dir) / "AppData" / "Roaming"))
+            )
+        elif sys.platform == "darwin":
+            config_dir = Path(home_dir) / "Library" / "Preferences"
+        else:
+            config_dir = Path(home_dir) / ".config"
+        config_index = normalize_posix(str(config_dir / "kmm" / "user_config.json"))
+
+    config_path = Path(config_index)
+
+    # ── Case 3: file does not exist → create via userconfig_init ─────────
+    if not config_path.exists():
+        config_dict = userconfig_init(config_index, platform_defaults=platform_defaults)
+        return (config_dict, config_index)
+
+    # ── File exists — load it ─────────────────────────────────────────────
+    try:
+        data = load_json_file(str(config_path))
+    except Exception as exc:
+        raise ValueError(f"Invalid JSON in user config: {config_index}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError(f"User config must be a dict: {config_index}")
+
+    # Validate schema_namespace
+    expected_namespace = DEFAULTS.get("schema_namespace", "KMM_UserConfig")
+    if data.get("schema_namespace") != expected_namespace:
+        raise ValueError(
+            f"Wrong schema_namespace in user config: {config_index} "
+            f"(expected {expected_namespace!r})"
+        )
+
+    # ── Case 1: complete — all REQUIRED_KEYS present ─────────────────────
+    if all(key in data for key in REQUIRED_KEYS):
+        return (data, config_index)
+
+    # ── Case 2: incomplete → patch via userconfig_init ───────────────────
+    config_dict = userconfig_init(config_index, platform_defaults=platform_defaults)
+    return (config_dict, config_index)
 
 
 def generate_database(
@@ -269,7 +339,7 @@ def generate_database(
             ``database_name`` is not found in ``user_config.databases``.
     """
     # ── Resolve database path from user config ────────────────────────────
-    config = discover_user_config()
+    config, _ = discover_user_config()
     db_path = expand_path(config.get("databases", {}).get(database_name, {}).get("path", ""))
     if not db_path:
         raise ValueError(

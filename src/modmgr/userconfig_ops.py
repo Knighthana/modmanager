@@ -47,6 +47,7 @@ def userconfig_init(path: str, *, platform_defaults: dict[str, Any] | None = Non
     p = Path(path)
 
     if not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
         write_json_file(p, base)
         return base
 
@@ -64,12 +65,17 @@ def userconfig_init(path: str, *, platform_defaults: dict[str, Any] | None = Non
         raise ValueError(f"Wrong schema_namespace in user config: {path}")
 
     # Fill missing keys from DEFAULTS — never overwrite existing values
+    changed = False
     for key in REQUIRED_KEYS:
         if key not in config:
             config[key] = DEFAULTS[key]
+            changed = True
         elif key == "workspace_dir" and (config[key] is None or config[key] == ""):
-            # If workspace_dir is None or "", fill from platform_defaults (fallback to DEFAULTS)
             config[key] = pd.get(key, DEFAULTS[key])
+            changed = True
+
+    if changed:
+        write_json_file(p, config)
 
     return config
 

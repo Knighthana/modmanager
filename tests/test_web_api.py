@@ -79,13 +79,14 @@ class TestDiscoverUserConfig:
         """Return merged config when user_config.json exists."""
         monkeypatch.setattr(
             "modmgr_web.routes.config.discover_user_config",
-            lambda home_dir=None: {"game": "valheim", "language": "en"},
+            lambda home_dir=None: ({"game": "valheim", "language": "en"}, "/fake/path"),
         )
         resp = client.post("/api/config/discover", json={"home_dir": None})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
-        assert body["data"]["game"] == "valheim"
+        assert body["data"]["config"]["game"] == "valheim"
+        assert body["data"]["config_index"] == "/fake/path"
         assert body["errors"] == []
 
     def test_discover_user_config_not_found(
@@ -278,11 +279,11 @@ class TestComputePipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -332,7 +333,7 @@ class TestComputePipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -377,7 +378,7 @@ class TestComputePipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -458,11 +459,11 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -516,7 +517,7 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -560,7 +561,7 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -710,11 +711,11 @@ class TestSseDisconnect:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -860,7 +861,7 @@ class TestRulesAffectedEntries:
         # Mock user_config to return the database path via database_name
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": str(db_file)}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": str(db_file)}}}, "/fake/path"),
         )
 
         resp = client.post(
@@ -1121,7 +1122,7 @@ class TestReadDatabase:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": "/fake/db.json"}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.database.load_json_file",
@@ -1138,7 +1139,7 @@ class TestReadDatabase:
         """read returns error when database_name is not in user_config."""
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: {"databases": {}},
+            lambda home_dir=None: ({"databases": {}}, "/fake/path"),
         )
 
         resp = client.post("/api/database/read", json={"database_name": "nonexistent"})
@@ -1159,7 +1160,7 @@ class TestSaveDatabase:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: {"databases": {"default": {"path": str(db_file)}}},
+            lambda home_dir=None: ({"databases": {"default": {"path": str(db_file)}}}, "/fake/path"),
         )
 
         # Use real write_json_file so we can verify the file was written
@@ -1197,19 +1198,18 @@ class TestConfigSaveRuleSources:
             ],
         }
 
-        # Mock discover_user_config to return a source_path pointing to tmp_path
         output = tmp_path / "user_config.json"
+
+        # Mock userconfig_save to just write the file (bypass schema validation)
+        from modmgr.iojson import write_json_file as _wjf
         monkeypatch.setattr(
-            "modmgr_web.routes.config.discover_user_config",
-            lambda home_dir=None: {
-                "databases": {},
-                "source_path": str(output),
-            },
+            "modmgr_web.routes.config.userconfig_save",
+            lambda config_index, data: _wjf(config_index, data),
         )
 
         resp = client.post(
             "/api/config/save",
-            json={"config": config},
+            json={"config": config, "config_index": str(output)},
         )
         assert resp.status_code == 200
         body = resp.json()
