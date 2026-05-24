@@ -10,21 +10,52 @@
 
 ---
 
-## 一、user_config.json 的发现与创建
+## 一、启动流程
 
-### 1.1 入口
+### 1.1 调用链
 
-`config_index` 是 `discover_user_config()` 的**必填参数**——调用方必须传入
-`user_config.json` 的完整路径。bootstrap 不执行任何平台默认路径猜测。
+```
+CLI / Web ──(config_index)──▶ orchestrator ──(config_index)──▶ bootstrap
+                                                                 │
+                                                    ┌────────────┘
+                                                    ▼
+                                          schema verify
+                                         ╱              ╲
+                                   通过                  失败
+                                     │               ╱        ╲
+                                     │         不完整          非法
+                                     │           │              │
+                                     │    userconfig_init   报错退出
+                                     │    (补全默认值)     orchestrator
+                                     │           │        透传给调用方
+                                     │    再次 schema verify
+                                     │           │
+                                     └───────────┘
+                                          │
+                                   加载为有效 userconfig
+                                          │
+                                   返回给 orchestrator
+```
 
-确定了路径后，按以下规则处理：
+### 1.2 规则
 
-- 文件存在且 schema_version 匹配、所有 required 字段齐备、值合法 → 加载返回
-- 文件存在但缺少必填键 → 调 `userconfig_init()` 补全后返回
-- 文件不存在 → 调 `userconfig_init()` 在该路径创建后返回
-- 文件存在但值非法（schema validation 失败或 schema_version 不匹配）→ 返回错误，不创建、不补全
+`config_index` 是 `discover_user_config()` 的**必填参数**——调用方必须传入 `user_config.json` 的完整路径。bootstrap 不执行任何平台默认路径猜测。
 
-### 1.2 首次创建 / 补全的默认值
+bootstrap 在确定路径后执行 schema verify（依据 `user_config.schema.json`）：
+
+| 结果 | 行为 |
+|------|------|
+| **通过**——所有 required 字段齐备，值合法，schema_version 匹配 | 加载返回 |
+| **不完整**——required 字段缺失 | 调 `userconfig_ops.userconfig_init(config_index)` 补全默认值 → **再次 schema verify** → 通过则返回，仍失败则报错 |
+| **非法**——schema_namespace 错误、JSON 损坏、schema_version 不匹配、值不在允许域中 | 报错退出，不创建、不补全 |
+
+> 默认值是 `userconfig_ops` 的私有知识。bootstrap 不知道、也不应该知道默认值是什么。它只负责"这里缺了 → 调 init → 再验"。
+
+### 1.4 生效后的约定
+
+一旦 bootstrap 成功加载 userconfig，后续所有任务（compute、backup、apply、restore）需要的配置值全部从这份 userconfig 读取。**不重复发现、不重新加载。**
+
+### 1.3 首次创建 / 补全的默认值
 
 `userconfig_init()` 在以下字段不存在或为空时自动填入默认值：
 
