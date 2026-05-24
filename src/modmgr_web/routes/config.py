@@ -67,7 +67,17 @@ async def save_config(req: SaveConfigRequest):
     """
     try:
         ci_path = _resolve_config_index(req.config_index)
-        normalized_config = _normalize_rule_sources(req.config)
+
+        # Load existing full config — frontend only sends changed fields
+        from modmgr.iojson import load_json_file
+        try:
+            existing = load_json_file(ci_path)
+        except Exception:
+            existing = {}
+
+        # Merge frontend changes on top of existing
+        merged = {**existing, **req.config}
+        normalized_config = _normalize_rule_sources(merged)
         userconfig_save(ci_path, normalized_config)
         return adapt_dict_result({"saved": req.config_index})
     except Exception as exc:
