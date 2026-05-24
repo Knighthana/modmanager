@@ -406,7 +406,7 @@
 │                                                              │
 │  选择的数据库: [default ▼]     工作区: [workspace_abc123 ▼]   │
 │                                                              │
-│  [Database] [Aggregated Rules] [User Config] [LocalStorage]   │  ← el-tabs
+│  [Database] [Aggregated Rules] [User Config] [LocalStorage] [SessionStorage]   │  ← el-tabs
 │                                                              │
 │  ┌ Database JSON ──────────────────────────────────────────┐ │
 │  │                                                          │ │
@@ -424,7 +424,7 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**四个 tab**：
+**五个 tab**：
 
 | Tab | 数据来源 | 写入端点 |
 |-----|---------|---------|
@@ -432,11 +432,12 @@
 | Aggregated Rules | `GET /api/workspace/{id}/rules/aggregated` | 不需要（聚合自动生成） |
 | User Config | `POST /api/config/discover` | `POST /api/config/save` |
 | LocalStorage | `window.localStorage (modmanager:*)` | 不支持编辑（只读 dump） |
+| SessionStorage | `window.sessionStorage (modmanager:*)` | 不支持编辑（只读 dump） |
 
 **行为**：
 - 默认只读。点击 [编辑] 解锁 → [保存] → REST API 写入
 - [刷新] 从后端重新加载
-- 标签切换时自动刷新当前标签（database / aggregated / userConfig / localStorage）
+- 标签切换时自动刷新当前标签（database / aggregated / userConfig / localStorage / sessionStorage）
 - Database JSON 编辑独立模块，可随时迁移
 - **工作区下拉**：Aggregated Rules 标签不再死绑当前工作区。用户通过工作区下拉独立选择要查看的工作区。若未选择工作区，标签显示"请先选择一个工作区"。
 - **数据库标签**："选择的数据库"说明文字紧邻 DatabaseSelector 组件左侧。

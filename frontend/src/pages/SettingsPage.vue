@@ -258,7 +258,9 @@ function loadConfigIndex(): Record<string, string> | null {
 }
 
 function saveConfigIndex(val: Record<string, string>) {
-  sessionStorage.setItem(CONFIG_INDEX_KEY, JSON.stringify(val))
+  const valStr = JSON.stringify(val)
+  sessionStorage.setItem(CONFIG_INDEX_KEY, valStr)
+  localStorage.setItem(CONFIG_INDEX_KEY, valStr)
 }
 
 const configIndex = ref<Record<string, string>>(loadConfigIndex() || { type: 'path', string: '' })

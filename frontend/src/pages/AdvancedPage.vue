@@ -97,6 +97,23 @@
             <el-button size="small" @click="refreshTab('localStorage')">刷新</el-button>
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="SessionStorage" name="sessionStorage">
+          <div class="file-meta">
+            <span class="meta-label">数据来源:</span>
+            <span class="meta-value">window.sessionStorage (modmanager: 前缀)</span>
+          </div>
+          <el-input
+            v-model="content.sessionStorage"
+            type="textarea"
+            :rows="20"
+            readonly
+            font-family="monospace"
+          />
+          <div class="action-bar">
+            <el-button size="small" @click="refreshTab('sessionStorage')">刷新</el-button>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -120,6 +137,7 @@ const content = reactive<Record<string, string>>({
   aggregated: '',
   userConfig: '',
   localStorage: '',
+  sessionStorage: '',
 })
 
 const editing = reactive<Record<string, boolean>>({
@@ -127,6 +145,7 @@ const editing = reactive<Record<string, boolean>>({
   aggregated: false,
   userConfig: false,
   localStorage: false,
+  sessionStorage: false,
 })
 
 const tabStatus = reactive<Record<string, { type: 'success' | 'danger' | 'info'; msg: string } | null>>({
@@ -134,6 +153,7 @@ const tabStatus = reactive<Record<string, { type: 'success' | 'danger' | 'info';
   aggregated: null,
   userConfig: null,
   localStorage: null,
+  sessionStorage: null,
 })
 
 function toggleEdit(tab: string) {
@@ -174,6 +194,8 @@ async function refreshTab(tab: string) {
         )
         if (resp.ok && resp.data) {
           raw = resp.data
+        } else {
+          tabStatus.database = { type: 'danger', msg: resp.errors?.[0] || '加载失败或无数据' }
         }
         break
       }
@@ -210,6 +232,21 @@ async function refreshTab(tab: string) {
               dump[key] = JSON.parse(localStorage.getItem(key) || '')
             } catch {
               dump[key] = localStorage.getItem(key)
+            }
+          }
+        }
+        raw = dump
+        break
+      }
+      case 'sessionStorage': {
+        const dump: Record<string, unknown> = {}
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && key.startsWith('modmanager:')) {
+            try {
+              dump[key] = JSON.parse(sessionStorage.getItem(key) || '')
+            } catch {
+              dump[key] = sessionStorage.getItem(key)
             }
           }
         }
