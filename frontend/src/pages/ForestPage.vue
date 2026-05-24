@@ -59,6 +59,7 @@ import { showPopup } from '../utils/notify'
 import { getDescription } from '../utils/errorCodes'
 import { useAppStore } from '../stores/app'
 import { STR } from '../locales/zh-CN'
+import { apiGet } from '../api/transport'
 
 const store = useForestStore()
 const appStore = useAppStore()
@@ -71,8 +72,12 @@ onMounted(async () => {
   }
 
   // Fetch SVG from workspace API (returns SVG text, Content-Type: image/svg+xml)
+  // SVG is not JSON, so raw fetch with manual header
   try {
-    const svgResp = await fetch(`/api/workspace/${workspaceId}/forest/svg`)
+    const idxRaw = sessionStorage.getItem('modmanager:configIndex') || localStorage.getItem('modmanager:configIndex')
+    const headers: Record<string, string> = {}
+    if (idxRaw) headers['X-UserConfig-Index'] = idxRaw
+    const svgResp = await fetch(`/api/workspace/${workspaceId}/forest/svg`, { headers })
     if (svgResp.ok) {
       store.svgContent = await svgResp.text()
     }
@@ -82,16 +87,14 @@ onMounted(async () => {
 
   // Fetch mapping from workspace API (returns JSON)
   try {
-    const mappingResp = await fetch(`/api/workspace/${workspaceId}/forest/mapping`)
-    if (mappingResp.ok) {
-      const mappingData = await mappingResp.json()
-      if (mappingData) {
-        if (Array.isArray(mappingData.trees)) {
-          store.trees = mappingData.trees
-        }
-        if (Array.isArray(mappingData.final_mapping)) {
-          store.finalMapping = mappingData.final_mapping
-        }
+    const mappingResp = await apiGet<Record<string, unknown>>(`/workspace/${workspaceId}/forest/mapping`)
+    if (mappingResp.ok && mappingResp.data) {
+      const mappingData = mappingResp.data
+      if (Array.isArray((mappingData as any).trees)) {
+        store.trees = (mappingData as any).trees
+      }
+      if (Array.isArray((mappingData as any).final_mapping)) {
+        store.finalMapping = (mappingData as any).final_mapping
       }
     }
   } catch {
