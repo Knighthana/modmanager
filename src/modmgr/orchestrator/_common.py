@@ -92,7 +92,7 @@ def _get_workspace_manager(user_config: dict[str, Any] | None = None) -> Workspa
 
 def _resolve_database(database_name: str, user_config: dict[str, Any]) -> dict[str, Any]:
     """Load a database dict from its name in user_config."""
-    databases = user_config.get("databases", {})
+    databases = user_config.get("databases") or {}
     if database_name not in databases:
         raise ValueError(f"database '{database_name}' not found in user_config.databases")
     db_path = expand_path(databases[database_name]["path"])

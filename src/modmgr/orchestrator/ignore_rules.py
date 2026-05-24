@@ -63,7 +63,7 @@ def collect_rules(
     # ── Layer 1: hardcoded ─────────────────────────────────────────
 
     # ── Layer 2: user_config.kmmignore ──────────────────────────────
-    rules.user_patterns = list(user_config.get("kmmignore", []))
+    rules.user_patterns = list(user_config.get("kmmignore") or [])
 
     # ── Layer 3: .kmmignore files ───────────────────────────────────
     dirs_to_check: set[str] = set()

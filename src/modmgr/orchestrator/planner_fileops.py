@@ -116,7 +116,7 @@ def plan_fileops(
         bakignore_list: list[str] = request.flags.get("bakignore", []) or []
         # Also read from user_config if available
         user_config = context.user_config or {}
-        bakignore_list = bakignore_list or user_config.get("bakignore", [])
+        bakignore_list = bakignore_list or user_config.get("bakignore") or []
 
         if bakignore_list:
             bak_filtered = 0

@@ -157,7 +157,7 @@ class TestBuildBackupDir(TestCase):
                 "game": [_make_game("270150", str(common), str(steamapps / "workshop" / "content" / "270150"))]
             }
             final_mapping = [{"path": str(target_file), "request": {"action": "replace"}}]
-            user_config = {}
+            user_config = {"baksuffix": "kmmbackup"}
 
             result = build_backup_dir(final_mapping, database, user_config)
             expected = f"{common}/270150.{format(22924257, 'x')}.kmmbackup/"
@@ -202,7 +202,7 @@ class TestBuildBackupDir(TestCase):
                 "game": [_make_game("270150", str(common), str(modpath))]
             }
             final_mapping = [{"path": str(target_file), "request": {"action": "replace"}}]
-            user_config = {}
+            user_config = {"baksuffix": "kmmbackup"}
 
             result = build_backup_dir(final_mapping, database, user_config)
             expected = f"{modpath}/12345/12345.{format(1800000000, 'x')}.kmmbackup/"
@@ -215,7 +215,7 @@ class TestBuildBackupDir(TestCase):
                 "game": [_make_game("270150", "/some/basepath", "/some/modpath")]
             }
             final_mapping = [{"path": "/unrelated/path/file.txt", "request": {"action": "replace"}}]
-            user_config = {}
+            user_config = {"baksuffix": "kmmbackup"}
 
             with self.assertRaises(ValueError) as ctx:
                 build_backup_dir(final_mapping, database, user_config)
@@ -288,7 +288,7 @@ class TestBuildBackupDir(TestCase):
                 ]
             }
             final_mapping = [{"path": str(t)} for t in targets_270150 + targets_892970]
-            user_config = {}
+            user_config = {"baksuffix": "kmmbackup"}
 
             result = build_backup_dir(final_mapping, database, user_config)
             # Should pick 270150 (2 matches vs 1)

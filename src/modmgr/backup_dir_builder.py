@@ -63,7 +63,7 @@ def build_backup_dirs(
         - backup_dir → 属于该目录的文件绝对路径列表
         - warnings: 稳定性检查中被跳过的 contentid 警告信息
     """
-    baksuffix = str(user_config.get("baksuffix", "kmmbackup"))
+    baksuffix = str(user_config.get("baksuffix"))
 
     # ── 1. 收集所有目标路径 ──────────────────────────────────────────
     targets: list[str] = []
