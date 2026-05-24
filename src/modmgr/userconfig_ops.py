@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
 from .iojson import load_json_file, write_json_file
-from .paths import normalize_posix
+from .osplatform import defaultvalue as os_defaults
 
 logger = logging.getLogger(__name__)
 
@@ -30,33 +28,11 @@ REQUIRED_KEYS = list(DEFAULTS.keys())
 _SCHEMA_PATH = Path(__file__).parent.parent.parent / "repo_spec" / "user_config.schema.json"
 
 
-def _detect_platform_defaults() -> dict[str, Any]:
-    """Return platform-appropriate workspace_dir and database path defaults."""
-    home_dir = os.environ.get("HOME") or os.environ.get("USERPROFILE") or str(Path.home())
-
-    if sys.platform == "win32":
-        local_appdata = os.environ.get("LOCALAPPDATA", str(Path(home_dir) / "AppData" / "Local"))
-        return {
-            "workspace_dir": normalize_posix(str(Path(local_appdata) / "kmm" / "workspace")),
-            "databases": {"default": {"path": normalize_posix(str(Path(local_appdata) / "kmm" / "database" / "database.json"))}},
-        }
-    elif sys.platform == "darwin":
-        return {
-            "workspace_dir": normalize_posix(str(Path(home_dir) / "Library" / "Caches" / "kmm" / "workspace")),
-            "databases": {"default": {"path": normalize_posix(str(Path(home_dir) / "Library" / "Application Support" / "kmm" / "database.json"))}},
-        }
-    else:  # Linux
-        return {
-            "workspace_dir": normalize_posix(str(Path(home_dir) / ".cache" / "kmm" / "workspace")),
-            "databases": {"default": {"path": normalize_posix(str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json"))}},
-        }
-
-
 def userconfig_init(path: str) -> dict[str, Any]:
     """Create or patch user_config at *path*.
 
     - If file does not exist: create with all DEFAULTS, fill platform-specific
-      workspace_dir and database path from _detect_platform_defaults()
+      workspace_dir and database path from os_defaults
     - If file exists with missing keys: fill from DEFAULTS (never overwrite)
     - If file exists but has invalid JSON: raise ValueError
     - If schema_namespace is wrong: raise ValueError (user corrupted the file)
@@ -68,7 +44,10 @@ def userconfig_init(path: str) -> dict[str, Any]:
 
     if not p.exists():
         p.parent.mkdir(parents=True, exist_ok=True)
-        pd = _detect_platform_defaults()
+        pd = {
+            "workspace_dir": os_defaults.workspace_dir_get(),
+            "databases": {"default": {"path": os_defaults.database_path_get()}},
+        }
         base = {**DEFAULTS, **pd}
         write_json_file(p, base)
         return base
@@ -86,8 +65,6 @@ def userconfig_init(path: str) -> dict[str, Any]:
     if config.get("schema_namespace") != DEFAULTS["schema_namespace"]:
         raise ValueError(f"Wrong schema_namespace in user config: {path}")
 
-    pd = _detect_platform_defaults()
-
     # Fill missing keys from DEFAULTS — never overwrite existing values
     changed = False
     for key in REQUIRED_KEYS:
@@ -95,7 +72,7 @@ def userconfig_init(path: str) -> dict[str, Any]:
             config[key] = DEFAULTS[key]
             changed = True
         elif key == "workspace_dir" and (config[key] is None or config[key] == ""):
-            config[key] = pd.get(key, DEFAULTS[key])
+            config[key] = os_defaults.workspace_dir_get()
             changed = True
 
     if changed:

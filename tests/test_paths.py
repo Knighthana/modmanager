@@ -43,12 +43,18 @@ class TestNormalizePath(TestCase):
         self.assertEqual(result, "/mnt/c/program files (x86)/steam/steamapps")
 
     def test_wsl_auto_detect_lowercase(self) -> None:
-        """WSL paths auto-detected and lowercased on Linux."""
-        if sys.platform == "win32":
-            self.skipTest("WSL detection only applies on Linux")
-
-        result = normalize_path("/mnt/d/Games/SteamApps")
-        self.assertEqual(result, "/mnt/d/games/steamapps")
+        """WSL paths auto-detected and lowercased."""
+        from modmgr.osplatform import platform as _os_platform
+        current = _os_platform()
+        if current not in ("wsl",):
+            # On native Linux / darwin the auto-detection uses osplatform.platform()
+            # which returns "linux"/"darwin" — not "wsl".  Simulate WSL.
+            with patch("modmgr.osplatform.platform", return_value="wsl"):
+                result = normalize_path("/mnt/d/Games/SteamApps")
+                self.assertEqual(result, "/mnt/d/games/steamapps")
+        else:
+            result = normalize_path("/mnt/d/Games/SteamApps")
+            self.assertEqual(result, "/mnt/d/games/steamapps")
 
     # ── L2: Linux / macOS → preserve case ─────────────────────────
 
@@ -91,11 +97,13 @@ class TestNormalizePath(TestCase):
 
     def test_auto_detect_windows(self) -> None:
         """On Windows runtime, source_platform auto-detected as 'windows'."""
-        if sys.platform != "win32":
+        from modmgr.osplatform import platform as _os_platform
+        if _os_platform() != "windows":
             # Simulate Windows runtime
-            with patch.object(sys, "platform", "win32"):
-                result = normalize_path(r"D:\Games\SteamApps")
-                self.assertEqual(result, normalize_path(r"D:\Games\SteamApps", source_platform="windows"))
+            with patch("modmgr.osplatform.platform", return_value="windows"):
+                with patch("modmgr.paths.detect_platform", return_value="windows"):
+                    result = normalize_path(r"D:\Games\SteamApps")
+                    self.assertEqual(result, normalize_path(r"D:\Games\SteamApps", source_platform="windows"))
         else:
             result = normalize_path(r"D:\Games\SteamApps")
             self.assertEqual(result, normalize_path(r"D:\Games\SteamApps", source_platform="windows"))

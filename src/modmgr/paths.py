@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
+from .osplatform import platform as detect_platform
 from .pathstyle import PathStyle, normalize
 
 
@@ -26,7 +26,7 @@ def normalize_path(path: str, *, source_platform: str | None = None) -> str:
     Args:
         path: Raw path string from any source.
         source_platform: "windows" | "linux" | "darwin" | "wsl" | None.
-            If None, auto-detected from sys.platform and path content.
+            If None, auto-detected from osplatform.platform() and path content.
 
     Returns:
         POSIX-style path with case normalized per platform rules.
@@ -51,13 +51,13 @@ def _detect_platform(path: str) -> str:
 
     Returns one of: "windows", "wsl", "linux", "darwin".
     """
-    if sys.platform == "win32":
+    p = detect_platform()
+    if p == "windows":
         return "windows"
-    if sys.platform == "darwin":
+    if p == "wsl":
+        return "wsl" if path.startswith("/mnt/") and len(path) > 5 and path[5].isalpha() else "linux"
+    if p == "darwin":
         return "darwin"
-    # Linux — check for WSL mount prefix
-    if path.startswith("/mnt/") and len(path) > 5 and path[5].isalpha():
-        return "wsl"
     return "linux"
 
 

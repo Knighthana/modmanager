@@ -249,7 +249,7 @@ def generate_database(
             ``mode="manual"`` but *paths* is empty or ``None``, or if
             ``database_name`` is not found in ``user_config.databases``.
     """
-    import sys
+    from .osplatform import platform as detect_platform
 
     # ── Resolve database path from user config ────────────────────────────
     config, _ = discover_user_config(config_index=config_index)
@@ -260,7 +260,7 @@ def generate_database(
         )
 
     # ── Auto-detect working path style from platform ───────────────────────
-    working_pathstyle = "windows" if sys.platform == "win32" else "linux"
+    working_pathstyle = "windows" if detect_platform() == "windows" else "linux"
 
     # ── Validate mode ─────────────────────────────────────────────────────
     if mode not in ("auto", "manual"):

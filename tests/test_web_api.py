@@ -54,6 +54,29 @@ class TestHealthEndpoint:
         assert body["warnings"] == []
 
 
+# ── OS defaults endpoint ──────────────────────────────────────────────────
+
+
+class TestOsDefaultsEndpoint:
+    """GET /api/os/defaults"""
+
+    def test_os_defaults_endpoint(self, client: TestClient) -> None:
+        resp = client.get("/api/os/defaults")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ok"] is True
+        data = body["data"]
+        assert "platform" in data
+        assert data["platform"] in ("linux", "windows", "darwin", "wsl")
+        assert "userconfig_index" in data
+        uci = data["userconfig_index"]
+        assert uci["type"] == "path"
+        assert isinstance(uci["string"], str)
+        assert len(uci["string"]) > 0
+        assert body["errors"] == []
+        assert body["warnings"] == []
+
+
 # ── Docs endpoint ─────────────────────────────────────────────────────────
 
 

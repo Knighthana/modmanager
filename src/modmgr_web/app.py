@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .routes import config, database, pipeline, rules, backups, workspace
+from .routes import os_defaults as os_defaults_router
 
 
 def create_app() -> FastAPI:
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(rules.router, prefix="/api/rules", tags=["rules"])
     app.include_router(backups.router, prefix="/api/backups", tags=["backups"])
     app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"])
+    app.include_router(os_defaults_router.router, prefix="/api/os", tags=["os"])
 
     # ── Static file mount + SPA fallback (only when build artefact exists) ──
     if prod_build:
