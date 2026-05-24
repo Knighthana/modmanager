@@ -8,7 +8,6 @@
         "schema_namespace",
         "schema_version",
         "baksuffix",
-        "bakignore",
         "rule_sources",
         "workspace_dir",
         "databases"

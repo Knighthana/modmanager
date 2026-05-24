@@ -53,7 +53,7 @@ DEFAULTS = {
     "workspace_dir": None,       # 由 _detect_platform_defaults() 填入
     "databases": {"default": {"path": ""}},  # 同上
 }
-REQUIRED_KEYS = [k for k in DEFAULTS if k != "path_alias"]  # optional
+REQUIRED_KEYS = [k for k in DEFAULTS if k not in ("path_alias", "bakignore")]  # optional
 ```
 
 ### 3.2 平台默认值（`_detect_platform_defaults()`）
