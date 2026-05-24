@@ -1,5 +1,8 @@
-# SPEC_RULE_SOURCES — rule_sources 对象化后端契约
+# DESIGN_RULE_SOURCES — rule_sources 对象化设计
 
+> Status: active
+> Authority: authoritative
+> Read-Tier: task-scoped
 > Purpose: 规定 `rule_sources` 从字符串数组改为 `{name: {paths: [...]}}` 对象后的前后端契约
 > 创建: 2026-05-23
 > 依赖: `user_config.schema.json`（已更新）、`DESIGN_BOOTSTRAP.md` §4.2
@@ -8,7 +11,7 @@
 
 ## 一、Schema
 
-`user_config.rule_sources` 格式：
+`user_config.rule_sources` 格式（权威定义见 `user_config.schema.json`）：
 
 ```json
 {
@@ -42,9 +45,7 @@
 ```json
 {
   "ok": true,
-  "data": {
-    "source_names": ["default", "custom"]
-  },
+  "data": {"source_names": ["default", "custom"]},
   "errors": [],
   "warnings": []
 }
@@ -73,7 +74,7 @@ class RulesScanBySourceRequest(BaseModel):
 
 **错误**：
 - `source_name` 不存在 → `{ok: false, errors: ["E_SOURCE_NOT_FOUND: 'xxx'"]}`
-- source 存在但所有 paths 都无法访问 → `{ok: true, data: {files: []}, warnings: ["W_PATH_NOT_FOUND: ..."]}`
+- source 存在但所有 paths 都无法访问 → `{ok: true, data: {files: []}, warnings: [...]}`
 
 **响应**：
 ```json
@@ -81,22 +82,17 @@ class RulesScanBySourceRequest(BaseModel):
   "ok": true,
   "data": {
     "source_name": "default",
-    "files": [
-      {"name": "kmm_rule_RWR_...json", "path": "/abs/path/...", "size": 12345}
-    ]
+    "files": [{"name": "...", "path": "/abs/path/...", "size": 12345}]
   },
   "errors": [],
   "warnings": []
 }
 ```
 
-**错误**：
-- `source_name` 不存在 → `{ok: false, errors: ["E_SOURCE_NOT_FOUND: 'xxx'"]}`
-
 ### 2.3 现有端点不变
 
-- `POST /api/workspace/{id}/rules/aggregate` — 仍然接受 `paths: list[str]`（文件绝对路径）。前端先通过 `scan-by-source` 获取文件列表，用户勾选后传绝对路径给 aggregate。
-- `POST /api/rules/scan` — 保留，作为内部实现 `scan-by-source` 使用。
+- `POST /api/workspace/{id}/rules/aggregate` — 仍接受 `paths: list[str]`
+- `POST /api/rules/scan` — 保留，作为内部实现 `scan-by-source` 使用
 
 ---
 
@@ -114,7 +110,6 @@ class RulesScanBySourceRequest(BaseModel):
 | [+ 添加] | | |
 
 编辑弹窗：输入名称 + 路径列表（每行一个路径，可增删）。
-
 保存时调 `POST /api/config/save`，写入完整 `rule_sources` 对象。
 
 ### 3.2 RulesOverviewPage
@@ -125,28 +120,3 @@ class RulesScanBySourceRequest(BaseModel):
 1. 页面顶部：source 下拉选择器（调 `POST /api/rules/list-sources` 获取选项）
 2. 选择 source → 自动调 `POST /api/rules/scan-by-source` → 展示文件列表
 3. 用户勾选文件 → 点击"聚合" → 调 `POST /api/workspace/{id}/rules/aggregate`（不变）
-
----
-
-## 四、测试断言
-
-### 后端
-
-| # | 场景 | 期望 |
-|---|------|------|
-| T1 | `list-sources` 返回所有 key | `source_names: ["default", "custom"]` |
-| T2 | `list-sources` 无 rule_sources | `source_names: []` |
-| T3 | `scan-by-source` 已知 name，目录路径 | 返回 `.kmmrule.json` 文件列表 |
-| T4 | `scan-by-source` 未知 name | `E_SOURCE_NOT_FOUND` |
-| T5 | `scan-by-source` 混合路径（目录+文件） | 两类都正确返回 |
-| T6 | `scan-by-source` 路径中有不存在的目录 | warning `W_PATH_NOT_FOUND`，其他路径正常返回 |
-| T7 | `scan-by-source` source 存在但所有路径都不存在 | `files: []` + warnings |
-| T8 | `scan-by-source` 现有 aggregate 不受影响 | 聚合仍接收 `paths`，正常工作 |
-
-### 前端
-
-| # | 场景 | 期望 |
-|---|------|------|
-| T7 | SettingsPage 展示 rule_sources 表格 | 名称列 + 路径列 + 编辑/删除按钮 |
-| T8 | 添加新 source → 保存 | `/config/save` 写入完整对象 |
-| T9 | RulesOverviewPage source 下拉 | 选择后自动加载文件列表 |
