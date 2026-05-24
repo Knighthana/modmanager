@@ -69,7 +69,10 @@ describe('AdvancedPage', () => {
         return {
           ok: true,
           data: {
-            databases: { default: { path: '/tmp/database.json' } },
+            config: {
+              databases: { default: { path: '/tmp/database.json' } },
+            },
+            config_index: '/tmp/user_config.json',
           },
           errors: [],
           warnings: [],

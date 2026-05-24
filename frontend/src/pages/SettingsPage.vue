@@ -159,9 +159,8 @@
           </div>
         </el-form-item>
 
-        <!-- User Config 路径（只读，由系统确定） -->
-        <el-form-item label="用户配置文件路径">
-          <el-input v-model="form.userConfigPath" readonly placeholder="由系统确定" />
+        <el-form-item label="配置文件位置">
+          <el-input v-model="form.userConfigPath" readonly placeholder="加载中..." />
         </el-form-item>
 
         <div class="section-subtitle">规则来源</div>
@@ -252,7 +251,7 @@ interface SettingsForm {
   baksuffix: string
   bakignore: string[]
   databases: DbEntry[]
-  userConfigPath: string   // read-only, populated from backend source_path
+  userConfigPath: string   // config_index from bootstrap discover
   firstUse: boolean
 }
 
@@ -301,7 +300,13 @@ onMounted(async () => {
   try {
     const result = await apiPost<Record<string, unknown>>('/config/discover', {})
     if (result.ok && result.data) {
-      const uc = result.data as Record<string, unknown>
+      const data = result.data as Record<string, unknown>
+      const uc = data.config as Record<string, unknown>
+      const configIndex = data.config_index as string
+
+      // Store config_index for later save
+      form.value.userConfigPath = configIndex || ''
+
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
       form.value.bakignore = (uc.bakignore as string[]) || []
       const dbs = uc.databases as Record<string, { path: string }> | undefined
@@ -320,7 +325,6 @@ onMounted(async () => {
       if (rs && typeof rs === 'object' && !Array.isArray(rs)) {
         ruleSourcesMap.value = rs as Record<string, { paths: string[] }>
       }
-      form.value.userConfigPath = (uc.source_path as string) || ''
       form.value.firstUse = (uc.first_use as boolean) || false
     }
   } catch {
@@ -340,6 +344,7 @@ async function onSaveConfig() {
     }
 
     const result = await apiPost('/config/save', {
+      config_index: form.value.userConfigPath,
       config: {
         baksuffix: form.value.baksuffix,
         bakignore: form.value.bakignore,

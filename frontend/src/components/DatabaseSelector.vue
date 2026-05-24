@@ -22,7 +22,9 @@ onMounted(async () => {
   try {
     const resp = await apiPost<Record<string, unknown>>('/config/discover', {})
     if (resp.ok && resp.data) {
-      const databases = (resp.data as Record<string, unknown>).databases as Record<string, unknown> | undefined
+      const data = resp.data as Record<string, unknown>
+      const config = data.config as Record<string, unknown> | undefined
+      const databases = config?.databases as Record<string, unknown> | undefined
       if (databases && typeof databases === 'object') {
         const keys = Object.keys(databases)
         if (keys.length > 0) {

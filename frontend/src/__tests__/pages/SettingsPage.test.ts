@@ -56,18 +56,20 @@ function vmAny(wrapper: VueWrapper): Record<string, unknown> {
   return wrapper.vm as unknown as Record<string, unknown>
 }
 
-// Mock config data matching the API response — rule_sources as name→paths object
+// Mock config data matching the new nested API response
 const mockConfigData = {
-  baksuffix: 'mybackup',
-  bakignore: ['*.log', 'node_modules/'],
-  databases: {
-    'default': { path: '/custom/path/database.json' },
+  config: {
+    baksuffix: 'mybackup',
+    bakignore: ['*.log', 'node_modules/'],
+    databases: {
+      'default': { path: '/custom/path/database.json' },
+    },
+    rule_sources: {
+      default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
+    },
+    first_use: false,
   },
-  rule_sources: {
-    default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
-  },
-  source_path: '/home/user/.config/kmm/user_config.json',
-  first_use: false,
+  config_index: '/home/user/.config/kmm/user_config.json',
 }
 
 describe('SettingsPage', () => {
@@ -143,6 +145,7 @@ describe('SettingsPage', () => {
 
     // onMounted calls /api/config/discover first, then onSaveConfig calls save
     expect(mockedApiPost).toHaveBeenLastCalledWith('/config/save', {
+      config_index: '',
       config: {
         baksuffix: 'testsuffix',
         bakignore: ['*.tmp'],

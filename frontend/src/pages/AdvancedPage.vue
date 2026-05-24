@@ -195,7 +195,8 @@ async function refreshTab(tab: string) {
           {},
         )
         if (resp.ok && resp.data) {
-          raw = resp.data
+          const data = resp.data as Record<string, unknown>
+          raw = (data.config as Record<string, unknown>) ?? data
         }
         break
       }

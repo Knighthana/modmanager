@@ -1,17 +1,19 @@
 {
-  "baksuffix": "kmmbackup",
-  "bakignore": ["*.tmp", ".git/"],
-  "databases": {
-    "default": {
-      "path": "~/.local/share/kmm/database.json"
+  "config": {
+    "baksuffix": "kmmbackup",
+    "bakignore": ["*.tmp", ".git/"],
+    "databases": {
+      "default": {
+        "path": "~/.local/share/kmm/database.json"
+      }
+    },
+    "rule_sources": [],
+    "first_use": false,
+    "metadata": {
+      "version": "1.0.0",
+      "discovered": "2026-05-13T10:00:00Z",
+      "source": "mock"
     }
   },
-  "rule_sources": [],
-  "source_path": "/home/user/.config/kmm/user_config.json",
-  "first_use": false,
-  "metadata": {
-    "version": "1.0.0",
-    "discovered": "2026-05-13T10:00:00Z",
-    "source": "mock"
-  }
+  "config_index": "/home/user/.config/kmm/user_config.json"
 }

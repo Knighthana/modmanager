@@ -114,8 +114,8 @@ async function loadDatabases() {
   try {
     const res = await apiPost<{ config: Record<string, unknown> }>('/config/discover', {})
     if (res.ok && res.data) {
-      const cfg = res.data as Record<string, unknown>
-      const dbs = cfg.databases as Record<string, { path: string }> | undefined
+      const cfg = res.data as { config: Record<string, unknown> }
+      const dbs = (cfg.config?.databases) as Record<string, { path: string }> | undefined
       databases.value = dbs ? Object.keys(dbs) : []
       if (databases.value.length > 0 && !newDatabase.value) {
         newDatabase.value = databases.value[0]

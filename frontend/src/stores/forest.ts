@@ -235,9 +235,13 @@ export const useForestStore = defineStore('forest', () => {
     try {
       const configResp = await apiPost('/config/discover', {})
       if (configResp.ok && configResp.data) {
-        userConfig.value = configResp.data as Record<string, unknown>
+        const data = configResp.data as Record<string, unknown>
+        const config = data.config as Record<string, unknown>
+        const configIndex = data.config_index as string
+        userConfig.value = config
         await apiPost('/config/save', {
-          config: configResp.data,
+          config_index: configIndex,
+          config,
         })
       } else {
         // user_config 不存在 → 创建默认值并保存

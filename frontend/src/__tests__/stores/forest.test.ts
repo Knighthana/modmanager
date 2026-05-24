@@ -252,7 +252,7 @@ describe('useForestStore', () => {
       if (url.includes('/config/discover')) {
         return {
           ok: true,
-          json: async () => ({ ok: true, data: { game: 'valheim' }, errors: [], warnings: [] }),
+          json: async () => ({ ok: true, data: { config: { game: 'valheim' }, config_index: '/tmp/user_config.json' }, errors: [], warnings: [] }),
         }
       }
       if (url.includes('/config/save')) {
