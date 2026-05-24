@@ -74,6 +74,11 @@ def userconfig_init(path: str) -> dict[str, Any]:
             config[key] = os_defaults.workspace_dir_get()
             changed = True
 
+    # ── Migrate old rule_sources format (string array → {name: {paths: [...]}}) ──
+    if isinstance(config.get("rule_sources"), list):
+        config["rule_sources"] = {"default": {"paths": config["rule_sources"]}}
+        changed = True
+
     if changed:
         write_json_file(p, config)
 
