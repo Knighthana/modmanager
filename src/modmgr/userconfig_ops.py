@@ -74,10 +74,29 @@ def userconfig_init(path: str) -> dict[str, Any]:
             config[key] = os_defaults.workspace_dir_get()
             changed = True
 
-    # ── Migrate old rule_sources format (string array → {name: {paths: [...]}}) ──
-    if isinstance(config.get("rule_sources"), list):
-        config["rule_sources"] = {"default": {"paths": config["rule_sources"]}}
+    # ── Migrate old rule_sources formats ──────────────────────────
+    rs = config.get("rule_sources")
+    if isinstance(rs, list):
+        # Old format: ["~/path1", "~/path2"] → {"default": {"paths": [...]}}
+        config["rule_sources"] = {"default": {"paths": rs}}
         changed = True
+    elif isinstance(rs, dict):
+        migrated = False
+        new_rs: dict[str, Any] = {}
+        for name, entry in rs.items():
+            if isinstance(entry, dict):
+                if "path" in entry and "paths" not in entry:
+                    # Old format: {"name": {"path": "string"}} → {"name": {"paths": ["string"]}}
+                    new_rs[name] = {"paths": [entry["path"]]}
+                    migrated = True
+                    continue
+                elif "paths" in entry and isinstance(entry["paths"], list):
+                    new_rs[name] = entry  # already correct
+                    continue
+            new_rs[name] = entry
+        if migrated:
+            config["rule_sources"] = new_rs
+            changed = True
 
     if changed:
         write_json_file(p, config)
@@ -117,7 +136,11 @@ def userconfig_save(config_index: str, data: dict[str, Any]) -> None:
         try:
             jsonschema.validate(instance=data, schema=schema)
         except jsonschema.ValidationError as exc:
-            raise ValueError(f"Schema validation failed for {config_index}: {exc.message}") from exc
+            # jsonschema error messages can be misleading — include the JSON path
+            path_str = " → ".join(str(p) for p in exc.absolute_path) if exc.absolute_path else "(root)"
+            raise ValueError(
+                f"Schema validation failed for {config_index} at {path_str}: {exc.message}"
+            ) from exc
 
     # -- Sync bakignore if baksuffix changed --
     old_baksuffix = existing.get("baksuffix")
