@@ -22,7 +22,7 @@ async def discover_config(req: DiscoverUserConfigRequest):
     Returns an ``ApiResponse`` with ``{"config": ..., "config_index": ...}``.
     """
     try:
-        config, config_index = discover_user_config(home_dir=req.home_dir)
+        config, config_index = discover_user_config(config_index=req.config_index)
         return adapt_dict_result({"config": config, "config_index": config_index})
     except (ValueError, FileNotFoundError) as exc:
         return adapt_error(str(exc))

@@ -3,15 +3,12 @@
 Provides:
   - ``ProgressCallback`` protocol for progress reporting.
   - ``_detect_software_dir()`` — locate the software root directory.
-  - ``discover_user_config()`` — single-level user_config.json discovery
-    with first-use default creation.
+  - ``discover_user_config()`` — discover user_config.json at an explicit path.
   - ``generate_database()`` — generate or load Steam database (auto / manual).
 """
 
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -126,102 +123,33 @@ def _derive_steamapps_from_steam_exe(steam_exe_path: str) -> list[str]:
     return libraries
 
 
-# ── Internal helpers (platform defaults) ──────────────────────────────────
-
-
-def _get_platform_defaults(home_dir: str | None = None) -> dict[str, Any]:
-    """Return platform-default *workspace_dir* and *database* path dict.
-
-    These values are passed as ``platform_defaults`` to ``userconfig_init``
-    when creating or patching a user config file.
-
-    Per DESIGN_BOOTSTRAP.md §1.3:
-
-      Linux:
-        workspace: ~/.cache/kmm/workspace/
-        database:  ~/.local/share/kmm/database.json
-      Windows:
-        workspace: %LOCALAPPDATA%/kmm/workspace/
-        database:  %LOCALAPPDATA%/kmm/database/database.json
-      macOS:
-        workspace: ~/Library/Caches/kmm/workspace/
-        database:  ~/Library/Application Support/kmm/database.json
-    """
-    if home_dir is None:
-        home_dir = (
-            os.environ.get("HOME")
-            or os.environ.get("USERPROFILE")
-            or str(Path.home())
-        )
-
-    if sys.platform == "win32":
-        local_appdata = os.environ.get(
-            "LOCALAPPDATA", str(Path(home_dir) / "AppData" / "Local")
-        )
-        workspace_dir = normalize_posix(str(Path(local_appdata) / "kmm" / "workspace"))
-        db_path = normalize_posix(
-            str(Path(local_appdata) / "kmm" / "database" / "database.json")
-        )
-    elif sys.platform == "darwin":
-        workspace_dir = normalize_posix(
-            str(Path(home_dir) / "Library" / "Caches" / "kmm" / "workspace")
-        )
-        db_path = normalize_posix(
-            str(Path(home_dir) / "Library" / "Application Support" / "kmm" / "database.json")
-        )
-    else:
-        workspace_dir = normalize_posix(
-            str(Path(home_dir) / ".cache" / "kmm" / "workspace")
-        )
-        db_path = normalize_posix(
-            str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json")
-        )
-
-    return {
-        "workspace_dir": workspace_dir,
-        "databases": {"default": {"path": db_path}},
-    }
-
-
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-def discover_user_config(
-    config_index: str | None = None,
-    home_dir: str | None = None,
-) -> tuple[dict[str, Any], str]:
-    """Discover user_config at *config_index* or platform default location.
+def discover_user_config(config_index: str) -> tuple[dict[str, Any], str]:
+    """Discover user_config at *config_index* (mandatory).
 
-    If *config_index* is provided, look there.  Otherwise use the
-    platform-default location (per DESIGN_BOOTSTRAP.md §1.1).
+    *config_index* must be provided by the caller — bootstrap does **not**
+    perform any platform-default path discovery.
 
     Behaviour:
 
     1. File exists + complete (all REQUIRED_KEYS present, valid
        schema_namespace) → return ``(loaded_dict, path)``.
     2. File exists + incomplete (missing keys)
-       → call ``userconfig_init(path, platform_defaults)``
-       → return ``(patched_dict, path)``.
+       → call ``userconfig_init(path)`` → return ``(patched_dict, path)``.
     3. File does not exist
-       → call ``userconfig_init(path, platform_defaults)``
-       → return ``(created_dict, path)``.
+       → call ``userconfig_init(path)`` → return ``(created_dict, path)``.
     4. File exists but invalid (wrong namespace, corrupt JSON)
        → raise ``ValueError`` with the reason.
 
     The returned ``config_dict`` does **not** contain ``source_path`` or
     ``first_use`` keys.
 
-    *platform_defaults* includes:
-        ``workspace_dir``: platform default per DESIGN_BOOTSTRAP.md §1.3
-        ``databases.default.path``: platform default database path
-
     Args:
         config_index:
-            Explicit path to ``user_config.json``.  When ``None``, the
-            platform-default location is used.
-        home_dir:
-            User home directory for platform path resolution.  When ``None``,
-            resolved from environment variables.
+            Explicit path to ``user_config.json``.  **Required** — a
+            ``ValueError`` is raised when falsy.
 
     Returns:
         ``(config_dict, config_index)`` tuple where *config_index* is the
@@ -229,37 +157,19 @@ def discover_user_config(
 
     Raises:
         ValueError:
-            If the file exists but has wrong ``schema_namespace`` or contains
-            corrupt / non-dict JSON.
+            If *config_index* is ``None`` or empty, or if the file exists but
+            has wrong ``schema_namespace`` or contains corrupt / non-dict JSON.
     """
     from .userconfig_ops import DEFAULTS, REQUIRED_KEYS, userconfig_init
 
-    if home_dir is None:
-        home_dir = (
-            os.environ.get("HOME")
-            or os.environ.get("USERPROFILE")
-            or str(Path.home())
-        )
-
-    platform_defaults = _get_platform_defaults(home_dir)
-
-    # ── Resolve config_index ──────────────────────────────────────────────
-    if config_index is None:
-        if sys.platform == "win32":
-            config_dir = Path(
-                os.environ.get("APPDATA", str(Path(home_dir) / "AppData" / "Roaming"))
-            )
-        elif sys.platform == "darwin":
-            config_dir = Path(home_dir) / "Library" / "Preferences"
-        else:
-            config_dir = Path(home_dir) / ".config"
-        config_index = normalize_posix(str(config_dir / "kmm" / "user_config.json"))
+    if not config_index:
+        raise ValueError("config_index is required — caller must provide the path to user_config.json")
 
     config_path = Path(config_index)
 
     # ── Case 3: file does not exist → create via userconfig_init ─────────
     if not config_path.exists():
-        config_dict = userconfig_init(config_index, platform_defaults=platform_defaults)
+        config_dict = userconfig_init(config_index)
         return (config_dict, config_index)
 
     # ── File exists — load it ─────────────────────────────────────────────
@@ -284,15 +194,16 @@ def discover_user_config(
         return (data, config_index)
 
     # ── Case 2: incomplete → patch via userconfig_init ───────────────────
-    config_dict = userconfig_init(config_index, platform_defaults=platform_defaults)
+    config_dict = userconfig_init(config_index)
     return (config_dict, config_index)
 
 
 def generate_database(
     mode: str,
     *,
+    config_index: str,
     paths: list[str] | None = None,
-    steam_exe_path: str | None = None,  # NEW
+    steam_exe_path: str | None = None,
     greedy_parsing: bool = False,
     on_progress: ProgressCallback | None = None,
     database_name: str = "default",
@@ -312,6 +223,8 @@ def generate_database(
         mode:
             ``"auto"`` — automatically discover Steam library paths.
             ``"manual"`` — use the explicit *paths* argument.
+        config_index:
+            Path to ``user_config.json`` — forwarded to ``discover_user_config()``.
         paths:
             List of VDF file paths or ``steamapps`` directory paths (only used
             when ``mode="manual"``).
@@ -319,8 +232,6 @@ def generate_database(
             Windows steam.exe path for VDF derivation (optional). When
             provided, steamapps paths are derived via ``_derive_steamapps_from_steam_exe``
             and merged into *paths*.
-        working_pathstyle:
-            ``"linux"`` or ``"windows"`` path style.
         greedy_parsing:
             When ``True``, scan all discovered mods regardless of game scoping.
         on_progress:
@@ -338,8 +249,10 @@ def generate_database(
             ``mode="manual"`` but *paths* is empty or ``None``, or if
             ``database_name`` is not found in ``user_config.databases``.
     """
+    import sys
+
     # ── Resolve database path from user config ────────────────────────────
-    config, _ = discover_user_config()
+    config, _ = discover_user_config(config_index=config_index)
     db_path = expand_path(config.get("databases", {}).get(database_name, {}).get("path", ""))
     if not db_path:
         raise ValueError(

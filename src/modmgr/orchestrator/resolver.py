@@ -43,7 +43,8 @@ class WorkspaceResolver:
 
     def resolve(self, request: Any) -> CleanContext:
         workspace_id: str = request.resolver_args["workspace_id"]
-        user_config, _ = discover_user_config()
+        config_index: str = request.resolver_args.get("config_index", "")
+        user_config, _ = discover_user_config(config_index=config_index)
         ws_dir = user_config.get("workspace_dir")
         if not ws_dir:
             raise ValueError("workspace_dir is missing from user_config")
@@ -70,7 +71,8 @@ class FilePathResolver:
         args = request.resolver_args
         mapping = load_json_file(expand_path(args["mapping_path"]))
         database = load_json_file(expand_path(args["database_path"]))
-        user_config, _ = discover_user_config()
+        config_index: str = args.get("config_index", "")
+        user_config, _ = discover_user_config(config_index=config_index)
 
         return CleanContext(
             final_mapping=mapping.get("final_mapping", []),
@@ -86,7 +88,8 @@ class RawDictResolver:
         args = request.resolver_args
         user_config = args.get("user_config")
         if user_config is None:
-            user_config, _ = discover_user_config()
+            config_index: str = args.get("config_index", "")
+            user_config, _ = discover_user_config(config_index=config_index)
         return CleanContext(
             final_mapping=args.get("final_mapping", []),
             database=args.get("database", {}),

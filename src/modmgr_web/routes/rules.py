@@ -123,7 +123,7 @@ async def rules_affected_entries(req: RulesAffectedEntriesRequest):
 
     # Load database from user_config via database_name
     try:
-        user_config, _ = discover_user_config()
+        user_config, _ = discover_user_config(config_index=req.config_index)
         db_entry = user_config.get("databases", {}).get(req.database_name)
         if db_entry:
             db_path = db_entry["path"]
@@ -297,7 +297,7 @@ async def rules_list_sources(req: RulesListSourcesRequest):
 
     Returns source_names array — the keys of user_config.rule_sources.
     """
-    config, _ = discover_user_config()
+    config, _ = discover_user_config(config_index=req.config_index)
     rule_sources = config.get("rule_sources", {})
     if not isinstance(rule_sources, dict):
         rule_sources = {}
@@ -315,7 +315,7 @@ async def rules_scan_by_source(req: RulesScanBySourceRequest):
 
     Warnings are returned for paths that don't exist.
     """
-    config, _ = discover_user_config()
+    config, _ = discover_user_config(config_index=req.config_index)
     rule_sources = config.get("rule_sources", {})
 
     if not isinstance(rule_sources, dict) or req.source_name not in rule_sources:

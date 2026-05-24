@@ -29,5 +29,6 @@
   - bootstrap 读取文件 → 判断 complete/合法 → 发现不完整则调 `userconfig_init(path)` 补全
   - `userconfig_init` 只补空值键（以 schema `required` 为准），不覆盖已有值；若值非法则退回 bootstrap 报错
   - `userconfig_save(config_index, data)` 处理前端修改（编辑/保存），与 bootstrap 无关
-  - `config_index` 替代 `source_path`——bootstrap 出参，前端透明传回，后端解析
+  - **`config_index` 是 `discover_user_config()` 的必填参数**——调用方必须传入完整路径；bootstrap 不执行平台默认路径猜测
+  - 平台默认路径（`workspace_dir`、`database`）由 `userconfig_ops._detect_platform_defaults()` 内部维护
 - **P22**: `user_config.schema.json` 的 `required` 扩容为全部 9 个必填键（`schema_namespace`/`schema_version`/`baksuffix`/`kmmignore`/`bakignore`/`rule_sources`/`path_alias`/`workspace_dir`/`databases`），以保证"schema 认为 complete"与"业务需要 complete"一致

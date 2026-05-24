@@ -6,26 +6,18 @@
 > Purpose: 定义 bootstrap 模块的初始化流程、三平台默认路径、Steam 发现顺序、首次使用行为
 
 创建：2026-05-21
-更新：2026-05-23 — §一 重写为 bootstrap/init 拆分流程；§1.2 扩展为 9 字段默认值表；§五 `source_path` → `config_index`；§三 `workspace_dir` 固化规则；新增 §四 子节（rule_sources、bakignore）
+更新：2026-05-25 — §1.1 config_index 必填，删除平台默认路径猜测；§1.3 默认路径汇总移至 `userconfig_ops._detect_platform_defaults()`；§五 config_index 必填
 
 ---
 
 ## 一、user_config.json 的发现与创建
 
-### 1.1 发现流程
+### 1.1 入口
 
-bootstrap 按以下优先级确定 `user_config.json` 的位置：
+`config_index` 是 `discover_user_config()` 的**必填参数**——调用方必须传入
+`user_config.json` 的完整路径。bootstrap 不执行任何平台默认路径猜测。
 
-1. **调用方传入了 `config_index`** → 直接使用该路径，不搜索默认目录
-2. **未传入 `config_index`** → 使用平台默认路径：
-
-| 平台 | 默认路径 |
-|------|---------|
-| Linux | `~/.config/kmm/user_config.json` |
-| Windows | `%APPDATA%/kmm/user_config.json` |
-| macOS | `~/Library/Preferences/kmm/user_config.json` |
-
-无论哪种方式确定了路径后，按以下规则处理：
+确定了路径后，按以下规则处理：
 
 - 文件存在且 schema_version 匹配、所有 required 字段齐备、值合法 → 加载返回
 - 文件存在但缺少必填键 → 调 `userconfig_init()` 补全后返回
@@ -48,15 +40,14 @@ bootstrap 按以下优先级确定 `user_config.json` 的位置：
 | `workspace_dir` | `<平台默认>` | bootstrap 按平台填入默认值后**固化**——运行时以此为准，不再做平台回退 |
 | `databases` | `{"default": {"path": "<平台默认 database 路径>"}}` | |
 
-### 1.3 默认路径汇总
+### 1.3 默认路径
 
-| 用途 | Linux | Windows | macOS |
-|------|-------|---------|-------|
-| `user_config` | `~/.config/kmm/` | `%APPDATA%/kmm/` | `~/Library/Preferences/kmm/` |
-| `database`（首次默认） | `~/.local/share/kmm/database.json` | `%LOCALAPPDATA%/kmm/database/database.json` | `~/Library/Application Support/kmm/database.json` |
-| `workspace`（首次创建时按平台填入，固化） | `~/.cache/kmm/workspace/` | `%LOCALAPPDATA%/kmm/workspace/` | `~/Library/Caches/kmm/workspace/` |
+平台默认路径（`workspace_dir` 和 `database`）现在由
+`userconfig_ops._detect_platform_defaults()` 内部维护。
+`discover_user_config()` / bootstrap 不再包含任何平台路径猜测逻辑。
 
-> `workspace_dir` 由 bootstrap 首次创建 `user_config` 时按平台填入默认值。之后运行时以 `user_config.workspace_dir` 的值为准，**不再执行平台回退**。用户可通过前端设置面板修改。
+> `workspace_dir` 由 `userconfig_init` 首次创建 `user_config` 时按平台填入默认值。
+> 之后运行时以 `user_config.workspace_dir` 的值为准，**不再执行平台回退**。
 
 ---
 
@@ -159,9 +150,11 @@ steam.exe 所在目录 = SteamRoot
 
 ## 五、关于 `config_index`
 
-`config_index` 是 bootstrap 的**入参兼出参**——标识当前生效的 `user_config.json` 文件位置。
+`config_index` 是 bootstrap 的**必填入参兼出参**——标识当前生效的 `user_config.json` 文件位置。
 
-**入参**：调用方在调用 bootstrap 时传入。若传入了有效的 `config_index`，bootstrap 从该位置读取/校验 user_config，**不搜索平台默认目录**。若该位置无文件 → 调 `userconfig_init()` 创建。
+**入参**：**必填**。调用方在调用 `discover_user_config()` 时必须传入完整的文件路径。
+bootstrap 从该位置读取/校验 user_config，**不执行任何平台默认路径猜测**。
+若该位置无文件 → 调 `userconfig_init()` 创建。
 
 **出参**：bootstrap 返回时携带 `config_index`，记录实际生效的文件路径。前端将此值透明保存，后续 `/config/save` 等操作原样传回。
 
@@ -192,10 +185,8 @@ steam.exe 所在目录 = SteamRoot
 
 ### 平台识别
 
-- Linux 下 `user_config` 默认路径为 `~/.config/kmm/user_config.json`
-- Windows 下 `user_config` 默认路径为 `%APPDATA%/kmm/user_config.json`
-- macOS 下 `user_config` 默认路径为 `~/Library/Preferences/kmm/user_config.json`
-- 各平台下 `database`、`workspace` 默认路径符合 §1.3 表
+平台默认路径（`workspace_dir`、`database`）由 `userconfig_ops._detect_platform_defaults()` 维护，
+`discover_user_config()` 不执行任何平台默认路径猜测。
 
 ### 显式传入路径
 
@@ -205,10 +196,9 @@ steam.exe 所在目录 = SteamRoot
 
 ### 默认目录首次创建
 
-- 默认目录下不存在 `user_config.json` 时，bootstrap 自动创建
+- 指定路径下不存在 `user_config.json` 时，`discover_user_config` 调 `userconfig_init` 在该路径创建
 - 创建的文件须包含 §1.2 规定的全部默认字段
-- `databases` 默认值为 `{"default": {"path": "<平台默认 database 路径>"}}`——该路径指向 §1.3 表中对应平台的 database 默认位置
-- `first_use=true` 仅当文件由 bootstrap 首次创建时为真
+- `databases` 默认值为 `{"default": {"path": "<平台默认 database 路径>"}}`——该路径由 `_detect_platform_defaults()` 按平台填入
 
 ### Databases 解析
 

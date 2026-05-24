@@ -25,8 +25,12 @@ class TestUserconfigInit(unittest.TestCase):
             result = userconfig_init(path)
 
             self.assertEqual(set(result.keys()), set(REQUIRED_KEYS))
+            # workspace_dir and databases are overridden by platform defaults
             for key in REQUIRED_KEYS:
-                self.assertEqual(result[key], DEFAULTS[key])
+                if key in ("workspace_dir", "databases"):
+                    self.assertIsNotNone(result[key])
+                else:
+                    self.assertEqual(result[key], DEFAULTS[key])
 
             # File was actually written
             self.assertTrue(Path(path).exists())
@@ -67,18 +71,15 @@ class TestUserconfigInit(unittest.TestCase):
 
             self.assertEqual(result["baksuffix"], "custom_suffix")
 
-    def test_platform_defaults_overlay(self) -> None:
-        """platform_defaults merge on top of DEFAULTS."""
+    def test_platform_defaults_filled_on_create(self) -> None:
+        """New file receives platform-specific workspace_dir and database path."""
         with tempfile.TemporaryDirectory() as td:
             path = str(Path(td) / "user_config.json")
-            pd = {
-                "workspace_dir": "~/.cache/kmm/workspace",
-                "databases": {"default": {"path": "/home/user/db.json"}},
-            }
-            result = userconfig_init(path, platform_defaults=pd)
+            result = userconfig_init(path)
 
-            self.assertEqual(result["workspace_dir"], "~/.cache/kmm/workspace")
-            self.assertEqual(result["databases"]["default"]["path"], "/home/user/db.json")
+            # Platform defaults are filled for workspace_dir and databases
+            self.assertIsNotNone(result["workspace_dir"])
+            self.assertIsNotNone(result["databases"]["default"]["path"])
 
             # Other fields still have DEFAULTS
             self.assertEqual(result["baksuffix"], DEFAULTS["baksuffix"])

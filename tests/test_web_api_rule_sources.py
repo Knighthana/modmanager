@@ -56,17 +56,17 @@ class TestListSources:
         """T1: Mock rule_sources with two entries → both names returned."""
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {
                     "rule_sources": {
                         "default": {"paths": ["/some/path/"]},
                         "custom": {"paths": ["/other/path/"]},
                     }
                 },
-                "/fake/config.json",
+                config_index,
             ),
         )
-        resp = client.post("/api/rules/list-sources", json={})
+        resp = client.post("/api/rules/list-sources", json={"config_index": "/fake/config.json"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -79,9 +79,9 @@ class TestListSources:
         """T2: Empty ``rule_sources`` → empty ``source_names`` list."""
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: ({"rule_sources": {}}, "/fake/config.json"),
+            lambda config_index: ({"rule_sources": {}}, config_index),
         )
-        resp = client.post("/api/rules/list-sources", json={})
+        resp = client.post("/api/rules/list-sources", json={"config_index": "/fake/config.json"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -108,7 +108,7 @@ class TestScanBySource:
 
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {
                     "rule_sources": {
                         "default": {
@@ -116,13 +116,13 @@ class TestScanBySource:
                         }
                     }
                 },
-                "/fake/config.json",
+                config_index,
             ),
         )
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "default"},
+            json={"source_name": "default", "config_index": "/fake/config.json"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -145,18 +145,18 @@ class TestScanBySource:
         """T4: Unknown ``source_name`` → ``ok: false`` + ``E_SOURCE_NOT_FOUND``."""
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {
                     "rule_sources": {
                         "default": {"paths": ["/some/path/"]},
                     }
                 },
-                "/fake/config.json",
+                config_index,
             ),
         )
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "nonexistent"},
+            json={"source_name": "nonexistent", "config_index": "/fake/config.json"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -183,7 +183,7 @@ class TestScanBySource:
 
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {
                     "rule_sources": {
                         "mixed": {
@@ -194,13 +194,13 @@ class TestScanBySource:
                         }
                     }
                 },
-                "/fake/config.json",
+                config_index,
             ),
         )
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "mixed"},
+            json={"source_name": "mixed", "config_index": "/fake/config.json"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -221,7 +221,7 @@ class TestScanBySource:
 
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {
                     "rule_sources": {
                         "default": {
@@ -232,13 +232,13 @@ class TestScanBySource:
                         }
                     }
                 },
-                "/fake/config.json",
+                config_index,
             ),
         )
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "default"},
+            json={"source_name": "default", "config_index": "/fake/config.json"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -255,7 +255,7 @@ class TestScanBySource:
         """T7: All paths non-existent → ``files: []`` + warnings."""
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {
                     "rule_sources": {
                         "default": {
@@ -266,13 +266,13 @@ class TestScanBySource:
                         }
                     }
                 },
-                "/fake/config.json",
+                config_index,
             ),
         )
 
         resp = client.post(
             "/api/rules/scan-by-source",
-            json={"source_name": "default"},
+            json={"source_name": "default", "config_index": "/fake/config.json"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -306,7 +306,7 @@ class TestAggregateEndpoint:
 
         monkeypatch.setattr(
             "modmgr_web.routes.workspace._get_workspace_manager",
-            lambda: mock_wm,
+            lambda config_index: mock_wm,
         )
 
         # Mock rule_aggregate to return a valid result without real file I/O
@@ -324,15 +324,15 @@ class TestAggregateEndpoint:
         #  having it doesn't hurt)
         monkeypatch.setattr(
             "modmgr_web.routes.workspace.discover_user_config",
-            lambda: (
+            lambda config_index: (
                 {"workspace_dir": str(tmp_path)},
-                "/fake/config.json",
+                config_index,
             ),
         )
 
         resp = client.post(
             "/api/workspace/test-ws-1/rules/aggregate",
-            json={"paths": [str(tmp_path / "some_rules")]},
+            json={"paths": [str(tmp_path / "some_rules")], "config_index": "/fake/config.json"},
         )
         assert resp.status_code == 200
         body = resp.json()

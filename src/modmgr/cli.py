@@ -105,6 +105,7 @@ def build_db_parser() -> argparse.ArgumentParser:
 
     restore = sub.add_parser("restore", help="Restore files from a backup directory")
     restore.add_argument("--backup-dir", required=True, help="Path to backup directory")
+    restore.add_argument("--config", default=None, help="Path to user_config.json")
     restore.add_argument("--files", nargs="*", help="Specific files to restore (default: all)")
     restore.add_argument(
         "--delete-orphans",
@@ -368,9 +369,15 @@ def _handle_restore(args: argparse.Namespace) -> int:
     except Exception:
         final_mapping = []
 
+    # Load user_config for dispatch
+    user_config: dict[str, Any] = {}
+    if args.config:
+        try:
+            user_config = load_json_file(args.config)
+        except Exception as exc:
+            return _emit_error(f"failed to load user config: {exc}")
+
     try:
-        from .bootstrap import discover_user_config
-        user_config = discover_user_config()
         result = dispatch(
             TaskRequest(
                 identity="cli",

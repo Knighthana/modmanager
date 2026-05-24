@@ -36,10 +36,10 @@ class TestDiscoverUserConfig(TestCase):
     """Tests for discover_user_config()."""
 
     def test_discover_user_config_first_use_creates_default(self) -> None:
-        """No existing config → default is created."""
+        """No existing config at config_index → default is created."""
         with tempfile.TemporaryDirectory() as td:
-            home_dir = str(td)
-            config, config_index = discover_user_config(home_dir=home_dir)
+            config_index = str(Path(td) / "user_config.json")
+            config, returned_index = discover_user_config(config_index=config_index)
 
             self.assertIn("databases", config)
             self.assertIn("default", config["databases"])
@@ -47,19 +47,15 @@ class TestDiscoverUserConfig(TestCase):
             self.assertTrue(config["databases"]["default"]["path"].endswith("database.json"))
             self.assertNotIn("source_path", config)
             self.assertNotIn("first_use", config)
-            self.assertTrue(config_index.endswith("user_config.json"))
+            self.assertEqual(returned_index, config_index)
 
             # Verify the file was actually written
-            config_path = Path(td) / ".config" / "kmm" / "user_config.json"
-            self.assertTrue(config_path.exists())
+            self.assertTrue(Path(config_index).exists())
 
     def test_discover_user_config_existing_file(self) -> None:
         """Existing user_config.json is loaded."""
         with tempfile.TemporaryDirectory() as td:
-            home_dir = str(td)
-            config_dir = Path(td) / ".config" / "kmm"
-            config_dir.mkdir(parents=True)
-            config_file = config_dir / "user_config.json"
+            config_index = str(Path(td) / "user_config.json")
             data = {
                 "schema_namespace": "KMM_UserConfig",
                 "schema_version": "knighthana@0.1.0",
@@ -71,26 +67,33 @@ class TestDiscoverUserConfig(TestCase):
                 "workspace_dir": "/tmp/ws",
                 "databases": {"default": {"path": "/custom/path.json"}},
             }
-            config_file.write_text(json.dumps(data), encoding="utf-8")
+            Path(config_index).write_text(json.dumps(data), encoding="utf-8")
 
-            config, config_index = discover_user_config(home_dir=home_dir)
+            config, returned_index = discover_user_config(config_index=config_index)
             self.assertEqual(config.get("key1"), None)
             self.assertEqual(config["databases"]["default"]["path"], "/custom/path.json")
             self.assertNotIn("first_use", config)
             self.assertNotIn("source_path", config)
-            self.assertEqual(config_index, str(config_file))
+            self.assertEqual(returned_index, config_index)
 
     def test_discover_user_config_invalid_json_raises(self) -> None:
         """Invalid JSON content → ValueError."""
         with tempfile.TemporaryDirectory() as td:
-            home_dir = str(td)
-            config_dir = Path(td) / ".config" / "kmm"
-            config_dir.mkdir(parents=True)
-            config_file = config_dir / "user_config.json"
-            config_file.write_text("this is not valid json {{{", encoding="utf-8")
+            config_index = str(Path(td) / "user_config.json")
+            Path(config_index).write_text("this is not valid json {{{", encoding="utf-8")
 
             with self.assertRaises(ValueError):
-                discover_user_config(home_dir=home_dir)
+                discover_user_config(config_index=config_index)
+
+    def test_discover_user_config_empty_config_index_raises(self) -> None:
+        """Empty config_index → ValueError."""
+        with self.assertRaises(ValueError):
+            discover_user_config(config_index="")
+
+    def test_discover_user_config_none_config_index_raises(self) -> None:
+        """None config_index → ValueError."""
+        with self.assertRaises(ValueError):
+            discover_user_config(config_index=None)  # type: ignore[arg-type]
 
 
 class TestGenerateDatabase(TestCase):
@@ -114,7 +117,7 @@ class TestGenerateDatabase(TestCase):
             fake_config = self._make_user_config_override(td, db_path)
             with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
                 with self.assertRaises(ValueError):
-                    generate_database("invalid")
+                    generate_database("invalid", config_index=fake_config[1])
 
     def test_generate_database_manual_empty_paths(self) -> None:
         """Manual mode with empty paths raises ValueError."""
@@ -123,7 +126,7 @@ class TestGenerateDatabase(TestCase):
             fake_config = self._make_user_config_override(td, db_path)
             with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
                 with self.assertRaises(ValueError):
-                    generate_database("manual", paths=[])
+                    generate_database("manual", config_index=fake_config[1], paths=[])
 
     def test_generate_database_manual_none_paths(self) -> None:
         """Manual mode with None paths raises ValueError."""
@@ -132,7 +135,7 @@ class TestGenerateDatabase(TestCase):
             fake_config = self._make_user_config_override(td, db_path)
             with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
                 with self.assertRaises(ValueError):
-                    generate_database("manual", paths=None)
+                    generate_database("manual", config_index=fake_config[1], paths=None)
 
     def test_generate_database_missing_db_name(self) -> None:
         """Unknown database_name raises ValueError."""
@@ -141,7 +144,7 @@ class TestGenerateDatabase(TestCase):
             fake_config = self._make_user_config_override(td, db_path)
             with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
                 with self.assertRaises(ValueError):
-                    generate_database("auto", database_name="nonexistent")
+                    generate_database("auto", config_index=fake_config[1], database_name="nonexistent")
 
     def test_generate_database_always_rescans(self) -> None:
         """generate_database() always rescans — no cache hit (cache is for /read, not /generate)."""
@@ -162,7 +165,7 @@ class TestGenerateDatabase(TestCase):
             Path(db_path).write_text(json.dumps(cache_data), encoding="utf-8")
 
             with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                result = generate_database("auto")
+                result = generate_database("auto", config_index=fake_config[1])
             # Always returns fresh scan result, not cache
             self.assertIn("steamlib", result)
             self.assertIn("game", result)
@@ -183,7 +186,7 @@ class TestGenerateDatabase(TestCase):
                     side_effect=ValueError("mocked: no Steam"),
                 ):
                     with self.assertRaises(ValueError):
-                        generate_database("auto")
+                        generate_database("auto", config_index=fake_config[1])
 
     def test_generate_database_cache_invalid_structure(self) -> None:
         """A cache file without 'steamlib' list is ignored (fall through to scan)."""
@@ -201,7 +204,7 @@ class TestGenerateDatabase(TestCase):
                     side_effect=ValueError("mocked: no Steam"),
                 ):
                     with self.assertRaises(ValueError):
-                        generate_database("auto")
+                        generate_database("auto", config_index=fake_config[1])
 
     def _complete_config(
         self,
@@ -223,30 +226,33 @@ class TestGenerateDatabase(TestCase):
             cfg.update(overrides)
         return cfg
 
-    def test_explicit_path_used_over_default(self) -> None:
-        """Explicit home_dir overrides the platform default config path."""
+    def test_explicit_path_used(self) -> None:
+        """Explicit config_index loads the correct file."""
         with tempfile.TemporaryDirectory() as td:
-            custom = Path(td) / ".config" / "kmm" / "user_config.json"
-            custom.parent.mkdir(parents=True)
-            custom.write_text(json.dumps(self._complete_config({
+            config_index = str(Path(td) / "custom_config.json")
+            Path(config_index).parent.mkdir(parents=True, exist_ok=True)
+            Path(config_index).write_text(json.dumps(self._complete_config({
                 "databases": {"custom_db": {"path": "/custom/db.json"}},
             })), encoding="utf-8")
-            config, config_index = discover_user_config(home_dir=str(Path(td)))
-            assert config_index == str(custom)
+            config, returned_index = discover_user_config(config_index=config_index)
+            assert returned_index == config_index
 
-    def test_explicit_path_first_use_creates_default(self) -> None:
-        """Explicit home_dir with no existing config creates one."""
+    def test_first_use_creates_default(self) -> None:
+        """config_index with no existing config creates one."""
         with tempfile.TemporaryDirectory() as td:
-            config, config_index = discover_user_config(home_dir=str(Path(td)))
+            config_index = str(Path(td) / "my_config.json")
+            config, returned_index = discover_user_config(config_index=config_index)
             assert "source_path" not in config
             assert "first_use" not in config
             assert "schema_namespace" in config
-            assert config_index.endswith("user_config.json")
+            assert returned_index == config_index
+            assert Path(config_index).exists()
 
     def test_default_config_contains_required_fields(self) -> None:
         """First-use default config contains all required fields per DESIGN_BOOTSTRAP §1.2."""
         with tempfile.TemporaryDirectory() as td:
-            config, _ = discover_user_config(home_dir=str(Path(td)))
+            config_index = str(Path(td) / "user_config.json")
+            config, _ = discover_user_config(config_index=config_index)
             assert "schema_namespace" in config
             assert "schema_version" in config
             assert "baksuffix" in config
@@ -265,33 +271,34 @@ class TestGenerateDatabase(TestCase):
     def test_databases_preserved_as_configured(self) -> None:
         """User-configured databases paths are preserved, not overwritten."""
         with tempfile.TemporaryDirectory() as td:
-            custom = Path(td) / ".config" / "kmm" / "user_config.json"
-            custom.parent.mkdir(parents=True)
-            custom.write_text(json.dumps(self._complete_config({
+            config_index = str(Path(td) / "user_config.json")
+            Path(config_index).parent.mkdir(parents=True, exist_ok=True)
+            Path(config_index).write_text(json.dumps(self._complete_config({
                 "databases": {
                     "default": {"path": "/custom/db.json"},
                     "secondary": {"path": "/other/db.json"},
                 },
             })), encoding="utf-8")
-            config, _ = discover_user_config(home_dir=str(Path(td)))
+            config, _ = discover_user_config(config_index=config_index)
             assert config["databases"]["default"]["path"] == "/custom/db.json"
             assert config["databases"]["secondary"]["path"] == "/other/db.json"
 
     def test_rule_sources_preserved(self) -> None:
         """rule_sources from config are preserved."""
         with tempfile.TemporaryDirectory() as td:
-            custom = Path(td) / ".config" / "kmm" / "user_config.json"
-            custom.parent.mkdir(parents=True)
-            custom.write_text(json.dumps(self._complete_config({
+            config_index = str(Path(td) / "user_config.json")
+            Path(config_index).parent.mkdir(parents=True, exist_ok=True)
+            Path(config_index).write_text(json.dumps(self._complete_config({
                 "rule_sources": ["/rules/", "/extra/mods.kmmrule.json"],
             })), encoding="utf-8")
-            config, _ = discover_user_config(home_dir=str(Path(td)))
+            config, _ = discover_user_config(config_index=config_index)
             assert "/rules/" in config.get("rule_sources", [])
             assert "/extra/mods.kmmrule.json" in config.get("rule_sources", [])
 
     def test_workspace_dir_created_with_default(self) -> None:
         """workspace_dir is filled with platform default when created."""
         with tempfile.TemporaryDirectory() as td:
-            config, _ = discover_user_config(home_dir=str(Path(td)))
+            config_index = str(Path(td) / "user_config.json")
+            config, _ = discover_user_config(config_index=config_index)
             assert "workspace_dir" in config
             assert config["workspace_dir"] is not None

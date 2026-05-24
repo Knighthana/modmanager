@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import sys
 from pathlib import Path
 from typing import Any
 
 from .iojson import load_json_file, write_json_file
+from .paths import normalize_posix
 
 logger = logging.getLogger(__name__)
 
@@ -27,27 +30,46 @@ REQUIRED_KEYS = list(DEFAULTS.keys())
 _SCHEMA_PATH = Path(__file__).parent.parent.parent / "repo_spec" / "user_config.schema.json"
 
 
-def userconfig_init(path: str, *, platform_defaults: dict[str, Any] | None = None) -> dict[str, Any]:
+def _detect_platform_defaults() -> dict[str, Any]:
+    """Return platform-appropriate workspace_dir and database path defaults."""
+    home_dir = os.environ.get("HOME") or os.environ.get("USERPROFILE") or str(Path.home())
+
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA", str(Path(home_dir) / "AppData" / "Local"))
+        return {
+            "workspace_dir": normalize_posix(str(Path(local_appdata) / "kmm" / "workspace")),
+            "databases": {"default": {"path": normalize_posix(str(Path(local_appdata) / "kmm" / "database" / "database.json"))}},
+        }
+    elif sys.platform == "darwin":
+        return {
+            "workspace_dir": normalize_posix(str(Path(home_dir) / "Library" / "Caches" / "kmm" / "workspace")),
+            "databases": {"default": {"path": normalize_posix(str(Path(home_dir) / "Library" / "Application Support" / "kmm" / "database.json"))}},
+        }
+    else:  # Linux
+        return {
+            "workspace_dir": normalize_posix(str(Path(home_dir) / ".cache" / "kmm" / "workspace")),
+            "databases": {"default": {"path": normalize_posix(str(Path(home_dir) / ".local" / "share" / "kmm" / "database.json"))}},
+        }
+
+
+def userconfig_init(path: str) -> dict[str, Any]:
     """Create or patch user_config at *path*.
 
-    Behavior:
-    - If file does not exist: create with all DEFAULTS, then overlay platform_defaults
-    - If file exists: load it, check each REQUIRED_KEYS — if key missing, fill from DEFAULTS
+    - If file does not exist: create with all DEFAULTS, fill platform-specific
+      workspace_dir and database path from _detect_platform_defaults()
+    - If file exists with missing keys: fill from DEFAULTS (never overwrite)
     - If file exists but has invalid JSON: raise ValueError
     - If schema_namespace is wrong: raise ValueError (user corrupted the file)
-
-    platform_defaults example:
-        {"workspace_dir": "~/.cache/kmm/workspace", "databases": {"default": {"path": "/home/..."}}}
 
     Returns:
         The complete user_config dict.
     """
-    pd = platform_defaults or {}
-    base = {**DEFAULTS, **pd}
     p = Path(path)
 
     if not p.exists():
         p.parent.mkdir(parents=True, exist_ok=True)
+        pd = _detect_platform_defaults()
+        base = {**DEFAULTS, **pd}
         write_json_file(p, base)
         return base
 
@@ -63,6 +85,8 @@ def userconfig_init(path: str, *, platform_defaults: dict[str, Any] | None = Non
     # Validate schema_namespace
     if config.get("schema_namespace") != DEFAULTS["schema_namespace"]:
         raise ValueError(f"Wrong schema_namespace in user config: {path}")
+
+    pd = _detect_platform_defaults()
 
     # Fill missing keys from DEFAULTS — never overwrite existing values
     changed = False

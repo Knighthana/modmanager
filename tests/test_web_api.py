@@ -79,9 +79,9 @@ class TestDiscoverUserConfig:
         """Return merged config when user_config.json exists."""
         monkeypatch.setattr(
             "modmgr_web.routes.config.discover_user_config",
-            lambda home_dir=None: ({"game": "valheim", "language": "en"}, "/fake/path"),
+            lambda config_index: ({"game": "valheim", "language": "en"}, config_index),
         )
-        resp = client.post("/api/config/discover", json={"home_dir": None})
+        resp = client.post("/api/config/discover", json={"config_index": "/fake/path"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -101,7 +101,7 @@ class TestDiscoverUserConfig:
         monkeypatch.setattr(
             "modmgr_web.routes.config.discover_user_config", _raise
         )
-        resp = client.post("/api/config/discover", json={"home_dir": None})
+        resp = client.post("/api/config/discover", json={"config_index": "/fake/path"})
         assert resp.status_code == 200  # FastAPI returns 200; ok=false in body
         body = resp.json()
         assert body["ok"] is False
@@ -143,7 +143,7 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "auto"},
+            json={"mode": "auto", "config_index": "/fake/path"},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -180,7 +180,7 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "manual", "paths": ["/some/path"]},
+            json={"mode": "manual", "paths": ["/some/path"], "config_index": "/fake/path"},
         )
         assert resp.status_code == 200
 
@@ -217,7 +217,7 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "auto"},
+            json={"mode": "auto", "config_index": "/fake/path"},
         )
         assert resp.status_code == 200
         lines = resp.text.split("\n")
@@ -241,7 +241,7 @@ class TestGenerateDatabase:
 
         resp = client.post(
             "/api/database/generate",
-            json={"mode": "invalid"},
+            json={"mode": "invalid", "config_index": "/fake/path"},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -279,11 +279,11 @@ class TestComputePipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -298,6 +298,7 @@ class TestComputePipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -333,7 +334,7 @@ class TestComputePipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -354,6 +355,7 @@ class TestComputePipeline:
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "managed_entries": managed_entries,
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -378,7 +380,7 @@ class TestComputePipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -394,6 +396,7 @@ class TestComputePipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": rule_set,
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -408,6 +411,7 @@ class TestComputePipeline:
             "/api/pipeline/compute",
             json={
                 "database_name": "default",
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -459,11 +463,11 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -478,6 +482,7 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -517,7 +522,7 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -537,6 +542,7 @@ class TestRunPipeline:
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
                 "managed_entries": managed_entries,
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -561,7 +567,7 @@ class TestRunPipeline:
 
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -577,6 +583,7 @@ class TestRunPipeline:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": rule_set,
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -590,6 +597,7 @@ class TestRunPipeline:
             "/api/pipeline/run",
             json={
                 "database_name": "default",
+                "config_index": "/fake/path",
             },
         )
         assert resp.status_code == 200
@@ -711,11 +719,11 @@ class TestSseDisconnect:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.pipeline.load_json_file",
@@ -732,6 +740,7 @@ class TestSseDisconnect:
             json={
                 "database_name": "default",
                 "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
+                "config_index": "/fake/path",
             },
         )
         # If the SSE stream is well-formed, we're good.
@@ -821,7 +830,7 @@ class TestRulesApi:
 
     def test_rules_affected_entries_empty_path(self, client: TestClient) -> None:
         """affected-entries with empty path returns error."""
-        resp = client.post("/api/rules/affected-entries", json={"aggregated_rule_path": ""})
+        resp = client.post("/api/rules/affected-entries", json={"aggregated_rule_path": "", "config_index": "/fake/path"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is False
@@ -861,12 +870,12 @@ class TestRulesAffectedEntries:
         # Mock user_config to return the database path via database_name
         monkeypatch.setattr(
             "modmgr_web.routes.rules.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": str(db_file)}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": str(db_file)}}}, "/fake/path"),
         )
 
         resp = client.post(
             "/api/rules/affected-entries",
-            json={"aggregated_rule_path": str(agg_file), "database_name": "default"},
+            json={"aggregated_rule_path": str(agg_file), "database_name": "default", "config_index": "/fake/path"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -1122,14 +1131,14 @@ class TestReadDatabase:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
         )
         monkeypatch.setattr(
             "modmgr_web.routes.database.load_json_file",
             lambda path: fake_db,
         )
 
-        resp = client.post("/api/database/read", json={"database_name": "default"})
+        resp = client.post("/api/database/read", json={"database_name": "default", "config_index": "/fake/path"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["ok"] is True
@@ -1139,10 +1148,10 @@ class TestReadDatabase:
         """read returns error when database_name is not in user_config."""
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: ({"databases": {}}, "/fake/path"),
+            lambda config_index: ({"databases": {}}, "/fake/path"),
         )
 
-        resp = client.post("/api/database/read", json={"database_name": "nonexistent"})
+        resp = client.post("/api/database/read", json={"database_name": "nonexistent", "config_index": "/fake/path"})
         body = resp.json()
         assert body["ok"] is False
 
@@ -1160,13 +1169,13 @@ class TestSaveDatabase:
 
         monkeypatch.setattr(
             "modmgr_web.routes.database.discover_user_config",
-            lambda home_dir=None: ({"databases": {"default": {"path": str(db_file)}}}, "/fake/path"),
+            lambda config_index: ({"databases": {"default": {"path": str(db_file)}}}, "/fake/path"),
         )
 
         # Use real write_json_file so we can verify the file was written
         resp = client.post(
             "/api/database/save",
-            json={"database": db_data, "database_name": "default"},
+            json={"database": db_data, "database_name": "default", "config_index": "/fake/path"},
         )
         assert resp.status_code == 200
         body = resp.json()

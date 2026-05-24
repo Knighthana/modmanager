@@ -147,6 +147,7 @@ def compute(
 def compute_ws(
     workspace_id: str,
     *,
+    config_index: str,
     on_progress: ProgressCallback | None = None,
 ) -> PipelineResult:
     """Compute mapping in a workspace context.
@@ -158,13 +159,14 @@ def compute_ws(
 
     Args:
         workspace_id: Target workspace identifier.
+        config_index: Path to user_config.json.
         on_progress: Optional progress callback.
 
     Returns:
         A ``PipelineResult``.  ``backup_result`` and ``apply_result`` are
         always ``None`` from this function.
     """
-    user_config = discover_user_config()
+    user_config, _ = discover_user_config(config_index=config_index)
     wm = _get_workspace_manager(user_config)
 
     if not wm.exists(workspace_id):
