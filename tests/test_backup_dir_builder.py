@@ -300,21 +300,8 @@ class TestBuildBackupDir(TestCase):
 
 class TestLoadDirSuffixes(TestCase):
     def test_load_dir_suffixes_default(self):
-        result = load_dir_suffixes({})
+        result = load_dir_suffixes()
         self.assertEqual(result, [".kmmbackup"])
-
-    def test_load_dir_suffixes_with_custom(self):
-        user_config = {"kmmignore": ["test", ".other", "test"]}
-        result = load_dir_suffixes(user_config)
-        self.assertIn(".kmmbackup", result)
-        self.assertIn(".test", result)
-        self.assertIn(".other", result)
-        self.assertEqual(len(result), 3)  # dedup
-
-    def test_load_dir_suffixes_auto_dot(self):
-        user_config = {"kmmignore": ["nodot"]}
-        result = load_dir_suffixes(user_config)
-        self.assertIn(".nodot", result)
 
 
 # ── P1-09: loop protection in backup_dir_builder (indirect) ──────────────────

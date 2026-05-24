@@ -64,7 +64,6 @@ bootstrap 在确定路径后执行 schema verify（依据 `user_config.schema.js
 | `schema_namespace` | `"KMM_UserConfig"` | 固定 |
 | `schema_version` | `"knighthana@0.1.0"` | bootstrap 硬编码；与 bootstrap 自身的 `EXPECTED_SCHEMA_VERSION` 常量一致 |
 | `baksuffix` | `"kmmbackup"` | 备份目录后缀 |
-| `kmmignore` | `[]` | 全操作忽略模式（gitignore 语法） |
 | `bakignore` | `["kmmbackup"]` | 备份时忽略的目录后缀；初始值与 baksuffix 默认值一致，保证首次创建的配置同步；与 `baksuffix` 联动——每添加一个新 baksuffix 值，bakignore 自动追加同名条目 |
 | `rule_sources` | `{}` | `{name: {paths: [...]}}` 对象——与 `databases` 格式一致 |
 | `path_alias` | `[]` | 路径别名列表，当前无消费者，保留供未来扩展 |
@@ -175,7 +174,7 @@ steam.exe 所在目录 = SteamRoot
 
 `bakignore` 是**系统自动维护**的字段，与 `baksuffix` 联动——用户每次添加一个新 `baksuffix` 值时，`bakignore` 自动追加同名条目。`bakignore` 仅在 backup 操作时生效，用于屏蔽旧的备份目录（避免"改了后缀后旧备份目录被误备份"）。
 
-用户手写的全操作忽略走 `kmmignore` 字段（gitignore 语法），与 `bakignore` 的语义和管理周期完全不同。
+全操作忽略走 `.kmmignore` 文件规则（gitignore 语法），与 `bakignore` 的语义和管理周期完全不同。
 
 ---
 

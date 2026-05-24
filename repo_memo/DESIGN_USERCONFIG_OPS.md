@@ -47,7 +47,6 @@ DEFAULTS = {
     "schema_namespace": "KMM_UserConfig",
     "schema_version": "knighthana@0.1.0",
     "baksuffix": "kmmbackup",
-    "kmmignore": [],
     "bakignore": ["kmmbackup"],
     "rule_sources": {},
     "path_alias": [],
@@ -86,9 +85,9 @@ REQUIRED_KEYS = list(DEFAULTS.keys())
 
 ## 六、测试断言
 
-- 新创建的文件包含全部 9 个 REQUIRED_KEYS
+- 新创建的文件包含全部 REQUIRED_KEYS
 - `workspace_dir` 和 `databases.default.path` 在创建时按当前平台填入
-- 已有文件缺 `kmmignore` → init 补为 `[]`，其他键不动
+- 已有文件缺字段 → init 从 DEFAULTS 补全，其他键不动
 - `baksuffix` 已有人工设置值 → init 不动
 - `schema_namespace` 不对 → `ValueError`
 - JSON 损坏 → `ValueError`

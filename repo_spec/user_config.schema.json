@@ -8,7 +8,6 @@
         "schema_namespace",
         "schema_version",
         "baksuffix",
-        "kmmignore",
         "bakignore",
         "rule_sources",
         "path_alias",
@@ -30,13 +29,6 @@
         "baksuffix": {
             "description": "备份目录名后缀。目录格式为 {id}.{hex}.{baksuffix}/。",
             "type": "string"
-        },
-        "kmmignore": {
-            "description": "全局忽略模式列表（gitignore 语法，对应 .kmmignore 文件）。apply/backup/restore 均生效。",
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
         },
         "bakignore": {
             "description": "备份时忽略的目录名后缀（系统自动维护，与 baksuffix 联动）。仅 backup 操作生效。",

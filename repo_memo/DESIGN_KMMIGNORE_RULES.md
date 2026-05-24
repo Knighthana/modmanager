@@ -5,7 +5,7 @@
 > Read-Tier: task-scoped
 > Purpose: 定义三层忽略规则体系——来源、收集、匹配。归属 Orchestrator Planner 层。
 >
-> Last update: 2026-05-24 — 重命名：`user_config.ignore` → `user_config.kmmignore`；文件名 DESIGN_IGNORE_RULES → DESIGN_KMMIGNORE_RULES
+> Last update: 2026-05-25 — `kmmignore` 以 `.kmmignore` 文件形式存在，不再来自 `user_config`
 
 ---
 
@@ -17,13 +17,12 @@
 
 ---
 
-## 二、三层规则
+## 二、两层规则
 
 | 层 | 来源 | 格式 | 优先级 |
 |:---:|------|------|:---:|
 | 1 | 硬编码 | `.kmmbackup` 后缀目录始终排除 | 最高 |
-| 2 | 用户配置 | `user_config.kmmignore` 数组（后缀/模式） | 中 |
-| 3 | 文件规则 | 源目录各级 `.kmmignore` 文件（gitignore 语法） | 标准 |
+| 2 | 文件规则 | 源目录各级 `.kmmignore` 文件（gitignore 语法） | 标准 |
 
 规则收集后合并为一个 `IgnoreRuleSet`，匹配时按优先级判断。
 
@@ -32,8 +31,7 @@
 ## 三、优先级语义
 
 - Layer 1（硬编码）始终生效，不可覆盖
-- Layer 2（用户配置）对 Layer 3 有覆盖权——`user_config.kmmignore` 中的模式可额外排除文件
-- Layer 3（`.kmmignore` 文件）遵循 gitignore 语义：子目录规则覆盖父目录规则
+- Layer 2（`.kmmignore` 文件）遵循 gitignore 语义：子目录规则覆盖父目录规则
 
 ---
 
@@ -52,7 +50,7 @@
 from orchestrator.ignore_rules import collect_rules, should_ignore, IgnoreRuleSet
 
 # 收集
-rules: IgnoreRuleSet = collect_rules(user_config, source_roots)
+rules: IgnoreRuleSet = collect_rules(source_roots)
 
 # 匹配
 if should_ignore(path, rules):
@@ -84,4 +82,4 @@ if should_ignore(path, rules):
 | 仅 backup 生效 | backup / apply / restore 全部生效（gitignore-parser 统一处理） |
 | 归属 backup 原语 | 归属 Planner 层 |
 
-> `user_config.bakignore` 字段**未**参与此次迁移——`bakignore` 与 `kmmignore` 语义不同：`bakignore` 系统自动维护、仅 backup 时生效（屏蔽旧备份目录），`kmmignore` 用户手写、全操作生效（gitignore 语法）。两者并存，各司其职。
+> `user_config.bakignore` 字段**未**参与此次迁移——`bakignore` 与 `kmmignore` 语义不同：`bakignore` 系统自动维护、仅 backup 时生效（屏蔽旧备份目录），`kmmignore` 仅来自 `.kmmignore` 文件、全操作生效（gitignore 语法）。两者并存，各司其职。

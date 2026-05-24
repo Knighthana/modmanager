@@ -1,10 +1,9 @@
 """ignore_rules.py — Planner-owned ignore rule collection and matching.
 
-Encapsulates gitignore_parser and the three-layer ignore rule system:
+Encapsulates gitignore_parser and the two-layer ignore rule system:
 
 1. Hardcoded: ``.kmmbackup`` suffix directories
-2. User config: ``user_config.kmmignore`` patterns
-3. File rules: ``.kmmignore`` files (gitignore syntax) in source tree
+2. File rules: ``.kmmignore`` files (gitignore syntax) in source tree
 
 Consumed by Planner to filter final_mapping entries, and by backup_ops
 to exclude files from the backupinfo tree scan.
@@ -29,10 +28,9 @@ _IGNORE_FILENAME = ".kmmignore"
 
 @dataclass
 class IgnoreRuleSet:
-    """Collected ignore rules from all three layers."""
+    """Collected ignore rules from both layers."""
 
     hardcoded_suffixes: list[str] = field(default_factory=lambda: [_HARDCODED_SKIP_SUFFIX])
-    user_patterns: list[str] = field(default_factory=list)
     gitignore_rules: dict[str, Any] = field(default_factory=dict)
     # ^ Maps root directory path → parsed gitignore rule object
 
@@ -41,15 +39,13 @@ class IgnoreRuleSet:
 
 
 def collect_rules(
-    user_config: dict[str, Any],
     source_roots: list[str],
     *,
     relevant_paths: list[str] | None = None,
 ) -> IgnoreRuleSet:
-    """Collect ignore rules from all three layers.
+    """Collect ignore rules from both layers.
 
     Args:
-        user_config: The resolved user_config dict.
         source_roots: List of root directories that define the scope.
         relevant_paths: Optional list of file paths actually being processed.
             When provided, only directories that are ancestors of these paths
@@ -62,10 +58,7 @@ def collect_rules(
 
     # ── Layer 1: hardcoded ─────────────────────────────────────────
 
-    # ── Layer 2: user_config.kmmignore ──────────────────────────────
-    rules.user_patterns = list(user_config.get("kmmignore") or [])
-
-    # ── Layer 3: .kmmignore files ───────────────────────────────────
+    # ── Layer 2: .kmmignore files ───────────────────────────────────
     dirs_to_check: set[str] = set()
     if relevant_paths:
         # Only scan directories that are ancestors of relevant files
@@ -99,18 +92,13 @@ def collect_rules(
 def should_ignore(path: str, rules: IgnoreRuleSet) -> bool:
     """Check whether *path* should be excluded based on collected rules.
 
-    Applies all three layers. Returns True on first match.
+    Applies both layers. Returns True on first match.
     """
     # Layer 1: hardcoded suffix
     if _any_path_component_ends_with(path, rules.hardcoded_suffixes):
         return True
 
-    # Layer 2: user patterns (simple suffix matching)
-    for pattern in rules.user_patterns:
-        if path.endswith(pattern):
-            return True
-
-    # Layer 3: gitignore rules — check all matching rule sets from
+    # Layer 2: gitignore rules — check all matching rule sets from
     # deepest (most specific) to shallowest (least specific).
     # Child .kmmignore rules add to parent rules per standard gitignore
     # semantics; the first match wins.

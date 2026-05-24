@@ -19,7 +19,7 @@ class TestUserconfigInit(unittest.TestCase):
     """Tests for userconfig_init() — create / patch user_config."""
 
     def test_creates_new_file_with_defaults(self) -> None:
-        """No file → create with all 9 fields."""
+        """No file → create with all fields."""
         with tempfile.TemporaryDirectory() as td:
             path = str(Path(td) / "user_config.json")
             result = userconfig_init(path)
@@ -36,7 +36,7 @@ class TestUserconfigInit(unittest.TestCase):
             self.assertTrue(Path(path).exists())
 
     def test_patches_missing_keys(self) -> None:
-        """Existing file missing 'ignore' → filled from DEFAULTS."""
+        """Existing file missing keys → filled from DEFAULTS."""
         with tempfile.TemporaryDirectory() as td:
             path = str(Path(td) / "user_config.json")
             partial = {
@@ -56,8 +56,6 @@ class TestUserconfigInit(unittest.TestCase):
             # Existing values preserved
             self.assertEqual(result["baksuffix"], "mybak")
             self.assertEqual(result["databases"]["default"]["path"], "/custom/path")
-            # Missing key filled from DEFAULTS
-            self.assertEqual(result["kmmignore"], DEFAULTS["kmmignore"])
 
     def test_preserves_existing_values(self) -> None:
         """Existing custom baksuffix value preserved, not overwritten."""
@@ -83,7 +81,6 @@ class TestUserconfigInit(unittest.TestCase):
 
             # Other fields still have DEFAULTS
             self.assertEqual(result["baksuffix"], DEFAULTS["baksuffix"])
-            self.assertEqual(result["kmmignore"], DEFAULTS["kmmignore"])
 
     def test_invalid_json_raises(self) -> None:
         """Corrupt JSON file → ValueError."""

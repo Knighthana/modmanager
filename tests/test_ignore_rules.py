@@ -14,18 +14,12 @@ from modmgr.orchestrator.ignore_rules import (
 
 
 class TestCollectRules:
-    """collect_rules() — three-layer rule collection."""
+    """collect_rules() — two-layer rule collection."""
 
     def test_hardcoded_suffix_always_present(self):
         """Hardcoded .kmmbackup suffix is always in the rule set."""
-        rules = collect_rules({}, [])
+        rules = collect_rules([])
         assert ".kmmbackup" in rules.hardcoded_suffixes
-
-    def test_user_ignore_patterns(self):
-        """user_config.kmmignore patterns are collected."""
-        rules = collect_rules({"kmmignore": [".log", ".tmp"]}, [])
-        assert ".log" in rules.user_patterns
-        assert ".tmp" in rules.user_patterns
 
     def test_kmmignore_file_parsed(self):
         """.kmmignore file with gitignore syntax is parsed."""
@@ -35,30 +29,24 @@ class TestCollectRules:
             (root / "subdir").mkdir()
             (root / "subdir" / ".kmmignore").write_text("*.tmp\n")
 
-            rules = collect_rules({}, [str(root)])
+            rules = collect_rules([str(root)])
             assert len(rules.gitignore_rules) == 2
 
     def test_empty_config_produces_valid_rules(self):
-        """Empty user_config produces a valid IgnoreRuleSet."""
-        rules = collect_rules({}, [])
+        """No source roots produces a valid IgnoreRuleSet."""
+        rules = collect_rules([])
         assert isinstance(rules, IgnoreRuleSet)
         assert rules.hardcoded_suffixes == [".kmmbackup"]
 
 
 class TestShouldIgnore:
-    """should_ignore() — three-layer matching."""
+    """should_ignore() — two-layer matching."""
 
     def test_hardcoded_suffix_matched(self):
         """Paths ending with .kmmbackup are ignored."""
         rules = IgnoreRuleSet()
         assert should_ignore("/path/to/123.kmmbackup/file.txt", rules)
         assert should_ignore("/path/.kmmbackup", rules)
-
-    def test_user_pattern_matched(self):
-        """Paths ending with user patterns are ignored."""
-        rules = IgnoreRuleSet(user_patterns=[".log"])
-        assert should_ignore("/path/to/error.log", rules)
-        assert not should_ignore("/path/to/file.txt", rules)
 
     def test_gitignore_rule_matched(self):
         """.kmmignore rules are matched via gitignore-parser."""
@@ -67,7 +55,7 @@ class TestShouldIgnore:
             (root / ".kmmignore").write_text("*.cache\n")
             (root / "subdir").mkdir()
 
-            rules = collect_rules({}, [str(root)])
+            rules = collect_rules([str(root)])
             assert should_ignore(str(root / "foo.cache"), rules)
             assert should_ignore(str(root / "subdir" / "bar.cache"), rules)
             assert not should_ignore(str(root / "keep.txt"), rules)
@@ -88,7 +76,7 @@ class TestShouldIgnore:
             sub.mkdir()
             (sub / ".kmmignore").write_text("*.tmp\n")
 
-            rules = collect_rules({}, [str(root)])
+            rules = collect_rules([str(root)])
             # Parent rule applies to files in subdirectory
             assert should_ignore(str(sub / "error.log"), rules)
             # Child rule applies

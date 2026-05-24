@@ -103,7 +103,7 @@ class TestDispatchPipelineCrossContam:
             user_config = {
                 "schema_namespace": "KMM_UserConfig",
                 "schema_version": "knighthana@0.1.0",
-                "baksuffix": "kmmbackup", "kmmignore": [],
+                "baksuffix": "kmmbackup",
             }
 
             # Aggregate + compute

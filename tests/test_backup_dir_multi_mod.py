@@ -123,7 +123,7 @@ class TestBackupDirMultiMod:
                 ],
                 "history": [],
             }
-            user_config = {"baksuffix": "kmmbackup", "kmmignore": []}
+            user_config = {"baksuffix": "kmmbackup"}
 
             final_mapping = [
                 {"path": str(file_a), "request": {"action": "replace", "path": str(file_a)}},

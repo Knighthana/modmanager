@@ -190,23 +190,13 @@ def build_backup_dir(
     return next(iter(dirs.keys()))
 
 
-def load_dir_suffixes(user_config: dict[str, Any]) -> list[str]:
-    """合并硬编码底线 + user_config.kmmignore，去重返回目录名后缀列表。
+def load_dir_suffixes() -> list[str]:
+    """返回硬编码的目录名后缀列表。
 
-    硬编码底线 ``".kmmbackup"`` 始终在列表中。
-    user_config.kmmignore 中的条目自动补前导 ``.``（若缺失）。
+    始终包含 ``".kmmbackup"``。
+    kmmignore 规则仅来自 ``.kmmignore`` 文件，不再通过此函数读取。
     """
-    suffixes = [".kmmbackup"]
-    config_ignore = user_config.get("kmmignore")
-    if isinstance(config_ignore, list):
-        for item in config_ignore:
-            if isinstance(item, str) and item.strip():
-                s = item.strip()
-                if not s.startswith("."):
-                    s = "." + s
-                if s not in suffixes:
-                    suffixes.append(s)
-    return suffixes
+    return [".kmmbackup"]
 
 
 __all__ = [

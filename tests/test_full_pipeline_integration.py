@@ -194,7 +194,7 @@ class TestFullPipelineNoCrossContamination:
             assert len(final_mapping) > 0, "Rule produced no mapping entries"
 
             # ── Step 2: Apply ────────────────────────────────────────
-            user_config = {"baksuffix": "kmmbackup", "kmmignore": []}
+            user_config = {"baksuffix": "kmmbackup"}
             from modmgr.backup_dir_builder import build_backup_dirs
             backup_dirs, _w = build_backup_dirs(final_mapping, database, user_config)
 
@@ -255,7 +255,7 @@ class TestFullPipelineNoCrossContamination:
             mapping_result = compute_mapping(database=database, aggregated_rule_set=agg_dict)
             final_mapping = mapping_result.get("final_mapping", [])
 
-            user_config = {"baksuffix": "kmmbackup", "kmmignore": []}
+            user_config = {"baksuffix": "kmmbackup"}
             from modmgr.backup_dir_builder import build_backup_dirs
             backup_dirs, _w = build_backup_dirs(final_mapping, database, user_config)
 

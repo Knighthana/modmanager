@@ -71,7 +71,7 @@ def sample_database(fixture_dir):
 
 @pytest.fixture
 def sample_user_config():
-    return {"baksuffix": "kmmbackup", "kmmignore": []}
+    return {"baksuffix": "kmmbackup"}
 
 
 @pytest.fixture
@@ -108,17 +108,7 @@ def sample_mapping_with_content(fixture_dir):
 
 def test_load_dir_suffixes_default():
     """默认返回 ['.kmmbackup']。"""
-    assert load_dir_suffixes({}) == [".kmmbackup"]
-
-
-def test_load_dir_suffixes_with_custom():
-    """user_config.ignore 条目合并去重，自动补前导点。"""
-    cfg = {"kmmignore": ["test", ".other", "test"]}
-    result = load_dir_suffixes(cfg)
-    assert ".kmmbackup" in result
-    assert ".test" in result
-    assert ".other" in result
-    assert len(result) == 3  # 去重
+    assert load_dir_suffixes() == [".kmmbackup"]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
