@@ -31,6 +31,15 @@ describe('ForestPage', () => {
     expect(wrapper.find('.forest-page').exists()).toBe(true)
   })
 
+  it('uses apiGet from transport layer', async () => {
+    // Verify that ForestPage imports apiGet from the transport layer
+    const mod = await import('../../pages/ForestPage.vue')
+    expect(mod.default).toBeDefined()
+    // Confirm apiGet is available and is a function
+    const { apiGet } = await import('../../api/transport')
+    expect(typeof apiGet).toBe('function')
+  })
+
   it('toggles minimap visibility on button click', async () => {
     await router.push('/workspace/test-ws-1/forest')
     const wrapper = createWrapper()

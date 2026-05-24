@@ -156,6 +156,11 @@
           </div>
         </el-form-item>
 
+        <!-- 工作区目录 -->
+        <el-form-item label="工作区目录">
+          <el-input v-model="form.workspaceDir" placeholder="~/.cache/kmm/workspace/" />
+        </el-form-item>
+
         <div class="section-subtitle">规则来源</div>
 
         <!-- 规则来源 -->
@@ -242,6 +247,7 @@ interface DbEntry {
 
 interface SettingsForm {
   baksuffix: string
+  workspaceDir: string
   bakignore: string[]
   databases: Array<{ key: string; value: string }>
 }
@@ -267,6 +273,7 @@ const configIndex = ref<Record<string, string>>(loadConfigIndex() || { type: 'pa
 
 const form = ref<SettingsForm>({
   baksuffix: 'kmmbackup',
+  workspaceDir: '',
   bakignore: [],
   databases: [{ key: 'default', value: DEFAULT_DB_PATH }],
 })
@@ -330,8 +337,10 @@ onMounted(async () => {
 
       saveConfigIndex(configIndex.value)
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
+      form.value.workspaceDir = (uc.workspace_dir as string) || ''
 
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
+      form.value.workspaceDir = (uc.workspace_dir as string) || ''
       form.value.bakignore = (uc.bakignore as string[]) || []
       const dbs = uc.databases as Record<string, { path: string }> | undefined
       if (dbs && typeof dbs === 'object') {
@@ -369,6 +378,7 @@ async function connectConfig() {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
       form.value.baksuffix = (uc.baksuffix as string) || 'kmmbackup'
+      form.value.workspaceDir = (uc.workspace_dir as string) || ''
       form.value.bakignore = (uc.bakignore as string[]) || []
       const dbs = uc.databases as Record<string, { path: string }> | undefined
       if (dbs && typeof dbs === 'object') {
@@ -408,6 +418,7 @@ async function onSaveConfig() {
       config_index: configIndex.value,
       config: {
         baksuffix: form.value.baksuffix,
+        workspace_dir: form.value.workspaceDir,
         bakignore: form.value.bakignore,
         databases,
         rule_sources: ruleSourcesMap.value,

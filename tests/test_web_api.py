@@ -1261,6 +1261,82 @@ class TestConfigSaveRuleSources:
         assert not saved["rule_sources"][1].endswith("/")
 
 
+# ── Config /save merge semantics (IMP2) ──────────────────────────────────
+
+
+class TestConfigSaveMerge:
+    """POST /api/config/save — merge semantics (IMP2)."""
+
+    def test_save_merge_preserves_other_fields(self, client, tmp_path):
+        """Saving only baksuffix does not alter schema_namespace, workspace_dir, etc."""
+        config_path = tmp_path / "user_config.json"
+        original = {
+            "schema_namespace": "KMM_UserConfig",
+            "schema_version": "knighthana@0.1.0",
+            "baksuffix": "old_suffix",
+            "rule_sources": {},
+            "workspace_dir": "/custom/workspace",
+            "databases": {"default": {"path": "/fake/db.json"}},
+        }
+        config_path.write_text(json.dumps(original))
+
+        # Save only baksuffix change
+        resp = client.post("/api/config/save", json={
+            "config": {"baksuffix": "new_suffix"},
+        }, headers={"X-UserConfig-Index": json.dumps({"type": "path", "string": str(config_path)})})
+        assert resp.status_code == 200
+
+        # Verify other fields preserved
+        saved = json.loads(config_path.read_text())
+        assert saved["baksuffix"] == "new_suffix"
+        assert saved["schema_namespace"] == "KMM_UserConfig"
+        assert saved["workspace_dir"] == "/custom/workspace"
+        assert saved["databases"]["default"]["path"] == "/fake/db.json"
+
+
+# ── Header validation (IMP3) ─────────────────────────────────────────────
+
+
+class TestHeaderValidation:
+    """X-UserConfig-Index header validation (IMP3)."""
+
+    def test_missing_header_returns_422(self, client):
+        """Request without X-UserConfig-Index header gets 422."""
+        resp = client.post("/api/config/discover", json={})
+        assert resp.status_code == 422
+
+
+# ── Config /save error precision (IMP5) ──────────────────────────────────
+
+
+class TestConfigSaveErrorPrecision:
+    """Error messages point to the correct field (IMP5)."""
+
+    def test_old_rule_sources_format_error_points_correctly(self, client, tmp_path):
+        """Old rule_sources array format produces error at rule_sources, not schema_namespace."""
+        config_path = tmp_path / "user_config.json"
+        bad_config = {
+            "schema_namespace": "KMM_UserConfig",
+            "schema_version": "knighthana@0.1.0",
+            "baksuffix": "kmmbackup",
+            "rule_sources": ["~/old/format/path/"],  # old array format
+            "workspace_dir": "/tmp/ws",
+            "databases": {"default": {"path": "/fake/db.json"}},
+        }
+        config_path.write_text(json.dumps(bad_config))
+
+        resp = client.post("/api/config/save", json={
+            "config": bad_config,
+        }, headers={"X-UserConfig-Index": json.dumps({"type": "path", "string": str(config_path)})})
+
+        body = resp.json()
+        # Should not be ok
+        assert body["ok"] is False
+        # Error should mention rule_sources
+        error_msg = str(body.get("errors", []))
+        assert "rule_sources" in error_msg.lower()
+
+
 # ── Helper ────────────────────────────────────────────────────────────────
 
 

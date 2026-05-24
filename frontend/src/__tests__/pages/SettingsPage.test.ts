@@ -116,6 +116,7 @@ describe('SettingsPage', () => {
     const form = vm.form as Record<string, unknown>
 
     expect(form.baksuffix).toBe('mybackup')
+    expect(form.workspaceDir).toBe('')
     expect(form.bakignore).toEqual(['*.log', 'node_modules/'])
     // Verify databases loaded correctly
     expect((form.databases as any)[0]?.key).toBe('default')
@@ -145,6 +146,7 @@ describe('SettingsPage', () => {
     const form = vm.form as Record<string, unknown>
     // Pre-populate form
     form.baksuffix = 'testsuffix'
+    form.workspaceDir = '/custom/workspace'
 
     form.bakignore = ['*.tmp']
     form.databases = [{ key: 'default', value: '/test/db.json' }]
@@ -159,6 +161,7 @@ describe('SettingsPage', () => {
       config_index: { type: 'path', string: '/test/config.json' },
       config: {
         baksuffix: 'testsuffix',
+        workspace_dir: '/custom/workspace',
         bakignore: ['*.tmp'],
         databases: { 'default': { path: '/test/db.json' } },
         rule_sources: { default: { paths: ['/test/rules/'] } },
