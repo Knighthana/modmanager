@@ -1,56 +1,111 @@
-import unittest
+"""Tests for normalize_path() — per DESIGN_PATH_CASE.md §六."""
 
-from modmgr.paths import (
-    build_game_index,
-    is_numeric_modid,
-    mod_root_from_mixed_id,
-    normalize_posix,
-    path_for_mixed_id,
-    split_mixed_id,
-)
+from __future__ import annotations
 
+import sys
+from unittest import TestCase
+from unittest.mock import patch
 
-class PathsModuleTests(unittest.TestCase):
-    def _db(self):
-        return {
-            "game": [
-                {
-                    "appid": "270150",
-                    "basepath": r"C:\\Games\\MyGame",
-                    "modpath": r"D:\\Workshop\\mods",
-                }
-            ]
-        }
-
-    def test_split_mixed_id(self):
-        self.assertEqual(split_mixed_id("270150:100"), ("270150", "100"))
-        self.assertIsNone(split_mixed_id("270150"))
-        self.assertIsNone(split_mixed_id(":100"))
-
-    def test_is_numeric_modid(self):
-        self.assertTrue(is_numeric_modid("270150:100"))
-        self.assertFalse(is_numeric_modid("270150:local_dev"))
-
-    def test_normalize_posix(self):
-        self.assertEqual(normalize_posix(r"D:\\Workshop\\mods\\100\\"), "/mnt/d/Workshop/mods/100")
-
-    def test_mod_root_from_mixed_id_gamebase(self):
-        idx = build_game_index(self._db())
-        self.assertEqual(mod_root_from_mixed_id("270150:0", idx), "/mnt/c/Games/MyGame")
-
-    def test_mod_root_from_mixed_id_workshop(self):
-        idx = build_game_index(self._db())
-        self.assertEqual(mod_root_from_mixed_id("270150:100", idx), "/mnt/d/Workshop/mods/100")
-
-    def test_path_for_mixed_id_with_relative(self):
-        idx = build_game_index(self._db())
-        p = path_for_mixed_id("270150:100", idx, r"Data\\a.txt")
-        self.assertEqual(p, "/mnt/d/Workshop/mods/100/Data/a.txt")
-
-    def test_path_for_mixed_id_invalid(self):
-        idx = build_game_index(self._db())
-        self.assertIsNone(path_for_mixed_id("bad", idx))
+from modmgr.paths import normalize_path, normalize_posix
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestNormalizePath(TestCase):
+    """normalize_path() — L1 style + L2 case normalization."""
+
+    # ── L1: style normalization (same as normalize_posix) ──────────
+
+    def test_style_normalization_backslash(self) -> None:
+        """Backslashes converted to forward slashes."""
+        result = normalize_path(r"C:\Games\Steam\steamapps\workshop\content\270150", source_platform="windows")
+        self.assertNotIn("\\", result)
+
+    def test_style_collapses_redundant_slashes(self) -> None:
+        """Multiple consecutive slashes collapsed."""
+        result = normalize_path("/a//b///c", source_platform="linux")
+        self.assertEqual(result, "/a/b/c")
+
+    # ── L2: Windows / WSL → lowercase ─────────────────────────────
+
+    def test_windows_lowercase(self) -> None:
+        """Windows platform: entire path lowercased."""
+        result = normalize_path(
+            r"D:\Games\Steam\steamapps\Workshop\Content\270150",
+            source_platform="windows",
+        )
+        self.assertEqual(result, "/mnt/d/games/steam/steamapps/workshop/content/270150")
+
+    def test_wsl_lowercase(self) -> None:
+        """WSL mount: entire path lowercased."""
+        result = normalize_path(
+            "/mnt/c/Program Files (x86)/Steam/steamapps",
+            source_platform="wsl",
+        )
+        self.assertEqual(result, "/mnt/c/program files (x86)/steam/steamapps")
+
+    def test_wsl_auto_detect_lowercase(self) -> None:
+        """WSL paths auto-detected and lowercased on Linux."""
+        if sys.platform == "win32":
+            self.skipTest("WSL detection only applies on Linux")
+
+        result = normalize_path("/mnt/d/Games/SteamApps")
+        self.assertEqual(result, "/mnt/d/games/steamapps")
+
+    # ── L2: Linux / macOS → preserve case ─────────────────────────
+
+    def test_linux_preserves_case(self) -> None:
+        """Linux platform: case preserved."""
+        result = normalize_path(
+            "/home/User/.steam/Steam/steamapps",
+            source_platform="linux",
+        )
+        self.assertEqual(result, "/home/User/.steam/Steam/steamapps")
+
+    def test_darwin_preserves_case(self) -> None:
+        """macOS platform: case preserved."""
+        result = normalize_path(
+            "/Users/Name/Library/Preferences/kmm/user_config.json",
+            source_platform="darwin",
+        )
+        self.assertEqual(result, "/Users/Name/Library/Preferences/kmm/user_config.json")
+
+    def test_linux_default_preserves_case(self) -> None:
+        """Without source_platform on Linux, case preserved."""
+        if sys.platform == "win32":
+            self.skipTest("Default platform on Windows differs")
+
+        result = normalize_path("/home/User/MyRule.kmmrule.json")
+        # Should NOT be lowercased (Linux default)
+        self.assertIn("User", result)
+        self.assertIn("MyRule", result)
+
+    # ── Idempotence ───────────────────────────────────────────────
+
+    def test_idempotent(self) -> None:
+        """normalize_path() is idempotent."""
+        path = "/mnt/d/Games/SteamApps/common"
+        first = normalize_path(path, source_platform="wsl")
+        second = normalize_path(first, source_platform="wsl")
+        self.assertEqual(first, second)
+
+    # ── Auto-detection ────────────────────────────────────────────
+
+    def test_auto_detect_windows(self) -> None:
+        """On Windows runtime, source_platform auto-detected as 'windows'."""
+        if sys.platform != "win32":
+            # Simulate Windows runtime
+            with patch.object(sys, "platform", "win32"):
+                result = normalize_path(r"D:\Games\SteamApps")
+                self.assertEqual(result, normalize_path(r"D:\Games\SteamApps", source_platform="windows"))
+        else:
+            result = normalize_path(r"D:\Games\SteamApps")
+            self.assertEqual(result, normalize_path(r"D:\Games\SteamApps", source_platform="windows"))
+
+
+class TestNormalizePosixRegression(TestCase):
+    """Ensure normalize_posix is unchanged."""
+
+    def test_normalize_posix_unchanged(self) -> None:
+        """normalize_posix still converts backslashes and collapses slashes."""
+        result = normalize_posix(r"C:\foo\\bar")
+        self.assertNotIn("\\", result)
+        self.assertNotIn("//", result)

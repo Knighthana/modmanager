@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,50 @@ def normalize_posix(path: str) -> str:
     # Windows literals). Collapse them to keep internal keys deterministic.
     normalized = re.sub(r"/+", "/", normalized)
     return normalized
+
+
+def normalize_path(path: str, *, source_platform: str | None = None) -> str:
+    """Normalize a path for storage and comparison.
+
+    L1: Convert to POSIX style (via normalize_posix).
+    L2: Normalize case based on source platform.
+
+    Args:
+        path: Raw path string from any source.
+        source_platform: "windows" | "linux" | "darwin" | "wsl" | None.
+            If None, auto-detected from sys.platform and path content.
+
+    Returns:
+        POSIX-style path with case normalized per platform rules.
+
+    Platform rules (per DESIGN_PATH_CASE.md):
+        windows / wsl → lowercase entire path
+        linux / darwin → preserve case
+    """
+    normalized = normalize_posix(path)
+
+    if source_platform is None:
+        source_platform = _detect_platform(normalized)
+
+    if source_platform in ("windows", "wsl"):
+        normalized = normalized.lower()
+
+    return normalized
+
+
+def _detect_platform(path: str) -> str:
+    """Auto-detect source platform from runtime environment and path.
+
+    Returns one of: "windows", "wsl", "linux", "darwin".
+    """
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "darwin"
+    # Linux — check for WSL mount prefix
+    if path.startswith("/mnt/") and len(path) > 5 and path[5].isalpha():
+        return "wsl"
+    return "linux"
 
 
 def split_mixed_id(mixed_id: str) -> tuple[str, str] | None:
@@ -77,6 +122,7 @@ def path_for_mixed_id(
 
 __all__ = [
     "normalize_posix",
+    "normalize_path",
     "split_mixed_id",
     "is_numeric_modid",
     "build_game_index",
