@@ -16,7 +16,7 @@ DEFAULTS: dict[str, Any] = {
     "schema_version": "knighthana@0.1.0",
     "baksuffix": "kmmbackup",
     "ignore": [],
-    "bakignore": [],
+    "bakignore": ["kmmbackup"],
     "rule_sources": {},
     "path_alias": [],
     "workspace_dir": None,

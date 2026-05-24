@@ -8,6 +8,7 @@ produces a FileOpsPlan ready for primitive execution.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from ..backup_dir_builder import build_backup_dirs
@@ -109,6 +110,25 @@ def plan_fileops(
         ]
     if filtered_count:
         warnings.append(f"W_IGNORE_FILTERED: {filtered_count} entry(ies) excluded by ignore rules")
+
+    # ── 3.5. Bakignore (backup only) ─────────────────────────────────
+    if request.intent == Intent.BACKUP:
+        bakignore_list: list[str] = request.flags.get("bakignore", []) or []
+        # Also read from user_config if available
+        user_config = context.user_config or {}
+        bakignore_list = bakignore_list or user_config.get("bakignore", [])
+
+        if bakignore_list:
+            bak_filtered = 0
+            for backup_dir in list(backup_dirs.keys()):
+                dir_basename = Path(backup_dir).name if backup_dir else ""
+                if any(dir_basename.endswith(suffix) for suffix in bakignore_list):
+                    bak_filtered += len(backup_dirs[backup_dir])
+                    del backup_dirs[backup_dir]
+                    if backup_dir in entries_by_backup_dir:
+                        del entries_by_backup_dir[backup_dir]
+            if bak_filtered:
+                warnings.append(f"W_BAKIGNORE_FILTERED: {bak_filtered} entry(ies) excluded by bakignore (backup dir suffix match)")
 
     # ── 4. Preflight decision ────────────────────────────────────────
     preflight_ok: bool | None = None

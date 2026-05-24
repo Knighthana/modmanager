@@ -40,7 +40,7 @@
 | `schema_version` | `"knighthana@0.1.0"` | bootstrap 硬编码；与 bootstrap 自身的 `EXPECTED_SCHEMA_VERSION` 常量一致 |
 | `baksuffix` | `"kmmbackup"` | 备份目录后缀 |
 | `ignore` | `[]` | 全操作忽略模式（gitignore 语法） |
-| `bakignore` | `[]` | 备份时忽略的目录后缀；与 `baksuffix` 联动——每添加一个新 baksuffix 值，bakignore 自动追加同名条目 |
+| `bakignore` | `["kmmbackup"]` | 备份时忽略的目录后缀；初始值与 baksuffix 默认值一致，保证首次创建的配置同步；与 `baksuffix` 联动——每添加一个新 baksuffix 值，bakignore 自动追加同名条目 |
 | `rule_sources` | `{}` | `{name: {paths: [...]}}` 对象——与 `databases` 格式一致 |
 | `path_alias` | `[]` | 路径别名列表，当前无消费者，保留供未来扩展 |
 | `workspace_dir` | `<平台默认>` | bootstrap 按平台填入默认值后**固化**——运行时以此为准，不再做平台回退 |
