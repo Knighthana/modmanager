@@ -58,10 +58,22 @@
 
 **后端逻辑**：
 1. `discover_user_config()` → `rule_sources["default"]["paths"]`
-2. 对每个 path：
+2. 对每个 path 先调 `expand_path()` 展开 `~` 和环境变量
+3. 对每个 path：
    - 目录（以 `/` 结尾）→ 调用现有 `/rules/scan` 逻辑 → 列出 `*.kmmrule.json`
-   - 文件（以 `.kmmrule.json` 结尾）→ 直接加入列表
-3. 去重后返回
+   - 文件（以 `.kmmrule.json` 结尾）→ 校验文件存在 → 直接加入列表
+   - 路径不存在 → 记录 warning: `W_PATH_NOT_FOUND: {path}`，继续处理其余路径
+4. 按 `path` 去重后返回
+
+**请求 Schema**：
+```python
+class RulesScanBySourceRequest(BaseModel):
+    source_name: str
+```
+
+**错误**：
+- `source_name` 不存在 → `{ok: false, errors: ["E_SOURCE_NOT_FOUND: 'xxx'"]}`
+- source 存在但所有 paths 都无法访问 → `{ok: true, data: {files: []}, warnings: ["W_PATH_NOT_FOUND: ..."]}`
 
 **响应**：
 ```json
@@ -124,10 +136,12 @@
 |---|------|------|
 | T1 | `list-sources` 返回所有 key | `source_names: ["default", "custom"]` |
 | T2 | `list-sources` 无 rule_sources | `source_names: []` |
-| T3 | `scan-by-source` 已知 name | 返回文件列表 |
+| T3 | `scan-by-source` 已知 name，目录路径 | 返回 `.kmmrule.json` 文件列表 |
 | T4 | `scan-by-source` 未知 name | `E_SOURCE_NOT_FOUND` |
 | T5 | `scan-by-source` 混合路径（目录+文件） | 两类都正确返回 |
-| T6 | `scan-by-source` 现有 aggregate 不受影响 | 聚合仍接收 `paths`，正常工作 |
+| T6 | `scan-by-source` 路径中有不存在的目录 | warning `W_PATH_NOT_FOUND`，其他路径正常返回 |
+| T7 | `scan-by-source` source 存在但所有路径都不存在 | `files: []` + warnings |
+| T8 | `scan-by-source` 现有 aggregate 不受影响 | 聚合仍接收 `paths`，正常工作 |
 
 ### 前端
 
