@@ -107,17 +107,23 @@ steam.exe 所在目录 = SteamRoot
 
 1. `~/Library/Application Support/Steam/steamapps/`（默认安装）
 
-### 2.3 扫描完成后：pathstyle 写入 user_config
+### 2.3 扫描完成后：pathstyle 写入 database
 
-扫描完成后，系统须将检测到的路径风格（`steamlib_pathstyle`）写入 `user_config`，作为后续路径归一化的默认值：
+扫描完成后，系统须将检测到的路径风格写入 `database.json` 的 `OS` 对象（参见 `database.schema.json`）：
+
+```json
+"OS": {
+    "workingpathstyle": "linux",
+    "steamlibpathstyle": "windows"
+}
+```
 
 | 字段 | 含义 | 可能值 |
 |------|------|--------|
-| `steamlib_pathstyle` | Steam 库的主路径风格（由首个成功解析的 VDF 判定） | `"windows"` / `"linux"` |
+| `workingpathstyle` | 工具运行环境的路径风格 | `"linux"` / `"windows"` |
+| `steamlibpathstyle` | Steam 库的主路径风格（由首个成功解析的 VDF 判定） | `"linux"` / `"windows"` |
 
-此字段供 orchestrator 的 `_detect_pathstyle()` 消费——当用户未在操作参数中显式指定 pathstyle 时，回退到此配置值。
-
-> WSL 场景：若在 Linux 下通过 WSL 桥接扫描到 Windows 库，`steamlib_pathstyle` 可能为 `"windows"`——此时 orchestrator 需要同时支持 WSL 路径映射（`/mnt/c/...` ↔ `C:\...`）。
+> WSL 场景：若在 Linux 下通过 WSL 桥接扫描到 Windows 库，`steamlibpathstyle` 可能为 `"windows"`——此时 orchestrator 需要同时支持 WSL 路径映射（`/mnt/c/...` ↔ `C:\...`）。
 
 ---
 
@@ -191,9 +197,9 @@ steam.exe 所在目录 = SteamRoot
 
 ### 显式传入路径
 
-- 通过参数显式传入 `user_config.json` 路径时，bootstrap 直接使用该路径，不搜索默认目录
-- 显式路径加载成功后 `source_path` 返回该路径，`first_use=false`
-- 显式路径不存在时，bootstrap 在**该指定位置**创建默认文件，`first_use=true`
+- 通过参数显式传入 `config_index` 时，bootstrap 直接使用该路径，不搜索默认目录
+- 显式路径加载成功后 `config_index` 返回该路径
+- 显式路径不存在时，bootstrap 调 `userconfig_init` 在**该指定位置**创建默认文件
 
 ### 默认目录首次创建
 
@@ -223,4 +229,4 @@ steam.exe 所在目录 = SteamRoot
 - 用户提供了 P1 路径时，自动推导（P2）**不得**执行——跳过注册表、硬编码路径、WSL 桥接
 - Windows 下 `steam.exe` 推导：从 `steam.exe` 所在目录成功定位到 `libraryfolders.vdf`（新版/旧版）时，VDF 展开结果须包含 `SteamRoot/steamapps/`
 - Linux WSL 桥接：`/mnt/c/Program Files (x86)/Steam/` 存在时，应能解析其下 `steamapps/libraryfolders.vdf`
-- 扫描完成后 `user_config.steamlib_pathstyle` 被写入，值为 `"windows"` 或 `"linux"`
+- 扫描完成后 `database.json` 的 `OS` 对象被写入，含 `workingpathstyle` 和 `steamlibpathstyle`

@@ -20,7 +20,7 @@
 | Q3 | `workspace_id` 由后端生成，前端不假设资源是文件系统中的文件 | 前端永远不知道内部文件名/路径 |
 | Q4 | 工作区 ID 在 URL 路径中：`POST /api/workspace/{workspaceId}/...` | REST 惯例，URL 自文档化 |
 | Q5 | orchestrator 新增下属 `workspacemanager`（纯小写），负责工作区 CRUD 与文件读写 | 路由层不直接调 workspacemanager，全部通过 orchestrator |
-| Q6 | 工作区存放于 `~/.cache/kmm/workspace/{workspace_id}/`，路径可由 user_config 配置 | Windows 换算 `%appdata%\.cache\kmm\workspace\` |
+| Q6 | 工作区存放于 `~/.cache/kmm/workspace/{workspace_id}/`，路径可由 user_config 配置 | Windows 换算 `%LOCALAPPDATA%/kmm/workspace/` |
 | Q7 | 前端浏览器存储：`sessionStorage`（主读源） + `localStorage`（新 Tab 初始化回退），按 workspace_id 分键 | 淘汰旧的 `modmanager:workspace` 全部字段 |
 
 ---
@@ -174,7 +174,7 @@ async def compute(workspace_id: str):
 | 平台 | 路径 |
 |------|------|
 | Linux | `~/.cache/kmm/workspace/{workspace_id}/` |
-| Windows | `%appdata%\.cache\kmm\workspace\{workspace_id}\` |
+| Windows | `%LOCALAPPDATA%/kmm/workspace/{workspace_id}/` |
 
 ### 3.2 user_config 可配置
 

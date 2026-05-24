@@ -30,10 +30,9 @@
 
 | 概念 | Linux | Windows |
 |------|-------|---------|
-| **用户配置目录** | `~/.config/kmm/` | `%appdata%/kmm/` |
-| **运行产出默认目录** | `~/.local/share/kmm/` | 进程本体文件所在目录 |
-| **工作区默认目录** | `~/.cache/kmm/workspace/` | `%appdata%\.cache\kmm\workspace\` |
-| **扫描缓存目录** | `/tmp/kmm/` | 进程本体文件所在目录 |
+| **用户配置目录** | `~/.config/kmm/` | `%APPDATA%/kmm/` |
+| **工作区默认目录** | `~/.cache/kmm/workspace/` | `%LOCALAPPDATA%/kmm/workspace/` |
+| **数据库默认目录** | `~/.local/share/kmm/` | `%LOCALAPPDATA%/kmm/database/` |
 | **备份目录** | Steam 库下（详见 `DESIGN_BACKUP_DIR.md` / `DESIGN_BACKUP_OPS.md`） | Steam 库下 |
 
 ### 2.2 路径优先级总则
@@ -99,12 +98,13 @@
 |------|------|:--:|------|
 | `schema_namespace` | `string` | **是** | Schema 命名空间标识，固定为 `"KMM_UserConfig"` |
 | `schema_version` | `string` | **是** | Schema 版本号，如 `"knighthana@0.1.0"` |
-| `baksuffix` | `string` | 否 | 备份目录名后缀，默认 `"kmmbackup"` |
-| `ignore` | `string[]` | 否 | 全局忽略模式列表（apply/backup/restore 均生效，详见 `DESIGN_IGNORE_RULES.md`） |
-| `rule_sources` | `string[]` | 否 | 规则文件来源列表。目录以 `/` 结尾（后端自动扫描 `*.kmmrule.json`），或以 `.kmmrule.json` 结尾的文件直接加载。后端保存时自动归一化：检测到目录路径缺 `/` 则补齐 |
-| `path_alias` | `object[]` | 否 | 路径别名列表（当前无消费者，保留供未来扩展） |
-| `databases` | `object` | 否 | database 名称→路径映射。对象天然防重，每个 entry 是对象为未来扩展留空间。格式：`{ [name: string]: { path: string } }` |
-| `workspace_dir` | `string \| null` | 否 | 工作区根目录。`null` 或未设置时使用平台默认路径（Linux: `~/.cache/kmm/workspace/`；Windows: `%appdata%\.cache\kmm\workspace\`） |
+| `baksuffix` | `string` | **是** | 备份目录名后缀，默认 `"kmmbackup"` |
+| `ignore` | `string[]` | **是** | 全局忽略模式列表（gitignore 语法，apply/backup/restore 均生效） |
+| `bakignore` | `string[]` | **是** | 备份时忽略的目录后缀（系统自动维护，与 `baksuffix` 联动） |
+| `rule_sources` | `{name: {paths: [...]}}` | **是** | 规则文件来源映射——与 `databases` 格式一致。前端只传 name，后端按名解析路径 |
+| `path_alias` | `object[]` | **是** | 路径别名列表（当前无消费者，保留供未来扩展） |
+| `workspace_dir` | `string \| null` | **是** | 工作区根目录。bootstrap 首次创建时按平台填入默认值并固化 |
+| `databases` | `{name: {path}}` | **是** | database 名称→路径映射 |
 
 `databases` 子字段：
 
@@ -163,7 +163,7 @@ database.json 的路径来源于 `user_config.databases[name].path`。`name` 由
 | 平台 | 默认位置 |
 |------|----------|
 | Linux | `~/.local/share/kmm/database.json` |
-| Windows | `<exe_dir>/database.json` |
+| Windows | `%LOCALAPPDATA%/kmm/database/database.json` |
 
 默认位置仅在 `databases` 对象为空且未传入 `database_name?` 时生效。
 

@@ -40,7 +40,7 @@
 - FinalMappingEntry: `path`, `request`
 
 ## backupinfo 结构冻结
-- 根字段：`tree_created_time`, `last_modified_time`, `schema_version`, `tree`
+- 根字段：`schema_namespace`, `tree_created_time`, `last_modified_time`, `schema_version`, `tree`
 - `tree` 根节点类型必须为 `dir`
 - `DirNode`: `name`, `type`, `children`
 - `FileNode`: `name`, `type`, `isbackuped`, `hashtype`, `hashvalue`

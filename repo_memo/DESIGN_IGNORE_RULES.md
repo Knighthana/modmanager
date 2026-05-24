@@ -76,9 +76,12 @@ if should_ignore(path, rules):
 
 ## 七、从 `.kmmbakignore` 迁移
 
+文件名迁移（`.kmmbakignore` → `.kmmignore`）：
+
 | 旧 | 新 |
 |----|----|
 | `.kmmbakignore` 文件名 | `.kmmignore` |
-| `user_config.bakignore` 字段 | `user_config.ignore` |
-| 仅 backup 生效 | backup / apply / restore 全部生效 |
+| 仅 backup 生效 | backup / apply / restore 全部生效（gitignore-parser 统一处理） |
 | 归属 backup 原语 | 归属 Planner 层 |
+
+> `user_config.bakignore` 字段**未**参与此次迁移——`bakignore` 与 `ignore` 语义不同：`bakignore` 系统自动维护、仅 backup 时生效（屏蔽旧备份目录），`ignore` 用户手写、全操作生效（gitignore 语法）。两者并存，各司其职。

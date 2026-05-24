@@ -25,6 +25,7 @@
 
 `backupinfo.json` 根对象应且只应包含：
 
+- `schema_namespace`
 - `tree_created_time`
 - `last_modified_time`
 - `schema_version`
