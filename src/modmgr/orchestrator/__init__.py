@@ -149,6 +149,13 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
         for backup_dir in plan.backup_dirs:
             prep_backup_dir(backup_dir, plan.ignore_rules)
 
+    # ── .kmmignore preservation ─────────────────────────────────
+    if not plan.dry_run:
+        if request.intent == Intent.BACKUP:
+            _copy_kmmignore_to_backup(plan.backup_dirs)
+        elif request.intent == Intent.RESTORE:
+            _copy_kmmignore_from_backup(plan.backup_dirs)
+
     # ── 5. Execute primitive ───────────────────────────────────────
     if request.intent == Intent.BACKUP:
         return _execute_backup_plan(
@@ -349,7 +356,7 @@ def _copy_kmmignore_from_backup(backup_dirs: dict) -> None:
     for backup_dir in backup_dirs:
         for dirpath, _dirs, filenames in os.walk(backup_dir):
             if ".kmmignore" in filenames:
-                rel = dirpath.removeprefix(str(Path(backup_dir).parent)).lstrip("/")
+                rel = dirpath.removeprefix(str(Path(backup_dir))).lstrip("/")
                 src = Path(dirpath) / ".kmmignore"
                 dest = Path(backup_dir).parent / rel / ".kmmignore"
                 dest.parent.mkdir(parents=True, exist_ok=True)
