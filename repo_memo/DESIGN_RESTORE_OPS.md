@@ -116,3 +116,4 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 - `dry_run=true` 时：不修改文件，但仍产出完整的操作报告（`restored`、`deleted`、`skipped`、`warnings`）
 - 找不到可恢复实体时应产生 warning，而不是隐式成功
 - 复制失败应产生 error
+- `.kmmignore` 还原：restore 时从 backup_dir 各级目录收集 `.kmmignore` 文件，复制回源目录对应位置
