@@ -8,9 +8,18 @@ describe('SSE stream parsing logic', () => {
 
   beforeEach(() => {
     sessionStorage.setItem('modmanager:configIndex', JSON.stringify({ type: 'path', string: '/test/config.json' }))
+    localStorage.removeItem('modmanager:configIndex')
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
   })
+
+  function createJsonResponse(payload: unknown, ok = true, status = 200): Response {
+    return {
+      ok,
+      status,
+      json: async () => payload,
+    } as unknown as Response
+  }
 
   function createMockResponse(chunks: string[]): Response {
     const encoder = new TextEncoder()
@@ -138,5 +147,35 @@ describe('SSE stream parsing logic', () => {
     await streamSse('/test', {}, callbacks)
 
     expect(callbacks.onError).toHaveBeenCalledWith('Something went wrong')
+  })
+
+  it('bootstraps config_index from /os/defaults when both storages are empty', async () => {
+    sessionStorage.removeItem('modmanager:configIndex')
+    localStorage.removeItem('modmanager:configIndex')
+
+    const chunks = [
+      'event: result\ndata: {"ok":true,"data":null,"errors":[],"warnings":[]}\n\n',
+    ]
+
+    fetchMock
+      .mockResolvedValueOnce(createJsonResponse({
+        ok: true,
+        data: { userconfig_index: { type: 'path', string: '/defaults/config.json' } },
+        errors: [],
+        warnings: [],
+      }))
+      .mockResolvedValueOnce(createMockResponse(chunks))
+
+    const callbacks: ProgressCallbacks = { onResult: vi.fn(), onError: vi.fn() }
+    const { streamSse } = await import('../../api/sse')
+    await streamSse('/test', {}, callbacks)
+
+    expect(sessionStorage.getItem('modmanager:configIndex')).toBe(JSON.stringify({ type: 'path', string: '/defaults/config.json' }))
+    expect(localStorage.getItem('modmanager:configIndex')).toBe(JSON.stringify({ type: 'path', string: '/defaults/config.json' }))
+    expect(fetchMock).toHaveBeenNthCalledWith(1, expect.stringContaining('/os/defaults'))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, expect.stringContaining('/test'), expect.objectContaining({
+      headers: expect.objectContaining({ 'X-UserConfig-Index': JSON.stringify({ type: 'path', string: '/defaults/config.json' }) }),
+    }))
+    expect(callbacks.onError).not.toHaveBeenCalled()
   })
 })

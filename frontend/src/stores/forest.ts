@@ -237,10 +237,8 @@ export const useForestStore = defineStore('forest', () => {
       if (configResp.ok && configResp.data) {
         const data = configResp.data as Record<string, unknown>
         const config = data.config as Record<string, unknown>
-        const configIndex = data.config_index as string
         userConfig.value = config
         await apiPost('/config/save', {
-          config_index: configIndex,
           config,
         })
       } else {

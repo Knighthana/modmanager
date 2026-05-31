@@ -4,6 +4,7 @@ import type { SseProgress, ProgressCallbacks } from './transport'
 export type { SseProgress, ProgressCallbacks } from './transport'
 
 const CONFIG_INDEX_KEY = 'modmanager:configIndex'
+const CONFIG_INDEX_MISSING_MSG = '请先在设置页面连接配置文件'
 
 function getConfigIndexJson(): string | null {
   let raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
@@ -21,14 +22,38 @@ function getConfigIndexJson(): string | null {
   } catch { return null }
 }
 
+async function resolveConfigIndexJson(): Promise<string | null> {
+  const existing = getConfigIndexJson()
+  if (existing) return existing
+
+  try {
+    const response = await fetch(`${API_BASE}/os/defaults`)
+    if (!response.ok) return null
+    const body = await response.json() as {
+      data?: { userconfig_index?: { type?: string; string?: string } }
+    }
+    const idx = body.data?.userconfig_index
+    if (!idx || typeof idx.type !== 'string' || typeof idx.string !== 'string' || !idx.string) {
+      return null
+    }
+
+    const raw = JSON.stringify({ type: idx.type, string: idx.string })
+    sessionStorage.setItem(CONFIG_INDEX_KEY, raw)
+    localStorage.setItem(CONFIG_INDEX_KEY, raw)
+    return raw
+  } catch {
+    return null
+  }
+}
+
 export async function streamSse(
   path: string,
   body: unknown,
   callbacks: ProgressCallbacks,
 ): Promise<void> {
-  const idx = getConfigIndexJson()
+  const idx = await resolveConfigIndexJson()
   if (!idx) {
-    callbacks.onError?.('请先在设置页面连接配置文件')
+    callbacks.onError?.(CONFIG_INDEX_MISSING_MSG)
     return
   }
 
