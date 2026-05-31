@@ -4,7 +4,7 @@
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义 backup_dir 应该是什么样，以及 backupinfo 作为 backup_dir 成员时的结构、字段与权威边界
-> Supersedes: DESIGN_BACKUP.md
+> Supersedes: DESIGN_BACKUP.md（backup_dir/backupinfo 结构部分）
 
 ## 一、职责边界
 

@@ -52,8 +52,8 @@
 
 | 来源 | 触发条件 | 行为 |
 |------|----------|------|
-| **显式传入** | Orchestrator / CLI / Web API 接收到 `user_config_path` 参数 | 直接使用该路径 |
-| **默认搜索** | 未传入 `user_config_path` | 搜索平台默认位置 |
+| **显式传入** | Orchestrator / CLI / Web API 接收到 `config_index` 参数 | 直接使用该路径 |
+| **默认搜索** | 未传入 `config_index` | 搜索平台默认位置 |
 
 ### 3.2 默认搜索路径（仅一个位置）
 
@@ -64,28 +64,27 @@
 
 仅搜索此一处，不做多级回退。
 
-### 3.3 自动生成（first-use 机制）
+### 3.3 自动生成（缺失即创建）
 
 ```
 搜索 user_config.json
-  ├── 文件存在 → 加载并返回，first_use = false
+  ├── 文件存在 → 加载并返回
   └── 文件不存在
         ├── 尝试在目标位置创建空默认 user_config.json
-        │     ├── 写入成功 → 返回空配置，first_use = true
+        │     ├── 写入成功 → 返回空配置
         │     └── 写入失败 → 报错：
         │           "E_NO_WRITE_PERMISSION: 无法创建 user_config.json，
         │            请指定具有写入权限的目录，或通过参数显式传入 config 路径"
         └──
 ```
 
-**first_use 标记**：当自动创建了空配置文件时，bootstrap 在返回值中设置 `first_use: true`。
-前端据此展示引导流程，提醒用户填写运行必需信息（如 Steam 库路径、规则文件位置等）。
+bootstrap 返回中不携带首次创建标记；调用方需通过自身上下文判断是否首次创建。
 
 ### 3.4 显式传入路径不存在的处理
 
 若用户显式传入的 `user_config.json` 不存在：
 1. 尝试在**该指定路径**创建默认空文件
-2. 成功 → 同 first_use 流程
+2. 成功 → 返回新创建配置并继续后续流程
 3. 失败 → 同权限错误
 
 ### 3.5 字段定义
@@ -99,7 +98,7 @@
 | `schema_namespace` | `string` | **是** | Schema 命名空间标识，固定为 `"KMM_UserConfig"` |
 | `schema_version` | `string` | **是** | Schema 版本号，如 `"knighthana@0.1.0"` |
 | `baksuffix` | `string` | **是** | 备份目录名后缀 |
-| `bakignore` | `string[]` | **是** | 备份时忽略的目录后缀（系统自动维护，与 `baksuffix` 联动） |
+| `bakignore` | `string[]` | 否 | 备份时忽略的目录后缀（系统自动维护，与 `baksuffix` 联动）。允许缺省；若存在可为空数组 |
 | `rule_sources` | `{name: {paths: [...]}}` | **是** | 规则文件来源映射——与 `databases` 格式一致。前端只传 name，后端按名解析路径 |
 | `path_alias` | `object[]` | 否 | 路径别名列表（当前无消费者，保留供未来扩展） |
 | `workspace_dir` | `string \| null` | **是** | 工作区根目录。bootstrap 首次创建时按平台填入默认值并固化 |
@@ -120,25 +119,14 @@
 
 ### 3.6 与 Orchestrator / Bootstrap 的接口
 
-Orchestrator 向 bootstrap 传递 config 来源：
+Orchestrator 向 bootstrap 传递 `config_index`：显式传入时直接使用该路径；未传入时按 §3.2 默认位置搜索。
 
-```python
-# type A: 显式指定
-{"type": "local", "path": "/explicit/path/to/user_config.json"}
-
-# type B: 使用默认搜索
-{"type": "default", "path": None}
-```
-
-bootstrap 据此执行 §3.2-§3.4 的搜索/创建逻辑。
-
-返回结构新增 `first_use` 字段：
+bootstrap 据此执行 §3.2-§3.4 的搜索/创建逻辑，并返回：
 
 ```python
 {
-    "config": { ... },      # 内存中的 user_config 字典（可能为空）
-    "source_path": "...",   # 实际加载/创建的绝对路径
-    "first_use": True,      # 是否自动创建了空配置文件
+  "config": { ... },        # 内存中的 user_config 字典（可能为空）
+  "config_index": "...",   # 实际加载/创建的绝对路径
 }
 ```
 
@@ -332,7 +320,7 @@ try { pers.save(key, value) } catch {
 | # | 决策 | 结论 |
 |---|------|------|
 | D1 | user_config 搜索策略 | 单级、唯一。移除旧三级搜索合并 |
-| D2 | user_config 缺失时行为 | 自动生成空文件 + first_use 标记（而非抛异常） |
+| D2 | user_config 缺失时行为 | 自动生成空文件并返回 `config_index`（而非抛异常） |
 | D3 | database / aggregated 默认路径 | Linux: `~/.local/share/kmm/`；Win: exe 所在目录 |
 | D4 | 扫描缓存独立于 database | managed 决策由工作区目录的 decisions.json 管理 |
 | D6 | 前端持久化 | 仅存储 UI 偏好（localStorage）+ Tab 级导航状态（sessionStorage），业务数据存后端工作区 |

@@ -4,7 +4,7 @@
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义 restore 如何消费当前 mapping、backupinfo 与 backup_dir 执行恢复
-> Supersedes: DESIGN_BACKUP.md
+> Supersedes: DESIGN_BACKUP.md（restore 执行部分）
 > Last update: 2026-05-21 — 重新规定 restore 流程：批量操作列表、树上无结点则删除源文件、严格按 tree 状态判断
 
 ## 一、职责边界
@@ -33,7 +33,7 @@
 
 ### 2.3 Ignore 规则缓存
 
-ignore 的计算非常常用。Planner 在 `plan_fileops()` 阶段计算出的 ignore 结果必须以某种形式缓存并提供给 restore 原语直接消费，不允许 restore 原语重新计算 ignore 规则。
+restore 的 ignore 缓存规则与 `DESIGN_BACKUP_OPS.md` §四完全一致：Planner 在 `plan_fileops()` 阶段计算并缓存 `IgnoreRuleSet`，restore 原语直接消费，不重新计算。
 
 ## 三、执行输入
 

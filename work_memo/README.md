@@ -5,7 +5,6 @@
 ## 用途
 
 - 存放`states.md`，记录当前工作的 TODO / FINISHED 状态。
-- 存放`decisions.md`。
 - 其他由user亲自明确交代的用途。
 
 ## 状态文件格式

@@ -4,7 +4,7 @@
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义如何执行 backup。backupinfo.json 的结构定义见 DESIGN_BACKUP_DIR.md
-> Supersedes: DESIGN_BACKUP.md
+> Supersedes: DESIGN_BACKUP.md（backup 执行部分）
 > Last update: 2026-05-21 — 重新规定建树时机（先建树后备份）、树节点状态机、ignore 缓存
 
 ## 一、职责边界
@@ -188,8 +188,7 @@ backup 操作在执行文件复制前，须将源目录各级祖先中的 `.kmmi
 
 测试组可以据本文档编写正例断言：
 
-- 首次 backup 时：backup_dir 不存在 → 创建 backup_dir → 建树（所有文件 `isbackuped=false`，hash `hashtype="invalid"` `hashvalue="0"`）→ 执行备份 → 更新树中对应结点的 `isbackuped` / `hashtype` / `hashvalue`
-- 后续 backup 时：backup_dir 已存在且 tree 完整 → 不重建树 → 只更新已有结点的状态
+- 建树与后续增量行为必须符合 §七（首次建树 + 后续不重建树）
 - 树上没有对应结点时：记录 `W_BACKUP_NODE_NOT_IN_TREE` 警告，跳过该文件
 - `isbackuped` 不能从 `true` 变回 `false`；`hashtype` 不能从 `"sha256"` 变回 `"invalid"`；`hashvalue` 不能从有效 hex 变回 `"0"`
 - 文件拷贝失败时：`isbackuped` 保持 `false`，不被提前修改

@@ -57,8 +57,6 @@
 |---|------|------|
 | P11-GAP | `rule_validator.py` + `path_normalizer.py` | 模块存在但聚合器 `aggregate()` 未调用 |
 | P12-GAP | `bootstrap.py` | `generate_database()` 仍在 bootstrap 中写磁盘，违反 P12 |
-| P21-GAP | `decisions.md` P21 | 引用了不存在的函数名 `_detect_platform_defaults()`（实际在 `osplatform.py`） |
-| P22-GAP | `decisions.md` P22 | 说 required 含 `bakignore`（7 键），实际 6 键（不含） |
 | CODE-3 | `acf_parser.py` | `find_appmanifest_acf_files` / `find_appworkshop_acf_files` 零调用方 |
 | CODE-4 | `routes/config.py:40` | `_normalize_rule_sources` 中 `isinstance(rs, list)` 分支永远不进 |
 | CODE-5 | `preflight.py` | `run_apply_preflight` / `run_restore_preflight` 的 `context` 参数从未使用 |

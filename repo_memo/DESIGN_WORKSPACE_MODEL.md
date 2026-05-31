@@ -77,7 +77,7 @@
 orchestrator（唯一调度入口，星形中心）
     │
     ├── workspacemanager  ★ 新增：工作区 CRUD、规则/决策/结果读写
-    ├── bootstrap         # 环境初始化（user_config 加载、first_use）
+    ├── bootstrap         # 环境初始化（user_config 加载）
     ├── aggregator        # 规则聚合
     ├── engine            # 计算引擎
     └── backup_ops        # 备份操作
