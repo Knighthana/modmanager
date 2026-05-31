@@ -1,12 +1,17 @@
 ---
 status: active
+authority: reference-only
 concept: readme
-applicable-to: human
+read-Tier: never
+applicable-to: human-only
+unapplicable-to: agents
 update: 2026-05-22
 ---
 
 The Knighthana's Mod Manager
 ============================
+
+作为向最终用户的说明文档省略了内部细节的详细描述，故此**禁止**任何Agent以此作为实现依据；
 
 **项目仍然处于开发阶段，部分核心功能正在深度重构和优化，欢迎开发者加入讨论和贡献，但目前不建议一般用户直接用于生产环境**
 
