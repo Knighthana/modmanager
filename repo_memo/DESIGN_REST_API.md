@@ -15,6 +15,7 @@
 ## 1. 概览（要点）
 - 事实源（实现文件）：[src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)、[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)、[src/modmanager_web/app.py](src/modmanager_web/app.py)、[src/modmanager_web/routes/pipeline.py](src/modmanager_web/routes/pipeline.py)、[src/modmanager_web/routes/workspace.py](src/modmanager_web/routes/workspace.py)、[src/modmanager_web/sse.py](src/modmanager_web/sse.py)、[src/modmanager/orchestrator/__init__.py](src/modmanager/orchestrator/__init__.py)。
 - 原则：任何会写磁盘或执行备份/应用的执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 提供的是无工作区（非写盘）或供脚本化使用的端点，但不再负责 workspace-scoped backup/apply 执行。
+- Web UI 主路径约束：前端产品流程只允许调用工作区路由；generic `/api/pipeline/*` 仅供 CLI/脚本/内部用途，不作为 Web 应用文件访问主路径。
 
 ## 2. 通用响应格式（ApiResponse）
 所有非 SSE 的 JSON 响应采用统一包封：

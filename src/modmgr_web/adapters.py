@@ -47,6 +47,7 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
         stats["apply_skipped"] = len(pr.apply_result.get("skipped", []))
     if pr.restore_result:
         stats["restored"] = len(pr.restore_result.get("restored", []))
+        stats["restore_deleted"] = len(pr.restore_result.get("deleted", []))
         stats["restore_skipped"] = len(pr.restore_result.get("skipped", []))
     if stats:
         data["stats"] = stats
@@ -54,6 +55,7 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
     # ── Include restore_result fields when present ──────────────────────
     if pr.restore_result:
         data["restored"] = pr.restore_result.get("restored", [])
+        data["deleted"] = pr.restore_result.get("deleted", [])
         data["skipped"] = pr.restore_result.get("skipped", [])
         if pr.restore_result.get("force"):
             data["force"] = True
@@ -87,6 +89,7 @@ def adapt_restore_result(result: dict) -> dict:
     ``ApiResponse``-shaped dict."""
     data: dict[str, Any] = {
         "restored": result.get("restored", []),
+        "deleted": result.get("deleted", []),
         "skipped": result.get("skipped", []),
         "orphans": result.get("orphans", []),
     }

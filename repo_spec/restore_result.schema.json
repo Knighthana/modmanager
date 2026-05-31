@@ -4,7 +4,7 @@
   "description": "Schema for the dict returned by restore_from_backup() / restore(). Transient communication — no embedded schema_namespace/schema_version. DESIGN_RESTORE_OPS.md.",
   "version": "knighthana@0.1.0",
   "type": "object",
-  "required": ["ok", "restored", "skipped", "orphans", "errors", "warnings", "dry_run", "force"],
+  "required": ["ok", "restored", "deleted", "skipped", "orphans", "errors", "warnings", "dry_run", "force"],
   "additionalProperties": false,
   "properties": {
     "version": { "const": "knighthana@0.1.0" },
@@ -13,6 +13,11 @@
       "description": "Entries that were successfully restored.",
       "type": "array",
       "items": { "$ref": "dry_run_output.schema.json#/$defs/RestoreDryRunEntry" }
+    },
+    "deleted": {
+      "description": "Entries deleted during restore-related cleanup operations.",
+      "type": "array",
+      "items": { "type": "string" }
     },
     "skipped": {
       "description": "Entries that were skipped (e.g. hash match when force=false).",

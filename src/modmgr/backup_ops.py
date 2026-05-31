@@ -544,6 +544,7 @@ def restore_from_backup(
                 {
                     "ok": bool,
                     "restored": [str],
+                    "deleted": [str],
                     "skipped": [str],
                     "errors": [str],
                     "orphans": [str],
@@ -560,6 +561,7 @@ def restore_from_backup(
         return {
             "ok": False,
             "restored": [],
+            "deleted": [],
             "skipped": [],
             "errors": gate_errors,
             "orphans": [],
@@ -611,6 +613,7 @@ def restore_from_backup(
         return {
             "ok": True,
             "restored": would_restore,
+            "deleted": [],
             "skipped": would_skip,
             "errors": [],
             "orphans": [],
@@ -662,6 +665,7 @@ def restore_from_backup(
     return {
         "ok": not errors,
         "restored": restored,
+        "deleted": [],
         "skipped": skipped,
         "errors": errors,
         "orphans": orphans,
