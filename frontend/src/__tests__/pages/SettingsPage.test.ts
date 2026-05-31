@@ -6,6 +6,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 vi.mock('../../api/client', () => ({
   apiPost: vi.fn(),
   apiGet: vi.fn(),
+  apiGetPublic: vi.fn(),
 }))
 
 vi.mock('../../utils/persistence', () => ({
@@ -25,7 +26,7 @@ vi.mock('../../utils/persistence', () => ({
 }))
 
 import SettingsPage from '../../pages/SettingsPage.vue'
-import { apiPost, apiGet } from '../../api/client'
+import { apiPost, apiGetPublic } from '../../api/client'
 import type { ApiResponse } from '../../api/client'
 
 const router = createRouter({
@@ -53,7 +54,7 @@ const elStubs = {
 }
 
 const mockedApiPost = vi.mocked(apiPost)
-const mockedApiGet = vi.mocked(apiGet)
+const mockedApiGetPublic = vi.mocked(apiGetPublic)
 
 // Helper to get vm as any for accessing internal component state
 function vmAny(wrapper: VueWrapper): Record<string, unknown> {
@@ -79,7 +80,7 @@ const mockConfigData = {
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockedApiGet.mockResolvedValue({
+    mockedApiGetPublic.mockResolvedValue({
       ok: true,
       data: { platform: 'linux', userconfig_index: { type: 'path', string: '~/.config/kmm/user_config.json' } },
       errors: [],
@@ -126,7 +127,7 @@ describe('SettingsPage', () => {
       default: { paths: ['/home/user/rules/', '/home/user/custom.kmmrule.json'] },
     })
     // Verify apiPost was called with the discover endpoint
-    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', { config_index: { type: 'path', string: '/test/config.json' } })
+    expect(mockedApiPost).toHaveBeenCalledWith('/config/discover', {})
   })
 
   it('onSaveConfig calls /api/config/save with correct data', async () => {
@@ -158,7 +159,6 @@ describe('SettingsPage', () => {
 
     // onMounted calls /api/config/discover first, then onSaveConfig calls save
     expect(mockedApiPost).toHaveBeenLastCalledWith('/config/save', {
-      config_index: { type: 'path', string: '/test/config.json' },
       config: {
         baksuffix: 'testsuffix',
         workspace_dir: '/custom/workspace',

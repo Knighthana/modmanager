@@ -7,7 +7,13 @@ const CONFIG_INDEX_KEY = 'modmanager:configIndex'
 
 function getConfigIndexJson(): string | null {
   let raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
-  if (!raw) raw = localStorage.getItem(CONFIG_INDEX_KEY)
+  if (!raw) {
+    raw = localStorage.getItem(CONFIG_INDEX_KEY)
+    if (raw) {
+      // Write-through: keep request header source consistent.
+      sessionStorage.setItem(CONFIG_INDEX_KEY, raw)
+    }
+  }
   if (!raw) return null
   try {
     JSON.parse(raw) // validate

@@ -7,12 +7,23 @@ const CONFIG_INDEX_KEY = 'modmanager:configIndex'
 
 function getConfigIndexJson(): string | null {
   let raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
-  if (!raw) raw = localStorage.getItem(CONFIG_INDEX_KEY)
+  if (!raw) {
+    raw = localStorage.getItem(CONFIG_INDEX_KEY)
+    if (raw) {
+      // Write-through: once local fallback is used, session becomes source of truth.
+      sessionStorage.setItem(CONFIG_INDEX_KEY, raw)
+    }
+  }
   if (!raw) return null
   try {
     JSON.parse(raw) // validate
     return raw
   } catch { return null }
+}
+
+export async function apiGetPublic<T>(path: string): Promise<ApiResponse<T>> {
+  const res = await fetch(`${API_BASE}${path}`)
+  return res.json()
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<ApiResponse<T>> {

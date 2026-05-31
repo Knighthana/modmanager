@@ -4,7 +4,7 @@
   "description": "Schema for the dict returned by run_differential_backup() / backup(). Transient communication — no embedded schema_namespace/schema_version. DESIGN_BACKUP_OPS.md.",
   "version": "knighthana@0.1.0",
   "type": "object",
-  "required": ["ok", "backed_up", "skipped", "errors", "dry_run"],
+  "required": ["ok", "backed_up", "skipped", "errors", "warnings", "dry_run"],
   "additionalProperties": false,
   "properties": {
     "version": { "const": "knighthana@0.1.0" },
@@ -21,6 +21,11 @@
     },
     "errors": {
       "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "description": "Non-fatal warning messages. Each string begins with a W_ code.",
       "type": "array",
       "items": { "type": "string" }
     },

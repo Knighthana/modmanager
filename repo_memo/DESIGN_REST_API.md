@@ -26,6 +26,8 @@
   "warnings": [...]
 }
 ```
+规则：`errors` 与 `warnings` 字段恒存在；当无内容时返回空数组 `[]`（无则空）。
+
 SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 ApiResponse 的字典结构（由适配器 `adapt_pipeline_result` / `adapt_dict_result` / `adapt_restore_result` 序列化）。
 
 ## 3. 端点清单（摘要）

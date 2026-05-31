@@ -280,6 +280,7 @@ export const STR = {
     W_SOURCE_DELETED: '操作的源文件已被删除，该操作被跳过',
     W_SOURCE_DIRECTORY_DELETED: '操作的源目录已被删除，该操作被跳过',
     W_EMPTY_ACTIONLIST_AFTER_FILTER: '规则聚合后 actionlist 为空（所有 action 被 hold 过滤），该 mod 的映射将被跳过',
+    W_EXTERNAL_FILE_ORPHAN: '检测到当前 restore 未覆盖的外部孤儿文件',
     // Errors
     E_DATABASE_INVALID: '数据库格式无效，缺少必要字段',
     E_AGGREGATED_RULE_SET_INVALID: '规则集格式无效',

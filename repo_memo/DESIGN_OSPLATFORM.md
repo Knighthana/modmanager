@@ -76,7 +76,7 @@ if sys.platform == "linux":
 | 调用方 | 请求的值 | 用途 |
 |--------|---------|------|
 | `userconfig_ops.userconfig_init()` | `workspace_dir_get()` + `database_path_get()` | 创建/补全 user_config 时的默认值 |
-| Web 路由 `/api/os/defaults` | `userconfig_index_get()` | 前端首次加载时获取默认 config_index |
+| Web 路由 `/api/os/defaults` | `userconfig_index_get()` | 当前端 sessionStorage/localStorage 均为空时提供默认 config_index |
 | `paths.normalize_path()` | `platform()` | 大小写归一化判断 |
 | `steam_scanner` / `database_ops` | `platform()` | WSL 判断 + 扫描策略差异 |
 | `bootstrap` | **不再调用** | bootstrap 不再做任何 OS 探测 |
@@ -84,6 +84,8 @@ if sys.platform == "linux":
 ## 五、Web 端点
 
 `GET /api/os/defaults` — 返回平台默认值，供前端首次加载使用。无状态，不依赖 user_config。
+
+前端调用该端点后，必须将返回的 `userconfig_index` 写穿到 sessionStorage 与 localStorage；后续请求再通过 `X-UserConfig-Index` header 透传。
 
 **请求**：无 body。
 

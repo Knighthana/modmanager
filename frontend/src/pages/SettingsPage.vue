@@ -236,7 +236,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { apiPost, apiGet } from '../api/transport'
+import { apiPost, apiGetPublic } from '../api/transport'
 // workspace localStorage no longer used — backend/config API handles persistence
 import { STR } from '../locales/zh-CN'
 
@@ -258,7 +258,13 @@ const DEFAULT_DB_PATH = '~/.local/share/kmm/database.json'
 const CONFIG_INDEX_KEY = 'modmanager:configIndex'
 
 function loadConfigIndex(): Record<string, string> | null {
-  const raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
+  let raw = sessionStorage.getItem(CONFIG_INDEX_KEY)
+  if (!raw) {
+    raw = localStorage.getItem(CONFIG_INDEX_KEY)
+    if (raw) {
+      sessionStorage.setItem(CONFIG_INDEX_KEY, raw)
+    }
+  }
   if (!raw) return null
   try { return JSON.parse(raw) } catch { return null }
 }
@@ -313,7 +319,7 @@ onMounted(async () => {
   // If no saved config_index, fetch platform default
   if (!configIndex.value.string) {
     try {
-      const resp = await apiGet<Record<string, unknown>>('/os/defaults')
+      const resp = await apiGetPublic<Record<string, unknown>>('/os/defaults')
       if (resp.ok && resp.data) {
         const data = resp.data as Record<string, unknown>
         const idx = data.userconfig_index as Record<string, string>
@@ -328,9 +334,7 @@ onMounted(async () => {
   // Proceed with existing discover logic if we have a path
   if (!configIndex.value.string) return
   try {
-    const result = await apiPost<Record<string, unknown>>('/config/discover', {
-      config_index: configIndex.value,
-    })
+    const result = await apiPost<Record<string, unknown>>('/config/discover', {})
     if (result.ok && result.data) {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
@@ -371,9 +375,7 @@ async function connectConfig() {
   }
   saveConfigIndex(configIndex.value)
   try {
-    const result = await apiPost<Record<string, unknown>>('/config/discover', {
-      config_index: configIndex.value,
-    })
+    const result = await apiPost<Record<string, unknown>>('/config/discover', {})
     if (result.ok && result.data) {
       const data = result.data as Record<string, unknown>
       const uc = data.config as Record<string, unknown>
@@ -415,7 +417,6 @@ async function onSaveConfig() {
     }
 
     const result = await apiPost('/config/save', {
-      config_index: configIndex.value,
       config: {
         baksuffix: form.value.baksuffix,
         workspace_dir: form.value.workspaceDir,

@@ -376,7 +376,13 @@ def run_differential_backup(
 
     Returns::
 
-        {"ok": bool, "backed_up": [str], "skipped": [str], "errors": [str]}
+        {
+            "ok": bool,
+            "backed_up": [str],
+            "skipped": [str],
+            "errors": [str],
+            "warnings": [str],
+        }
     """
     # Derive content_root from backup_dir if not explicitly given
     if not content_root:
@@ -421,13 +427,21 @@ def run_differential_backup(
                     })
             else:
                 would_skip.append({"path": target, "reason": "source not found"})
-        return {"ok": True, "backed_up": would_backup, "skipped": would_skip, "errors": [], "dry_run": True}
+        return {
+            "ok": True,
+            "backed_up": would_backup,
+            "skipped": would_skip,
+            "errors": [],
+            "warnings": [],
+            "dry_run": True,
+        }
 
     assert_directory_path(backup_dir, label="backup_dir")
     backup_path = Path(backup_dir)
     backed_up: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     errors: list[str] = []
+    warnings: list[str] = []
 
     # ── Preserve tree_created_time; only prep writes it ──────────
     _existing_info = load_backup_info(backup_dir)
@@ -450,7 +464,7 @@ def run_differential_backup(
                 skipped.append({"path": target, "reason": "already backed up (isbackuped=true in tree)"})
                 continue
             elif status == TreeNodeStatus.NOT_FOUND:
-                errors.append(f"W_BACKUP_NODE_NOT_IN_TREE: file not in backup tree: {rel_for_tree}")
+                warnings.append(f"W_BACKUP_NODE_NOT_IN_TREE: file not in backup tree: {rel_for_tree}")
                 skipped.append({"path": target, "reason": "node not in backup tree"})
                 continue
 
@@ -493,7 +507,13 @@ def run_differential_backup(
         except OSError as exc:
             errors.append(f"E_BACKUP_COPY_FAILED: {target}: {exc}")
 
-    return {"ok": not errors, "backed_up": backed_up, "skipped": skipped, "errors": errors}
+    return {
+        "ok": not errors,
+        "backed_up": backed_up,
+        "skipped": skipped,
+        "errors": errors,
+        "warnings": warnings,
+    }
 
 
 # ── Phase 12: Restore from backup ─────────────────────────────────────────────
@@ -637,7 +657,7 @@ def restore_from_backup(
 
     originals = _collect_backup_original_paths(backup_dir, content_root)
     orphans = _list_orphans(backup_dir, originals, target_set)
-    warnings.extend([f"E_EXTERNAL_FILE_ORPHAN: {p}" for p in orphans])
+    warnings.extend([f"W_EXTERNAL_FILE_ORPHAN: {p}" for p in orphans])
 
     return {
         "ok": not errors,

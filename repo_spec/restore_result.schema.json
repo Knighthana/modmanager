@@ -4,7 +4,7 @@
   "description": "Schema for the dict returned by restore_from_backup() / restore(). Transient communication — no embedded schema_namespace/schema_version. DESIGN_RESTORE_OPS.md.",
   "version": "knighthana@0.1.0",
   "type": "object",
-  "required": ["ok", "restored", "skipped", "orphans", "errors", "dry_run", "force"],
+  "required": ["ok", "restored", "skipped", "orphans", "errors", "warnings", "dry_run", "force"],
   "additionalProperties": false,
   "properties": {
     "version": { "const": "knighthana@0.1.0" },
@@ -26,6 +26,11 @@
     },
     "errors": {
       "description": "Fatal error messages. Each string begins with an E_ code.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "description": "Non-fatal warning messages. Each string begins with a W_ code.",
       "type": "array",
       "items": { "type": "string" }
     },

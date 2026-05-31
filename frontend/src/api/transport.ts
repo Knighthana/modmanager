@@ -61,5 +61,5 @@ export type StreamSseFn = (
 // ── Current implementation (HTTP) ───────────────────────────────────────
 // Tauri 迁移时只需替换下面的两个 import 为目标实现
 
-export { apiPost, apiGet, apiPost as invoke } from './client'
+export { apiPost, apiGet, apiGetPublic, apiPost as invoke } from './client'
 export { streamSse } from './sse'

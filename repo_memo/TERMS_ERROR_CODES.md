@@ -9,7 +9,7 @@
 
 - 本文档是错误码与警告码的统一入口。
 - 任何新引入的 backupinfo、backup、restore 相关 `E_` / `W_` 码，都应先或同步登记到这里。
-- 前缀 `E_` / `W_` 不是唯一严重级别来源；默认严重级别以本表 `default_severity` 为准。
+- 前缀与默认严重级别必须一致：`E_` 对应 `error`，`W_` 对应 `warning`。
 
 ## 二、固定表结构
 
@@ -27,7 +27,7 @@
 | `E_TREE_CONFLICT_TARGET_DRIFT` | `restore` | 目标文件与 backup 副本产生漂移 | `error` | 目标文件漂移 | 面向冲突检查，而非普通 restore 成功路径 |
 | `W_BACKUP_GATE_FAILED` | `restore` | 对应 backup_dir 无法通过可恢复性检查 | `warning` | 该 backup_dir 在本次 restore 中被整体跳过 | restore 继续处理其它目录 |
 | `E_RESTORE_COPY_FAILED` | `restore` | 从 backup_dir 复制回目标位置失败 | `error` | 恢复复制失败 | 当前条目执行失败 |
-| `E_EXTERNAL_FILE_ORPHAN` | `restore` | 检测到本次 restore 未命中的外部文件或孤儿文件 | `warning` | 外部孤儿文件提示 | 当前实现虽然以 `E_` 前缀输出，但默认严重级别按 warning 处理 |
+| `W_EXTERNAL_FILE_ORPHAN` | `restore` | 检测到本次 restore 未命中的外部文件或孤儿文件 | `warning` | 外部孤儿文件提示 | 不阻断 restore 主流程 |
 | `E_BACKUP_COPY_FAILED` | `backup` | 将目标文件复制进 backup_dir 失败 | `error` | 备份复制失败 | 当前条目未成功写入 backup |
 | `E_APPLY_MISSING_TARGET` | `apply` | apply 条目缺少目标路径或目标路径为空 | `error` | apply 目标路径缺失 | 属于 apply 输入或执行前检查失败 |
 | `E_APPLY_MISSING_SOURCE` | `apply` | apply 条目缺少源路径，或无法定位源文件 | `error` | apply 源路径缺失 | delete 哨兵 `!` 不适用本条 |
@@ -85,7 +85,7 @@
 | `E_TREE_CONFLICT_TARGET_DRIFT` | `restore` | 目标文件与备份文件发生漂移 | `error` | 目标实体与备份实体不一致 | 用于冲突检查 |
 | `W_BACKUP_GATE_FAILED` | `restore` | gate 检查失败导致某个 backup_dir 被整组跳过 | `warning` | 当前 backup_dir 未进入 restore 执行 | warning，不阻断其它 backup_dir |
 | `E_RESTORE_COPY_FAILED` | `restore` | 从 backup_dir 复制回原路径时发生 I/O 失败 | `error` | 某个命中文件恢复失败 | restore 主流程直接产出 |
-| `E_EXTERNAL_FILE_ORPHAN` | `restore` | 发现 backup 外的孤儿文件 | `warning` | 存在未被当前 restore 集合覆盖的外部文件 | 当前实现前缀虽为 E_，严重级别按 warning 解释 |
+| `W_EXTERNAL_FILE_ORPHAN` | `restore` | 发现 backup 外的孤儿文件 | `warning` | 存在未被当前 restore 集合覆盖的外部文件 | 不阻断 restore 主流程 |
 | `E_BACKUP_COPY_FAILED` | `backup` | 备份复制阶段发生 I/O 失败 | `error` | 某个文件未能写入 backup_dir | backup 主流程直接产出 |
 | `E_APPLY_MISSING_TARGET` | `apply` | apply 条目缺少目标路径或目标路径为空 | `error` | apply 目标路径缺失 | 属于 apply 输入或执行前检查失败 |
 | `E_APPLY_MISSING_SOURCE` | `apply` | apply 条目缺少源路径，或无法定位源文件 | `error` | apply 源路径缺失 | delete 哨兵 `!` 不适用本条 |
@@ -95,5 +95,5 @@
 ## 四、治理规则
 
 - 新增错误码或警告码时，必须先补本文档，再进入前端聚合或测试口径。
-- 若历史实现中的前缀与默认严重级别不一致，以 `default_severity` 为准解释。
+- 若出现前缀与严重级别不一致，视为错误码定义缺陷，必须修复为一致后再发布。
 - 若未来需要更细严重级别，可在不改列结构的前提下扩展枚举值。

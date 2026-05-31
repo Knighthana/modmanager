@@ -610,7 +610,7 @@ class TestPhase13Governance(TestCase):
             result = restore_from_backup(bdir)
             self.assertTrue(result["ok"])
             self.assertIn(str(orphan), result.get("orphans", []))
-            self.assertTrue(any("E_EXTERNAL_FILE_ORPHAN" in w for w in result.get("warnings", [])))
+            self.assertTrue(any("W_EXTERNAL_FILE_ORPHAN" in w for w in result.get("warnings", [])))
 
     def test_delete_orphan_files(self):
         with tempfile.TemporaryDirectory() as tmp:
