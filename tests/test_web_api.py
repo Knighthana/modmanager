@@ -49,7 +49,7 @@ class TestHealthEndpoint:
         body = resp.json()
         assert body["ok"] is True
         assert body["data"]["version"] == "0.1.0"
-        assert body["data"]["package"] == "modmanager_web"
+        assert body["data"]["package"] == "modmgr_web"
         assert body["errors"] == []
         assert body["warnings"] == []
 

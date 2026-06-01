@@ -68,7 +68,6 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 - 某目标在当前 restore scope 内，但树上对应文件的 `isbackuped` 为 `false`
 - 某目标在树上存在，但 `hashtype` 为 `"invalid"` 或 `hashvalue` 为 `"0"`（无有效 hash）
 - 某个 backup_dir 无法通过可恢复性检查，因此该目录下目标整体跳过
-- 存在本次 restore 未命中的外部文件或孤儿文件，需要提示但不阻断其它恢复
 
 ### 5.2 error
 

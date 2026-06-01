@@ -22,7 +22,7 @@
 
 | 场景 | 动作 |
 |------|------|
-| 文件不存在 | 创建——写入 DEFAULTS + 平台默认值（`_detect_platform_defaults()`） |
+| 文件不存在 | 创建——写入 DEFAULTS + 平台默认值（通过 `osplatform.defaultvalue` 获取） |
 | 文件存在但缺必填键 | 加载 → 逐键检查 REQUIRED_KEYS → 缺失的从 DEFAULTS 补（不覆盖已有值） → 写回 |
 | 文件存在、必填齐全 | 加载返回，不动 |
 | JSON 解析失败 | `ValueError` |
@@ -50,7 +50,7 @@ DEFAULTS = {
     "bakignore": ["kmmbackup"],
     "rule_sources": {},
     "path_alias": [],
-    "workspace_dir": None,       # 由 _detect_platform_defaults() 填入
+    "workspace_dir": None,       # 由 osplatform.defaultvalue 填入
     "databases": {"default": {"path": ""}},  # 同上
 }
 REQUIRED_KEYS = [k for k in DEFAULTS if k not in ("path_alias", "bakignore")]  # optional

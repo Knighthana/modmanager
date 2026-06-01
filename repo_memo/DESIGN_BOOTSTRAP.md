@@ -6,7 +6,7 @@
 > Purpose: 定义 bootstrap 模块的初始化流程、三平台默认路径、Steam 发现顺序、首次使用行为
 
 创建：2026-05-21
-更新：2026-05-25 — §1.1 config_index 必填，删除平台默认路径猜测；§1.3 默认路径汇总移至 `userconfig_ops._detect_platform_defaults()`；§五 config_index 必填
+更新：2026-05-25 — §1.1 config_index 必填，删除平台默认路径猜测；§1.3 默认路径汇总移至 `osplatform.defaultvalue`；§五 config_index 必填
 
 ---
 
@@ -215,7 +215,7 @@ bootstrap 从该位置读取/校验 user_config，**不执行任何平台默认�
 
 ### 平台识别
 
-平台默认路径（`workspace_dir`、`database`）由 `userconfig_ops._detect_platform_defaults()` 维护，
+平台默认路径（`workspace_dir`、`database`）由 `osplatform.defaultvalue` 维护，
 `discover_user_config()` 不执行任何平台默认路径猜测。
 
 ### 显式传入路径
@@ -228,7 +228,7 @@ bootstrap 从该位置读取/校验 user_config，**不执行任何平台默认�
 
 - 指定路径下不存在 `user_config.json` 时，`discover_user_config` 调 `userconfig_init` 在该路径创建
 - 创建的文件须包含 §1.2 规定的全部默认字段
-- `databases` 默认值为 `{"default": {"path": "<平台默认 database 路径>"}}`——该路径由 `_detect_platform_defaults()` 按平台填入
+- `databases` 默认值为 `{"default": {"path": "<平台默认 database 路径>"}}`——该路径由 `osplatform.defaultvalue` 按平台填入
 
 ### Databases 解析
 
