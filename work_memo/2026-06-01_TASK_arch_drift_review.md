@@ -349,11 +349,15 @@ user 在审查报告中提出了三个裁定性问题，待 arch 在下一轮中
 
 **决定**：Web 层构造 `TaskRequest` 时 `resolver_type` 必须为 `"workspace"`。`"raw_dict"` 和 `"file_paths"` 保留给 CLI。将此约束写入 `DESIGN_ORCHESTRATOR.md` 或 `DESIGN_ORCHESTRATOR_CONTRACT.md` 作为 L1 硬约束。
 
-### 裁定 9：`pipeline.py` 删除
+### 裁定 9：`pipeline.py` 删除 + 前端路由迁移
 
-> `pipeline.py` 的 4 个端点全部绕过 workspace，`workspace.py` 已提供对应端点。
+> `pipeline.py` 的 4 个端点全部绕过 workspace，`workspace.py` 已提供对应端点。前端仍需同步清理对旧非 workspace 端点的直接调用。
 
-**决定**：删除 `src/modmgr_web/routes/pipeline.py` 整文件。
+**决定**：
+1. 删除 `src/modmgr_web/routes/pipeline.py` 整文件
+2. 前端迁移 3 处旧端点调用到 workspace-aware 端点
+
+**后端端点迁移**：
 
 | 旧端点 | 替代 |
 |--------|------|
@@ -361,6 +365,16 @@ user 在审查报告中提出了三个裁定性问题，待 arch 在下一轮中
 | `POST /visualize` | `POST /{workspace_id}/pipeline/visualize`（需补充） |
 | `POST /restore` | `POST /{workspace_id}/pipeline/restore`（已有） |
 | `POST /run` | `POST /{workspace_id}/pipeline/run`（已有） |
+
+**前端调用迁移**：
+
+| 文件 | 旧调用 | 新调用 |
+|------|--------|--------|
+| `frontend/src/stores/forest.ts:139` | `/pipeline/compute` | `/{workspaceId}/pipeline/compute` |
+| `frontend/src/stores/forest.ts:96` | `/pipeline/run` | `/{workspaceId}/pipeline/run` |
+| `frontend/src/components/BackupPage.vue:242` | `/pipeline/restore` (传入 `backup_dir`) | `/{workspaceId}/pipeline/restore` (传入 `workspaceId`) |
+
+**约束**：前端不得再发送 `backup_dir` 文件路径，改用 `workspaceId` 由后端 resolver 解析资源。
 
 ### 裁定 10：CLI 保留全能力
 
@@ -400,6 +414,9 @@ user 在审查报告中提出了三个裁定性问题，待 arch 在下一轮中
 | `DESIGN_COMM_PROTOCOL.md` | 删除非 workspace 的 pipeline 端点协议 | 裁定 9 |
 | `DESIGN_GUI_EXECUTION_PROTOCOL.md` | 前端请求一律带 `workspaceId` | 裁定 8 |
 | `DESIGN_WORKSPACE_MODEL.md` | workspace 作为消费品来源/产品去向 | 裁定 9 |
+| `DESIGN_GUI_BACKUP_RESTORE.md` | 移除 `backup_dir` 路径参数，改用 `workspaceId`（如存在此文档） | 裁定 9 |
 | `DESIGN_PREFLIGHT_APPLY.md` | `context` 参数已从 preflight 函数签名中删除 | 裁定 6 |
 | `DESIGN_ENGINE_INVARIANTS.md` | orphan 相关内容清理（如有） | 裁定 3 |
 | `READING_PACKAGES.md` | 任务包可能需要重组 | 裁定 7 |
+| `frontend/src/stores/forest.ts` | 非 workspace 端点 → `/{workspaceId}/pipeline/{compute,run}` | 裁定 9 |
+| `frontend/src/components/BackupPage.vue` | `backup_dir` 路径 → `workspaceId` | 裁定 9 |
