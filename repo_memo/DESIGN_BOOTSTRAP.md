@@ -73,7 +73,7 @@ bootstrap 在确定路径后执行 schema verify（依据 `user_config.schema.js
 ### 1.3 默认路径
 
 平台默认路径（`workspace_dir` 和 `database`）现在由
-`userconfig_ops._detect_platform_defaults()` 内部维护。
+`osplatform.defaultvalue` 内部维护。
 `discover_user_config()` / bootstrap 不再包含任何平台路径猜测逻辑。
 
 > `workspace_dir` 由 `userconfig_init` 首次创建 `user_config` 时按平台填入默认值。

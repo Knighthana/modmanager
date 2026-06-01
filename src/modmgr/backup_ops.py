@@ -658,40 +658,15 @@ def restore_from_backup(
         except OSError as exc:
             errors.append(f"E_RESTORE_COPY_FAILED: {original}: {exc}")
 
-    originals = _collect_backup_original_paths(backup_dir, content_root)
-    orphans = _list_orphans(backup_dir, originals, target_set)
-    warnings.extend([f"W_EXTERNAL_FILE_ORPHAN: {p}" for p in orphans])
-
     return {
         "ok": not errors,
         "restored": restored,
         "deleted": [],
         "skipped": skipped,
         "errors": errors,
-        "orphans": orphans,
+        "orphans": [],
         "warnings": warnings,
     }
-
-
-def delete_orphan_files(orphan_paths: list[str]) -> dict[str, Any]:
-    """Delete orphan files after explicit user confirmation."""
-    deleted: list[str] = []
-    skipped: list[str] = []
-    errors: list[str] = []
-
-    for p in orphan_paths:
-        norm = _normalized(p)
-        fp = Path(norm)
-        if not fp.exists():
-            skipped.append(norm)
-            continue
-        try:
-            fp.unlink()
-            deleted.append(norm)
-        except OSError as exc:
-            errors.append(f"E_ORPHAN_DELETE_FAILED: {norm}: {exc}")
-
-    return {"ok": not errors, "deleted": deleted, "skipped": skipped, "errors": errors}
 
 
 def _assert_is_file(path: Path | str, context: str = "") -> None:
@@ -768,5 +743,4 @@ __all__ = [
     "check_backup_gate",
     "run_differential_backup",
     "restore_from_backup",
-    "delete_orphan_files",
 ]

@@ -116,34 +116,6 @@ def parse_appworkshop_acf(acf_path: str) -> list[dict[str, Any]]:
     return items
 
 
-def find_appmanifest_acf_files(steamapps_path: str) -> dict[str, str]:
-    """
-    Find all appmanifest_*.acf files in steamapps directory.
-
-    Args:
-        steamapps_path: Path to steamapps/ directory
-
-    Returns:
-        Dict: {appid: path_to_appmanifest_acf}
-        Example: {"270150": "/path/to/appmanifest_270150.acf", ...}
-    """
-    raise NotImplementedError("To be implemented in M1.1")
-
-
-def find_appworkshop_acf_files(steamapps_path: str) -> dict[str, str]:
-    """
-    Find all appworkshop_*.acf files in steamapps directory.
-
-    Args:
-        steamapps_path: Path to steamapps/ directory
-
-    Returns:
-        Dict: {appid: path_to_appworkshop_acf}
-        Example: {"270150": "/path/to/appworkshop_270150.acf", ...}
-    """
-    raise NotImplementedError("To be implemented in M1.1")
-
-
 def get_workshop_timeupdated(steamapps_path: str, appid: str, contentid: str | None = None) -> str:
     """从 appworkshop_{appid}.acf 读取 timeupdated 字段并返回字符串。
 
@@ -295,8 +267,6 @@ def get_workshop_latest_timeupdated(steamapps_path: str, appid: str, contentid: 
 __all__ = [
     "parse_appmanifest_acf",
     "parse_appworkshop_acf",
-    "find_appmanifest_acf_files",
-    "find_appworkshop_acf_files",
     "get_workshop_timeupdated",
     "get_workshop_latest_timeupdated",
 ]

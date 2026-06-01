@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
         from .adapters import adapt_dict_result
 
         return adapt_dict_result(
-            {"version": "0.1.0", "package": "modmanager_web"}
+            {"version": "0.1.0", "package": "modmgr_web"}
         )
 
     # ── Routers ───────────────────────────────────────────────────────────

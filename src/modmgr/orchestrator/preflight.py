@@ -19,12 +19,10 @@ except ImportError:
     from ..backup_ops import check_backup_gate
 
 from ._common import _utcnow
-from .resolver import CleanContext
 
 
 def run_apply_preflight(
     backup_dirs: dict[str, list[str]],
-    context: CleanContext,
 ) -> dict[str, Any]:
     """Run apply preflight: check each backup_dir's gate.
 
@@ -58,7 +56,6 @@ def run_apply_preflight(
 
 def run_restore_preflight(
     backup_dirs: dict[str, list[str]],
-    context: CleanContext,
 ) -> dict[str, Any]:
     """Run restore preflight: check each backup_dir exists on disk.
 

@@ -108,6 +108,7 @@ async def pipeline_restore(req: RestoreRequest):
         return restore_from_backup(
             backup_dir=req.backup_dir,
             target_files=req.target_files,
+            on_progress=on_progress,
         )
 
     return StreamingResponse(

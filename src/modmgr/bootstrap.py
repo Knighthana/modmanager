@@ -51,7 +51,7 @@ def _detect_software_dir() -> str:
     Starting from the package directory (containing this file), walk upward
     until a ``pyproject.toml`` file is found.  If found, that parent directory
     is returned (development mode).  Otherwise the package directory itself
-    (``site-packages/modmanager/``) is returned (installed mode).
+    (``site-packages/modmgr/``) is returned (installed mode).
 
     Returns:
         Absolute path in POSIX style.
@@ -143,8 +143,7 @@ def discover_user_config(config_index: str) -> tuple[dict[str, Any], str]:
     4. File exists but invalid (wrong namespace, corrupt JSON)
        → raise ``ValueError`` with the reason.
 
-    The returned ``config_dict`` does **not** contain ``source_path`` or
-    ``first_use`` keys.
+    The returned ``config_dict`` does **not** contain ``config_index`` key.
 
     Args:
         config_index:

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from .backup_ops import (
-    delete_orphan_files,
     detect_dirty_state,
 )
 from .database_ops import (
@@ -107,11 +106,6 @@ def build_db_parser() -> argparse.ArgumentParser:
     restore.add_argument("--backup-dir", required=True, help="Path to backup directory")
     restore.add_argument("--config", default=None, help="Path to user_config.json")
     restore.add_argument("--files", nargs="*", help="Specific files to restore (default: all)")
-    restore.add_argument(
-        "--delete-orphans",
-        action="store_true",
-        help="Delete reported orphan files after restore",
-    )
     restore.add_argument("--out", help="Write result json to file; stdout if omitted")
 
     return parser
@@ -410,16 +404,6 @@ def _handle_restore(args: argparse.Namespace) -> int:
             "dirty": True,
             "partial_files": dirty.get("partial_files", []),
         }
-
-    if args.delete_orphans and result.restore_result and result.restore_result.get("orphans"):
-        from .backup_ops import delete_orphan_files
-        delete_result = delete_orphan_files(result.restore_result["orphans"])
-        result_dict["orphan_deletion"] = delete_result
-        if not delete_result.get("ok", False):
-            result_dict["ok"] = False
-            result_errors = list(result_dict.get("errors", []))
-            result_errors.extend(delete_result.get("errors", []))
-            result_dict["errors"] = result_errors
 
     _print_or_write(result_dict, args.out)
     return 0 if result_dict.get("ok") else 2

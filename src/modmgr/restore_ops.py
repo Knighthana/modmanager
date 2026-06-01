@@ -38,12 +38,11 @@ def restore_entries(
         on_progress: Optional progress callback.
 
     Returns:
-        dict with keys: ok, restored, skipped, orphans, errors, warnings, dry_run, force
+        dict with keys: ok, restored, skipped, errors, warnings, dry_run, force
     """
     restored: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     deleted: list[dict[str, Any]] = []
-    orphans: list[str] = []
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -149,7 +148,6 @@ def restore_entries(
         "restored": restored,
         "skipped": skipped,
         "deleted": deleted,
-        "orphans": orphans,
         "errors": errors,
         "warnings": warnings,
         "dry_run": dry_run,

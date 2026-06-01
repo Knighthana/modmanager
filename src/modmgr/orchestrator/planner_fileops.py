@@ -138,9 +138,9 @@ def plan_fileops(
 
     if needs_preflight:
         if request.intent == Intent.APPLY:
-            manifest = run_apply_preflight(backup_dirs, context)
+            manifest = run_apply_preflight(backup_dirs)
         else:
-            manifest = run_restore_preflight(backup_dirs, context)
+            manifest = run_restore_preflight(backup_dirs)
 
         preflight_ok = manifest["ok"]
         preflight_manifest = manifest

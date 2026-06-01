@@ -148,7 +148,7 @@ class TestRestoreEntries:
     def test_return_contract_fields(self):
         """Result contains all required fields."""
         result = restore_entries({}, {})
-        for key in ("ok", "restored", "skipped", "deleted", "orphans", "errors", "warnings", "dry_run", "force"):
+        for key in ("ok", "restored", "skipped", "deleted", "errors", "warnings", "dry_run", "force"):
             assert key in result, f"missing field: {key}"
 
     def test_force_false_hash_match_skips(self):

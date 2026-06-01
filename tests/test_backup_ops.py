@@ -14,7 +14,6 @@ from modmgr.apply_ops import apply_entries
 from modmgr.backup_ops import (
     _HARDCODED_BACKUP_SKIP_SUFFIX,
     check_backup_gate,
-    delete_orphan_files,
     detect_dirty_state,
     get_game_backup_id,
     inspect_conflict,
@@ -593,33 +592,6 @@ class TestPhase13Governance(TestCase):
             result = inspect_conflict(bdir)
             self.assertFalse(result["clean"])
             self.assertTrue(any("E_ENTITY_CONFLICT" in c for c in result["conflicts"]))
-
-    @pytest.mark.skip(reason="restore_from_backup signature changed")
-    def test_restore_reports_orphans(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            orig = Path(tmp) / "game" / "keep.txt"
-            orig.parent.mkdir(parents=True)
-            orig.write_bytes(b"original")
-            bdir = str(Path(tmp) / "backup") + "/"
-            run_differential_backup(bdir, [str(orig)])
-
-            orig.write_bytes(b"changed")
-            orphan = Path(tmp) / "game" / "new_orphan.txt"
-            orphan.write_bytes(b"orphan")
-
-            result = restore_from_backup(bdir)
-            self.assertTrue(result["ok"])
-            self.assertIn(str(orphan), result.get("orphans", []))
-            self.assertTrue(any("W_EXTERNAL_FILE_ORPHAN" in w for w in result.get("warnings", [])))
-
-    def test_delete_orphan_files(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            orphan = Path(tmp) / "orphan.txt"
-            orphan.write_bytes(b"x")
-            result = delete_orphan_files([str(orphan)])
-            self.assertTrue(result["ok"])
-            self.assertFalse(orphan.exists())
-            self.assertIn(str(orphan), result["deleted"])
 
 
 # ── P1-08 / P1-09: Loop backup protection ─────────────────────────────────────
