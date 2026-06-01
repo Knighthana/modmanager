@@ -97,16 +97,24 @@ class TestOrphanRemoval:
 
     # ── T-INH-09 ────────────────────────────────────────────────────────
     def test_W_EXTERNAL_FILE_ORPHAN_absent_from_source(self):
-        """Verify W_EXTERNAL_FILE_ORPHAN string does not appear in source files."""
-        src_root = Path(__file__).parent.parent / "src"
+        """Verify W_EXTERNAL_FILE_ORPHAN string does not appear in source or docs."""
+        roots = [
+            Path(__file__).parent.parent / "src",
+            Path(__file__).parent.parent / "repo_memo",
+            Path(__file__).parent.parent / "frontend",
+        ]
         found: list[str] = []
-        for py_file in src_root.rglob("*.py"):
-            try:
-                text = py_file.read_text()
-                if "W_EXTERNAL_FILE_ORPHAN" in text:
-                    found.append(str(py_file.relative_to(src_root)))
-            except Exception:
-                pass
+        for root in roots:
+            if not root.exists():
+                continue
+            for f in root.rglob("*"):
+                if f.is_file() and f.suffix in (".py", ".md", ".ts", ".tsx", ".json"):
+                    try:
+                        text = f.read_text()
+                        if "W_EXTERNAL_FILE_ORPHAN" in text:
+                            found.append(str(f.relative_to(root.parent)))
+                    except Exception:
+                        pass
         assert not found, f"W_EXTERNAL_FILE_ORPHAN found in: {found}"
 
 

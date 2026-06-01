@@ -27,7 +27,6 @@
 | `E_TREE_CONFLICT_TARGET_DRIFT` | `restore` | 目标文件与 backup 副本产生漂移 | `error` | 目标文件漂移 | 面向冲突检查，而非普通 restore 成功路径 |
 | `W_BACKUP_GATE_FAILED` | `restore` | 对应 backup_dir 无法通过可恢复性检查 | `warning` | 该 backup_dir 在本次 restore 中被整体跳过 | restore 继续处理其它目录 |
 | `E_RESTORE_COPY_FAILED` | `restore` | 从 backup_dir 复制回目标位置失败 | `error` | 恢复复制失败 | 当前条目执行失败 |
-| `W_EXTERNAL_FILE_ORPHAN` | `restore` | 检测到本次 restore 未命中的外部文件或孤儿文件 | `warning` | 外部孤儿文件提示 | 不阻断 restore 主流程 |
 | `E_BACKUP_COPY_FAILED` | `backup` | 将目标文件复制进 backup_dir 失败 | `error` | 备份复制失败 | 当前条目未成功写入 backup |
 | `E_APPLY_MISSING_TARGET` | `apply` | apply 条目缺少目标路径或目标路径为空 | `error` | apply 目标路径缺失 | 属于 apply 输入或执行前检查失败 |
 | `E_APPLY_MISSING_SOURCE` | `apply` | apply 条目缺少源路径，或无法定位源文件 | `error` | apply 源路径缺失 | delete 哨兵 `!` 不适用本条 |

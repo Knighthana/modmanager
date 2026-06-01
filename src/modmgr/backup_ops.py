@@ -547,7 +547,7 @@ def restore_from_backup(
                     "deleted": [str],
                     "skipped": [str],
                     "errors": [str],
-                    "orphans": [str],
+                    "orphans": [],  # kept for backward compatibility
                     "warnings": [str],
                 }
     """
