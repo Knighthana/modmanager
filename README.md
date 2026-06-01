@@ -1,11 +1,11 @@
 ---
-status: active
-authority: reference-only
-concept: readme
-read-Tier: never
-applicable-to: human-only
-unapplicable-to: agents
-update: 2026-05-22
+Status: active
+Authority: reference-only
+Purpose: readme for beginner
+Read-Tier: never
+Applicable-to: human-only
+Unapplicable-to: agents
+Updated: 2026-06-01
 ---
 
 The Knighthana's Mod Manager

@@ -23,7 +23,7 @@
 
 - `Status`：`draft` / `active` / `stable` / `archived` / `future`
 - `Authority`：`authoritative` / `reference-only`
-- `Read-Tier`：`always` / `task-scoped` / `on-demand`
+- `Read-Tier`：`always` / `task-scoped` / `on-demand` / `never`
 - `Purpose`：一句话说明本文档解决什么问题、服务什么任务
 - `Supersedes`：可选；若替代了旧文档或旧方案，在此注明
 
