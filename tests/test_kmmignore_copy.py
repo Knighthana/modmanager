@@ -14,13 +14,15 @@ import pytest
 
 from modmgr.orchestrator import (
     PipelineResult,
-    _copy_kmmignore_to_backup,
-    _copy_kmmignore_from_backup,
     _dispatch_fileops,
 )
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
-from modmgr.orchestrator.planner_fileops import FileOpsPlan
+from modmgr.orchestrator.planner_fileops import (
+    FileOpsPlan,
+    _copy_kmmignore_to_backup,
+    _copy_kmmignore_from_backup,
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────

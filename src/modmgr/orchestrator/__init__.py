@@ -10,8 +10,6 @@ Provides:
 
 from __future__ import annotations
 
-import os
-
 from ._common import (
     PipelineResult,
     ProgressCallback,
@@ -26,7 +24,7 @@ from ..apply_ops import apply_entries
 from ..restore_ops import restore_entries
 from ..prep import prep_backup_dir
 from .resolver import CleanContext, WorkspaceResolver, FilePathResolver, RawDictResolver
-from .planner_fileops import plan_fileops
+from .planner_fileops import plan_fileops, _copy_kmmignore_to_backup, _copy_kmmignore_from_backup
 
 # ── Unified dispatch ────────────────────────────────────────────────────
 
@@ -149,7 +147,7 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
         for backup_dir in plan.backup_dirs:
             prep_backup_dir(backup_dir, plan.ignore_rules)
 
-    # ── .kmmignore preservation ─────────────────────────────────
+    # ── .kmmignore preservation (Planner-managed) ──────────────
     if not plan.dry_run:
         if request.intent == Intent.BACKUP:
             _copy_kmmignore_to_backup(plan.backup_dirs)
@@ -323,44 +321,3 @@ __all__ = [
     "Intent",
     "TaskRequest",
 ]
-
-
-def _copy_kmmignore_to_backup(backup_dirs: dict) -> None:
-    """Collect .kmmignore files from source directories and copy into backup_dir."""
-    import shutil
-    from pathlib import Path
-
-    for backup_dir in backup_dirs:
-        source_root = str(Path(backup_dir).parent)
-        d = Path(source_root)
-        while True:
-            ignore_file = d / ".kmmignore"
-            if ignore_file.is_file():
-                rel = str(d).removeprefix(source_root).lstrip("/")
-                dest_dir = Path(backup_dir) / rel if rel else Path(backup_dir)
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                try:
-                    shutil.copy2(str(ignore_file), str(dest_dir / ".kmmignore"))
-                except OSError:
-                    pass
-            if d.parent == d:
-                break
-            d = d.parent
-
-
-def _copy_kmmignore_from_backup(backup_dirs: dict) -> None:
-    """Copy .kmmignore files from backup_dir back to source directories."""
-    import shutil
-    from pathlib import Path
-
-    for backup_dir in backup_dirs:
-        for dirpath, _dirs, filenames in os.walk(backup_dir):
-            if ".kmmignore" in filenames:
-                rel = dirpath.removeprefix(str(Path(backup_dir))).lstrip("/")
-                src = Path(dirpath) / ".kmmignore"
-                dest = Path(backup_dir).parent / rel / ".kmmignore"
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    shutil.copy2(str(src), str(dest))
-                except OSError:
-                    pass
