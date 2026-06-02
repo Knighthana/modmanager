@@ -483,7 +483,7 @@ def main():
         print("=" * 60)
 
         output_steamapps_dir = str(output_dir / "steamapps")
-        from modmgr.bootstrap import generate_database
+        from modmgr.database_ops import generate_database
         from modmgr.iojson import write_json_file
 
         db = generate_database(

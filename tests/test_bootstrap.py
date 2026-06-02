@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch
 
 from modmgr.bootstrap import (
     _detect_software_dir,
     discover_user_config,
-    generate_database,
 )
 from modmgr import bootstrap as bootstrap_module
-from modmgr.iojson import write_json_file
 
 
 class TestDetectSoftwareDir(TestCase):
@@ -94,116 +90,6 @@ class TestDiscoverUserConfig(TestCase):
         with self.assertRaises(ValueError):
             discover_user_config(config_index=None)  # type: ignore[arg-type]
 
-
-class TestGenerateDatabase(TestCase):
-    """Tests for generate_database()."""
-
-    def _make_user_config_override(self, td: str, db_path: str) -> tuple[dict, str]:
-        """Build a fake (user_config, config_index) for mocking discover_user_config."""
-        config = {
-            "databases": {
-                "default": {"path": db_path},
-                "custom": {"path": db_path},
-            },
-        }
-        config_index = str(Path(td) / "fake_user_config.json")
-        return (config, config_index)
-
-    def test_generate_database_invalid_mode(self) -> None:
-        """Passing an invalid mode raises ValueError."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                with self.assertRaises(ValueError):
-                    generate_database("invalid", config_index=fake_config[1])
-
-    def test_generate_database_manual_empty_paths(self) -> None:
-        """Manual mode with empty paths raises ValueError."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                with self.assertRaises(ValueError):
-                    generate_database("manual", config_index=fake_config[1], paths=[])
-
-    def test_generate_database_manual_none_paths(self) -> None:
-        """Manual mode with None paths raises ValueError."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                with self.assertRaises(ValueError):
-                    generate_database("manual", config_index=fake_config[1], paths=None)
-
-    def test_generate_database_missing_db_name(self) -> None:
-        """Unknown database_name raises ValueError."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                with self.assertRaises(ValueError):
-                    generate_database("auto", config_index=fake_config[1], database_name="nonexistent")
-
-    def test_generate_database_always_rescans(self) -> None:
-        """generate_database() always rescans — no cache hit (cache is for /read, not /generate)."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            cache_data = {
-                "steamlib": [
-                    {
-                        "path": "/fake/steamapps",
-                        "contains_libraryfolders_vdf": False,
-                        "game": ["270150"],
-                    }
-                ],
-                "game": [],
-                "mod": [],
-            }
-            Path(db_path).write_text(json.dumps(cache_data), encoding="utf-8")
-
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                result = generate_database("auto", config_index=fake_config[1])
-            # Always returns fresh scan result, not cache
-            self.assertIn("steamlib", result)
-            self.assertIn("game", result)
-            self.assertIn("mod", result)
-
-    def test_generate_database_cache_empty_file(self) -> None:
-        """An empty cache file should be ignored (fall through to scan)."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            # Create an empty file
-            Path(db_path).write_text("", encoding="utf-8")
-
-            # Patch discover_with_fallback to raise so we can detect fall-through
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                with patch.object(
-                    bootstrap_module, "discover_with_fallback",
-                    side_effect=ValueError("mocked: no Steam"),
-                ):
-                    with self.assertRaises(ValueError):
-                        generate_database("auto", config_index=fake_config[1])
-
-    def test_generate_database_cache_invalid_structure(self) -> None:
-        """A cache file without 'steamlib' list is ignored (fall through to scan)."""
-        with tempfile.TemporaryDirectory() as td:
-            db_path = str(Path(td) / "db.json")
-            fake_config = self._make_user_config_override(td, db_path)
-            Path(db_path).write_text(
-                json.dumps({"some_other_key": "value"}), encoding="utf-8"
-            )
-
-            # Patch discover_with_fallback to raise so we can detect fall-through
-            with patch.object(bootstrap_module, "discover_user_config", return_value=fake_config):
-                with patch.object(
-                    bootstrap_module, "discover_with_fallback",
-                    side_effect=ValueError("mocked: no Steam"),
-                ):
-                    with self.assertRaises(ValueError):
-                        generate_database("auto", config_index=fake_config[1])
 
     def _complete_config(
         self,

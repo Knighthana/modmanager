@@ -13,7 +13,6 @@ import pytest
 from modmgr.apply_ops import apply_entries
 from modmgr.backup_ops import (
     _HARDCODED_BACKUP_SKIP_SUFFIX,
-    check_backup_gate,
     detect_dirty_state,
     get_game_backup_id,
     inspect_conflict,
@@ -355,7 +354,7 @@ class TestApplyFinalMapping(TestCase):
             dest.write_bytes(b"old")
 
             bdir = self.ready_backup_dir(tmp)
-            with patch("modmgr.backup_ops.check_backup_gate") as mock_check_backup_gate:
+            with patch("modmgr.orchestrator.planner_fileops.check_backup_gate") as mock_check_backup_gate:
                 result = apply_entries({bdir: [self._entry(str(dest), str(src))]})
 
             self.assertTrue(result["ok"])

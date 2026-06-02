@@ -320,8 +320,8 @@ def _build_output(trees, warnings, errors) -> dict:
 | 模块 | 改动内容 |
 |------|---------|
 | `orchestrator/` | `PipelineResult.trees` |
-| `modmanager_web/schemas.py` | `trees: list[dict]` |
-| `modmanager_web/adapters.py` | key 使用 `trees` |
+| `modmgr_web/schemas.py` | `trees: list[dict]` |
+| `modmgr_web/adapters.py` | key 使用 `trees` |
 | `forest_visual.py` | 重写 `_build_graph_model()`，以"树"为中心 |
 | 前端 TypeScript | `TreeNode` 类型更新 |
 | 前端 stores | `trees` 状态管理 |

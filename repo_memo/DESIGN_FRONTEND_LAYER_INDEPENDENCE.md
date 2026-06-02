@@ -153,7 +153,7 @@ export async function streamSse(
 
 **特点**：
 - 扫描结果（libraries, games, mods）仅在 Pinia 内存中，刷新后通过 `POST /api/database/read` 重新加载
-- 可见性偏好（libraryVisibility, gameVisibility）持久化到 `sessionStorage['modmanager:uiState:datasource']`（主读）+ `localStorage`（留档）
+- 可见性偏好（libraryVisibility, gameVisibility）持久化到 `sessionStorage['modmgr:uiState:datasource']`（主读）+ `localStorage`（留档）
 
 **状态**
 ```typescript
@@ -335,7 +335,7 @@ Tauri 迁移时，组件代码完全不动：
    ```typescript
    // ❌ 禁止
    onMounted(() => {
-     const data = JSON.parse(localStorage.getItem('modmanager:business-state'))
+     const data = JSON.parse(localStorage.getItem('modmgr:business-state'))
    })
    ```
 

@@ -8,7 +8,7 @@
 
 ## 一、职责边界
 
-实现文件：`src/modmanager/orchestrator/preflight.py`（orchestrator 子模块）。
+实现文件：`src/modmgr/orchestrator/preflight.py`（orchestrator 子模块）。
 
 本文档描述 apply 前置 preflight 子模块。
 

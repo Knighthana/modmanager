@@ -14,7 +14,7 @@
 
 | Q# | 决策 |
 |-----|------|
-| Q1 | 独立包 `ext_resource`，位于 `src/ext_resource/`，与 `modmanager` 同级 |
+| Q1 | 独立包 `ext_resource`，位于 `src/ext_resource/`，与 `modmgr` 同级 |
 | Q2 | 前端不传文件路径——传后端给的索引符（`rule_id` + `mixed_id` + `index`） |
 | Q3 | 白名单用于**通用文件请求端点**（如未来的 `/ext-resource/file`），不用于业务特异性端点（preview/readme 自身就是门禁） |
 | Q4 | MVP 阶段 `rule_id` = 文件路径（功能不变），前端视其为不透明字符串 |
@@ -74,8 +74,8 @@ repo_spec/
 ```
 
 **与已有模块的关系**：
-- 不与 `modmanager` 互相依赖——`ext_resource` 独立
-- `modmanager_web/routes/` 新建 `ext_resource.py` 路由，调用 `ext_resource.manager`
+- 不与 `modmgr` 互相依赖——`ext_resource` 独立
+- `modmgr_web/routes/` 新建 `ext_resource.py` 路由，调用 `ext_resource.manager`
 - CLI / Tauri 也可直接 `import ext_resource`
 
 ---
@@ -260,6 +260,6 @@ preview 和 readme 端点**自身就是门禁**——它们只能从 kmmrule 文
 |:--:|------|
 | 1 | 新建 `src/ext_resource/` 包（`manager.py`、`locator.py`、`whitelist.py`） |
 | 2 | 新建 `repo_spec/resource_whitelist.json` |
-| 3 | 新建 `modmanager_web/routes/ext_resource.py`（preview + readme 端点） |
+| 3 | 新建 `modmgr_web/routes/ext_resource.py`（preview + readme 端点） |
 | 4 | 注册路由到 `app.py` |
 | 5 | 前端 RulesOverviewPage 调用新端点完成 TODO-66/67 |

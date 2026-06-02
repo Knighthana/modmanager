@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from modmgr.bootstrap import discover_user_config, generate_database
+from modmgr.bootstrap import discover_user_config
+from modmgr.database_ops import generate_database
 from modmgr.iojson import load_json_file, write_json_file
 from modmgr.path_resolver import expand_path
 

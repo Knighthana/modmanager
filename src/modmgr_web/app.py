@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .routes import config, database, pipeline, rules, backups, workspace
+from .routes import config, database, rules, backups, workspace
 from .routes import os_defaults as os_defaults_router
 
 
@@ -59,7 +59,6 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────
     app.include_router(config.router, prefix="/api/config", tags=["config"])
     app.include_router(database.router, prefix="/api/database", tags=["database"])
-    app.include_router(pipeline.router, prefix="/api/pipeline", tags=["pipeline"])
     app.include_router(rules.router, prefix="/api/rules", tags=["rules"])
     app.include_router(backups.router, prefix="/api/backups", tags=["backups"])
     app.include_router(workspace.router, prefix="/api/workspace", tags=["workspace"])

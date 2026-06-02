@@ -5,7 +5,15 @@
 
 ---
 
-## §X. PipelineResult 内部契约
+## §X. Web 层 L1 硬约束
+
+### X.0 `resolver_type` 必须为 `"workspace"`
+
+Web 层构造 `TaskRequest` 时 `resolver_type` 必须为 `"workspace"`。`"raw_dict"` 和 `"file_paths"` 仅允许 CLI 使用。
+
+此约束为 **L1 硬约束**——Web 路由层违反即 bug。
+
+### §X. PipelineResult 内部契约
 
 ### X.1 `dry_run` 必须贯穿全部操作结果
 

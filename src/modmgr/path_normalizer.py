@@ -115,11 +115,16 @@ def normalize_rule_actions(rule_data: dict) -> dict:
                 raw_from = action_item.get("from", [])
                 if isinstance(raw_from, list):
                     for entry in raw_from:
-                        if isinstance(entry, str) and not entry.endswith("/"):
-                            warnings.append(
-                                f"W_PATH_TRAILING_SLASH_ADDED: {entry}"
-                            )
-                            fixed_from.append(entry + "/")
+                        if isinstance(entry, str):
+                            # Preserve glob patterns — never add trailing slash
+                            _has_glob = any(ch in entry for ch in "*?[]")
+                            if not _has_glob and not entry.endswith("/"):
+                                warnings.append(
+                                    f"W_PATH_TRAILING_SLASH_ADDED: {entry}"
+                                )
+                                fixed_from.append(entry + "/")
+                            else:
+                                fixed_from.append(entry)
                         else:
                             fixed_from.append(entry)
                 action_item["from"] = fixed_from
@@ -130,10 +135,14 @@ def normalize_rule_actions(rule_data: dict) -> dict:
                 if isinstance(raw_into, list):
                     for entry in raw_into:
                         if isinstance(entry, str) and not entry.endswith("/"):
-                            warnings.append(
-                                f"W_PATH_TRAILING_SLASH_ADDED: {entry}"
-                            )
-                            fixed_into.append(entry + "/")
+                            # Preserve "." (current dir) — never add trailing slash
+                            if entry.endswith("."):
+                                fixed_into.append(entry)
+                            else:
+                                warnings.append(
+                                    f"W_PATH_TRAILING_SLASH_ADDED: {entry}"
+                                )
+                                fixed_into.append(entry + "/")
                         else:
                             fixed_into.append(entry)
                 action_item["into"] = fixed_into

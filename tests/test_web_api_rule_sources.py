@@ -314,6 +314,12 @@ class TestAggregateEndpoint:
             lambda config_index: mock_wm,
         )
 
+        # Mock verify_kmm_rules to pass all paths without real file I/O
+        monkeypatch.setattr(
+            "modmgr_web.routes.workspace.verify_kmm_rules",
+            lambda paths: (paths, [], []),  # passed, rejected, warnings
+        )
+
         # Mock rule_aggregate to return a valid result without real file I/O
         monkeypatch.setattr(
             "modmgr_web.routes.workspace.rule_aggregate",

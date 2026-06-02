@@ -13,11 +13,6 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
-    from modmgr.backup_ops import check_backup_gate
-except ImportError:
-    from ..backup_ops import check_backup_gate
-
 from ._common import _utcnow
 
 
@@ -32,6 +27,8 @@ def run_apply_preflight(
     errors: list[str] = []
     warnings: list[str] = []
     dir_results: list[dict[str, Any]] = []
+
+    from .planner_fileops import check_backup_gate
 
     for backup_dir, entries in backup_dirs.items():
         gate_errors = check_backup_gate(backup_dir)

@@ -3,7 +3,6 @@
 Implements Phase 7-12 of the implementation plan:
 - Phase 7:  Version check — derive backup_id from appmanifest ACF LastUpdated
 - Phase 8:  Directory tree creation — build dir tree with sha256
-- Phase 9:  Pre-replacement gate — verify backup exists and is complete
 - Phase 10: Differential backup — copy target files into backup directory
 - Phase 11: Replacement execution — apply final_mapping to disk
 - Phase 12: Restore from backup — recover original files
@@ -287,7 +286,8 @@ def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None
     backup_dir = _normalized(backup_dir)
     final_mapping = final_mapping or []
 
-    gate_errors = check_backup_gate(backup_dir)
+    from .orchestrator.planner_fileops import check_backup_gate as _check_backup_gate
+    gate_errors = _check_backup_gate(backup_dir)
     if gate_errors:
         return {"clean": False, "conflicts": gate_errors}
 
@@ -329,28 +329,6 @@ def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None
             conflicts.append(f"E_TREE_CONFLICT_TARGET_DRIFT: {target}")
 
     return {"clean": not conflicts, "conflicts": conflicts}
-
-
-# ── Phase 9: Pre-replacement gate ─────────────────────────────────────────────
-
-def check_backup_gate(backup_dir: str) -> list[str]:
-    """Return a list of error codes if the backup is incomplete.
-
-    An empty list means the gate passes and replacement is safe.
-    """
-    assert_directory_path(backup_dir, label="backup_dir")
-    errors: list[str] = []
-    backup_path = Path(backup_dir)
-    if not backup_path.exists():
-        return [f"E_BACKUP_DIR_MISSING: {backup_dir}"]
-    info = load_backup_info(backup_dir)
-    if not info:
-        errors.append(f"E_BACKUP_INFO_MISSING: {backup_dir}")
-        return errors
-    # 只检查新字段
-    if not info.get("tree"):
-        errors.append(f"E_BACKUP_TREE_MISSING: {backup_dir}")
-    return errors
 
 
 # ── Phase 10: Differential backup ─────────────────────────────────────────────
@@ -556,7 +534,8 @@ def restore_from_backup(
     cr = Path(content_root)
 
     assert_directory_path(backup_dir, label="backup_dir")
-    gate_errors = check_backup_gate(backup_dir)
+    from .orchestrator.planner_fileops import check_backup_gate as _check_backup_gate
+    gate_errors = _check_backup_gate(backup_dir)
     if gate_errors:
         return {
             "ok": False,
@@ -740,7 +719,6 @@ __all__ = [
     "load_backup_info",
     "detect_dirty_state",
     "inspect_conflict",
-    "check_backup_gate",
     "run_differential_backup",
     "restore_from_backup",
 ]

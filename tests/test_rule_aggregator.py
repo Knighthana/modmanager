@@ -667,7 +667,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
             action = op["actionlist"][0]
             self.assertEqual(action["into"], ["maps/lobby/"])
             self.assertTrue(
-                any("W_PATH_TRAILING_SLASH_FIXED" in w and "into[maps/lobby]" in w for w in warnings)
+                any("W_PATH_TRAILING_SLASH_ADDED" in w and "maps/lobby" in w for w in warnings)
             )
 
     def test_trailing_slash_fixed_from(self) -> None:
@@ -702,7 +702,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
             action = op["actionlist"][0]
             self.assertEqual(action["from"], ["maps/lobby/"])
             self.assertTrue(
-                any("W_PATH_TRAILING_SLASH_FIXED" in w and "from[maps/lobby]" in w for w in warnings)
+                any("W_PATH_TRAILING_SLASH_ADDED" in w and "maps/lobby" in w for w in warnings)
             )
 
     def test_trailing_slash_glob_untouched(self) -> None:
@@ -738,7 +738,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
             # Glob pattern with trailing slash → unchanged
             self.assertEqual(action["from"], ["maps/*/"])
             # No trail-slash warning for glob entries
-            self.assertFalse(any("W_PATH_TRAILING_SLASH_FIXED" in w for w in warnings))
+            self.assertFalse(any("W_PATH_TRAILING_SLASH_ADDED" in w for w in warnings))
 
     def test_trailing_slash_file_type_untouched(self) -> None:
         """into_type=file, into=['maps/file.txt'] → unchanged, no warning."""
@@ -772,7 +772,7 @@ class TestAggregatorTrailingSlash(unittest.TestCase):
             action = op["actionlist"][0]
             # file-type should NOT be modified
             self.assertEqual(action["into"], ["maps/file.txt"])
-            self.assertFalse(any("W_PATH_TRAILING_SLASH_FIXED" in w for w in warnings))
+            self.assertFalse(any("W_PATH_TRAILING_SLASH_ADDED" in w for w in warnings))
 
 
 if __name__ == "__main__":

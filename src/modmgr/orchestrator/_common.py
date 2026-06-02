@@ -59,7 +59,6 @@ class PipelineResult:
     backup_result: dict[str, Any] | None = None
     apply_result: dict[str, Any] | None = None
     restore_result: dict[str, Any] | None = None
-    backup_dir: str | None = None
 
     def __post_init__(self) -> None:
         """Enforce dry_run contract on all operation result dicts."""

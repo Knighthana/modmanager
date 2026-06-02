@@ -104,7 +104,7 @@ class PipelineResult:
     backup_result: dict | None
     apply_result: dict | None
     restore_result: dict | None
-    backup_dir: str | None
+    workspace_id: str | None    # 替代 backup_dir——返回 workspace 标识符而非文件路径
 ```
 
 内部契约（`dry_run` 穿透、适配器同步、`__post_init__` 校验）见 `DESIGN_ORCHESTRATOR_CONTRACT.md`。
@@ -146,6 +146,10 @@ dispatch(request)
 
 ## 八、模块映射
 
+**文件操作四层（fileops）**：
+- Planner（`orchestrator/planner_fileops.py`）：总调度器，负责 `plan_fileops()`、预计算任务清单、`.kmmignore` 文件生命周期、gate/preflight 逻辑，下发任务给原语
+- prep / backup / apply / restore：四个原语（真成员），run 为伪成员（prep + backup + apply）
+
 | 模块 | 文件 | 职责 |
 |------|------|------|
 | Orchestrator 核心 | `orchestrator/__init__.py` | `dispatch()` 入口 + `PipelineResult` + 执行辅助函数 |
@@ -154,6 +158,7 @@ dispatch(request)
 | Planner (文件操作) | `orchestrator/planner_fileops.py` | `FileOpsPlan` + `plan_fileops()` |
 | Preflight | `orchestrator/preflight.py` | `run_apply_preflight()` / `run_restore_preflight()` |
 | Compute 管线 | `orchestrator/compute_pipeline.py` | `compute()` / `compute_ws()` (映射生产) |
+| Database 管理 | `database_ops.py` | orchestrator 一等成员：database 发现、生成（`generate_database()`）、校验、CRUD |
 | 共享设施 | `orchestrator/_common.py` | `PipelineResult` dataclass, 共享 helper |
 | Apply 原语 | `apply_ops.py` | `apply_entries()` — file-to-file apply |
 | Restore 原语 | `restore_ops.py` | `restore_entries()` — file-to-file restore |

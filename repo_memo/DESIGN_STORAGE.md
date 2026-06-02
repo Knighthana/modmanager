@@ -246,21 +246,21 @@ interface PersistenceAdapter {
 
 | key | 内容 | 说明 |
 |-----|------|------|
-| `modmanager:configIndex` | `object` | 用户配置文件索引 |
-| `modmanager:sidebarCollapsed` | `boolean` | 侧边栏折叠状态 |
-| `modmanager:activeTab` | `string` | 当前标签页 |
-| `modmanager:currentWorkspaceId` | `string` | 当前活跃工作区 ID |
-| `modmanager:uiState:datasource` | `object` | DataSourcePage 全局可见性 + 表单 |
-| `modmanager:uiState:{workspace_id}` | `object` | ComputePrepPage 工作区级可见性 |
+| `modmgr:configIndex` | `object` | 用户配置文件索引 |
+| `modmgr:sidebarCollapsed` | `boolean` | 侧边栏折叠状态 |
+| `modmgr:activeTab` | `string` | 当前标签页 |
+| `modmgr:currentWorkspaceId` | `string` | 当前活跃工作区 ID |
+| `modmgr:uiState:datasource` | `object` | DataSourcePage 全局可见性 + 表单 |
+| `modmgr:uiState:{workspace_id}` | `object` | ComputePrepPage 工作区级可见性 |
 
 #### localStorage（全局留档，仅新 Tab 初始化回退）
 
 | key | 内容 | 说明 |
 |-----|------|------|
-| `modmanager:configIndex` | `object` | 用户配置文件索引（跨 Tab 保留） |
-| `modmanager:sidebarCollapsed` | `boolean` | 侧边栏折叠留档 |
-| `modmanager:uiState:datasource` | `object` | DataSourcePage 留档 |
-| `modmanager:uiState:{workspace_id}` | `object` | ComputePrepPage 留档 |
+| `modmgr:configIndex` | `object` | 用户配置文件索引（跨 Tab 保留） |
+| `modmgr:sidebarCollapsed` | `boolean` | 侧边栏折叠留档 |
+| `modmgr:uiState:datasource` | `object` | DataSourcePage 留档 |
+| `modmgr:uiState:{workspace_id}` | `object` | ComputePrepPage 留档 |
 
 **读写规则**：sessionStorage 优先；空则读 localStorage → 写入 sessionStorage。改动时同时写两处。完整规则见 `DESIGN_WORKSPACE_MODEL.md` §6。
 

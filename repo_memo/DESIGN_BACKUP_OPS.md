@@ -181,9 +181,7 @@ backup 至少涉及以下条目：
 
 backup 操作在执行文件复制前，须将源目录各级祖先中的 `.kmmignore` 文件复制到 backup_dir 的对应位置。这样 restore 时无需用户手动重建忽略规则。
 
-**实现**：遍历 backup_dir 的源根目录（`Path(backup_dir).parent`）及其祖先，找到每个 `.kmmignore` 文件 → 保持相对路径 → 复制到 `backup_dir/<relative_path>/.kmmignore`。
-
-调用点在 `_dispatch_fileops`，backup 执行之前。
+**实现**：`.kmmignore` 文件的完整生命周期（过滤 + 物理拷贝）由 Planner 全权管理。Planner 在 `plan_fileops()` 阶段将 `.kmmignore` 拷贝任务下发到 `FileOpsPlan`，backup/restore 原语不感知该文件。调用点在 Planner 层。
 
 ## 十四、测试断言
 

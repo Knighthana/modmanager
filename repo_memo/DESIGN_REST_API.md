@@ -13,8 +13,8 @@
 > - 工作区感知流水线：所有文件系统写入相关的主路径为 `POST /api/workspace/{workspace_id}/pipeline/*`（compute / backup / apply / restore / run）
 
 ## 1. 概览（要点）
-- 事实源（实现文件）：[src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)、[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)、[src/modmanager_web/app.py](src/modmanager_web/app.py)、[src/modmanager_web/routes/pipeline.py](src/modmanager_web/routes/pipeline.py)、[src/modmanager_web/routes/workspace.py](src/modmanager_web/routes/workspace.py)、[src/modmanager_web/sse.py](src/modmanager_web/sse.py)、[src/modmanager/orchestrator/__init__.py](src/modmanager/orchestrator/__init__.py)。
-- 原则：任何会写磁盘或执行备份/应用的执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 提供的是无工作区（非写盘）或供脚本化使用的端点，但不再负责 workspace-scoped backup/apply 执行。
+- 事实源（实现文件）：[src/modmgr_web/schemas.py](src/modmgr_web/schemas.py)、[src/modmgr_web/adapters.py](src/modmgr_web/adapters.py)、[src/modmgr_web/app.py](src/modmgr_web/app.py)、[src/modmgr_web/routes/pipeline.py](src/modmgr_web/routes/pipeline.py)、[src/modmgr_web/routes/workspace.py](src/modmgr_web/routes/workspace.py)、[src/modmgr_web/sse.py](src/modmgr_web/sse.py)、[src/modmgr/orchestrator/__init__.py](src/modmgr/orchestrator/__init__.py)。
+- 原则：任何会写磁盘或执行备份/应用的执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 端点已整体清退——compute、run、restore、visualize 全部迁移到 workspace 感知端点。前端请求一律带 `workspaceId`，`backup_dir` 文件路径不再出现在 API 响应中。
 - Web UI 主路径约束：前端产品流程只允许调用工作区路由；generic `/api/pipeline/*` 仅供 CLI/脚本/内部用途，不作为 Web 应用文件访问主路径。
 
 ## 2. 通用响应格式（ApiResponse）
@@ -45,10 +45,8 @@ SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 
 - `POST /api/rules/affected-entries` — 规则影响查询（JSON）
 - `POST /api/backups/list` — 列出备份摘要（JSON）
 - `POST /api/backups/inspect` — 检查备份详情（JSON）
-- `POST /api/pipeline/compute` — 计算映射（SSE） — 需在 body 提供 `aggregated_rule_set`
-- `POST /api/pipeline/run` — 全流水线（SSE） — 需在 body 提供 `aggregated_rule_set`（generic run）
-- `POST /api/pipeline/visualize` — 可视化（JSON）
-- `POST /api/pipeline/restore` — 恢复（SSE）
+
+> 注：generic `/api/pipeline/*` 端点（compute / run / visualize / restore）已整体清退，迁移到 workspace 感知端点。前端请求一律通过 `/{workspace_id}/pipeline/*` 路由。
 
 工作区感知（product 主路径）:
 - `POST /api/workspace/create` — 创建工作区（JSON）
@@ -62,13 +60,14 @@ SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 
 - `POST /api/workspace/{id}/pipeline/apply` — 在工作区上下文提交 apply（SSE）。请求体：`{ "dry_run": bool }`。此路由会调用 `dispatch()` 传入 `Intent.APPLY`，通过 Resolver → Planner → 原语管线执行；最终由 `apply_entries()` 执行文件替换。
 - `POST /api/workspace/{id}/pipeline/restore` — 在工作区上下文恢复（SSE）。请求体：`{ "force": bool }`。
 - `POST /api/workspace/{id}/pipeline/run` — 在工作区上下文执行全流水线（SSE）。**请求体：无**（当前实现从工作区读取所有输入）。
+- `POST /api/workspace/{id}/pipeline/visualize` — 在工作区上下文生成森林可视化（JSON/SSE）。从工作区读取 `aggregated_rule` 和 `mapping`。
 - `POST /api/workspace/{id}/decisions/save`、`GET /api/workspace/{id}/decisions/load` — 保存/读取决策（JSON）
 - `GET /api/workspace/{id}/forest/svg` — 读取 SVG（image/svg+xml）
 - `GET /api/workspace/{id}/forest/mapping` — 读取 mapping（JSON）
 
-注意：适配器在返回中可能包含 `data.backup_dir`（见第 6 节）；该字段仅为结果暴露，用于前端展示或审计，并不表示重新开放 generic 写盘执行入口或作为触发写盘行为的接口。
+注意：适配器返回的 `data` 字段不包含任何文件系统路径。资源寻址通过 `workspaceId` 完成。
 
-> 说明：上面列出的请求体形态与实现同步，以 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 为权威定义。特别注意：工作区的 `compute` / `run` 路由不需要也不会接受 `aggregated_rule_set` 等计算输入——它们从工作区目录读取。
+> 说明：上面列出的请求体形态与实现同步，以 [src/modmgr_web/schemas.py](src/modmgr_web/schemas.py) 为权威定义。特别注意：工作区的 `compute` / `run` 路由不需要也不会接受 `aggregated_rule_set` 等计算输入——它们从工作区目录读取。
 
 ## 4. SSE 使用示例（典型）
 - Generic run（需要在 body 中传入 `aggregated_rule_set`）：
@@ -94,7 +93,7 @@ Content-Type: application/json
 行为：后端通过 `dispatch(Intent.APPLY)` 进入 Resolver → Planner → 原语管线执行；全部上下文（mapping、backup_dir、database）由工作区解析，不从请求体读取。
 
 ## 5. Pydantic schema（参考实现）
-详见 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py)。要点：
+详见 [src/modmgr_web/schemas.py](src/modmgr_web/schemas.py)。要点：
 - Generic `RunRequest` / `ComputeRequest` 需要 `aggregated_rule_set`（generic 端点）
 - Workspace 端点使用 `WorkspaceBackupRequest` / `WorkspaceApplyRequest` / `WorkspaceRestoreRequest`（仅含控制字段如 `dry_run` / `force`）
 - `ApiResponse` 为统一输出信封（见第 2 节）
@@ -103,13 +102,14 @@ Content-Type: application/json
 实现中的 `adapt_pipeline_result(pr: PipelineResult)` 会把 `PipelineResult` 映射为 ApiResponse 字典，包含字段：
 - `data.trees`, `data.final_mapping`, `data.mapping_result`
 - 若有 `backup_result`：`data.backed_up`, `data.backup_skipped`, `data.backup_errors`, `data.dry_run`
-- 若有 `apply_result`：`data.applied`, `data.apply_skipped`, `data.apply_errors`, `data.apply_warnings`, `data.apply_diagnostics`, `data.dry_run`
-- 若 `pr.backup_dir` 存在，会带出 `data.backup_dir`
+- 若 `apply_result`：`data.applied`, `data.apply_skipped`, `data.apply_errors`, `data.apply_warnings`, `data.apply_diagnostics`, `data.dry_run`
 
-实现文件：[src/modmanager_web/adapters.py](src/modmanager_web/adapters.py)
+> 注：`data.backup_dir` 字段已废弃——API 响应不再暴露文件系统路径，前端通过 `workspaceId` 索引资源。
+
+实现文件：[src/modmgr_web/adapters.py](src/modmgr_web/adapters.py)
 
 ## 7. FastAPI 工厂（app.py）行为要点
-实现文件：[src/modmanager_web/app.py](src/modmanager_web/app.py)
+实现文件：[src/modmgr_web/app.py](src/modmgr_web/app.py)
 - CORS 仅在开发态启用；生产态（存在 `frontend/dist/index.html`）不挂载 CORS 中间件。
 - 开发态可通过环境变量 `KMM_CORS_ORIGINS` 覆盖允许源（逗号分隔）。
 - 路由注册使用 prefix：
@@ -123,7 +123,7 @@ Content-Type: application/json
 
 ## 9. 验收与检验建议
 - 快速尾查：建议在仓库中搜索这些关键字以确认已移除或更新旧端点与旧模型：`api/pipeline/backup`、`api/pipeline/apply`、`BackupRequest`、`ApplyRequest`、`adapt_backup_result`、`adapt_apply_result`。
-- 文档与实现一致性核对：对照 [src/modmanager_web/schemas.py](src/modmanager_web/schemas.py) 的 request model；对照 [src/modmanager_web/adapters.py](src/modmanager_web/adapters.py) 的 `adapt_pipeline_result` 字段映射，确认 `data.backup_dir` 的行为与本文件声明一致。
+- 文档与实现一致性核对：对照 [src/modmgr_web/schemas.py](src/modmgr_web/schemas.py) 的 request model；对照 [src/modmgr_web/adapters.py](src/modmgr_web/adapters.py) 的 `adapt_pipeline_result` 字段映射，确认 `data.backup_dir` 的行为与本文件声明一致。
 - 前端/测试覆盖核对：检查 frontend、repo_test 及 `tests` 目录中是否存在误导性旧文案或对旧 generic 端点的调用，并更新说明。
 
 ## 10. 变更历史记录（简短）

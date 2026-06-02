@@ -21,7 +21,7 @@
 | Q4 | 工作区 ID 在 URL 路径中：`POST /api/workspace/{workspaceId}/...` | REST 惯例，URL 自文档化 |
 | Q5 | orchestrator 新增下属 `workspacemanager`（纯小写），负责工作区 CRUD 与文件读写 | 路由层不直接调 workspacemanager，全部通过 orchestrator |
 | Q6 | 工作区根目录由 `user_config.workspace_dir` 决定，首次创建时 bootstrap 按平台填入默认值并固化 | 默认值见 `DESIGN_BOOTSTRAP.md` §1.3 |
-| Q7 | 前端浏览器存储：`sessionStorage`（主读源） + `localStorage`（新 Tab 初始化回退），按 workspace_id 分键 | 淘汰旧的 `modmanager:workspace` 全部字段 |
+| Q7 | 前端浏览器存储：`sessionStorage`（主读源） + `localStorage`（新 Tab 初始化回退），按 workspace_id 分键 | 淘汰旧的 `modmgr:workspace` 全部字段 |
 
 ---
 
@@ -91,7 +91,7 @@ orchestrator（唯一调度入口，星形中心）
 ### 2.2 workspacemanager 的接口
 
 ```python
-# src/modmanager_web/core/workspacemanager.py
+# src/modmgr_web/core/workspacemanager.py
 
 class WorkspaceManager:
     """工作区生命周期管理。由 orchestrator 调用，路由层不直接使用。"""
@@ -311,6 +311,7 @@ async def compute(workspace_id: str):
 | `POST` | `/api/workspace/{workspace_id}/pipeline/run` | 在工作区上下文执行全流水线（compute → backup → apply）；通过 SSE 返回 `PipelineResult`（由 `adapt_pipeline_result` 序列化）。 |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/backup` | 在工作区上下文执行差异备份；通过 SSE 返回 `PipelineResult`（含 `backup_result`、`backed_up` 等字段，序列化由 `adapt_pipeline_result` 完成）。 |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/apply` | 在工作区上下文提交 apply（通过 `dispatch()` 以 `Intent.APPLY` 进入 Resolver → Planner → 原语管线）；通过 SSE 返回 `PipelineResult`（含 `apply_result`、`applied`、`apply_warnings` 等）。 |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/visualize` | 在工作区上下文生成森林可视化；通过 SSE 返回 SVG/ASCII/DOT。 |
 
 #### 决策（工作区上下文内）
 
@@ -343,8 +344,9 @@ async def compute(workspace_id: str):
 
 约束说明（强制清退）：
 
-- 不再提供 generic `/api/pipeline/backup` 与 `/api/pipeline/apply` 执行端点。
-- backup/apply 执行仅允许走 workspace 流水线路由。
+- 所有 generic `/api/pipeline/*` 端点（backup / apply / compute / run / restore / visualize）已整体清退。
+- 所有 pipeline 执行仅允许走 workspace 路由。
+- 前端请求一律带 `workspaceId`，`backup_dir` 文件路径不再出现在 API 响应中。
 
 ### 4.3 已删除的端点
 
@@ -441,7 +443,7 @@ ForestPage 不再负责计算触发或参数管理，只做一件事：**把树�
 
 ```typescript
 store.currentWorkspaceId = route.params.workspace_id
-sessionStorage.setItem('modmanager:currentWorkspaceId', route.params.workspace_id)
+sessionStorage.setItem('modmgr:currentWorkspaceId', route.params.workspace_id)
 ```
 
 URL 是导航权威，store 只是缓存。这样即使 store 持有旧值，进入工作区页面后立即被 URL 修正。
@@ -464,7 +466,7 @@ URL 是导航权威，store 只是缓存。这样即使 store 持有旧值，进
 
 #### 多 Tab 隔离：`sessionStorage`
 
-`modmanager:currentWorkspaceId` 存储在 `sessionStorage` 而非 `localStorage`。Pinia store 中的 `currentWorkspaceId` 是其运行时镜像——页面初始化时从 sessionStorage 读入，进入工作区页面时两者同时更新。
+`modmgr:currentWorkspaceId` 存储在 `sessionStorage` 而非 `localStorage`。Pinia store 中的 `currentWorkspaceId` 是其运行时镜像——页面初始化时从 sessionStorage 读入，进入工作区页面时两者同时更新。
 
 `sessionStorage` 特性：**每个 Tab 独立存储，同 Tab 内跨刷新持久，关 Tab 即清**。
 
@@ -494,13 +496,13 @@ URL 是导航权威，store 只是缓存。这样即使 store 持有旧值，进
 以下全部删除，职责迁移到后端工作区目录或移除：
 
 ```json
-modmanager:workspace        ← 整个 key 删除
+modmgr:workspace        ← 整个 key 删除
   包含：lastDatabase, perDatabase, aggregatedRuleMeta,
         selectedRulePaths, aggregatedRuleHash
 
-modmanager:lastDatabase     ← 删除（工作区绑定 database，创建时选定）
-modmanager:decisions:*      ← 删除（存入工作区 decisions.json）
-modmanager:results:*        ← 删除（存入工作区 mapping.json）
+modmgr:lastDatabase     ← 删除（工作区绑定 database，创建时选定）
+modmgr:decisions:*      ← 删除（存入工作区 decisions.json）
+modmgr:results:*        ← 删除（存入工作区 mapping.json）
 ```
 
 ### 6.3 新结构
@@ -508,19 +510,19 @@ modmanager:results:*        ← 删除（存入工作区 mapping.json）
 #### sessionStorage（每 Tab 独立，主读源）
 
 ```
-modmanager:sidebarCollapsed              # 侧边栏折叠状态
-modmanager:activeTab                     # 当前标签页
-modmanager:currentWorkspaceId            # 当前活跃工作区 ID
-modmanager:uiState:datasource            # DataSourcePage 全局可见性 + 表单
-modmanager:uiState:{workspace_id}        # ComputePrepPage 工作区级可见性
+modmgr:sidebarCollapsed              # 侧边栏折叠状态
+modmgr:activeTab                     # 当前标签页
+modmgr:currentWorkspaceId            # 当前活跃工作区 ID
+modmgr:uiState:datasource            # DataSourcePage 全局可见性 + 表单
+modmgr:uiState:{workspace_id}        # ComputePrepPage 工作区级可见性
 ```
 
 #### localStorage（全局留档，仅新 Tab 初始化回退）
 
 ```
-modmanager:sidebarCollapsed
-modmanager:uiState:datasource
-modmanager:uiState:{workspace_id}
+modmgr:sidebarCollapsed
+modmgr:uiState:datasource
+modmgr:uiState:{workspace_id}
 ```
 
 注意：`activeTab` 和 `currentWorkspaceId` 不在 localStorage 中——新 Tab 默认进 WorkspaceListPage，不需要跨 Tab 共享这些值。
@@ -545,7 +547,7 @@ modmanager:uiState:{workspace_id}
           使用默认值                          # 首次使用，无历史留档
 ```
 
-**删除工作区**时，前端顺带清理 `localStorage['modmanager:uiState:{id}']` 和 `sessionStorage['modmanager:uiState:{id}']`。
+**删除工作区**时，前端顺带清理 `localStorage['modmgr:uiState:{id}']` 和 `sessionStorage['modmgr:uiState:{id}']`。
 
 ### 6.5 为什么这样设计
 
@@ -561,14 +563,14 @@ modmanager:uiState:{workspace_id}
 
 | 页面 | 性质 | 存储 key |
 |------|------|------|
-| **DataSourcePage** | 全局（database 管理，不绑定工作区） | `modmanager:uiState:datasource` |
-| **ComputePrepPage** | 工作区上下文 | `modmanager:uiState:{workspace_id}` |
+| **DataSourcePage** | 全局（database 管理，不绑定工作区） | `modmgr:uiState:datasource` |
+| **ComputePrepPage** | 工作区上下文 | `modmgr:uiState:{workspace_id}` |
 
-DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsing`）也存入 `modmanager:uiState:datasource`。
+DataSourcePage 的表单状态（`discoveryMode`、`manualPaths`、`greedyParsing`）也存入 `modmgr:uiState:datasource`。
 
 ### 6.7 workspace store
 
-前端 Pinia store 中维护 `currentWorkspaceId`（当前活跃工作区，内存态）。页面初始化时从 `sessionStorage['modmanager:currentWorkspaceId']` 读入；进入 `/workspace/:id/*` 页面时两者同步更新。详见 §5.6。
+前端 Pinia store 中维护 `currentWorkspaceId`（当前活跃工作区，内存态）。页面初始化时从 `sessionStorage['modmgr:currentWorkspaceId']` 读入；进入 `/workspace/:id/*` 页面时两者同步更新。详见 §5.6。
 
 工作区内的所有业务数据（规则、决策、结果）以后端工作区目录为权威——前端不做持久缓存。
 

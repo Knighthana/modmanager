@@ -284,8 +284,8 @@ compute 成功后**不自动跳转** Forest。用户需主动点击 [查看结�
 | 文件 | 职责 |
 |------|------|
 | `frontend/src/pages/ComputePrepPage.vue` | 页面组件（含 hash 校验逻辑） |
-| `src/modmanager_web/routes/rules.py`（改） | 新增 `POST /api/rules/affected-entries` |
-| `src/modmanager_web/schemas.py`（改） | `ComputeRequest` 新增 `managed_entries`、`aggregated_rule_set` 字段；删除 `aggregated_rule_path` |
+| `src/modmgr_web/routes/rules.py`（改） | 新增 `POST /api/rules/affected-entries` |
+| `src/modmgr_web/schemas.py`（改） | `ComputeRequest` 新增 `managed_entries`、`aggregated_rule_set` 字段；删除 `aggregated_rule_path` |
 
 ---
 

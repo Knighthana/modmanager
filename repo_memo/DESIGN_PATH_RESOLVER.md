@@ -26,7 +26,7 @@
 ## 2. 接口
 
 ```python
-# src/modmanager/path_resolver.py
+# src/modmgr/path_resolver.py
 
 def resolve_directory_path(input_str: str, dirname: str) -> str:
     """解析用户输入的目录路径，返回规范化绝对路径（以 / 结尾）。
@@ -157,7 +157,7 @@ config_path = resolve_file_path(user_input, 'user_config.json')
 
 ### 6.2 使用规则
 
-1. **凡是来自用户直接输入的路径，必须经过 `path_resolver` 模块处理**。各端点统一用 `from modmanager.path_resolver import expand_path`。
+1. **凡是来自用户直接输入的路径，必须经过 `path_resolver` 模块处理**。各端点统一用 `from modmgr.path_resolver import expand_path`。
 2. **存储时保留用户原始输入（含 `~`），计算时通过 `expand_path` 展开。** path_resolver 只读不写用户设置。
 3. **目录末尾 `/` 的补齐发生在 `_normalize_rule_sources`（保存时），不在 path_resolver；** path_resolver 永远不修改持久化存储。
 
@@ -174,7 +174,7 @@ config_path = resolve_file_path(user_input, 'user_config.json')
 
 | # | 决策 | 结论 |
 |---|------|------|
-| D1 | 模块位置 | `src/modmanager/path_resolver.py`，核心模块，独立于 Web/CLI |
+| D1 | 模块位置 | `src/modmgr/path_resolver.py`，核心模块，独立于 Web/CLI |
 | D2 | 接口参数化 | 调用方传入 `dirname`/`filename`，模块不与业务含义耦合 |
 | D3 | 下游门禁 | 目录路径必须以 `/` 结尾；文件路径不得以 `/` 结尾；违规即报错 |
 | D4 | 猜测集中 | 所有路径"推测"逻辑仅在 `path_resolver`；其他模块禁止补全/猜测 |

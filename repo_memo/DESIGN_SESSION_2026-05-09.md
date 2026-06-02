@@ -50,8 +50,8 @@
 
 | # | 任务 | 模块 | 类型 |
 |---|------|------|------|
-| A2-01 | `engine.py` 入口添加路径合规性断言 | `src/modmanager/engine.py` | 后端 |
-| A2-02 | `backup_ops.py` 入口添加路径合规性断言 | `src/modmanager/backup_ops.py` | 后端 |
+| A2-01 | `engine.py` 入口添加路径合规性断言 | `src/modmgr/engine.py` | 后端 |
+| A2-02 | `backup_ops.py` 入口添加路径合规性断言 | `src/modmgr/backup_ops.py` | 后端 |
 | A2-03 | 移除下游模块中残留的路径补全/猜测逻辑 | `engine.py` / `backup_ops.py` | 后端 |
 | A2-04 | 后端测试补充（违规路径断言触发） | `tests/test_engine.py` / `tests/test_backup_ops.py` | 测试 |
 | A2-05 | Python 全量回归 | `pytest tests/` | 验证 |
@@ -171,9 +171,9 @@ A4（前端 onDbPathBlur 校验）     ──→  依赖 A3 的 store 结构
 ## 5. 涉及文件汇总
 
 ### 后端
-- `src/modmanager_web/routes/pipeline.py` — A1
-- `src/modmanager/engine.py` — A2
-- `src/modmanager/backup_ops.py` — A2
+- `src/modmgr_web/routes/pipeline.py` — A1
+- `src/modmgr/engine.py` — A2
+- `src/modmgr/backup_ops.py` — A2
 - `tests/test_web_api.py` — A1
 - `tests/test_engine.py` / `tests/test_backup_ops.py` — A2
 

@@ -129,12 +129,14 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { apiPost } from '../api/transport'
 import { streamSse } from '../api/transport'
 import type { SseProgress } from '../api/transport'
 import { ensureTrailingSlash } from '../utils/paths'
 import { STR } from '../locales/zh-CN'
+import { useAppStore } from '../stores/app'
 
 interface BackupDir {
   name: string
@@ -163,6 +165,9 @@ interface InspectResult {
     conflicts: string[]
   }
 }
+
+const route = useRoute()
+const appStore = useAppStore()
 
 const form = reactive({
   backupDir: '',
@@ -236,12 +241,16 @@ async function doRestore() {
   isRestoring.value = true
   restoreProgress.value = { step: STR.backupPage.restoreStepStarted, finished: 0, total: -1, message: '' }
 
-  const backupPath = restoreTargetPath.value
-  const targetFiles = selectedFiles.value.length > 0 ? selectedFiles.value : null
+  const workspaceId = route.params.workspaceId as string || appStore.currentWorkspaceId
+  if (!workspaceId) {
+    ElMessage.error('未找到工作区 ID')
+    isRestoring.value = false
+    return
+  }
 
-  await streamSse('/pipeline/restore', {
-    backup_dir: backupPath,
-    target_files: targetFiles,
+  await streamSse(`/workspace/${workspaceId}/pipeline/restore`, {
+    force: false,
+    dry_run: false,
   }, {
     onProgress(p: SseProgress) {
       restoreProgress.value = p

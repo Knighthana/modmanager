@@ -63,9 +63,6 @@ def adapt_pipeline_result(pr: PipelineResult) -> dict:
             data["dry_run"] = True
         data["restore_errors"] = pr.restore_result.get("errors", [])
 
-    if pr.backup_dir:
-        data["backup_dir"] = pr.backup_dir
-
     return {
         "ok": pr.ok,
         "data": data,

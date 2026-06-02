@@ -8,7 +8,7 @@
 
 ## 一、职责边界
 
-实现文件：`src/modmanager/apply_ops.py`（独立原语模块）。
+实现文件：`src/modmgr/apply_ops.py`（独立原语模块）。
 
 本文档只描述 apply 原语本身。
 

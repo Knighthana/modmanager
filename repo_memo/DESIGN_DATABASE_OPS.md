@@ -10,13 +10,24 @@
 
 ## 一、模块定位
 
-`src/modmgr/database_ops.py` 管理 Steam 数据库的生命周期——从扫描生成到手动维护到完整性校验。
+`src/modmgr/database_ops.py` 是 orchestrator 的一等成员，管理 Steam 数据库的生命周期——从扫描生成到手动维护到完整性校验。
 
-数据库的**首次生成**和**读取**入口在 `bootstrap.generate_database()` 和 `POST /api/database/generate`，本模块提供底层能力。
+数据库的**首次生成**入口为本模块的 `generate_database()` 函数；读取与验证入口同样在本模块。调用方（orchestrator / Web 路由）统一通过 `database_ops.generate_database()` 和 `POST /api/database/generate` 访问。
 
 ## 二、公开 API
 
 ### 2.1 发现与生成
+
+#### `generate_database(*, mode, config_index, working_pathstyle, manual_override_steamlibs, greedy_parsing, on_progress) -> dict`
+
+**职责**：orchestrator 一等成员的入口函数——组合数据库的发现、生成和写盘。
+
+**行为**：
+1. 调用 `discover_with_fallback()` 完成自动扫描 + 手动路径合并
+2. 写盘到 `user_config.databases[name].path` 指定的位置
+3. 返回完整的 database dict
+
+> 编排逻辑（何时调、以何参数调）由 orchestrator 负责；本模块只承担扫描 + 写盘。
 
 #### `discover_with_fallback(working_pathstyle, *, manual_override_steamlibs, greedy_parsing, manual_only) -> dict`
 

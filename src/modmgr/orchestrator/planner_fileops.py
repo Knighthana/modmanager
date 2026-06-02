@@ -19,6 +19,29 @@ from .preflight import run_apply_preflight, run_restore_preflight
 from .resolver import CleanContext
 
 
+def check_backup_gate(backup_dir: str) -> list[str]:
+    """Return a list of error codes if the backup is incomplete.
+
+    An empty list means the gate passes and replacement is safe.
+    """
+    from ..backup_ops import load_backup_info
+    from ..path_resolver import assert_directory_path
+
+    assert_directory_path(backup_dir, label="backup_dir")
+    errors: list[str] = []
+    backup_path = Path(backup_dir)
+    if not backup_path.exists():
+        return [f"E_BACKUP_DIR_MISSING: {backup_dir}"]
+    info = load_backup_info(backup_dir)
+    if not info:
+        errors.append(f"E_BACKUP_INFO_MISSING: {backup_dir}")
+        return errors
+    # 只检查新字段
+    if not info.get("tree"):
+        errors.append(f"E_BACKUP_TREE_MISSING: {backup_dir}")
+    return errors
+
+
 @dataclass
 class FileOpsPlan:
     """Execution plan produced by Planner, consumed by primitives.

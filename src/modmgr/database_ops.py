@@ -1,10 +1,31 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any
+from pathlib import Path
+from typing import Any, Protocol
 
+from .iojson import write_json_file
+from .path_resolver import expand_path
 from .paths import normalize_posix, split_mixed_id
 from .steam_scanner import GameInfo, SteamLibraryInfo, SteamScanner
+
+
+# ── Progress callback protocol ────────────────────────────────────────────
+
+
+class ProgressCallback(Protocol):
+    """Progress notification callback.
+
+    Args:
+        step: Stage identifier ("scan" | "aggregate" | "compute" | "backup" |
+              "apply" | "restore").
+        finished: Number of completed items.
+        total: Total number of items (-1 means unknown).
+        message: Optional description text.
+    """
+
+    def __call__(self, step: str, finished: int, total: int, message: str = "") -> None:
+        ...
 
 
 def _numeric_sort_key(s: str) -> tuple[int, int, str]:
@@ -605,6 +626,213 @@ def regen_database(
     }
 
 
+# ── Steam.exe helper (moved from bootstrap) ────────────────────────────────────
+
+
+def _derive_steamapps_from_steam_exe(steam_exe_path: str) -> list[str]:
+    """Derive steamapps paths from a steam.exe location.
+
+    Per DESIGN_BOOTSTRAP.md §2.1:
+      1. SteamRoot = directory containing steam.exe
+      2. Check SteamRoot/steamapps/libraryfolders.vdf (newer Steam)
+      3. Otherwise check SteamRoot/config/libraryfolders.vdf (older Steam)
+      4. Parse VDF to expand all library paths
+      5. SteamRoot/steamapps/ itself is always included as default library
+
+    Returns:
+        List of steamapps directory paths.
+    Raises:
+        ValueError: if steam.exe path is invalid or VDF cannot be found/parsed.
+    """
+    steam_root = Path(steam_exe_path).parent
+
+    if not steam_root.is_dir():
+        raise ValueError(f"Steam root directory not found: {steam_root}")
+
+    # Try to locate libraryfolders.vdf
+    vdf_paths = [
+        steam_root / "steamapps" / "libraryfolders.vdf",  # newer Steam
+        steam_root / "config" / "libraryfolders.vdf",      # older Steam
+    ]
+
+    libraries: list[str] = []
+    vdf_found = False
+
+    for vdf_path in vdf_paths:
+        if vdf_path.is_file():
+            try:
+                from .vdf_parser import parse_libraryfolders_vdf
+                parsed = parse_libraryfolders_vdf(str(vdf_path))
+                for lib in parsed.get("libraries", []):
+                    lib_path = lib.get("path", "")
+                    if lib_path:
+                        # VDF stores the Steam root dir, append steamapps/
+                        sp = str(Path(lib_path) / "steamapps")
+                        libraries.append(normalize_posix(sp))
+                vdf_found = True
+            except Exception:
+                pass  # Continue trying next vdf path
+
+    if not vdf_found:
+        raise ValueError(
+            f"Cannot find libraryfolders.vdf in {steam_root}/steamapps/ or {steam_root}/config/"
+        )
+
+    # Always include SteamRoot/steamapps/ itself
+    default_steamapps = str(steam_root / "steamapps")
+    if normalize_posix(default_steamapps) not in libraries:
+        libraries.insert(0, normalize_posix(default_steamapps))
+
+    return libraries
+
+
+# ── generate_database (promoted from bootstrap) ───────────────────────────────
+
+
+def generate_database(
+    mode: str,
+    *,
+    config_index: str,
+    paths: list[str] | None = None,
+    steam_exe_path: str | None = None,
+    working_pathstyle: str | None = None,
+    manual_override_steamlibs: list[dict[str, Any]] | None = None,
+    greedy_parsing: bool = False,
+    on_progress: ProgressCallback | None = None,
+    database_name: str = "default",
+) -> dict[str, Any]:
+    """Generate the Steam database by scanning libraries and writing to disk.
+
+    The database path is determined from ``user_config.databases[database_name].path``.
+    On success the result is written to that path.
+
+    Args:
+        mode:
+            ``"auto"`` — automatically discover Steam library paths.
+            ``"manual"`` — use the explicit *paths* argument.
+        config_index:
+            Path to ``user_config.json`` — forwarded to ``discover_user_config()``.
+        paths:
+            List of VDF file paths or ``steamapps`` directory paths (only used
+            when ``mode="manual"``).
+        steam_exe_path:
+            Windows steam.exe path for VDF derivation (optional). When
+            provided, steamapps paths are derived via ``_derive_steamapps_from_steam_exe``
+            and merged into *paths*.
+        working_pathstyle:
+            Path style ("windows" / "linux").  If ``None``, auto-detected from OS.
+        manual_override_steamlibs:
+            Pre-built manual steamlib entries (alternative to *paths* +
+            *steam_exe_path*).
+        greedy_parsing:
+            When ``True``, scan all discovered mods regardless of game scoping.
+        on_progress:
+            Optional progress callback.
+        database_name:
+            Name of the database entry in ``user_config.databases``
+            (default ``"default"``).
+
+    Returns:
+        Database dictionary compatible with ``engine.compute_mapping``.
+
+    Raises:
+        ValueError:
+            If *mode* is not ``"auto"`` or ``"manual"``, or if
+            ``mode="manual"`` but no manual paths are provided.
+    """
+    from .bootstrap import discover_user_config
+    from .osplatform import platform as detect_platform
+
+    # ── Resolve database path from user config ────────────────────────────
+    config, _ = discover_user_config(config_index=config_index)
+    db_path = expand_path(config.get("databases", {}).get(database_name, {}).get("path", ""))
+    if not db_path:
+        raise ValueError(
+            f"database '{database_name}' not found in user_config.databases"
+        )
+
+    # ── Auto-detect working path style from platform ───────────────────────
+    if working_pathstyle is None:
+        working_pathstyle = "windows" if detect_platform() == "windows" else "linux"
+
+    # ── Validate mode ─────────────────────────────────────────────────────
+    if mode not in ("auto", "manual"):
+        raise ValueError(f"mode must be 'auto' or 'manual', got {mode!r}")
+
+    # ── Build manual_override_steamlibs if using paths/steam_exe_path ─────
+    if manual_override_steamlibs is None and (paths or steam_exe_path):
+        manual_override_steamlibs = []
+        if paths:
+            from .path_resolver import resolve_directory_path
+            resolved_paths = [resolve_directory_path(p, 'steamapps') for p in paths]
+            manual_override_steamlibs = [
+                {
+                    "path": p,
+                    "contains_libraryfolders_vdf": False,
+                    "game": [],
+                }
+                for p in resolved_paths
+            ]
+        if steam_exe_path:
+            derived_paths = _derive_steamapps_from_steam_exe(steam_exe_path)
+            derived = [
+                {
+                    "path": p,
+                    "contains_libraryfolders_vdf": False,
+                    "game": [],
+                }
+                for p in derived_paths
+            ]
+            if manual_override_steamlibs:
+                manual_override_steamlibs += derived
+            else:
+                manual_override_steamlibs = derived
+
+    # ── Generate database ─────────────────────────────────────────────────
+    if mode == "auto" and not manual_override_steamlibs:
+        # Pure auto mode: no manual paths
+        if on_progress is not None:
+            on_progress("scan", 0, -1, "Discovering Steam libraries...")
+        database = discover_with_fallback(
+            working_pathstyle=working_pathstyle,
+            greedy_parsing=greedy_parsing,
+        )
+        if on_progress is not None:
+            on_progress("scan", 1, 1, "Steam discovery complete")
+    elif mode == "manual":
+        # Manual only: skip auto-discovery entirely
+        if not manual_override_steamlibs:
+            raise ValueError("manual mode requires at least one path")
+        if on_progress is not None:
+            on_progress("scan", 0, -1, "Scanning provided library paths...")
+        database = discover_with_fallback(
+            working_pathstyle=working_pathstyle,
+            manual_override_steamlibs=manual_override_steamlibs,
+            greedy_parsing=greedy_parsing,
+            manual_only=True,
+        )
+        if on_progress is not None:
+            on_progress("scan", 1, 1, "Manual scan complete")
+    else:
+        # mode == "auto" with manual paths: combine auto + manual
+        if on_progress is not None:
+            on_progress("scan", 0, -1, "Discovering Steam libraries (auto + manual)...")
+        database = discover_with_fallback(
+            working_pathstyle=working_pathstyle,
+            manual_override_steamlibs=manual_override_steamlibs,
+            greedy_parsing=greedy_parsing,
+            manual_only=False,
+        )
+        if on_progress is not None:
+            on_progress("scan", 1, 1, "Combined scan complete")
+
+    # ── Write result ───────────────────────────────────────────────────────
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    write_json_file(db_path, database)
+
+    return database
+
+
 __all__ = [
     "discover_with_fallback",
     "list_steamlibs",
@@ -618,4 +846,5 @@ __all__ = [
     "verify_database_integrity",
     "liveupdate_database",
     "regen_database",
+    "generate_database",
 ]

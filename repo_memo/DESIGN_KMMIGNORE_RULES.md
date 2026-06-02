@@ -15,7 +15,7 @@ kmmignore 决定**哪些文件不参与 mod 管理**。规则由 `.kmmignore` �
 
 > `.kmmbackup` 目录的备份专属排除行为见 `DESIGN_BACKUP_DIR.md`，与 kmmignore 无关。
 
-实现模块：`src/modmanager/orchestrator/ignore_rules.py`。
+实现模块：`src/modmgr/orchestrator/ignore_rules.py`。
 
 ---
 

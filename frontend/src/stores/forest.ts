@@ -6,6 +6,7 @@ import { apiPost } from '../api/transport'
 // persistence no longer needed in forest store
 import type { SseProgress } from '../api/transport'
 import type { TreeNode, Changerequest, ConflictItem, PipelineParams, DiscoverParams } from '../types'
+import { useAppStore } from '../stores/app'
 
 export interface MappingEntry {
   path: string
@@ -92,8 +93,16 @@ export const useForestStore = defineStore('forest', () => {
     reset()
 
     const resolvedRuleSet = params.aggregated_rule_set ?? aggregatedRuleSet.value ?? undefined
+    const appStore = useAppStore()
+    const workspaceId = appStore.currentWorkspaceId
 
-    await streamSse('/pipeline/run', {
+    if (!workspaceId) {
+      errors.value.push('未找到工作区 ID')
+      isRunning.value = false
+      return
+    }
+
+    await streamSse(`/workspace/${workspaceId}/pipeline/run`, {
       database_name: params.database_name,
       aggregated_rule_set: resolvedRuleSet,
       managed_entries: params.managed_entries,
@@ -135,8 +144,16 @@ export const useForestStore = defineStore('forest', () => {
     reset()
 
     const resolvedRuleSet = params.aggregated_rule_set ?? aggregatedRuleSet.value ?? undefined
+    const appStore = useAppStore()
+    const workspaceId = appStore.currentWorkspaceId
 
-    await streamSse('/pipeline/compute', {
+    if (!workspaceId) {
+      errors.value.push('未找到工作区 ID')
+      isRunning.value = false
+      return
+    }
+
+    await streamSse(`/workspace/${workspaceId}/pipeline/compute`, {
       database_name: params.database_name,
       aggregated_rule_set: resolvedRuleSet,
       managed_entries: params.managed_entries,

@@ -282,18 +282,18 @@ class TestGenerateDatabase:
         assert len(error_events[0]["data"]["errors"]) > 0
 
 
-# ── Pipeline /compute ─────────────────────────────────────────────────────
+# ── Pipeline /compute (workspace-aware) ──────────────────────────────────
 
 
 class TestComputePipeline:
-    """POST /api/pipeline/compute — SSE stream"""
+    """POST /api/workspace/{workspace_id}/pipeline/compute — SSE stream"""
 
-    def test_compute_pipeline_sse(
+    def test_compute_workspace_sse(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """SSE stream returns progress + result for compute pipeline."""
+        """SSE stream returns progress + result for workspace compute pipeline."""
 
-        def fake_compute(request, *, on_progress=None):
+        def fake_compute_ws(workspace_id, *, config_index, on_progress=None):
             if on_progress:
                 on_progress("compute", 0, 1, "Computing...")
                 on_progress("compute", 1, 1, "Done")
@@ -305,27 +305,12 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.database.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_compute
+            "modmgr_web.routes.workspace.compute_ws", fake_compute_ws
         )
 
         resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-            },
+            "/api/workspace/test_ws_001/pipeline/compute",
+            json={},
             headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
@@ -342,123 +327,57 @@ class TestComputePipeline:
         assert result_events[0]["data"]["ok"] is True
         assert "trees" in result_events[0]["data"]["data"]
 
-    def test_compute_with_managed_entries(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """managed_entries is passed through to orchestrator compute()."""
-        captured_kwargs: dict = {}
-
-        def fake_compute(request, *, on_progress=None):
-            captured_kwargs.update(request.resolver_args)
-            if on_progress:
-                on_progress("compute", 1, 1, "Done")
-            return PipelineResult(
-                ok=True,
-                trees=[],
-                final_mapping=[],
-                mapping_result={},
-            )
-
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_compute
-        )
-
-        managed_entries = {
-            "game": {"270150": ["/path/a/"]},
-            "mod": {"270150:123": ["/mod/path/"]},
-        }
-
-        resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "managed_entries": managed_entries,
-            },
-            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
-        )
-        assert resp.status_code == 200
-        assert captured_kwargs.get("managed_entries") == managed_entries
-
-    def test_compute_with_aggregated_rule_set(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """aggregated_rule_set dict is passed through to orchestrator compute()."""
-        captured_kwargs: dict = {}
-
-        def fake_compute(request, *, on_progress=None):
-            captured_kwargs.update(request.resolver_args)
-            if on_progress:
-                on_progress("compute", 1, 1, "done")
-            return PipelineResult(
-                ok=True,
-                trees=[],
-                final_mapping=[],
-                mapping_result={},
-            )
-
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_compute
-        )
-
-        rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
-        resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": rule_set,
-            },
-            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
-        )
-        assert resp.status_code == 200
-        # Verify aggregated_rule_set was passed to orchestrator
-        assert captured_kwargs.get("aggregated_rule_set") == rule_set
-
-    def test_compute_no_rule_input_returns_error(
+    def test_compute_workspace_missing_ci_header(
         self, client: TestClient
     ) -> None:
-        """No aggregated_rule_set → explicit error."""
+        """Missing X-UserConfig-Index header returns 422."""
         resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database_name": "default",
-            },
+            "/api/workspace/test_ws/pipeline/compute",
+            json={},
+        )
+        assert resp.status_code == 422
+
+    def test_compute_workspace_returns_error(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Workspace compute with error returns ok=false."""
+
+        def fake_compute_ws(workspace_id, *, config_index, on_progress=None):
+            return PipelineResult(
+                ok=False,
+                errors=["E_WORKSPACE_NOT_FOUND: workspace 'bad_ws' not found"],
+            )
+
+        monkeypatch.setattr(
+            "modmgr_web.routes.workspace.compute_ws", fake_compute_ws
+        )
+
+        resp = client.post(
+            "/api/workspace/bad_ws/pipeline/compute",
+            json={},
             headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
-        body = resp.json()
-        assert body["ok"] is False
-        assert any("E_NO_RULE_INPUT" in e for e in body["errors"])
+        lines = resp.text.split("\n")
+        events = _parse_sse_lines(lines)
+        result_events = [e for e in events if e["event"] == "result"]
+        assert len(result_events) == 1
+        assert result_events[0]["data"]["ok"] is False
+        assert any("E_WORKSPACE_NOT_FOUND" in e for e in result_events[0]["data"]["errors"])
 
 
-# ── Pipeline /run ─────────────────────────────────────────────────────────
+# ── Pipeline /run (workspace-aware) ──────────────────────────────────────
 
 
 class TestRunPipeline:
-    """POST /api/pipeline/run — SSE stream"""
+    """POST /api/workspace/{workspace_id}/pipeline/run — SSE stream"""
 
-    def test_run_pipeline_sse(
+    def test_run_pipeline_workspace_sse(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """SSE stream returns progress + result for full pipeline."""
+        """SSE stream returns progress + result for workspace pipeline run."""
 
-        def fake_run(request, *, on_progress=None):
+        def fake_dispatch(request, *, on_progress=None):
             if on_progress:
                 on_progress("compute", 0, 1, "Computing...")
                 on_progress("compute", 1, 1, "Done")
@@ -489,27 +408,12 @@ class TestRunPipeline:
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.database.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_run
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
 
         resp = client.post(
-            "/api/pipeline/run",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-            },
+            "/api/workspace/test_ws_001/pipeline/run",
+            json={},
             headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
@@ -530,107 +434,33 @@ class TestRunPipeline:
         assert stats["backed_up"] == 1
         assert stats["applied"] == 1
 
-    def test_run_with_managed_entries(
+    def test_run_workspace_returns_error(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """managed_entries is passed through to orchestrator run()."""
-        captured_kwargs: dict = {}
+        """Workspace run with error returns ok=false."""
 
-        def fake_run(request, *, on_progress=None):
-            captured_kwargs.update(request.resolver_args)
-            if on_progress:
-                for step in ["compute", "backup", "apply"]:
-                    on_progress(step, 1, 1, "done")
+        def fake_dispatch(request, *, on_progress=None):
             return PipelineResult(
-                ok=True, trees=[], final_mapping=[], mapping_result={},
-                backup_result={"ok": True, "backed_up": [], "skipped": [], "errors": [], "dry_run": False},
-                apply_result={"ok": True, "applied": [], "skipped": [], "errors": [], "warnings": [], "dry_run": False},
+                ok=False,
+                errors=["E_NO_RULE_INPUT: no aggregated rule set in workspace"],
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_run
-        )
-
-        managed_entries = {
-            "game": {"270150": ["/path/a/"]},
-        }
 
         resp = client.post(
-            "/api/pipeline/run",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-                "managed_entries": managed_entries,
-            },
+            "/api/workspace/bad_ws/pipeline/run",
+            json={},
             headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
-        assert captured_kwargs.get("managed_entries") == managed_entries
-
-    def test_run_with_aggregated_rule_set(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """aggregated_rule_set dict is passed through to orchestrator run()."""
-        captured_kwargs: dict = {}
-
-        def fake_run(request, *, on_progress=None):
-            captured_kwargs.update(request.resolver_args)
-            if on_progress:
-                for step in ["compute", "backup", "apply"]:
-                    on_progress(step, 1, 1, "done")
-            return PipelineResult(
-                ok=True, trees=[], final_mapping=[], mapping_result={},
-                backup_result={"ok": True, "backed_up": [], "skipped": [], "errors": [], "dry_run": False},
-                apply_result={"ok": True, "applied": [], "skipped": [], "errors": [], "warnings": [], "dry_run": False},
-            )
-
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_run
-        )
-
-        rule_set = {"schema_namespace": "KMM_RuleSet", "operation": []}
-        resp = client.post(
-            "/api/pipeline/run",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": rule_set,
-            },
-            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
-        )
-        assert resp.status_code == 200
-        assert captured_kwargs.get("aggregated_rule_set") == rule_set
-
-    def test_run_no_rule_input_returns_error(
-        self, client: TestClient
-    ) -> None:
-        """No aggregated_rule_set → explicit error."""
-        resp = client.post(
-            "/api/pipeline/run",
-            json={
-                "database_name": "default",
-            },
-            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["ok"] is False
-        assert any("E_NO_RULE_INPUT" in e for e in body["errors"])
+        lines = resp.text.split("\n")
+        events = _parse_sse_lines(lines)
+        result_events = [e for e in events if e["event"] == "result"]
+        assert len(result_events) == 1
+        assert result_events[0]["data"]["ok"] is False
+        assert any("E_NO_RULE_INPUT" in e for e in result_events[0]["data"]["errors"])
 
 
 # ── Adapter unit tests ────────────────────────────────────────────────────
@@ -716,58 +546,32 @@ class TestAdapters:
 
 
 class TestSseDisconnect:
-    """Client disconnection does not crash the server."""
+    """Client disconnection does not crash the server (workspace endpoint)."""
 
     def test_sse_stream_disconnect(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """If the client disconnects early, the handler should not crash."""
 
-        import asyncio
-
-        async def slow_work(*, on_progress):
-            on_progress("step", 0, 1, "working...")
-            await asyncio.sleep(0.5)
-            on_progress("step", 1, 1, "done")
-            return {"result": "ok"}
-
-        # We need to test at the StreamResponse level.
-        # The easiest way is to stream the response with a timeout.
-        def fake_compute(request, *, on_progress=None):
-            # Simulate work that reports progress then returns
+        def fake_compute_ws(workspace_id, *, config_index, on_progress=None):
             if on_progress:
                 on_progress("compute", 0, 1, "Computing...")
             return PipelineResult(
                 ok=True,
-                forest=[],
+                trees=[],
                 final_mapping=[],
                 mapping_result={},
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.database.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.discover_user_config",
-            lambda config_index: ({"databases": {"default": {"path": "/fake/db.json"}}}, "/fake/path"),
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.load_json_file",
-            lambda path: {"steamlib": []},
-        )
-        monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.dispatch", fake_compute
+            "modmgr_web.routes.workspace.compute_ws", fake_compute_ws
         )
 
         # Send a normal request — the important thing is that it does not
         # crash the server regardless of how the client handles the stream.
         resp = client.post(
-            "/api/pipeline/compute",
-            json={
-                "database_name": "default",
-                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
-            },
+            "/api/workspace/test_ws_001/pipeline/compute",
+            json={},
             headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         # If the SSE stream is well-formed, we're good.
@@ -1042,34 +846,38 @@ class TestBackupsInspectApi:
         assert any("not found" in e for e in body["errors"])
 
 
-# ── Pipeline /restore ───────────────────────────────────────────────────────
+# ── Pipeline /restore (workspace-aware) ──────────────────────────────────────
 
 
 class TestPipelineRestore:
-    """POST /api/pipeline/restore — SSE stream"""
+    """POST /api/workspace/{workspace_id}/pipeline/restore — SSE stream"""
 
-    def test_restore_sse_stream(
+    def test_restore_workspace_sse_stream(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """SSE stream returns progress + result for restore."""
+        """SSE stream returns progress + result for workspace restore."""
 
-        def fake_restore(**kwargs):
-            return {
-                "ok": True,
-                "restored": ["/mnt/d/test.txt"],
-                "skipped": [],
-                "errors": [],
-                "orphans": [],
-                "warnings": [],
-            }
+        def fake_dispatch(request, *, on_progress=None):
+            if on_progress:
+                on_progress("restore", 0, 1, "Restoring...")
+                on_progress("restore", 1, 1, "Done")
+            return PipelineResult(
+                ok=True,
+                trees=[],
+                final_mapping=[],
+                mapping_result={},
+                backup_result=None,
+                apply_result=None,
+            )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.restore_from_backup", fake_restore
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
 
         resp = client.post(
-            "/api/pipeline/restore",
-            json={"backup_dir": "/fake/backups", "target_files": None},
+            "/api/workspace/test_ws_001/pipeline/restore",
+            json={"force": False, "dry_run": False},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/event-stream")
@@ -1080,23 +888,23 @@ class TestPipelineRestore:
         result_events = [e for e in events if e["event"] == "result"]
         assert len(result_events) == 1
         assert result_events[0]["data"]["ok"] is True
-        assert result_events[0]["data"]["data"]["restored"] == ["/mnt/d/test.txt"]
 
-    def test_restore_sse_error(
+    def test_restore_workspace_sse_error(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """SSE stream returns error event when restore raises."""
 
-        def fake_restore(**kwargs):
+        def fake_dispatch(request, *, on_progress=None):
             raise ValueError("backup gate failed")
 
         monkeypatch.setattr(
-            "modmgr_web.routes.pipeline.restore_from_backup", fake_restore
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
 
         resp = client.post(
-            "/api/pipeline/restore",
-            json={"backup_dir": "/fake/bad_backup"},
+            "/api/workspace/test_ws_001/pipeline/restore",
+            json={"force": False, "dry_run": False},
+            headers={"X-UserConfig-Index": '{"type":"path","string":"/fake/path"}'},
         )
         assert resp.status_code == 200
         lines = resp.text.split("\n")

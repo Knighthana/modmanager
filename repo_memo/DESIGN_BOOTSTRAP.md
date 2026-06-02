@@ -79,6 +79,17 @@ bootstrap 在确定路径后执行 schema verify（依据 `user_config.schema.js
 > `workspace_dir` 由 `userconfig_init` 首次创建 `user_config` 时按平台填入默认值。
 > 之后运行时以 `user_config.workspace_dir` 的值为准，**不再执行平台回退**。
 
+### 1.5 kmm_rule 验证（通过 verifier）
+
+bootstrap 的另一项 `verify` 职责：在 kmm_rule 文件加载后、送入 aggregator 之前，通过 **verifier** 成员调用 `rule_validator.validate_kmm_rule_files()` 执行两阶段漏斗校验：
+
+1. JSON Schema 粗筛（结构合法性）
+2. 语义精筛（字段值域、路径安全、逻辑一致性）
+
+不合格的文件被拒绝进入 aggregator。bootstrap 将拒绝报告返回给 orchestrator，由 orchestrator 决定是否继续。
+
+> 此前 `validate_kmm_rule_files()` 在 aggregator 入口处被调用。按新架构，validator 是 verifier 的职责——对照 schema 马上能出结论的 verify 工作由 bootstrap → verifier 完成。
+
 ---
 
 ## 二、Steam 库发现

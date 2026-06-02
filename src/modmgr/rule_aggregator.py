@@ -5,13 +5,15 @@ This module implements the aggregation pipeline defined in
 independent of ``engine.py`` and relies only on shared infrastructure
 (``iojson``, ``validation``, ``paths``).
 
-Pipeline overview (6 steps):
+Pipeline overview (7 steps):
     1. Load all kmm_rule files (validate root structure)
-    2. Build permission maps (game_permissions, sub_permissions) — first pass
-    3. Per-file concretization and injection — second pass
-    4. Cross-file merge — third pass
-    5. Permission filtering — fourth pass
-    6. Validate via ``validate_aggregated_rule_set`` and optionally write output
+    2. Path normalization via ``normalize_rule_actions()`` (trailing slashes,
+       ``".."`` rejection, ``"path"`` type rejection)
+    3. Build permission maps (game_permissions, sub_permissions) — first pass
+    4. Per-file concretization and injection — second pass
+    5. Cross-file merge — third pass
+    6. Permission filtering — fourth pass
+    7. Validate via ``validate_aggregated_rule_set`` and optionally write output
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .iojson import load_json_file
+from .path_normalizer import WARNING_KEY, normalize_rule_actions
 from .paths import split_mixed_id
 from .validation import validate_aggregated_rule_set
 
@@ -501,12 +504,24 @@ def aggregate(
         return None, all_errors, all_warnings
 
     # ------------------------------------------------------------------
-    # Step 2 — Build permission maps (first pass)
+    # Step 2 — Path normalization (via normalize_rule_actions)
+    # ------------------------------------------------------------------
+    for rule in loaded_rules:
+        try:
+            normalize_rule_actions(rule)
+            norm_warnings = rule.pop(WARNING_KEY, [])
+            all_warnings.extend(norm_warnings)
+        except ValueError as exc:
+            all_errors.append(str(exc))
+            return None, all_errors, all_warnings
+
+    # ------------------------------------------------------------------
+    # Step 3 — Build permission maps (first pass)
     # ------------------------------------------------------------------
     game_permissions, sub_permissions = _build_permission_maps(loaded_rules)
 
     # ------------------------------------------------------------------
-    # Step 3 — Per-file concretization and injection (second pass)
+    # Step 4 — Per-file concretization and injection (second pass)
     # ------------------------------------------------------------------
     all_processed: list[dict[str, list[dict[str, Any]]]] = []
     all_nicknames: list[dict[str, str]] = []
@@ -524,7 +539,7 @@ def aggregate(
         all_warnings.extend(warns)
 
     # ------------------------------------------------------------------
-    # Step 4 — Cross-file merge (third pass)
+    # Step 5 — Cross-file merge (third pass)
     # ------------------------------------------------------------------
     merged_actions, merged_nicknames, merged_previews, merged_readmes, warns = (
         _merge_operations(
@@ -534,7 +549,7 @@ def aggregate(
     all_warnings.extend(warns)
 
     # ------------------------------------------------------------------
-    # Step 5 — Permission filtering (fourth pass)
+    # Step 6 — Permission filtering (fourth pass)
     # ------------------------------------------------------------------
     merged_actions, errs, warns = _filter_permissions(
         merged_actions,
@@ -548,7 +563,7 @@ def aggregate(
     all_warnings.extend(warns)
 
     # ------------------------------------------------------------------
-    # Step 6 — Build output, validate, optionally write
+    # Step 7 — Build output, validate, optionally write
     # ------------------------------------------------------------------
     operations: list[dict[str, Any]] = []
     # Preserve deterministic ordering: insertion order of mixed_ids

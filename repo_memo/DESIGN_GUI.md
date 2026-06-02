@@ -33,12 +33,12 @@
 └──────────────────┬─────────────────────────────┘
                    │ fetch / SSE (localhost)
 ┌──────────────────▼─────────────────────────────┐
-│           modmanager_web (FastAPI)             │
+│           modmgr_web (FastAPI)             │
 │  GET/POST /api/*  (REST + SSE endpoints)       │
 └──────────────────┬─────────────────────────────┘
                    │ import
 ┌──────────────────▼─────────────────────────────┐
-│             modmanager 核心模块                  │
+│             modmgr 核心模块                  │
 │  orchestrator / engine / database_ops / ...     │
 └────────────────────────────────────────────────┘
 ```
@@ -431,8 +431,8 @@
 | Database | `POST /api/database/read` | `POST /api/database/save` |
 | Aggregated Rules | `GET /api/workspace/{id}/rules/aggregated` | 不需要（聚合自动生成） |
 | User Config | `POST /api/config/discover` | `POST /api/config/save` |
-| LocalStorage | `window.localStorage (modmanager:*)` | 不支持编辑（只读 dump） |
-| SessionStorage | `window.sessionStorage (modmanager:*)` | 不支持编辑（只读 dump） |
+| LocalStorage | `window.localStorage (modmgr:*)` | 不支持编辑（只读 dump） |
+| SessionStorage | `window.sessionStorage (modmgr:*)` | 不支持编辑（只读 dump） |
 
 **行为**：
 - 默认只读。点击 [编辑] 解锁 → [保存] → REST API 写入
@@ -501,7 +501,7 @@
 |------|---------|
 | 业务数据（database, pipeline 结果） | 后端 database / API |
 | 用户决策（decisions） | 后端工作区 API（`/workspace/{id}/decisions/save`） |
-| UI 状态（tab 位置, sidebar 折叠, 可见性 toggle, 表单输入） | persistence.ts → localStorage（`modmanager:` 前缀） |
+| UI 状态（tab 位置, sidebar 折叠, 可见性 toggle, 表单输入） | persistence.ts → localStorage（`modmgr:` 前缀） |
 
 详见 `DESIGN_STORAGE.md` 与 `DESIGN_WORKSPACE_MODEL.md`。
 

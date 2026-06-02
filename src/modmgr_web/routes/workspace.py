@@ -17,8 +17,9 @@ from modmgr.path_resolver import expand_path
 
 from ..adapters import adapt_dict_result, adapt_error, adapt_pipeline_result
 from ..dependencies import resolve_config_index
-from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
+from ..schemas import CreateWorkspaceRequest, SaveDecisionsRequest, RulesAggregateRequest, VisualizeRequest, WorkspaceApplyRequest, WorkspaceBackupRequest, WorkspaceRestoreRequest
 from ..sse import stream_with_progress
+from modmgr.orchestrator.verifier import verify_kmm_rules
 from modmgr.rule_aggregator import aggregate as rule_aggregate
 import hashlib
 import json
@@ -178,9 +179,25 @@ async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateReques
         if not req.paths:
             return adapt_error("paths list is required and must not be empty")
 
-        result, errors, warnings = rule_aggregate(
-            [expand_path(p) for p in req.paths],
-        )
+        expanded = [expand_path(p) for p in req.paths]
+
+        # Stage 1 — verify via bootstrap → verifier path
+        passed_paths, rejected, verify_warnings = verify_kmm_rules(expanded)
+
+        # Bail early if nothing passes validation
+        if not passed_paths:
+            return {
+                "ok": False,
+                "data": None,
+                "errors": [
+                    f"{r.get('path', '?')}: {'; '.join(r.get('errors', []))}"
+                    for r in rejected
+                ],
+                "warnings": verify_warnings,
+            }
+
+        # Stage 2 — aggregate only validated files
+        result, errors, warnings = rule_aggregate(passed_paths)
 
         if errors:
             return {"ok": False, "data": None, "errors": errors, "warnings": warnings}
@@ -200,7 +217,7 @@ async def workspace_aggregate_rules(workspace_id: str, req: RulesAggregateReques
                 "aggregated_at": datetime.now(timezone.utc).isoformat(),
             },
             "errors": [],
-            "warnings": warnings,
+            "warnings": warnings + verify_warnings,
         }
     except Exception as exc:
         return adapt_error(str(exc))
@@ -342,6 +359,38 @@ async def workspace_apply(workspace_id: str, req: WorkspaceApplyRequest, ci_path
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+@router.post("/{workspace_id}/pipeline/visualize")
+async def workspace_visualize(workspace_id: str, req: VisualizeRequest, ci_path: str = Depends(resolve_config_index)):
+    """Render forest visualization for the workspace.
+
+    Reads mapping trees from the workspace directory and renders
+    them as SVG/ASCII/DOT.  No SSE — returns a plain JSON ``ApiResponse``.
+    """
+    from modmgr.forest_visual import visualize_payload
+
+    try:
+        wm = _get_workspace_manager(ci_path)
+        if not wm.exists(workspace_id):
+            return adapt_error(f"workspace '{workspace_id}' not found")
+        if not wm.has_mapping(workspace_id):
+            return adapt_error("mapping not yet computed for this workspace")
+
+        mapping = wm.read_mapping(workspace_id)
+        trees = mapping.get("trees", [])
+
+        if not trees:
+            return adapt_error("no trees found in workspace mapping")
+
+        rendered = visualize_payload(
+            {"trees": trees},
+            req.format,
+            show_m1_details=req.show_m1_details,
+        )
+        return adapt_dict_result({"rendered": rendered, "format": req.format})
+    except Exception as exc:
+        return adapt_error(str(exc))
 
 
 @router.post("/{workspace_id}/pipeline/restore")

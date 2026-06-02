@@ -18,7 +18,7 @@
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Layer 3：Entry Points（入口）      参考实现              │
-│  cli.py / modmanager_web/routes/ / sse.py / adapters.py │
+│  cli.py / modmgr_web/routes/ / sse.py / adapters.py │
 ├─────────────────────────────────────────────────────────┤
 │  Layer 2：Dispatch & Phase（调度）  精确翻译              │
 │  orchestrator/__init__.py  — dispatch() + 阶段串联       │
@@ -115,9 +115,9 @@ Rust 版本必须保持完全相同的路由逻辑和 phase 顺序。
 | 模块 | 职责 | Rust 翻译 |
 |------|------|:---:|
 | `cli.py` | 命令行参数解析 + 显示 | 参考实现 |
-| `modmanager_web/routes/*` | HTTP 路由 + 参数校验 | 参考实现 |
-| `modmanager_web/sse.py` | SSE 流推送 | 参考实现 |
-| `modmanager_web/adapters.py` | 结果格式适配 | 参考实现 |
+| `modmgr_web/routes/*` | HTTP 路由 + 参数校验 | 参考实现 |
+| `modmgr_web/sse.py` | SSE 流推送 | 参考实现 |
+| `modmgr_web/adapters.py` | 结果格式适配 | 参考实现 |
 
 **规则**：不要求精确翻译。Rust 可用完全不同的框架（clap / actix-web）。唯一要求：用户看到相同的输出格式、相同的错误消息、相同的流程体验。
 

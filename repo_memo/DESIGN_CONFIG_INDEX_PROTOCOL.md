@@ -28,7 +28,7 @@ Header 值是 `config_index` 对象的 JSON 序列化字符串。保留 `type` �
 
 `apiGet` / `apiPost` / `streamSse` 在发出请求前按以下流程处理 `configIndex`：
 
-1. 先读 sessionStorage（键：`modmanager:configIndex`）。
+1. 先读 sessionStorage（键：`modmgr:configIndex`）。
 2. 若 sessionStorage 为空，则读 localStorage；若 localStorage 有值，先写回 sessionStorage，再从 sessionStorage 读取用于组装 header。
 3. 若 sessionStorage 与 localStorage 都为空，前端调用 `GET /api/os/defaults` 获取默认 `userconfig_index`，并写穿到 sessionStorage + localStorage。
 4. 后续请求只从 sessionStorage 读取并注入 `X-UserConfig-Index`。

@@ -260,7 +260,7 @@ sub_permissions[dom_mixed_id] = {actor_mixed_id1, actor_mixed_id2, ...}  // unio
 
 ### 6.1 模块位置
 
-`src/modmanager/rule_aggregator.py`
+`src/modmgr/rule_aggregator.py`
 
 与 M1 引擎共处一个包内，可共享基础设施（`iojson`、`validation`），但逻辑上不耦合 M1 的执行流程。
 
@@ -293,22 +293,23 @@ def aggregate(
 
 ```
 1. 加载全部 kmm_rule 文件（逐个验证根结构）
-2. 第一遍：构建 game_permissions 和 sub_permissions（跨文件 union）
-3. 第二遍：逐文件、逐 mod 进行文件内处理
-   3a. 对每个 action 执行 def_destin / def_action 继承解析（具体化）
-   3b. 注入 provenance_ref（kmm_rule 文件绝对路径）
-   3c. 注入 action_order
-   3d. 注入 sidecar_ref（按外部映射的原始 action 序号匹配）
-   3e. 过滤 hold action
-   3f. 过滤 destin=none action
-4. 第三遍：跨文件合并
-   4a. 合并同 mixed_id 的 operation（actionlist 拼接, preview/readme extend+去重, nickname 后入覆盖）
-5. 第四遍：鉴权过滤
-   5a. 检查 game / sub 权限
-   5b. 不通过的 action 移除
-6. 调用 validate_aggregated_rule_set 校验输出
-7. 可选写文件
-8. 返回 (result, errors, warnings)
+2. 路径归一化：对每个加载的 kmm_rule 文件调用 `normalize_rule_actions()`，拒绝 `"path"` 类型、补全尾 `/`、拒绝 `".."` 路径穿越
+3. 第一遍：构建 game_permissions 和 sub_permissions（跨文件 union）
+4. 第二遍：逐文件、逐 mod 进行文件内处理
+   4a. 对每个 action 执行 def_destin / def_action 继承解析（具体化）
+   4b. 注入 provenance_ref（kmm_rule 文件绝对路径）
+   4c. 注入 action_order
+   4d. 注入 sidecar_ref（按外部映射的原始 action 序号匹配）
+   4e. 过滤 hold action
+   4f. 过滤 destin=none action
+5. 第三遍：跨文件合并
+   5a. 合并同 mixed_id 的 operation（actionlist 拼接, preview/readme extend+去重, nickname 后入覆盖）
+6. 第四遍：鉴权过滤
+   6a. 检查 game / sub 权限
+   6b. 不通过的 action 移除
+7. 调用 validate_aggregated_rule_set 校验输出
+8. 可选写文件
+9. 返回 (result, errors, warnings)
 ```
 
 ---

@@ -82,7 +82,7 @@
 | `POST` | `/api/database/generate` | SSE | 扫描 Steam 库生成 database |
 | `POST` | `/api/database/read` | — | 读取指定 database 内容 |
 | `POST` | `/api/database/save` | — | 保存 database |
-| `POST` | `/api/pipeline/visualize` | — | Forest JSON → SVG/ASCII/DOT |
+| `POST` | `/api/workspace/{id}/pipeline/visualize` | SSE | Forest JSON → SVG/ASCII/DOT（工作区上下文） |
 | `POST` | `/api/workspace/{id}/pipeline/compute` | SSE | 工作区上下文内计算映射 |
 | `POST` | `/api/workspace/{id}/pipeline/backup` | SSE | 工作区上下文内差异备份 |
 | `POST` | `/api/workspace/{id}/pipeline/apply` | SSE | 提交工作区 apply 任务给后端编排 |
@@ -98,8 +98,7 @@
 
 协议冻结说明：
 
-- `/api/pipeline/backup` 与 `/api/pipeline/apply` 已从实现中删除，不属于当前有效协议契约。
-- 禁止恢复 generic backup/apply 执行入口。
+- 所有 generic `/api/pipeline/*` 端点已整体清退（compute / run / visualize / restore 均迁移到 workspace 感知端点）。
 - backup/apply 的产品主路径仅允许 workspace 路由。
 
 ---

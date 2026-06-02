@@ -16,7 +16,7 @@
 ```json
 {
   "default": {
-    "paths": ["~/workspace/modmanager/description/"]
+    "paths": ["~/workspace/modmgr/description/"]
   },
   "custom": {
     "paths": ["/path/to/rules/", "/other/rule.kmmrule.json"]

@@ -92,17 +92,15 @@ def validate_kmm_rule_files(
 
 ### 3.2 调用位置
 
-`src/modmgr/rule_aggregator.py` 的 `aggregate()` 函数入口——在加载文件内容之前先跑漏斗：
+bootstrap 在 kmm_rule 文件加载后、送入 aggregator 之前，通过 **verifier** 成员调用 `validate_kmm_rule_files()`。不合格的文件被拒绝进入 aggregator，bootstrap 将拒绝报告返回给 orchestrator。
 
 ```python
-def aggregate(kmm_rule_paths, *, action_orders=None, sidecar_refs=None):
+# bootstrap（通过 verifier）在 aggregator 被调用之前执行：
+def bootstrap_verify_rules(kmm_rule_paths):
     passed, rejected, warnings = validate_kmm_rule_files(kmm_rule_paths)
     if rejected:
-        all_warnings.extend(
-            f"W_RULE_REJECTED: {r['path']}: {'; '.join(r['errors'])}"
-            for r in rejected
-        )
-    # 仅对 passed 文件执行后续加载和聚合
+        # 返回拒绝报告，orchestrator 据此决定是否继续
+    # 仅将 passed 文件路径传给 aggregator
     ...
 ```
 

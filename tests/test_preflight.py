@@ -26,7 +26,7 @@ class TestApplyPreflight:
 
     def test_manifest_has_required_fields(self):
         """manifest contains ok, backup_dirs, errors, warnings, timestamp."""
-        manifest = run_apply_preflight({}, _make_context())
+        manifest = run_apply_preflight({})
         for key in ("ok", "backup_dirs", "errors", "warnings", "timestamp"):
             assert key in manifest, f"missing manifest field: {key}"
 
@@ -48,7 +48,7 @@ class TestApplyPreflight:
 
             manifest = run_apply_preflight(
                 {str(backup_dir) + "/": ["/some/file.txt"]},
-                _make_context(),
+                
             )
             assert manifest["ok"]
             entry = manifest["backup_dirs"][0]
@@ -60,7 +60,7 @@ class TestApplyPreflight:
         """E_BACKUP_DIR_MISSING when backup_dir doesn't exist."""
         manifest = run_apply_preflight(
             {"/nonexistent/path/": ["/some/file.txt"]},
-            _make_context(),
+            
         )
         assert manifest["ok"] is False
         entry = manifest["backup_dirs"][0]
@@ -77,7 +77,7 @@ class TestApplyPreflight:
 
             manifest = run_apply_preflight(
                 {str(backup_dir) + "/": ["/some/file.txt"]},
-                _make_context(),
+                
             )
             assert manifest["ok"] is False
             entry = manifest["backup_dirs"][0]
@@ -95,7 +95,7 @@ class TestApplyPreflight:
 
             manifest = run_apply_preflight(
                 {str(backup_dir) + "/": ["/some/file.txt"]},
-                _make_context(),
+                
             )
             assert manifest["ok"] is False
             entry = manifest["backup_dirs"][0]
@@ -119,14 +119,14 @@ class TestApplyPreflight:
             before_files = set(str(p) for p in root.rglob("*"))
             run_apply_preflight(
                 {str(backup_dir) + "/": ["/some/file.txt"]},
-                _make_context(),
+                
             )
             after_files = set(str(p) for p in root.rglob("*"))
             assert before_files == after_files, "preflight modified disk!"
 
     def test_empty_backup_dirs_returns_ok(self):
         """Empty backup_dirs trivially passes preflight."""
-        manifest = run_apply_preflight({}, _make_context())
+        manifest = run_apply_preflight({})
         assert manifest["ok"] is True
         assert manifest["backup_dirs"] == []
 
@@ -136,7 +136,7 @@ class TestRestorePreflight:
 
     def test_manifest_has_required_fields(self):
         """manifest contains ok, backup_dirs, errors, warnings, timestamp."""
-        manifest = run_restore_preflight({}, _make_context())
+        manifest = run_restore_preflight({})
         for key in ("ok", "backup_dirs", "errors", "warnings", "timestamp"):
             assert key in manifest, f"missing manifest field: {key}"
 
@@ -148,7 +148,7 @@ class TestRestorePreflight:
 
             manifest = run_restore_preflight(
                 {str(backup_dir) + "/": ["/some/file.txt"]},
-                _make_context(),
+                
             )
             assert manifest["ok"]
             entry = manifest["backup_dirs"][0]
@@ -159,7 +159,7 @@ class TestRestorePreflight:
         """E_BACKUP_DIR_MISSING when backup_dir doesn't exist."""
         manifest = run_restore_preflight(
             {"/nonexistent/": ["/some/file.txt"]},
-            _make_context(),
+            
         )
         assert manifest["ok"] is False
         entry = manifest["backup_dirs"][0]
@@ -176,7 +176,7 @@ class TestRestorePreflight:
             before_files = set(str(p) for p in root.rglob("*"))
             run_restore_preflight(
                 {str(backup_dir) + "/": ["/some/file.txt"]},
-                _make_context(),
+                
             )
             after_files = set(str(p) for p in root.rglob("*"))
             assert before_files == after_files, "preflight modified disk!"
