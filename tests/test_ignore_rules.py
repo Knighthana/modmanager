@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from modmgr.orchestrator.ignore_rules import (
+from modmgr.orchestrator.fileops.planner.ignore_rules import (
     IgnoreRuleSet,
     collect_rules,
     should_ignore,

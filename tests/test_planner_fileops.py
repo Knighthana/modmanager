@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 from modmgr.orchestrator.entry import Intent, TaskRequest
-from modmgr.orchestrator.planner_fileops import plan_fileops
+from modmgr.orchestrator.fileops.planner.planner import plan_fileops
 from modmgr.orchestrator.resolver import CleanContext
 
 APPID = "270150"

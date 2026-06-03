@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from modmgr.engine import compute_mapping
-from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
+from modmgr.orchestrator.fileops.planner.ignore_rules import IgnoreRuleSet
 from modmgr.prep import prep_backup_dir
 from modmgr.backup_ops import run_differential_backup, load_backup_info
 from modmgr.restore_ops import restore_entries

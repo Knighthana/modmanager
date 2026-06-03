@@ -354,7 +354,7 @@ class TestApplyFinalMapping(TestCase):
             dest.write_bytes(b"old")
 
             bdir = self.ready_backup_dir(tmp)
-            with patch("modmgr.orchestrator.planner_fileops.check_backup_gate") as mock_check_backup_gate:
+            with patch("modmgr.orchestrator.fileops.planner.planner.check_backup_gate") as mock_check_backup_gate:
                 result = apply_entries({bdir: [self._entry(str(dest), str(src))]})
 
             self.assertTrue(result["ok"])

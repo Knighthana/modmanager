@@ -24,7 +24,7 @@ from ..apply_ops import apply_entries
 from ..restore_ops import restore_entries
 from ..prep import prep_backup_dir
 from .resolver import CleanContext, WorkspaceResolver, FilePathResolver, RawDictResolver
-from .planner_fileops import plan_fileops
+from .fileops.planner.planner import plan_fileops
 
 # ── Unified dispatch ────────────────────────────────────────────────────
 

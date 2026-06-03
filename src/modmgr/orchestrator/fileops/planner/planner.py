@@ -11,12 +11,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..backup_dir_builder import build_backup_dirs
-from ._common import _utcnow
-from .entry import Intent, TaskRequest
+from ....backup_dir_builder import build_backup_dirs
+from ..._common import _utcnow
+from ...entry import Intent, TaskRequest
 from .ignore_rules import IgnoreRuleSet, collect_rules, should_ignore
 from .preflight import run_apply_preflight, run_restore_preflight
-from .resolver import CleanContext
+from ...resolver import CleanContext
 
 
 def check_backup_gate(backup_dir: str) -> list[str]:
@@ -24,8 +24,8 @@ def check_backup_gate(backup_dir: str) -> list[str]:
 
     An empty list means the gate passes and replacement is safe.
     """
-    from ..backup_ops import load_backup_info
-    from ..path_resolver import assert_directory_path
+    from ....backup_ops import load_backup_info
+    from ....path_resolver import assert_directory_path
 
     assert_directory_path(backup_dir, label="backup_dir")
     errors: list[str] = []

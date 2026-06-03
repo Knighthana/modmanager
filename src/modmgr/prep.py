@@ -71,7 +71,7 @@ def _build_initial_tree(source_root: str, ignore_rules: Any) -> dict[str, Any]:
             # Check ignore
             if ignore_rules is not None:
                 try:
-                    from .orchestrator.ignore_rules import should_ignore
+                    from .orchestrator.fileops.planner.ignore_rules import should_ignore
                     if should_ignore(str(path), ignore_rules):
                         return None
                 except Exception:

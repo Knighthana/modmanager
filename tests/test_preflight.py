@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from modmgr.orchestrator.preflight import (
+from modmgr.orchestrator.fileops.planner.preflight import (
     run_apply_preflight,
     run_restore_preflight,
 )

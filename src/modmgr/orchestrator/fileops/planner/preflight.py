@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ._common import _utcnow
+from ..._common import _utcnow
 
 
 def run_apply_preflight(
@@ -28,7 +28,7 @@ def run_apply_preflight(
     warnings: list[str] = []
     dir_results: list[dict[str, Any]] = []
 
-    from .planner_fileops import check_backup_gate
+    from .planner import check_backup_gate
 
     for backup_dir, entries in backup_dirs.items():
         gate_errors = check_backup_gate(backup_dir)

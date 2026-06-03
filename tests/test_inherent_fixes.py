@@ -145,23 +145,23 @@ class TestCodeCleanup:
 
     # ── CODE-5: preflight 参数清理 ─────────────────────────────────────
     def test_apply_preflight_no_context_param(self):
-        from modmgr.orchestrator.preflight import run_apply_preflight
+        from modmgr.orchestrator.fileops.planner.preflight import run_apply_preflight
         sig = inspect.signature(run_apply_preflight)
         assert "context" not in sig.parameters, "context param must be removed"
 
     def test_restore_preflight_no_context_param(self):
-        from modmgr.orchestrator.preflight import run_restore_preflight
+        from modmgr.orchestrator.fileops.planner.preflight import run_restore_preflight
         sig = inspect.signature(run_restore_preflight)
         assert "context" not in sig.parameters, "context param must be removed"
 
     def test_apply_preflight_runs_without_context(self):
-        from modmgr.orchestrator.preflight import run_apply_preflight
+        from modmgr.orchestrator.fileops.planner.preflight import run_apply_preflight
         result = run_apply_preflight({})
         assert isinstance(result, dict)
         assert "ok" in result
 
     def test_restore_preflight_runs_without_context(self):
-        from modmgr.orchestrator.preflight import run_restore_preflight
+        from modmgr.orchestrator.fileops.planner.preflight import run_restore_preflight
         result = run_restore_preflight({})
         assert isinstance(result, dict)
         assert "ok" in result

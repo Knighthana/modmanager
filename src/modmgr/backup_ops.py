@@ -286,7 +286,7 @@ def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None
     backup_dir = _normalized(backup_dir)
     final_mapping = final_mapping or []
 
-    from .orchestrator.planner_fileops import check_backup_gate as _check_backup_gate
+    from .orchestrator.fileops.planner.planner import check_backup_gate as _check_backup_gate
     gate_errors = _check_backup_gate(backup_dir)
     if gate_errors:
         return {"clean": False, "conflicts": gate_errors}
@@ -534,7 +534,7 @@ def restore_from_backup(
     cr = Path(content_root)
 
     assert_directory_path(backup_dir, label="backup_dir")
-    from .orchestrator.planner_fileops import check_backup_gate as _check_backup_gate
+    from .orchestrator.fileops.planner.planner import check_backup_gate as _check_backup_gate
     gate_errors = _check_backup_gate(backup_dir)
     if gate_errors:
         return {

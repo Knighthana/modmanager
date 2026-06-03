@@ -22,8 +22,8 @@ import pytest
 
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.orchestrator.resolver import CleanContext
-from modmgr.orchestrator.planner_fileops import plan_fileops
-from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
+from modmgr.orchestrator.fileops.planner.planner import plan_fileops
+from modmgr.orchestrator.fileops.planner.ignore_rules import IgnoreRuleSet
 
 # ── Fixture constants ──────────────────────────────────────────────────
 

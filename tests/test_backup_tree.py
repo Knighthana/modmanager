@@ -8,7 +8,7 @@ import pytest
 
 from modmgr.backup_ops import run_differential_backup, load_backup_info, _flatten_tree_file_hashes
 from modmgr.prep import prep_backup_dir
-from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
+from modmgr.orchestrator.fileops.planner.ignore_rules import IgnoreRuleSet
 
 
 def _make_initial_tree(source_root: str, backup_dir: str) -> dict:

@@ -11,7 +11,7 @@ from unittest import TestCase
 
 import pytest
 
-from modmgr.orchestrator.planner_fileops import check_backup_gate
+from modmgr.orchestrator.fileops.planner.planner import check_backup_gate
 
 
 class TestGateBoundary:
@@ -51,7 +51,7 @@ class TestGateBoundary:
     def test_tgt05_preflight_no_backup_ops_import(self):
         """T-GT-05: preflight.py 不 import backup_ops。"""
         import inspect
-        import modmgr.orchestrator.preflight as preflight
+        import modmgr.orchestrator.fileops.planner.preflight as preflight
 
         source = inspect.getsource(preflight)
         assert "backup_ops" not in source, "preflight still imports from backup_ops"
@@ -60,7 +60,7 @@ class TestGateBoundary:
 
     def test_tgt06_importable_from_planner(self):
         """T-GT-06: check_backup_gate 在 planner_fileops.py 中可 import。"""
-        from modmgr.orchestrator.planner_fileops import check_backup_gate as cbg
+        from modmgr.orchestrator.fileops.planner.planner import check_backup_gate as cbg
 
         assert callable(cbg)
         assert cbg.__name__ == "check_backup_gate"
@@ -108,7 +108,7 @@ class TestGateBoundary:
         from unittest.mock import patch
 
         from modmgr.orchestrator.entry import Intent, TaskRequest
-        from modmgr.orchestrator.planner_fileops import plan_fileops
+        from modmgr.orchestrator.fileops.planner.planner import plan_fileops
         from modmgr.orchestrator.resolver import CleanContext
 
         context = CleanContext(
@@ -129,7 +129,7 @@ class TestGateBoundary:
         )
 
         # Mock build_backup_dirs to return a known backup_dir
-        with patch("modmgr.orchestrator.planner_fileops.build_backup_dirs") as mock_build:
+        with patch("modmgr.orchestrator.fileops.planner.planner.build_backup_dirs") as mock_build:
             mock_build.return_value = (
                 {"/tmp/mock_backup.kmmbackup/": ["/game/file.txt"]},
                 [],
