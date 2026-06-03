@@ -203,3 +203,29 @@ class TestWebRouteAdaptation(TestCase):
             db_route.generate_database,
             modmgr.database_ops.generate_database,
         )
+
+
+class TestDocumentationConsistency(TestCase):
+    """T-DB-11/12: Design docs reflect generate_database migration."""
+
+    REPO_MEMO_DIR = Path(__file__).resolve().parent.parent / "repo_memo"
+
+    def test_t_db_11_bootstrap_doc_no_generate_database(self) -> None:
+        """T-DB-11: DESIGN_BOOTSTRAP.md does NOT mention generate_database."""
+        path = self.REPO_MEMO_DIR / "DESIGN_BOOTSTRAP.md"
+        content = path.read_text(encoding="utf-8")
+        self.assertNotIn(
+            "generate_database",
+            content,
+            "DESIGN_BOOTSTRAP.md should not mention generate_database",
+        )
+
+    def test_t_db_12_database_ops_doc_mentions_generate_database(self) -> None:
+        """T-DB-12: DESIGN_DATABASE_OPS.md mentions generate_database as public API."""
+        path = self.REPO_MEMO_DIR / "DESIGN_DATABASE_OPS.md"
+        content = path.read_text(encoding="utf-8")
+        self.assertIn(
+            "generate_database",
+            content,
+            "DESIGN_DATABASE_OPS.md should mention generate_database as public API",
+        )

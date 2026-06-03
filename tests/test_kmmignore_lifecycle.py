@@ -315,3 +315,127 @@ class TestPrimitivesKmmignoreUnaware:
         assert not kmmignore_exports, (
             f"restore_ops.__all__ 不应导出 kmmignore 相关符号: {kmmignore_exports}"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-01 ~ T-KI-04: Copy functions do not exist
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestKmmignoreCopyFunctionsRemoved:
+    """T-KI-01 ~ T-KI-04: .kmmignore 拷贝函数已从代码库移除。"""
+
+    def test_t_ki_01_copy_to_backup_not_importable(self) -> None:
+        """T-KI-01: _copy_kmmignore_to_backup is not importable from any module."""
+        with pytest.raises((ImportError, AttributeError)):
+            from modmgr.backup_ops import _copy_kmmignore_to_backup  # type: ignore
+            _ = _copy_kmmignore_to_backup
+
+    def test_t_ki_02_copy_from_backup_not_importable(self) -> None:
+        """T-KI-02: _copy_kmmignore_from_backup is not importable from any module."""
+        with pytest.raises((ImportError, AttributeError)):
+            from modmgr.backup_ops import _copy_kmmignore_from_backup  # type: ignore
+            _ = _copy_kmmignore_from_backup
+
+    def test_t_ki_03_orchestrator_init_no_kmmignore_copy_calls(self) -> None:
+        """T-KI-03: orchestrator/__init__.py does not call any .kmmignore copy function."""
+        import inspect
+        import modmgr.orchestrator as orch
+
+        source = inspect.getsource(orch)
+        assert "kmmignore" not in source, (
+            "orchestrator/__init__.py should not reference .kmmignore copy"
+        )
+
+    def test_t_ki_04_planner_no_kmmignore_write(self) -> None:
+        """T-KI-04: planner.py does not perform .kmmignore file writes (shutil.copy, etc.)."""
+        import inspect
+        import modmgr.orchestrator.fileops.planner.planner as planner_mod
+
+        source = inspect.getsource(planner_mod)
+        # Check for writes or copies
+        write_ops = ["shutil.copy", "shutil.copy2", "shutil.copytree"]
+        for op in write_ops:
+            assert op not in source, (
+                f"planner.py should not perform {op} on .kmmignore"
+            )
+
+    def test_t_ki_05_backup_ops_no_kmmignore_import(self) -> None:
+        """T-KI-05: backup_ops does not import kmmignore-related modules."""
+        import inspect
+        import modmgr.backup_ops as bo
+
+        source = inspect.getsource(bo)
+        assert "kmmignore" not in source, (
+            "backup_ops imports kmmignore-related modules"
+        )
+
+    def test_t_ki_06_restore_ops_no_kmmignore_import(self) -> None:
+        """T-KI-06: restore_ops does not import kmmignore-related modules."""
+        import inspect
+        import modmgr.restore_ops as ro
+
+        source = inspect.getsource(ro)
+        assert "kmmignore" not in source, (
+            "restore_ops imports kmmignore-related modules"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-13: .kmmignore 拷贝错误码和 warning 不再存在
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestKmmignoreErrorCodesRemoved:
+    """T-KI-13: .kmmignore 拷贝失败的错误码和 warning 不再存在。"""
+
+    def test_no_kmmignore_copy_error_code_in_backup_ops(self) -> None:
+        """backup_ops 中不含 .kmmignore 拷贝的错误代码引用。"""
+        import inspect
+        import modmgr.backup_ops as bo
+
+        source = inspect.getsource(bo)
+        # These old error codes should not appear
+        old_codes = ["E_KMMIGNORE_COPY", "W_KMMIGNORE_COPY", "E_IGNORE_COPY"]
+        for code in old_codes:
+            assert code not in source, (
+                f"backup_ops should not contain old error code: {code}"
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-14 ~ T-KI-16: Documentation consistency
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestKmmignoreDocumentation:
+    """T-KI-14/15/16: Design docs describe kmmignore in-place behavior."""
+
+    REPO_MEMO_DIR = Path(__file__).resolve().parent.parent / "repo_memo"
+
+    def test_t_ki_14_design_backup_ops_mentions_in_place(self) -> None:
+        """T-KI-14: DESIGN_BACKUP_OPS.md describes .kmmignore in-place."""
+        path = self.REPO_MEMO_DIR / "DESIGN_BACKUP_OPS.md"
+        content = path.read_text(encoding="utf-8")
+        assert "kmmignore" in content, "DESIGN_BACKUP_OPS.md should mention .kmmignore"
+
+    def test_t_ki_15_design_restore_ops_no_kmmignore(self) -> None:
+        """T-KI-15: DESIGN_RESTORE_OPS.md does not describe restore ops on .kmmignore.
+
+        The doc may mention kmmignore to state that restore does NOT touch it,
+        but should not describe restore OPERATIONS on it.
+        """
+        path = self.REPO_MEMO_DIR / "DESIGN_RESTORE_OPS.md"
+        content = path.read_text(encoding="utf-8").lower()
+        # Check that kmmignore is not mentioned in context of operations
+        # (it may be mentioned to say restore doesn't touch it)
+        lines_with_kmm = [l for l in content.splitlines() if "kmmignore" in l]
+        for line in lines_with_kmm:
+            assert "操作" not in line, (
+                f"DESIGN_RESTORE_OPS.md should not describe ops on .kmmignore: {line}"
+            )
+
+    def test_t_ki_16_design_planner_mentions_in_place_filtering(self) -> None:
+        """T-KI-16: DESIGN_PLANNER.md describes .kmmignore in-place filtering."""
+        path = self.REPO_MEMO_DIR / "DESIGN_PLANNER.md"
+        content = path.read_text(encoding="utf-8")
+        assert "kmmignore" in content, (
+            "DESIGN_PLANNER.md should describe .kmmignore filtering"
+        )

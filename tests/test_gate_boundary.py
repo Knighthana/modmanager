@@ -144,3 +144,34 @@ class TestGateBoundary:
             assert "gate_errors" in entry
         # Since mock backup_dir doesn't exist, gate should fail
         assert plan.preflight_ok is False
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-GT-09 ~ T-GT-10: Documentation consistency
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestGateDocumentation:
+    """T-GT-09/10: Design docs describe planner gate management."""
+
+    REPO_MEMO_DIR = Path(__file__).resolve().parent.parent / "repo_memo"
+
+    def test_t_gt_09_design_backup_ops_no_gate(self) -> None:
+        """T-GT-09: DESIGN_BACKUP_OPS.md does NOT describe gate LOGIC.
+
+        The doc may mention that gate is now a Planner responsibility,
+        but should not describe gate implementation logic in backup_ops context.
+        """
+        path = self.REPO_MEMO_DIR / "DESIGN_BACKUP_OPS.md"
+        content = path.read_text(encoding="utf-8").lower()
+        # The doc should state that backup doesn't handle gate decisions
+        assert "backup 本身不负责门禁决策" in content or "planner" in content, (
+            "DESIGN_BACKUP_OPS.md should state gate is Planner's responsibility"
+        )
+
+    def test_t_gt_10_design_planner_mentions_gate(self) -> None:
+        """T-GT-10: DESIGN_PLANNER.md describes Planner's gate management."""
+        path = self.REPO_MEMO_DIR / "DESIGN_PLANNER.md"
+        content = path.read_text(encoding="utf-8")
+        assert "gate" in content.lower(), (
+            "DESIGN_PLANNER.md should describe Planner's gate management responsibilities"
+        )

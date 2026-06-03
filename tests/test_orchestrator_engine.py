@@ -112,39 +112,65 @@ def test_load_dir_suffixes_default():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# _any_path_component_ends_with
+# Ignore rules — replacement for removed _should_ignore / _any_path_component
+# Tests now use the public IgnoreRuleSet / should_ignore API
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.skip(reason="_any_path_component_ends_with removed in orchestrator refactor")
-def test_any_path_component_ends_with_match():
-    pass
+from modmgr.orchestrator.fileops.planner.ignore_rules import (
+    IgnoreRuleSet,
+    collect_rules,
+    should_ignore,
+)
 
 
-@pytest.mark.skip(reason="_any_path_component_ends_with removed in orchestrator refactor")
-def test_any_path_component_ends_with_no_match():
-    pass
+def test_should_ignore_hardcoded_suffix():
+    """Hardcoded .kmmbackup suffix is ignored."""
+    rules = IgnoreRuleSet()
+    assert should_ignore("/some/path.kmmbackup/file.txt", rules)
+    assert should_ignore("dir.kmmbackup/game.bin", rules)
+    assert not should_ignore("normal/path/file.txt", rules)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# _should_ignore
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@pytest.mark.skip(reason="_should_ignore removed in orchestrator refactor")
-def test_should_ignore_dir_suffix(fixture_dir):
-    """目录级：路径组件以禁止后缀结尾 → 忽略。"""
-    pass
+def test_should_ignore_normal_file_not_ignored():
+    """正常文件不被硬编码规则忽略。"""
+    rules = IgnoreRuleSet()
+    assert not should_ignore("game.bin", rules)
+    assert not should_ignore("data.txt", rules)
+    assert not should_ignore("subdir/readme.md", rules)
 
 
-@pytest.mark.skip(reason="_should_ignore removed in orchestrator refactor")
-def test_should_ignore_normal_file(fixture_dir):
-    """正常文件不被忽略。"""
-    pass
+def test_should_ignore_empty_rules():
+    """空规则集 (no hardcoded) 不忽略任何文件。"""
+    rules = IgnoreRuleSet(hardcoded_suffixes=[])
+    assert not should_ignore("debug.log", rules)
+    assert not should_ignore("any/file.txt", rules)
 
 
-@pytest.mark.skip(reason="_should_ignore removed in orchestrator refactor")
-def test_should_ignore_kmmbakignore_cascade(fixture_dir):
-    """gitignore 级联：.kmmbakignore 规则生效。"""
-    pass
+def test_should_ignore_custom_suffix():
+    """自定义硬编码后缀。"""
+    rules = IgnoreRuleSet(hardcoded_suffixes=[".bak"])
+    assert should_ignore("test.bak/file.txt", rules)
+    assert not should_ignore("normal.txt", rules)
+
+
+def test_should_ignore_via_kmmignore_file():
+    """通过临时 .kmmignore 文件测试 collect_rules + should_ignore。"""
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        game_root = root / "game"
+        game_root.mkdir()
+        (game_root / ".kmmignore").write_text("*.log\n")
+
+        rules = collect_rules([str(game_root)])
+
+        # 被 gitignore 规则忽略
+        assert should_ignore(str(game_root / "debug.log"), rules)
+        # 不被忽略
+        assert not should_ignore(str(game_root / "game.bin"), rules)
+        assert not should_ignore(str(game_root / "data.txt"), rules)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -170,20 +196,50 @@ def test_build_backup_dirs_content(fixture_dir, sample_database, sample_user_con
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# backup() dry_run
+# plan_fileops dry_run — replacement for removed backup/apply dry_run
+# Tests now use the public plan_fileops API
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.skip(reason="backup() removed in orchestrator refactor")
-def test_backup_dry_run(fixture_dir, sample_database, sample_user_config, sample_mapping_with_content):
-    """backup dry_run 返回结构化文件列表。"""
-    pass
+from modmgr.orchestrator.entry import Intent, TaskRequest
+from modmgr.orchestrator.fileops.planner.planner import plan_fileops
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# apply() dry_run
-# ═══════════════════════════════════════════════════════════════════════════════
+def test_plan_fileops_backup_dry_run(fixture_dir, sample_database, sample_user_config, sample_mapping_with_content):
+    """plan_fileops(BACKUP, dry_run=True) 返回 plan 且 dry_run=True。"""
+    request = TaskRequest(
+        identity="cli",
+        intent=Intent.BACKUP,
+        resolver_type="file_paths",
+        resolver_args={},
+        flags={"dry_run": True},
+    )
+    data = {
+        "final_mapping": sample_mapping_with_content,
+        "database": sample_database,
+        "user_config": sample_user_config,
+    }
+    plan = plan_fileops(request, data)
+    assert plan is not None
+    assert plan.dry_run is True
+    assert plan.intent == Intent.BACKUP
 
-@pytest.mark.skip(reason="apply() removed in orchestrator refactor")
-def test_apply_dry_run_without_backup(fixture_dir, sample_database, sample_user_config, sample_mapping_with_content):
-    """apply dry_run 但无备份目录 → gate 失败，记录警告。"""
-    pass
+
+def test_plan_fileops_apply_dry_run(fixture_dir, sample_database, sample_user_config, sample_final_mapping):
+    """plan_fileops(APPLY, dry_run=True) 返回 plan 且 preflight 检查执行。"""
+    request = TaskRequest(
+        identity="cli",
+        intent=Intent.APPLY,
+        resolver_type="file_paths",
+        resolver_args={},
+        flags={"dry_run": True, "force": True},
+    )
+    data = {
+        "final_mapping": sample_final_mapping,
+        "database": sample_database,
+        "user_config": sample_user_config,
+    }
+    plan = plan_fileops(request, data)
+    assert plan is not None
+    assert plan.dry_run is True
+    # APPLY should run preflight
+    assert plan.preflight_manifest is not None or plan.preflight_ok is not None

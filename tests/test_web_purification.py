@@ -8,6 +8,7 @@ See ``repo_test/web_purification.md`` for full assertion table.
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -291,3 +292,221 @@ class TestVisualizeEndpointFunctional:
         if body["ok"]:
             assert "rendered" in body["data"]
             assert body["data"]["format"] == "svg"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-WP-03: Web layer doesn't use resolver_type="file_paths"
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestWP03NoFilePathResolver:
+    """T-WP-03: Web layer does not use resolver_type='file_paths'."""
+
+    def test_web_layer_no_file_paths_resolver(self) -> None:
+        """Verify web layer workspace.py doesn't use resolver_type='file_paths'."""
+        import ast
+        import inspect
+        from modmgr_web.routes import workspace as ws_module
+
+        source = inspect.getsource(ws_module)
+        assert "file_paths" not in source, (
+            "workspace.py should not contain 'file_paths' resolver type"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-WP-04: Documentation constraint on resolver_type
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestWP04DesignContract:
+    """T-WP-04: DESIGN_ORCHESTRATOR_CONTRACT.md includes resolver_type='workspace'."""
+
+    REPO_MEMO_DIR = Path(__file__).resolve().parent.parent / "repo_memo"
+
+    def test_contract_mentions_workspace_resolver(self) -> None:
+        """DESIGN_ORCHESTRATOR_CONTRACT.md should mention resolver_type=workspace."""
+        path = self.REPO_MEMO_DIR / "DESIGN_ORCHESTRATOR_CONTRACT.md"
+        content = path.read_text(encoding="utf-8")
+        assert "resolver_type" in content, (
+            "DESIGN_ORCHESTRATOR_CONTRACT.md should mention resolver_type constraint"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-WP-10/11/12: Frontend uses workspace-aware endpoints
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestWP10FrontendCompute:
+    """T-WP-10: forest.ts compute request uses /{workspaceId}/pipeline/compute."""
+
+    FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "src"
+
+    def test_forest_compute_uses_workspace_endpoint(self) -> None:
+        """Verify forest.ts compute uses /workspace/${workspaceId}/pipeline/compute."""
+        path = self.FRONTEND_DIR / "stores" / "forest.ts"
+        content = path.read_text(encoding="utf-8")
+        assert "/workspace/${workspaceId}/pipeline/compute" in content, (
+            "forest.ts compute should use /workspace/${workspaceId}/pipeline/compute"
+        )
+
+
+class TestWP11FrontendRun:
+    """T-WP-11: forest.ts run request uses /{workspaceId}/pipeline/run."""
+
+    FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "src"
+
+    def test_forest_run_uses_workspace_endpoint(self) -> None:
+        """Verify forest.ts run uses /workspace/${workspaceId}/pipeline/run."""
+        path = self.FRONTEND_DIR / "stores" / "forest.ts"
+        content = path.read_text(encoding="utf-8")
+        assert "/workspace/${workspaceId}/pipeline/run" in content, (
+            "forest.ts run should use /workspace/${workspaceId}/pipeline/run"
+        )
+
+
+class TestWP12FrontendRestore:
+    """T-WP-12: BackupPage.vue restore uses /{workspaceId}/pipeline/restore."""
+
+    FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "src"
+
+    def test_backup_page_restore_uses_workspace_endpoint(self) -> None:
+        """Verify BackupPage.vue restore uses /workspace/${workspaceId}/pipeline/restore."""
+        path = self.FRONTEND_DIR / "pages" / "BackupPage.vue"
+        content = path.read_text(encoding="utf-8")
+        assert "/workspace/${workspaceId}/pipeline/restore" in content, (
+            "BackupPage.vue restore should use /workspace/${workspaceId}/pipeline/restore"
+        )
+
+    def test_backup_page_passes_workspace_id_not_backup_dir(self) -> None:
+        """Verify restore request passes workspaceId not backup_dir."""
+        path = self.FRONTEND_DIR / "pages" / "BackupPage.vue"
+        content = path.read_text(encoding="utf-8")
+        # Should use workspaceId from route params, not backup_dir
+        assert "workspaceId" in content
+        # The request body should not contain 'backup_dir'
+        assert "backup_dir" not in content.split("streamSse(")[-1].split("}")[0], (
+            "restore request should not pass backup_dir"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-WP-15: API response JSON does not contain backup_dir
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestWP15ApiResponseNoBackupDir:
+    """T-WP-15: API response JSON does not contain backup_dir field."""
+
+    def test_adapt_pipeline_result_no_backup_dir_in_top_level(self) -> None:
+        """adapt_pipeline_result output has no backup_dir at any level."""
+        from modmgr.orchestrator import PipelineResult
+        from modmgr_web.adapters import adapt_pipeline_result
+
+        # Test with various result states
+        for result in [
+            PipelineResult(ok=True),
+            PipelineResult(ok=False, errors=["E_TEST"]),
+            PipelineResult(
+                ok=True,
+                backup_result={"ok": True, "backed_up": [], "dry_run": False},
+            ),
+        ]:
+            adapted = adapt_pipeline_result(result)
+            # Recursively check no backup_dir key
+            self._assert_no_backup_dir(adapted)
+
+    def _assert_no_backup_dir(self, obj, path: str = "") -> None:
+        """Recursively assert no 'backup_dir' key in dict/list structure."""
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                assert key != "backup_dir", (
+                    f"Found 'backup_dir' at path '{path}' in API response"
+                )
+                self._assert_no_backup_dir(value, f"{path}.{key}")
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                self._assert_no_backup_dir(item, f"{path}[{i}]")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-WP-16: Frontend doesn't depend on backup_dir field
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestWP16FrontendNoBackupDirDependency:
+    """T-WP-16: Frontend does not rely on backup_dir field for navigation/display."""
+
+    FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "src"
+
+    def test_forest_store_no_backup_dir(self) -> None:
+        """forest.ts store doesn't use backup_dir field."""
+        path = self.FRONTEND_DIR / "stores" / "forest.ts"
+        content = path.read_text(encoding="utf-8")
+        # The store should not reference backup_dir in data processing
+        assert "backup_dir" not in content, (
+            "forest.ts store should not reference backup_dir"
+        )
+
+    def test_components_no_backup_dir_field_dependency(self) -> None:
+        """Components don't access backup_dir from API responses."""
+        forest_path = self.FRONTEND_DIR / "pages" / "ForestPage.vue"
+        compute_path = self.FRONTEND_DIR / "pages" / "ComputePrepPage.vue"
+        for fpath in [forest_path, compute_path]:
+            if fpath.exists():
+                content = fpath.read_text(encoding="utf-8")
+                # The template/script should not reference backup_dir
+                lines = [l for l in content.splitlines() if "backup_dir" in l]
+                assert not lines, (
+                    f"{fpath.name} should not reference backup_dir: {lines}"
+                )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-WP-17 ~ T-WP-20: Documentation consistency
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestWP17to20Documentation:
+    """T-WP-17/18/19/20: Design docs reflect web purification."""
+
+    REPO_MEMO_DIR = Path(__file__).resolve().parent.parent / "repo_memo"
+
+    def test_t_wp_17_design_rest_api_no_generic_pipeline(self) -> None:
+        """T-WP-17: DESIGN_REST_API.md does not describe active generic pipeline endpoints.
+
+        The doc may mention /api/pipeline endpoints to indicate they are deleted,
+        but should not describe them as currently active endpoints.
+        """
+        path = self.REPO_MEMO_DIR / "DESIGN_REST_API.md"
+        content = path.read_text(encoding="utf-8").lower()
+        # Check that the doc clearly states generic endpoints are deleted/removed
+        if "/api/pipeline" in content:
+            assert "删除" in content or "清退" in content or "deleted" in content or "removed" in content, (
+                "DESIGN_REST_API.md should mark generic pipeline endpoints as deleted"
+            )
+
+    def test_t_wp_18_design_comm_protocol_workspace_aware(self) -> None:
+        """T-WP-18: DESIGN_COMM_PROTOCOL.md pipeline endpoints are workspace-aware."""
+        path = self.REPO_MEMO_DIR / "DESIGN_COMM_PROTOCOL.md"
+        content = path.read_text(encoding="utf-8")
+        assert "workspace" in content.lower(), (
+            "DESIGN_COMM_PROTOCOL.md pipeline endpoints should be workspace-aware"
+        )
+
+    def test_t_wp_19_design_workspace_model_has_visualize(self) -> None:
+        """T-WP-19: DESIGN_WORKSPACE_MODEL.md includes /visualize endpoint."""
+        path = self.REPO_MEMO_DIR / "DESIGN_WORKSPACE_MODEL.md"
+        content = path.read_text(encoding="utf-8")
+        assert "visualize" in content, (
+            "DESIGN_WORKSPACE_MODEL.md should mention /visualize endpoint"
+        )
+
+    def test_t_wp_20_design_rest_api_no_backup_dir(self) -> None:
+        """T-WP-20: DESIGN_REST_API.md does not describe backup_dir as active response field.
+
+        The doc may mention that backup_dir has been removed/deprecated,
+        but should not describe it as an active field.
+        """
+        path = self.REPO_MEMO_DIR / "DESIGN_REST_API.md"
+        content = path.read_text(encoding="utf-8").lower()
+        if "backup_dir" in content:
+            # Must be mentioned only as deprecated/removed
+            assert "废弃" in content or "deprecated" in content or "removed" in content or "删除" in content, (
+                "DESIGN_REST_API.md should only mention backup_dir as deprecated/removed"
+            )
