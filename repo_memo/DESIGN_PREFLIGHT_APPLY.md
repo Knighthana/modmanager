@@ -1,7 +1,7 @@
 # DESIGN_PREFLIGHT_APPLY — Apply 前置门禁设计
 
 > Status: active
-> Last update: 2026-05-21 — preflight.py as independent module
+> Last update: 2026-06-03 — preflight.py relocated to fileops/planner/
 > Authority: authoritative
 > Read-Tier: task-scoped
 > Purpose: 定义 apply 前置 preflight 子模块的职责、manifest 契约、cache policy 与 orchestrator 调用边界
@@ -25,7 +25,7 @@
 
 - preflight 是 orchestrator 的独立子模块。
 - preflight 只有一个直接消费者也不改变其边界：它仍然是"前置决策生产者"，不是 apply 内部逻辑。
-- preflight 由 `planner_fileops.plan_fileops()` 在 Planner 层调用（原 `orchestrate_apply()` 已不存在）。
+- preflight 由 `plan_fileops()` 在 Planner 层调用（`fileops/planner/planner.py`）。
   orchestrator 据 preflight manifest 决定是否继续执行原语。
 
 ## 三、总原则

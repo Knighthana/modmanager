@@ -16,7 +16,7 @@
 - `backupinfo.json` 的 schema 结构
 - restore 如何执行
 
-前置门禁（preflight / gate check）为 Planner 层职责：`plan_fileops()` 在 Planner 层调用 preflight，orchestrator 的 `dispatch()` 据此决策是否继续执行。backup 自身流程中不承担 gate 判定逻辑。
+前置门禁（preflight / gate check）为 Planner 层职责：`plan_fileops()`（`fileops/planner/planner.py`中）调用 preflight，orchestrator 的 `dispatch()` 据此决策是否继续执行。
 
 ## 二、总原则
 

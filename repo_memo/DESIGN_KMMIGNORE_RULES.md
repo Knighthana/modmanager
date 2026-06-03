@@ -15,7 +15,7 @@ kmmignore 决定**哪些文件不参与 mod 管理**。规则由 `.kmmignore` �
 
 > `.kmmbackup` 目录的备份专属排除行为见 `DESIGN_BACKUP_DIR.md`，与 kmmignore 无关。
 
-实现模块：`src/modmgr/orchestrator/ignore_rules.py`。
+实现模块：`src/modmgr/orchestrator/fileops/planner/ignore_rules.py`。
 
 ---
 
@@ -46,7 +46,7 @@ kmmignore 规则**仅来源于 `.kmmignore` 文件**（gitignore 语法），存
 ## 五、Planner 调用接口
 
 ```python
-from orchestrator.ignore_rules import collect_rules, should_ignore, IgnoreRuleSet
+from orchestrator.fileops.planner.ignore_rules import collect_rules, should_ignore, IgnoreRuleSet
 
 # 收集
 rules: IgnoreRuleSet = collect_rules(source_roots)

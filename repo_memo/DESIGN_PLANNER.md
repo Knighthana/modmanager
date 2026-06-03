@@ -27,7 +27,7 @@ orchestrator dispatch()
     └─ DataPort.push()    （若需要持久化）
 ```
 
-Planner 的入口 `execute()` 位于 `src/modmgr/orchestrator/fileops/__init__.py`。核心规划逻辑位于 `fileops/planner/planner.py`（当前 `planner_fileops.py`）。
+Planner 的入口 `execute()` 位于 `src/modmgr/orchestrator/fileops/__init__.py`。核心规划逻辑位于 `fileops/planner/planner.py`。
 
 ---
 
@@ -140,9 +140,9 @@ Planner 不负责：
 |------|------|------|
 | Planner 入口 | `orchestrator/fileops/__init__.py` | `execute()`：plan → gate → execute 全链 |
 | Planner 核心 | `orchestrator/fileops/planner/planner.py` | `plan_fileops()` + `.kmmignore` 原地过滤 |
-| Ignore 规则引擎 | `orchestrator/ignore_rules.py` | `.kmmignore` 解析（gitignore 语法） |
+| Ignore 规则引擎 | `orchestrator/fileops/planner/ignore_rules.py` | `.kmmignore` 解析（gitignore 语法） |
 | Preflight | `orchestrator/fileops/planner/preflight.py` | 门禁检查（apply / restore） |
-| Gate 逻辑 | `fileops/planner/planner.py` 或 `fileops/planner/preflight.py` | `check_backup_gate()` |
+| Gate 逻辑 | `fileops/planner/planner.py` | `check_backup_gate()` |
 
 ---
 

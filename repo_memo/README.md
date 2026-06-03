@@ -62,7 +62,7 @@
 
 ## 高权重触发读取
 - 任务涉及 `backup_dir` 结构、`backupinfo.json` 结构或字段冻结时，必须读取 `DESIGN_BACKUP_DIR.md`（通常对应包 A2）
-- 任务涉及 backup 执行、差异备份、`.kmmbakignore` 复制或脏状态/冲突检查时，必须读取 `DESIGN_BACKUP_OPS.md`（通常对应包 A2）
+- 任务涉及 backup 执行、差异备份、`.kmmignore` 原地规则或脏状态/冲突检查时，必须读取 `DESIGN_BACKUP_OPS.md`（通常对应包 A2）
 - 任务涉及 restore 执行、命中集合、hash 核对或 `force` 语义时，必须读取 `DESIGN_RESTORE_OPS.md`（通常对应包 A2）
 - 任务涉及 apply 执行、dry_run 契约、file-only 消费边界时，必须读取 `DESIGN_APPLY_OPS.md`（通常对应包 A5）
 - 任务涉及 apply preflight、manifest、cache policy 或 apply 前置 gate 时，必须读取 `DESIGN_PREFLIGHT_APPLY.md`（通常对应包 A5）

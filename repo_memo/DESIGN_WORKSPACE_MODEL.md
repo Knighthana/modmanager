@@ -78,6 +78,9 @@ orchestrator（唯一调度入口，星形中心）
     │
     ├── workspacemanager  ★ 新增：工作区 CRUD、规则/决策/结果读写
     ├── bootstrap         # 环境初始化（user_config 加载）
+    ├── resolver          # 纯解析（SourceDescriptor）
+    ├── data_port         # 唯一 I/O 通道（fetch / push）
+    ├── fileops/          # Planner 总调度（plan → gate → execute）
     ├── aggregator        # 规则聚合
     ├── engine            # 计算引擎
     └── backup_ops        # 备份操作
@@ -144,25 +147,38 @@ class WorkspaceManager:
 
 ### 2.3 orchestrator 调用 workspacemanager
 
+compute 全链路走 `dispatch()`：
+
 ```
-orchestrator.compute(workspace_id, ...)
+dispatch(TaskRequest(
+    identity="web",
+    intent=COMPUTE_MAPPING,
+    resolver_type="workspace",
+    resolver_args={"workspace_id": ..., "config_index": ...},
+    output_type="workspace",
+    output_args={"workspace_id": ..., "config_index": ...},
+))
     │
-    ├── ws = workspacemanager
-    ├── rule_set = ws.read_aggregated_rule(workspace_id)
-    ├── decisions = ws.read_decisions(workspace_id)
-    ├── database_path = resolve_database(ws.read_meta(workspace_id).database_name)
-    ├── result = engine.compute(rule_set, database_path, decisions)
-    ├── ws.write_mapping(workspace_id, result.mapping)
-    ├── ws.write_svg(workspace_id, result.svg)
-    └── ws.write_fingerprints(workspace_id, compute_fingerprints(...))
+    ├── Resolver.resolve() → SourceDescriptor
+    ├── DataPort.fetch() → clean dicts（含 database, aggregated_rule_set, decisions）
+    ├── Engine.compute() → PipelineResult
+    └── DataPort.push() → 写 mapping/SVG/fingerprints 回 workspace
 ```
 
-路由层只做：
+路由层只构造 `TaskRequest` 并调用 `dispatch()`：
 
 ```python
 @app.post("/api/workspace/{workspace_id}/pipeline/compute")
-async def compute(workspace_id: str):
-    return orchestrator.compute(workspace_id=workspace_id, ...)
+async def compute(workspace_id: str, ci_path: str = Depends(resolve_config_index)):
+    request = TaskRequest(
+        identity="web",
+        intent=Intent.COMPUTE_MAPPING,
+        resolver_type="workspace",
+        resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
+        output_type="workspace",
+        output_args={"workspace_id": workspace_id, "config_index": ci_path},
+    )
+    return dispatch(request)
 ```
 
 ---
@@ -307,7 +323,7 @@ async def compute(workspace_id: str):
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/workspace/{workspace_id}/pipeline/compute` | 执行计算；从工作区读取 `aggregated_rule` 与 `decisions`，调用引擎计算，结果（`mapping`、`svg`、`fingerprints`）写回工作区；通过 SSE 返回，最终事件包含经 `adapt_pipeline_result` 序列化的 `PipelineResult`。 |
+| `POST` | `/api/workspace/{workspace_id}/pipeline/compute` | 执行计算；通过 `dispatch(TaskRequest(COMPUTE_MAPPING,workspace,...))` → Resolver → DataPort.fetch → Engine.compute → DataPort.push 全链路；结果（`mapping`、`svg`、`fingerprints`）通过 DataPort.push 写回工作区 |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/run` | 在工作区上下文执行全流水线（compute → backup → apply）；通过 SSE 返回 `PipelineResult`（由 `adapt_pipeline_result` 序列化）。 |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/backup` | 在工作区上下文执行差异备份；通过 SSE 返回 `PipelineResult`（含 `backup_result`、`backed_up` 等字段，序列化由 `adapt_pipeline_result` 完成）。 |
 | `POST` | `/api/workspace/{workspace_id}/pipeline/apply` | 在工作区上下文提交 apply（通过 `dispatch()` 以 `Intent.APPLY` 进入 Resolver → Planner → 原语管线）；通过 SSE 返回 `PipelineResult`（含 `apply_result`、`applied`、`apply_warnings` 等）。 |

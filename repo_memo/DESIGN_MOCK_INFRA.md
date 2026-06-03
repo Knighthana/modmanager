@@ -36,7 +36,7 @@ frontend/src/mocks/
 ├── handlers/
 │   ├── index.ts            # 汇总所有 handler
 │   ├── database.ts         # /api/database/* 的 mock handler
-│   ├── pipeline.ts         # /api/pipeline/* 的 mock handler
+│   ├── workspace.ts         # /api/workspace/* 的 mock handler
 │   ├── config.ts           # /api/config/* 的 mock handler
 │   ├── rules.ts            # /api/rules/* 的 mock handler
 │   ├── backups.ts          # /api/backups/* 的 mock handler
@@ -108,8 +108,8 @@ export const handlers = [
 真实 pipeline 端点返回 `text/event-stream` 流式数据。mock 阶段做**简化处理**：
 
 ```typescript
-// 模拟 POST /api/pipeline/compute (SSE → 简化为一发即完)
-http.post('/api/pipeline/compute', async () => {
+// 模拟 POST /api/workspace/{id}/pipeline/compute (SSE → 简化为一发即完)
+http.post('/api/workspace/:id/pipeline/compute', async () => {
   // 方案 A：模拟 SSE 流（返回多个 chunk）
   const encoder = new TextEncoder()
   const events = [

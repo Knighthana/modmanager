@@ -76,9 +76,9 @@ class ProgressCallback(Protocol):
 | 阶段 | step 值 | 说明 |
 |------|---------|------|
 | 准备 | `"prepare"` | Resolve → Plan（4 子步）→ Preflight → Ready，共 6 个子阶段 |
-| 备份 | `"backup"` | `_execute_backup_plan` |
-| 应用 | `"apply"` | `_execute_apply_plan` |
-| 恢复 | `"restore"` | `_execute_restore_plan` |
+| 备份 | `"backup"` | fileops 执行备份阶段 |
+| 应用 | `"apply"` | fileops 执行应用阶段 |
+| 恢复 | `"restore"` | fileops 执行恢复阶段 |
 | 全流水线 | `"run"` | 组合备份+应用，逐阶段发送 |
 
 ---
@@ -100,7 +100,9 @@ class TaskRequest:
     identity: Literal["web", "cli"]
     intent: Intent            # COMPUTE_MAPPING | BACKUP | APPLY | RESTORE | RUN
     resolver_type: Literal["workspace", "file_paths", "raw_dict"]
-    resolver_args: dict       # opaque — Resolver 自决语义
+    resolver_args: dict       # fetch 来源参数
+    output_type: Literal["workspace", "none"] = "none"    # push 目标类型
+    output_args: dict = field(default_factory=dict)       # push 目标参数
     flags: dict               # dry_run, force, etc.
 ```
 
@@ -164,7 +166,7 @@ dispatch(request)
 
 **文件操作层（fileops）**：
 - Planner 入口（`orchestrator/fileops/__init__.py`）：`execute()` 统一入口，负责 plan → gate → execute 全链
-- Planner 核心（`orchestrator/fileops/planner/planner.py`，当前 `planner_fileops.py`）：`plan_fileops()`、`.kmmignore` 原地过滤、gate/preflight 调度
+- Planner 核心（`orchestrator/fileops/planner/planner.py`）：`plan_fileops()` + `.kmmignore` 原地过滤：`plan_fileops()`、`.kmmignore` 原地过滤、gate/preflight 调度
 - preflight（`orchestrator/fileops/planner/preflight.py`）：门禁检查
 
 | 模块 | 文件 | 职责 |
@@ -175,6 +177,7 @@ dispatch(request)
 | **DataPort** | `orchestrator/data_port.py` | `fetch()` + `push()` — 唯一 I/O 通道 |
 | Planner 入口 | `orchestrator/fileops/__init__.py` | `execute()`：plan → gate → execute |
 | Planner 核心 | `orchestrator/fileops/planner/planner.py` | `plan_fileops()` + `.kmmignore` 原地过滤 |
+| Ignore 规则 | `orchestrator/fileops/planner/ignore_rules.py` | `collect_rules()`, `should_ignore()` |
 | Preflight | `orchestrator/fileops/planner/preflight.py` | 门禁检查 |
 | Compute 引擎 | `orchestrator/compute_pipeline.py` | `compute()` — 映射生产 |
 | Database 管理 | `database_ops.py` | orchestrator 一等成员：database 发现、生成、校验、CRUD |
