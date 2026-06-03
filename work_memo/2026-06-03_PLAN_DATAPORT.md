@@ -1,7 +1,7 @@
 # PLAN_DATAPORT — I/O 适配层
 
 > 创建日期：2026-06-03
-> 状态：draft（待确认后转 SPEC）
+> 状态：confirmed（全部待确认项已裁决）
 > 关联：`work_memo/2026-06-03_PENDING.md`
 
 ---
@@ -263,11 +263,18 @@ fetch():
 
 ---
 
-## 八、待确认
+## 八、状态
 
 | # | 议题 | 状态 |
 |---|------|:---:|
-| P1 | 原语接口改造方案（.kmmignore 工单化）——与 DataPort 无关，仍待裁定 | open |
-| W1 | Web 路由合规测试——与 DataPort 无关，仍待执行 | open |
-| A1-A3 | fileops 目录重构——与 DataPort 方向一致，细节见 §三 | 已裁决 |
-| C1a-c | Clean 上下文 + 回写 + 出口解耦——全部被 DataPort 解决 | ✅ resolved |
+| P1 | .kmmignore 原语工单化 | ✅ resolved（2026-06-03 — 原地规则，不搬动不拷贝） |
+| W1 | Web 路由合规测试 | 待执行 |
+| A1-A3 | fileops 目录重构 | 已裁决，待执行 |
+| C1a-c | Clean 上下文 + 回写 + 出口解耦 | ✅ 全部被 DataPort 解决 |
+
+### .kmmignore 与 DataPort 的关系
+
+`.kmmignore` 属于 **Planner 的纯数据变换**（读取盘上文件 → 解析 → 过滤规则 → 写入 `FileOpsPlan.ignore_rule_set`）。它不经过 DataPort，因为：
+- 它不是"系统配置/中间结果"——它是用户编辑的业务规则文件
+- Planner 读取它就像 Engine 读取 database dict 一样——是变换的输入，不是 I/O 通道的职责
+- 原地规则（in-place）：`.kmmignore` 不随任何操作发生移动。Planner 每次执行时现场读取
