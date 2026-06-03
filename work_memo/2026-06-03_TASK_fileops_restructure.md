@@ -40,19 +40,24 @@
 > SPEC: `repo_test/dataport_spec.md`（21 条断言）。DataPort 是 orchestrator 唯一 I/O 通道——修复 Resolver 做了 I/O 的问题，为 CleanContext 画句号，同时解决 workspace 写回过渡方案。
 
 - [ ] SPEC-D1-01 新建 `orchestrator/data_port.py`，包含 `SourceDescriptor` dataclass + `fetch()` + `push()` 函数
-- [ ] SPEC-D1-02 `SourceDescriptor` 字段：`source_type`（workspace/file_paths/raw_dict）、`workspace_id`、`config_index`、`database_path`、`database_dict`、`aggregated_rule_set`
-- [ ] SPEC-D1-03 `fetch(desc, intent)` — 按 source_type + intent 从源头读取数据，返回 clean dicts（不同 intent 返回不同 key 集合）。见 `PLAN_DATAPORT.md §七` 的逐场景行为表
-- [ ] SPEC-D1-04 `push(desc, intent, result)` — 仅 `workspace + COMPUTE_MAPPING` 时写回 mapping/SVG/fingerprints 到 workspace 目录。其他组合无操作
-- [ ] SPEC-D1-05 Resolver 重写为纯解析（无 I/O）：
+- [ ] SPEC-D1-02 `SourceDescriptor` 字段（fetch 来源）和 `DestDescriptor` 字段（push 目标）**分开定义**。`push()` 签名为 `push(dest: DestDescriptor, intent, result)`——不使用 SourceDescriptor 混用来源和目标
+- [ ] SPEC-D1-03 `TaskRequest` 新增两个字段：
+  - `output_type: Literal["workspace", "none"] = "none"` — push 目标类型
+  - `output_args: dict[str, Any] = field(default_factory=dict)` — push 目标参数
+- [ ] SPEC-D1-04 `fetch(desc: SourceDescriptor, intent)` — 按 source_type + intent 从源头读取数据，返回 clean dicts（见 `PLAN_DATAPORT.md §七`）
+- [ ] SPEC-D1-05 `push(dest: DestDescriptor, intent, result)` — 按 `dest.output_type` 决定行为：`"workspace" + COMPUTE_MAPPING` 时写 mapping/SVG/fingerprints 到 workspace；`"none"` 或非 COMPUTE_MAPPING 时无操作
+- [ ] SPEC-D1-06 `dispatch()` 中根据 `request.output_type` + `request.output_args` 构建 `DestDescriptor`，传入 `push()`
+- [ ] SPEC-D1-07 Resolver 重写为纯解析（无 I/O）：
   - `WorkspaceResolver.resolve()` 返回 `SourceDescriptor(source_type="workspace", workspace_id=..., config_index=...)`，删除 `wm.read_meta/read_mapping/_resolve_database` 等 I/O 调用
   - `FilePathResolver.resolve()` 返回 `SourceDescriptor(source_type="file_paths", database_path=..., config_index=...)`，删除文件读取 I/O
   - `RawDictResolver.resolve()` 返回 `SourceDescriptor(source_type="raw_dict", database_dict=..., aggregated_rule_set=...)`，纯透传
-- [ ] SPEC-D1-06 `CleanContext` dataclass 从 `orchestrator/resolver.py` 中**删除**
-- [ ] SPEC-D1-07 `plan_fileops()` 签名改为接受 DataPort.fetch() 返回的 dict（而非 CleanContext 对象）——具体：参数从 `context: CleanContext` 改为 `data: dict`，函数内部 `context.final_mapping` → `data["final_mapping"]`，`context.database` → `data["database"]`，`context.user_config` → `data["user_config"]`
-- [ ] SPEC-D1-08 `dispatch()` 流程改为：`Resolver.resolve → DataPort.fetch → Engine/Planner → DataPort.push`（仅 COMPUTE_MAPPING + workspace 时 push）
-- [ ] SPEC-D1-09 `orchestrator/__init__.py` import 新增 `from .data_port import fetch, push, SourceDescriptor`
-- [ ] SPEC-D1-10 所有引用 `CleanContext` 的代码更新（测试文件、planner.py 等）。`CleanContext` 类型在整个代码库中不再存在
-- [ ] SPEC-D1-11 `database_name` 格式校验：`fetch()` 中校验 name 不含 `..` 等路径穿越字符，不合格时抛异常
+- [ ] SPEC-D1-08 `CleanContext` dataclass 从 `orchestrator/resolver.py` 中**删除**
+- [ ] SPEC-D1-09 `plan_fileops()` 签名改为接受 DataPort.fetch() 返回的 dict（而非 CleanContext 对象）——参数从 `context: CleanContext` 改为 `data: dict`，内部 `context.final_mapping` → `data["final_mapping"]` 等
+- [ ] SPEC-D1-10 `dispatch()` 流程改为：`Resolver.resolve → DataPort.fetch → Engine/Planner → DataPort.push`
+- [ ] SPEC-D1-11 `orchestrator/__init__.py` import 新增 `from .data_port import fetch, push, SourceDescriptor, DestDescriptor`
+- [ ] SPEC-D1-12 所有引用 `CleanContext` 的代码更新（测试文件、planner.py 等）。`CleanContext` 类型在整个代码库中不再存在
+- [ ] SPEC-D1-13 `database_name` 格式校验：`fetch()` 中校验 name 不含 `..` 等路径穿越字符，不合格时抛异常
+- [ ] SPEC-D1-14 Web 路由构造 `TaskRequest` 时显式指定 `output_type="workspace"` + `output_args`（如 `workspace_compute` 端点）
 
 ### A1 — preflight 归位
 - [ ] SPEC-A1-01 创建目录 `orchestrator/fileops/planner/`

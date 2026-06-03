@@ -25,6 +25,8 @@ DataPort 是 orchestrator 的**唯一 I/O 通道**：
 
 ### 2.1 SourceDescriptor
 
+Resolver 产出，描述"从哪里 fetch"：
+
 ```python
 @dataclass
 class SourceDescriptor:
@@ -36,18 +38,62 @@ class SourceDescriptor:
     aggregated_rule_set: dict | None = None
 ```
 
-### 2.2 fetch()
+### 2.2 DestDescriptor
+
+从 TaskRequest 的 `output_type` + `output_args` 构建，描述"push 到哪里"：
+
+```python
+@dataclass
+class DestDescriptor:
+    output_type: Literal["workspace", "none"]
+    workspace_id: str | None = None
+    config_index: str = ""
+```
+
+### 2.3 TaskRequest 扩展
+
+```python
+@dataclass
+class TaskRequest:
+    identity: Literal["web", "cli"]
+    intent: Intent
+    resolver_type: Literal["workspace", "file_paths", "raw_dict"]
+    resolver_args: dict[str, Any]          # fetch 来源参数
+    output_type: Literal["workspace", "none"] = "none"   # push 目标类型
+    output_args: dict[str, Any] = field(default_factory=dict)  # push 目标参数
+    flags: dict[str, Any] = field(default_factory=dict)
+```
+
+示例——Web workspace compute：
+```python
+TaskRequest(
+    identity="web",
+    intent=Intent.COMPUTE_MAPPING,
+    resolver_type="workspace",
+    resolver_args={"workspace_id": "abc", "config_index": "/path/to/config"},
+    output_type="workspace",
+    output_args={"workspace_id": "abc", "config_index": "/path/to/config"},
+)
+```
+
+### 2.4 fetch()
 
 ```python
 def fetch(desc: SourceDescriptor, intent: Intent) -> dict[str, Any]:
     """按描述符读取数据。按 source_type + intent 返回不同 clean dict 集合。"""
 ```
 
-### 2.3 push()
+### 2.5 push()
 
 ```python
-def push(desc: SourceDescriptor, intent: Intent, result: PipelineResult) -> None:
-    """按描述符写入结果。仅 workspace + COMPUTE_MAPPING 需要持久化。"""
+def push(dest: DestDescriptor, intent: Intent, result: PipelineResult) -> None:
+    """按目标描述符写入结果。仅 workspace + COMPUTE_MAPPING 需要持久化。
+
+    Args:
+        dest: DestDescriptor — 描述 push 目标（从 TaskRequest.output_type/output_args 构建）
+        intent: 操作意图
+        result: 管线执行结果
+    """
 ```
 
 ---
@@ -86,10 +132,11 @@ def push(desc: SourceDescriptor, intent: Intent, result: PipelineResult) -> None
 
 | # | 断言 | 级别 |
 |---|------|:---:|
-| T-DP-14 | `push(workspace, COMPUTE_MAPPING, result)` 将 `result.mapping_result` 写入 workspace mapping 文件 | MUST |
-| T-DP-15 | `push(workspace, COMPUTE_MAPPING, result)` 将 fingerprints（`kmmrule` / `database` sha256 + `computed_at`）写入 workspace | MUST |
-| T-DP-16 | `push(workspace, COMPUTE_MAPPING, result)` 若 `result.trees` 非空，生成 SVG 并写入 workspace | MUST |
-| T-DP-17 | `push(non-workspace, *, *)` / `push(*, non-COMPUTE_MAPPING, *)` 不执行任何写入 | MUST |
+| T-DP-14 | `push(dest, COMPUTE_MAPPING, result)` — `dest.output_type == "workspace"` 时将 `result.mapping_result` 写入 workspace mapping 文件 | MUST |
+| T-DP-15 | `push(dest, COMPUTE_MAPPING, result)` — `dest.output_type == "workspace"` 时将 fingerprints（`kmmrule` / `database` sha256 + `computed_at`）写入 workspace | MUST |
+| T-DP-16 | `push(dest, COMPUTE_MAPPING, result)` — `dest.output_type == "workspace"` 且 `result.trees` 非空时，生成 SVG 并写入 workspace | MUST |
+| T-DP-17 | `push(dest, *, *)` — `dest.output_type == "none"` 时不执行任何写入 | MUST |
+| T-DP-18 | `push(dest, non-COMPUTE_MAPPING, *)` — 不执行任何写入（仅 COMPUTE_MAPPING 需要 push） | MUST |
 
 ### 3.5 原语不经过 DataPort
 
