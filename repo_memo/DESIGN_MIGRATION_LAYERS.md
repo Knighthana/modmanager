@@ -57,16 +57,17 @@
 |------|------|---------|
 | `engine.py` | 映射计算引擎 | `compute_mapping()` |
 | `rule_aggregator.py` | 规则聚合 | `aggregate()` |
-| `orchestrator/compute_pipeline.py` | compute 管线调度 | `compute()`, `compute_ws()` |
+| `orchestrator/compute_pipeline.py` | compute 引擎 | `compute()` |
 
 ### 文件操作四层模型（业务部分）
 
 | 模块 | 职责 | 关键函数 |
 |------|------|---------|
 | `orchestrator/entry.py` | 请求数据结构 | `TaskRequest`, `Intent` enum |
-| `orchestrator/resolver.py` | 资源收集策略 | `WorkspaceResolver`, `FilePathResolver`, `RawDictResolver`, `CleanContext` |
-| `orchestrator/planner_fileops.py` | 推导 + preflight 决策 | `plan_fileops()`, `FileOpsPlan`, `_collect_ignore_rules()` |
-| `orchestrator/preflight.py` | 门禁检查 | `run_apply_preflight()`, `run_restore_preflight()` |
+| `orchestrator/resolver.py` | 资源解析策略（纯解析，无 I/O） | `WorkspaceResolver`, `FilePathResolver`, `RawDictResolver`, `SourceDescriptor` |
+| `orchestrator/data_port.py` | I/O 适配层 | `fetch()`, `push()` — 唯一 I/O 通道 |
+| `orchestrator/fileops/planner/planner.py` | 推导 + preflight 决策 | `plan_fileops()`, `FileOpsPlan`, `.kmmignore` 原地过滤 |
+| `orchestrator/fileops/planner/preflight.py` | 门禁检查 | `run_apply_preflight()`, `run_restore_preflight()` |
 | `orchestrator/ignore_rules.py` | 忽略规则收集 | `collect_rules()`, `should_ignore()` |
 | `orchestrator/_common.py` | 共享数据结构 | `PipelineResult`, `ProgressCallback` |
 
@@ -100,10 +101,10 @@
 **唯一入口**：`dispatch(request: TaskRequest) -> PipelineResult`。
 
 调度逻辑是业务规则的一部分：
-- `COMPUTE_MAPPING` → compute 管线
-- `BACKUP / APPLY / RESTORE / RUN` → Resolver → Planner → Preflight → Primitive
+- `COMPUTE_MAPPING` → Resolver → DataPort → compute 引擎 → DataPort.push（workspace only）
+- `BACKUP / APPLY / RESTORE / RUN` → Resolver → DataPort → fileops.execute() → plan → gate → primitive
 - Preflight 分支：apply/restore 必须过，run 豁免，backup 不需要
-- Phase 序列：resolve → plan → (preflight) → execute
+- Phase 序列：resolve → fetch → plan → (preflight) → execute
 - 失败时短路径返回（preflight 失败不执行原语）
 
 Rust 版本必须保持完全相同的路由逻辑和 phase 顺序。

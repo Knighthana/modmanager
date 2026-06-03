@@ -177,11 +177,9 @@ backup 至少涉及以下条目：
 
 最终解释与默认严重级别以 `TERMS_ERROR_CODES.md` 为准。
 
-## 十三、`.kmmignore` 文件保留
+## 十三、`.kmmignore` 规则（原地生效）
 
-backup 操作在执行文件复制前，须将源目录各级祖先中的 `.kmmignore` 文件复制到 backup_dir 的对应位置。这样 restore 时无需用户手动重建忽略规则。
-
-**实现**：`.kmmignore` 文件的完整生命周期（过滤 + 物理拷贝）由 Planner 全权管理。Planner 在 `plan_fileops()` 阶段将 `.kmmignore` 拷贝任务下发到 `FileOpsPlan`，backup/restore 原语不感知该文件。调用点在 Planner 层。
+`.kmmignore` 始终原地生效，**不搬动、不拷贝**。Planner 在 `plan_fileops()` 中现场读取各级 `.kmmignore` 文件，过滤被忽略的文件后写入 `FileOpsPlan.ignore_rule_set`。backup/restore 原语不感知 `.kmmignore`。
 
 ## 十四、测试断言
 
@@ -192,4 +190,4 @@ backup 操作在执行文件复制前，须将源目录各级祖先中的 `.kmmi
 - `isbackuped` 不能从 `true` 变回 `false`；`hashtype` 不能从 `"sha256"` 变回 `"invalid"`；`hashvalue` 不能从有效 hex 变回 `"0"`
 - 文件拷贝失败时：`isbackuped` 保持 `false`，不被提前修改
 - 条目复制失败会产生 error，而不是静默成功
-- `.kmmignore` 保留：源目录存在 `.kmmignore` → backup 后 backup_dir 对应位置存在该文件
+- `.kmmignore` 过滤：被 ignore 的文件不出现在备份 scope 中（由 Planner 原地读取后过滤）

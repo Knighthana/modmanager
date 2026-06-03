@@ -37,7 +37,7 @@ restore 的 ignore 缓存规则与 `DESIGN_BACKUP_OPS.md` §四完全一致：Pl
 
 ## 三、执行输入
 
-- 当前 mapping（来自 Planner 构建的 `CleanContext.final_mapping`）
+- 当前 mapping（来自 DataPort fetch 结果中的 `final_mapping`）
 - 对应 backup_dir
 - `backupinfo.json`
 
@@ -115,4 +115,4 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 - `dry_run=true` 时：不修改文件，但仍产出完整的操作报告（`restored`、`deleted`、`skipped`、`warnings`）
 - 找不到可恢复实体时应产生 warning，而不是隐式成功
 - 复制失败应产生 error
-- `.kmmignore` 还原：由 Planner 在 `plan_fileops()` 阶段统一管理，restore 原语不感知该文件
+- `.kmmignore` 规则：Planner 在 `plan_fileops()` 中原地读取并过滤，不备份不还原。restore 原语不感知该文件

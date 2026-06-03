@@ -21,9 +21,23 @@ Orchestrator 是统一的调度入口。无论 Web API 还是 CLI，所有请求
                                     │
               ┌─────────────────────┼──────────────────────┐
               ▼                     ▼                      ▼
-     compute_pipeline         Entry → Resolver        (未来扩展)
-     (映射生产)               → Planner → Primitive
-                              (文件操作四层)
+      COMPUTE_MAPPING        BACKUP/APPLY/RESTORE/RUN  (未来扩展)
+         │                       │
+         ▼                       ▼
+    Resolver.resolve()       Resolver.resolve()
+    → SourceDescriptor       → SourceDescriptor
+         │                       │
+         ▼                       ▼
+    DataPort.fetch()         DataPort.fetch()
+    → clean dicts            → clean dicts
+         │                       │
+         ▼                       ▼
+    Engine.compute()         fileops.execute()
+    → PipelineResult         → plan → gate → execute
+         │                       │
+         ▼                       ▼
+    DataPort.push()          PipelineResult
+    (workspace only)
 ```
 
 Orchestrator 自身是星形拓扑核心，通过 `orchestrator/` 包的公开接口暴露最小表面：
@@ -118,19 +132,21 @@ class PipelineResult:
 ```
 dispatch(request)
   │
-  ├─ intent=COMPUTE_MAPPING → compute_pipeline.compute()
+  ├─ intent=COMPUTE_MAPPING
+  │     ├─ 1. Resolver.resolve() → SourceDescriptor
+  │     ├─ 2. DataPort.fetch() → clean dicts
+  │     ├─ 3. Engine.compute() → PipelineResult
+  │     └─ 4. DataPort.push() (workspace only — write mapping/SVG/fingerprints)
   │
   └─ intent=BACKUP/APPLY/RESTORE/RUN
        │
-       ├─ 1. Select Resolver (WorkspaceResolver / FilePathResolver / RawDictResolver)
-       ├─ 2. Resolve → CleanContext {final_mapping, database, user_config}
-       ├─ 3. Planner → FileOpsPlan {backup_dirs, entries_by_backup_dir, preflight, ...}
-       ├─ 4. Preflight gate check (apply / restore only)
-       └─ 5. Execute primitive
-            ├─ apply_ops.apply_entries()
-            ├─ restore_ops.restore_entries()
-            ├─ backup_ops.run_differential_backup()
-            └─ run = backup + apply (no preflight)
+       ├─ 1. Resolver.resolve() → SourceDescriptor
+       ├─ 2. DataPort.fetch() → clean dicts
+       ├─ 3. fileops.execute(data, intent, flags) → PipelineResult
+       │     ├─ plan_fileops() → FileOpsPlan
+       │     ├─ preflight gate check
+       │     └─ execute primitive (backup / apply / restore / run)
+       └─ 4. PipelineResult → 返回调用方
 ```
 
 ---
@@ -146,21 +162,24 @@ dispatch(request)
 
 ## 八、模块映射
 
-**文件操作四层（fileops）**：
-- Planner（`orchestrator/planner_fileops.py`）：总调度器，负责 `plan_fileops()`、预计算任务清单、`.kmmignore` 文件生命周期、gate/preflight 逻辑，下发任务给原语
-- prep / backup / apply / restore：四个原语（真成员），run 为伪成员（prep + backup + apply）
+**文件操作层（fileops）**：
+- Planner 入口（`orchestrator/fileops/__init__.py`）：`execute()` 统一入口，负责 plan → gate → execute 全链
+- Planner 核心（`orchestrator/fileops/planner/planner.py`，当前 `planner_fileops.py`）：`plan_fileops()`、`.kmmignore` 原地过滤、gate/preflight 调度
+- preflight（`orchestrator/fileops/planner/preflight.py`）：门禁检查
 
 | 模块 | 文件 | 职责 |
 |------|------|------|
-| Orchestrator 核心 | `orchestrator/__init__.py` | `dispatch()` 入口 + `PipelineResult` + 执行辅助函数 |
+| Orchestrator 核心 | `orchestrator/__init__.py` | `dispatch()` 入口 + `PipelineResult` |
 | Entry | `orchestrator/entry.py` | `TaskRequest` + `Intent` enum |
-| Resolver | `orchestrator/resolver.py` | `CleanContext` + `WorkspaceResolver` / `FilePathResolver` / `RawDictResolver` |
-| Planner (文件操作) | `orchestrator/planner_fileops.py` | `FileOpsPlan` + `plan_fileops()` |
-| Preflight | `orchestrator/preflight.py` | `run_apply_preflight()` / `run_restore_preflight()` |
-| Compute 管线 | `orchestrator/compute_pipeline.py` | `compute()` / `compute_ws()` (映射生产) |
-| Database 管理 | `database_ops.py` | orchestrator 一等成员：database 发现、生成（`generate_database()`）、校验、CRUD |
-| 共享设施 | `orchestrator/_common.py` | `PipelineResult` dataclass, 共享 helper |
-| Apply 原语 | `apply_ops.py` | `apply_entries()` — file-to-file apply |
-| Restore 原语 | `restore_ops.py` | `restore_entries()` — file-to-file restore |
-| Backup 原语 | `backup_ops.py` | `run_differential_backup()` — differential backup |
+| Resolver | `orchestrator/resolver.py` | `SourceDescriptor` + `WorkspaceResolver` / `FilePathResolver` / `RawDictResolver`（纯解析，无 I/O） |
+| **DataPort** | `orchestrator/data_port.py` | `fetch()` + `push()` — 唯一 I/O 通道 |
+| Planner 入口 | `orchestrator/fileops/__init__.py` | `execute()`：plan → gate → execute |
+| Planner 核心 | `orchestrator/fileops/planner/planner.py` | `plan_fileops()` + `.kmmignore` 原地过滤 |
+| Preflight | `orchestrator/fileops/planner/preflight.py` | 门禁检查 |
+| Compute 引擎 | `orchestrator/compute_pipeline.py` | `compute()` — 映射生产 |
+| Database 管理 | `database_ops.py` | orchestrator 一等成员：database 发现、生成、校验、CRUD |
+| 共享设施 | `orchestrator/_common.py` | 共享 helper |
+| Backup 原语 | `backup_ops.py` | `run_differential_backup()` |
+| Restore 原语 | `restore_ops.py` | `restore_entries()` |
+| Apply 原语 | `apply_ops.py` | `apply_entries()` |
 ```

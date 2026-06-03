@@ -7,15 +7,15 @@
 >
 > Last update: 2026-05-20
 >
-> 重要更新（2026-05-20）：本文件已对齐当前实现。
-> - 已删除的 generic 执行入口：`POST /api/pipeline/backup`、`POST /api/pipeline/apply`（这两条 generic 执行端点已从实现中移除，备份/应用主路径仅允许通过工作区 API）
-> - 保留的 generic pipeline 端点（仍对外提供）：`POST /api/pipeline/compute`、`POST /api/pipeline/run`、`POST /api/pipeline/visualize`、`POST /api/pipeline/restore`
-> - 工作区感知流水线：所有文件系统写入相关的主路径为 `POST /api/workspace/{workspace_id}/pipeline/*`（compute / backup / apply / restore / run）
+> 重要更新（2026-06-03）：generic pipeline 端点**全部清退**。
+> - `POST /api/pipeline/backup`、`POST /api/pipeline/apply` — 已删除
+> - `POST /api/pipeline/compute`、`POST /api/pipeline/run`、`POST /api/pipeline/visualize`、`POST /api/pipeline/restore` — 已删除（`routes/pipeline.py` 整文件删除）
+> - 所有流水线端点迁移为 workspace 感知：`POST /api/workspace/{workspace_id}/pipeline/*`
 
 ## 1. 概览（要点）
-- 事实源（实现文件）：[src/modmgr_web/schemas.py](src/modmgr_web/schemas.py)、[src/modmgr_web/adapters.py](src/modmgr_web/adapters.py)、[src/modmgr_web/app.py](src/modmgr_web/app.py)、[src/modmgr_web/routes/pipeline.py](src/modmgr_web/routes/pipeline.py)、[src/modmgr_web/routes/workspace.py](src/modmgr_web/routes/workspace.py)、[src/modmgr_web/sse.py](src/modmgr_web/sse.py)、[src/modmgr/orchestrator/__init__.py](src/modmgr/orchestrator/__init__.py)。
-- 原则：任何会写磁盘或执行备份/应用的执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 端点已整体清退——compute、run、restore、visualize 全部迁移到 workspace 感知端点。前端请求一律带 `workspaceId`，`backup_dir` 文件路径不再出现在 API 响应中。
-- Web UI 主路径约束：前端产品流程只允许调用工作区路由；generic `/api/pipeline/*` 仅供 CLI/脚本/内部用途，不作为 Web 应用文件访问主路径。
+- 事实源（实现文件）：[src/modmgr_web/schemas.py](src/modmgr_web/schemas.py)、[src/modmgr_web/adapters.py](src/modmgr_web/adapters.py)、[src/modmgr_web/app.py](src/modmgr_web/app.py)、[src/modmgr_web/routes/workspace.py](src/modmgr_web/routes/workspace.py)、[src/modmgr_web/sse.py](src/modmgr_web/sse.py)、[src/modmgr/orchestrator/__init__.py](src/modmgr/orchestrator/__init__.py)。
+- 原则：所有流水线执行入口必须走工作区路由（`/api/workspace/{id}/pipeline/*`）。generic `/api/pipeline/*` 端点已整体清退。前端请求一律带 `workspaceId`，`backup_dir` 文件路径不出现在 API 响应中。
+- CLI 路径：CLI 侧通过 `dispatch()` 直接构造 `TaskRequest`（`resolver_type=raw_dict` 或 `file_paths`），不经过 Web 路由，不依赖 generic pipeline 端点。
 
 ## 2. 通用响应格式（ApiResponse）
 所有非 SSE 的 JSON 响应采用统一包封：
@@ -70,18 +70,13 @@ SSE 端点最终会发送一个 `event: result`，其 `data` 部分采用上述 
 > 说明：上面列出的请求体形态与实现同步，以 [src/modmgr_web/schemas.py](src/modmgr_web/schemas.py) 为权威定义。特别注意：工作区的 `compute` / `run` 路由不需要也不会接受 `aggregated_rule_set` 等计算输入——它们从工作区目录读取。
 
 ## 4. SSE 使用示例（典型）
-- Generic run（需要在 body 中传入 `aggregated_rule_set`）：
-```http
-POST /api/pipeline/run
-Content-Type: application/json
 
-{
-  "database_name": "default",
-  "aggregated_rule_set": { /* 必填 */ },
-  "dry_run": false
-}
+- Workspace run（工作区主路径）：
+```http
+POST /api/workspace/{workspace_id}/pipeline/run
+Content-Type: application/json
 ```
-返回：`text/event-stream`，先若干 `event: progress`，最后 `event: result`，其中 `data` 是 ApiResponse（由 `adapt_pipeline_result` 序列化）。
+返回：`text/event-stream`，先若干 `event: progress`，最后 `event: result`，其中 `data` 是 ApiResponse（由 `adapt_pipeline_result` 序列化）。全部输入从工作区读取，请求体无聚合规则等计算参数。
 
 - Workspace apply（工作区主路径）：
 ```http
@@ -94,8 +89,8 @@ Content-Type: application/json
 
 ## 5. Pydantic schema（参考实现）
 详见 [src/modmgr_web/schemas.py](src/modmgr_web/schemas.py)。要点：
-- Generic `RunRequest` / `ComputeRequest` 需要 `aggregated_rule_set`（generic 端点）
 - Workspace 端点使用 `WorkspaceBackupRequest` / `WorkspaceApplyRequest` / `WorkspaceRestoreRequest`（仅含控制字段如 `dry_run` / `force`）
+- `Generic RunRequest` / `ComputeRequest` 已随 generic pipeline 端点清退（CLI 侧直接构造 `TaskRequest`，不经过 Pydantic schema）
 - `ApiResponse` 为统一输出信封（见第 2 节）
 
 ## 6. 适配器（adapters）

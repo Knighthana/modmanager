@@ -49,7 +49,7 @@
 | # | 位置 | 问题 |
 |---|------|------|
 | BUG-1 | `backup_ops.py:639` | `_list_orphans()` 被调用但从未定义 → `restore_from_backup` 孤儿检测崩溃 |
-| BUG-2 | `routes/pipeline.py:107` | restore SSE 端点不转发 `on_progress` → 前端进度条永远不动 |
+| BUG-2 | `routes/pipeline.py:107`（已删除）| restore SSE 端点不转发 `on_progress` → `routes/pipeline.py` 整文件已随裁定 9 删除，本 bug 关闭 |
 
 ### 🟡 非紧急
 

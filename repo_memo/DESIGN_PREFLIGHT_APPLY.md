@@ -8,7 +8,7 @@
 
 ## 一、职责边界
 
-实现文件：`src/modmgr/orchestrator/preflight.py`（orchestrator 子模块）。
+实现文件：`src/modmgr/orchestrator/fileops/planner/preflight.py`（Planner 下属子模块）。
 
 本文档描述 apply 前置 preflight 子模块。
 
@@ -102,8 +102,9 @@ manifest 的重点是“可被 orchestrator 与前端稳定消费”，而不是
 
 ```text
 dispatch(request)
-  -> Select Resolver / Resolve → CleanContext
-  -> Planner: plan_fileops() → FileOpsPlan (含 preflight manifest)
+  -> Resolver.resolve() → SourceDescriptor
+  -> DataPort.fetch() → clean dicts
+  -> fileops.execute() → plan_fileops() → FileOpsPlan (含 preflight manifest)
   -> Preflight gate check: manifest.ok?
   -> ok=true → execute primitive (apply / restore / backup)
   -> ok=false → return preflight result, skip primitive

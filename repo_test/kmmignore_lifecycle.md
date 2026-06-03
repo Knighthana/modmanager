@@ -1,69 +1,70 @@
-# kmmignore_lifecycle — .kmmignore 完整生命周期（Planner 管理）
+# kmmignore_lifecycle — .kmmignore 原地规则（Planner 管理）
 
 > Status: active
 > Authority: normative
 > Read-Tier: task-scoped
-> Purpose: 裁定 1 + 13 的测试断言 — 验证 `.kmmignore` 文件过滤和物理拷贝均由 Planner 管理
-> 依据: `DESIGN_BACKUP_OPS.md`、`DESIGN_PLANNER.md`、`work_memo/2026-06-01_TASK_arch_drift_review.md` 裁定 1/13
-> 替代: `repo_test/kmmignore_copy.md`（旧版，仅覆盖 copy 部分）
+> Purpose: 裁定 1 + 13 + 2026-06-03 的测试断言 — 验证 `.kmmignore` 原地读取、过滤、不搬动
+> 依据: `DESIGN_BACKUP_OPS.md`、`DESIGN_PLANNER.md`、`PENDING.md` Decision 8（原地规则）
+> 替代: `repo_test/kmmignore_copy.md`（旧版，描述已废弃的物理拷贝模型）
 
 ---
 
 ## 一、适用范围
 
-Planner **全权管理** `.kmmignore` 文件生命周期，原语（backup / restore / apply）不感知：
+Planner **全权管理** `.kmmignore` 文件 — 原地读取并过滤，**不搬动、不拷贝**。原语（backup / restore / apply）不感知：
 
 | 阶段 | 操作 | 归属 |
 |------|------|:---:|
-| 过滤 | 解析 `.kmmignore`（gitignore 语法），在 `plan_fileops()` 中过滤被忽略的文件 | Planner |
-| 备份时拷贝 | `_copy_kmmignore_to_backup()`：从源目录拷贝 `.kmmignore` 到 `backup_dir` | Planner |
-| 还原时拷贝 | `_copy_kmmignore_from_backup()`：从 `backup_dir` 拷贝 `.kmmignore` 回源目录 | Planner |
+| 过滤 | 解析 `.kmmignore`（gitignore 语法），在 `plan_fileops()` 中现场读取并过滤被忽略的文件 | Planner |
+| 不备份 | `.kmmignore` 不进入备份流程 | — |
+| 不恢复 | 恢复操作不触碰 `.kmmignore` | — |
+
+理由（2026-06-03）：modmanager 只有两个状态（原始态 / 被替换态），不存在多版本历史需追踪 `.kmmignore`。改写后下次 Planner 执行时当场生效。
 
 ---
 
 ## 二、黑箱测试断言
 
-### 2.1 迁移后状态
+### 2.1 拷贝函数不存在
 
 | # | 断言 | 级别 |
 |---|------|:---:|
-| T-KI-01 | `orchestrator/__init__.py` 不含 `_copy_kmmignore_to_backup` 函数 | MUST |
-| T-KI-02 | `orchestrator/__init__.py` 不含 `_copy_kmmignore_from_backup` 函数 | MUST |
-| T-KI-03 | `planner_fileops.py` 含 `_copy_kmmignore_to_backup` 函数 | MUST |
-| T-KI-04 | `planner_fileops.py` 含 `_copy_kmmignore_from_backup` 函数 | MUST |
+| T-KI-01 | 代码库中**任何模块**不含 `_copy_kmmignore_to_backup` 函数定义 | MUST |
+| T-KI-02 | 代码库中**任何模块**不含 `_copy_kmmignore_from_backup` 函数定义 | MUST |
+| T-KI-03 | `orchestrator/__init__.py` 不调用任何 `.kmmignore` 拷贝函数 | MUST |
+| T-KI-04 | `planner_fileops.py` 不执行任何 `.kmmignore` 文件写入（`shutil.copy` / `shutil.copy2` 等） | MUST |
 | T-KI-05 | `backup_ops.py` 不 import 任何 `.kmmignore` 相关模块或函数 | MUST |
 | T-KI-06 | `restore_ops.py` 不 import 任何 `.kmmignore` 相关模块或函数 | MUST |
 
-### 2.2 .kmmignore 拷贝行为
+### 2.2 原地过滤行为
 
 | # | 断言 | 级别 |
 |---|------|:---:|
-| T-KI-07 | 源目录根存在 `.kmmignore` → backup 后 `backup_dir` 根存在 `.kmmignore`（内容一致） | MUST |
-| T-KI-08 | 源目录子目录存在 `.kmmignore` → backup 后 `backup_dir` 对应子目录存在 `.kmmignore` | MUST |
-| T-KI-09 | 源目录无 `.kmmignore` → backup 后 `backup_dir` 无 `.kmmignore`（不报错） | MUST |
-| T-KI-10 | `backup_dir` 已存在 `.kmmignore` → restore 后源目录对应位置被还原 `.kmmignore`（覆盖） | MUST |
-| T-KI-11 | `backup_dir` 无 `.kmmignore` → restore 后源目录无变化（不报错） | MUST |
-| T-KI-12 | `.kmmignore` 拷贝失败（权限不足）→ 记录 warning，不阻断整体流程 | SHOULD |
+| T-KI-07 | `plan_fileops()` 读取源目录中存在的 `.kmmignore` 文件（而非从 backup_dir 读取） | MUST |
+| T-KI-08 | `plan_fileops()` 返回的 `FileOpsPlan.entries_by_backup_dir` 不含被 `.kmmignore` 忽略的文件 | MUST |
+| T-KI-09 | `plan_fileops()` 输出中的 `ignore_rule_set` 缓存可供原语直接消费 | MUST |
+| T-KI-10 | 源目录无 `.kmmignore` → 过滤结果为空 ignore 集，不报错 | MUST |
 
-### 2.3 .kmmignore 过滤行为
+### 2.3 .kmmignore 不搬动
 
 | # | 断言 | 级别 |
 |---|------|:---:|
-| T-KI-13 | `plan_fileops()` 返回的 `FileOpsPlan.entries_by_backup_dir` 不含被 `.kmmignore` 忽略的文件 | MUST |
-| T-KI-14 | `plan_fileops()` 输出中的 `ignore_rule_set` 缓存可供原语直接消费 | MUST |
+| T-KI-11 | backup 操作后 `backup_dir` 中不含 `.kmmignore` 文件（不被拷贝） | MUST |
+| T-KI-12 | restore 操作后源目录 `.kmmignore` 内容不变（不被覆盖/还原） | MUST |
+| T-KI-13 | `.kmmignore` 拷贝失败的错误码和 warning 不再存在 | SHOULD |
 
 ### 2.4 文档一致性
 
 | # | 断言 | 级别 |
 |---|------|:---:|
-| T-KI-15 | `DESIGN_BACKUP_OPS.md §十三` 描述 Planner 管理 `.kmmignore` 生命周期 | MUST |
-| T-KI-16 | `DESIGN_RESTORE_OPS.md §八` 不再描述 restore 原语操作 `.kmmignore` | MUST |
-| T-KI-17 | `DESIGN_PLANNER.md` 描述 Planner 的 `.kmmignore` 完整生命周期职责 | MUST |
+| T-KI-14 | `DESIGN_BACKUP_OPS.md §十三` 描述 `.kmmignore` 原地生效，不搬动 | MUST |
+| T-KI-15 | `DESIGN_RESTORE_OPS.md §八` 不描述 restore 原语操作 `.kmmignore` | MUST |
+| T-KI-16 | `DESIGN_PLANNER.md` 描述 `.kmmignore` 原地过滤职责 | MUST |
 
 ---
 
 ## 三、验收标准
 
-- [ ] 全部 T-KI-01 ~ T-KI-17 通过
-- [ ] `orchestrator/__init__.py` 中 `_dispatch_fileops` 不再直接操作 `.kmmignore` 文件
+- [ ] 全部 T-KI-01 ~ T-KI-16 通过
+- [ ] `fileops/__init__.py:execute()`（原 `_dispatch_fileops`）不操作 `.kmmignore` 文件
 - [ ] 现有备份/还原测试不受影响

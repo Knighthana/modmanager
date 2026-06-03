@@ -1,6 +1,7 @@
 # 2026-06-01 — 架构漂移审查：user 最新架构裁定
 
 > 来源：user 在审查文档矛盾过程中的实时裁定。
+> **勘误（2026-06-03）**：本文档描述的裁定 13（`.kmmignore` 物理拷贝从 orchestrator 迁入 Planner）已被后续决策覆盖——`.kmmignore` 最终采用**原地规则**（in-place），不搬动不拷贝。`_copy_kmmignore_to_backup/from_backup` 两个函数不是"迁移"而是"删除"。详见 `PENDING.md` Decision 8。
 
 ---
 

@@ -46,4 +46,4 @@ TypedDict 仅在静态检查时生效（mypy/pyright），不阻止运行时构�
 | execute | `shutil.copy2` / `shutil.copytree` | 已有守卫（原语内部 `if not dry_run`） |
 | execute | `os.remove` / `shutil.rmtree` | 已有守卫 |
 
-**实现**：`_dispatch_fileops` 中 prep 调用前加 `and not plan.dry_run` 守卫。
+**实现**：`fileops/__init__.py:execute()` 中 prep 调用前加 `and not plan.dry_run` 守卫。
