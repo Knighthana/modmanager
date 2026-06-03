@@ -85,7 +85,7 @@ Content-Type: application/json
 
 { "dry_run": false }
 ```
-行为：后端通过 `dispatch(Intent.APPLY)` 进入 Resolver → Planner → 原语管线执行；全部上下文（mapping、backup_dir、database）由工作区解析，不从请求体读取。
+行为：后端通过 `dispatch(Intent.APPLY)` 进入 Resolver → DataPort → Planner → 原语管线执行；全部上下文（mapping、database）由工作区解析，不从请求体读取。
 
 ## 5. Pydantic schema（参考实现）
 详见 [src/modmgr_web/schemas.py](src/modmgr_web/schemas.py)。要点：
@@ -108,7 +108,7 @@ Content-Type: application/json
 - CORS 仅在开发态启用；生产态（存在 `frontend/dist/index.html`）不挂载 CORS 中间件。
 - 开发态可通过环境变量 `KMM_CORS_ORIGINS` 覆盖允许源（逗号分隔）。
 - 路由注册使用 prefix：
-  - `/api/config`, `/api/database`, `/api/pipeline`, `/api/rules`, `/api/backups`, `/api/workspace`
+  - `/api/config`, `/api/database`, `/api/rules`, `/api/backups`, `/api/workspace`, `/api/os`
 
 ## 8. 已删除的端点（本轮清退）
 - `POST /api/pipeline/backup`（generic 执行入口） — 已删除，备份执行请使用工作区端点。

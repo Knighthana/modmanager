@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "SseEvent",
-    "description": "Schema for SSE (Server-Sent Events) emitted by modmanager_web.sse.stream_with_progress().",
+    "description": "Schema for SSE (Server-Sent Events) emitted by modmgr_web.sse.stream_with_progress().",
     "version": "knighthana@0.1.0",
     "type": "object",
     "required": ["payload"],

@@ -89,7 +89,7 @@ POST /api/config/discover          → 返回 user_config
 | 1.2 | `engine.py` 移除 `validate_database` 中的 managed 过滤逻辑 | engine.py | `test_engine.py` 更新 |
 | 1.3 | `orchestrator.py` 新增 `_apply_managed_filter`（接收 managed_entries 参数） | orchestrator.py | `test_orchestrator.py` 更新 |
 | 1.4 | `schemas.py` `ComputeRequest` / `RunRequest` 新增 `managed_entries`、`branch_decisions`、`database_name` 可选字段 | schemas.py | — |
-| 1.5 | `routes/pipeline.py` compute/run 端点：orchestrator 内部通过 bootstrap 获取 database；managed_entries 从请求参数接收 | routes/pipeline.py | `test_web_api.py` 更新 |
+| 1.5 | `routes/pipeline.py` compute/run 端点：orchestrator 内部通过 bootstrap 获取 database；managed_entries 从请求参数接收 | routes/pipeline.py | `test_web_api.py` 更新 | **[OBSOLETE]** `routes/pipeline.py` 已随裁定 9 删除 |
 | 1.6 | `routes/database.py` generate 端点：不再写入 managed/warnings/errors；新增 read 端点 | routes/database.py | `test_web_api.py` 更新 |
 | 1.7 | `routes/rules.py` 新增 `POST /api/rules/affected-entries` 端点 | routes/rules.py | `test_web_api.py` 更新 |
 | 1.8 | 全量 Python 测试回归 + 文档更新 | — | `pytest` 全量 |

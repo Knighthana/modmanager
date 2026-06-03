@@ -19,7 +19,7 @@ Planner **全权管理** `.kmmignore` 文件 — 原地读取并过滤，**不�
 | 不备份 | `.kmmignore` 不进入备份流程 | — |
 | 不恢复 | 恢复操作不触碰 `.kmmignore` | — |
 
-理由（2026-06-03）：modmanager 只有两个状态（原始态 / 被替换态），不存在多版本历史需追踪 `.kmmignore`。改写后下次 Planner 执行时当场生效。
+理由（2026-06-03）：modmgr 只有两个状态（原始态 / 被替换态），不存在多版本历史需追踪 `.kmmignore`。改写后下次 Planner 执行时当场生效。
 
 ---
 
@@ -32,7 +32,7 @@ Planner **全权管理** `.kmmignore` 文件 — 原地读取并过滤，**不�
 | T-KI-01 | 代码库中**任何模块**不含 `_copy_kmmignore_to_backup` 函数定义 | MUST |
 | T-KI-02 | 代码库中**任何模块**不含 `_copy_kmmignore_from_backup` 函数定义 | MUST |
 | T-KI-03 | `orchestrator/__init__.py` 不调用任何 `.kmmignore` 拷贝函数 | MUST |
-| T-KI-04 | `planner_fileops.py` 不执行任何 `.kmmignore` 文件写入（`shutil.copy` / `shutil.copy2` 等） | MUST |
+| T-KI-04 | `orchestrator/planner_fileops.py`（目标：`fileops/planner/planner.py`）不执行任何 `.kmmignore` 文件写入（`shutil.copy` / `shutil.copy2` 等） | MUST |
 | T-KI-05 | `backup_ops.py` 不 import 任何 `.kmmignore` 相关模块或函数 | MUST |
 | T-KI-06 | `restore_ops.py` 不 import 任何 `.kmmignore` 相关模块或函数 | MUST |
 

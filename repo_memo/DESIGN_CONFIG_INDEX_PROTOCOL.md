@@ -70,7 +70,7 @@ def resolve_config_index(
 | `routes/config.py` | `discover_config`：用 `resolve_config_index()` 替代 body 中的 `config_index` |
 | `routes/database.py` | 所有端点：用 `resolve_config_index()` 替代 body 中的 `config_index` |
 | `routes/workspace.py` | `workspace_compute` 等：删 `config_index: str = Query(...)`，改用 `resolve_config_index()` |
-| `routes/pipeline.py` | 同上 |
+| `routes/pipeline.py` | **[N/A — 文件已于裁定 9 删除]** |
 | `routes/rules.py` | 同上 |
 | `schemas.py` | 所有 request schema：删 `config_index` 字段 |
 

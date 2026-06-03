@@ -10,13 +10,13 @@
 
 ## 一、适用范围
 
-gate / preflight 逻辑由 Planner 及附属部件（`preflight.py`）独占：
+gate / preflight 逻辑由 Planner 及附属部件（`orchestrator/fileops/planner/preflight.py`）独占：
 
 | 函数 | 原位置 | 目标位置 |
 |------|--------|---------|
-| `check_backup_gate()` | `backup_ops.py` | `planner_fileops.py` 或 `preflight.py` |
-| `run_apply_preflight()` | `preflight.py`（已正确） | 不变 |
-| `run_restore_preflight()` | `preflight.py`（已正确） | 不变 |
+| `check_backup_gate()` | `backup_ops.py` | `fileops/planner/planner.py` 或 `fileops/planner/preflight.py` |
+| `run_apply_preflight()` | `orchestrator/preflight.py`（已正确） | 不变（迁入 `fileops/planner/preflight.py`） |
+| `run_restore_preflight()` | `orchestrator/preflight.py`（已正确） | 不变（迁入 `fileops/planner/preflight.py`） |
 
 原语（backup / restore / apply）不持有任何 gate / preflight 逻辑。
 
@@ -32,13 +32,13 @@ gate / preflight 逻辑由 Planner 及附属部件（`preflight.py`）独占：
 | T-GT-02 | `backup_ops.__all__` 不含 `"check_backup_gate"` | MUST |
 | T-GT-03 | `backup_ops.py` 中不存在任何名为 `check_*_gate` 的函数 | MUST |
 | T-GT-04 | `apply_ops.py` 不 import `backup_ops` 的 gate 函数 | MUST |
-| T-GT-05 | `preflight.py` 不 import `backup_ops`（不直接跨原语边界引用） | MUST |
+| T-GT-05 | `fileops/planner/preflight.py` 不 import `backup_ops`（不直接跨原语边界引用） | MUST |
 
 ### 2.2 Planner 新职责
 
 | # | 断言 | 级别 |
 |---|------|:---:|
-| T-GT-06 | `check_backup_gate` 在 `planner_fileops.py` 或 `preflight.py` 中可 import | MUST |
+| T-GT-06 | `check_backup_gate` 在 `fileops/planner/planner.py` 或 `fileops/planner/preflight.py` 中可 import | MUST |
 | T-GT-07 | Planner 调用的 `check_backup_gate` 功能与迁移前一致（同一输入 → 同一结果） | MUST |
 | T-GT-08 | `plan_fileops()` 输出的 `FileOpsPlan.preflight_manifest` 包含 gate 检查结果 | MUST |
 
@@ -55,4 +55,4 @@ gate / preflight 逻辑由 Planner 及附属部件（`preflight.py`）独占：
 
 - [ ] 全部 T-GT-01 ~ T-GT-10 通过
 - [ ] 现有备份流程不受影响（gate 检查结果一致）
-- [ ] `preflight.py` 不再跨原语边界 import
+- [ ] `fileops/planner/preflight.py` 不再跨原语边界 import

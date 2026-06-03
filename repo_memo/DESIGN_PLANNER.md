@@ -62,7 +62,7 @@ Decision 2026-06-03: `.kmmignore` 始终原地生效，**不搬动、不拷贝**
 - **不备份**：`.kmmignore` 文件不进入备份流程
 - **不恢复**：恢复操作不触碰 `.kmmignore` 文件
 
-理由：modmanager 只有两个状态（原始态 / 被替换态），不存在多版本历史需要追踪 `.kmmignore`。改写 `.kmmignore` 后下次 Planner 执行时当场生效。
+理由：modmgr 只有两个状态（原始态 / 被替换态），不存在多版本历史需要追踪 `.kmmignore`。改写 `.kmmignore` 后下次 Planner 执行时当场生效。
 
 原语对 `.kmmignore` **无感知**——不 import、不操作、不决策。
 
@@ -72,7 +72,7 @@ Planner 及附属部件（`fileops/planner/preflight.py`）**独占**所有 gate
 
 | 函数 | 原位置 | 新位置 | 说明 |
 |------|--------|--------|------|
-| `check_backup_gate()` | `backup_ops.py` | `planner_fileops.py` 或 `preflight.py` | 备份门禁：检查 backup_dir 可恢复性 |
+| `check_backup_gate()` | `backup_ops.py` | `fileops/planner/planner.py` 或 `fileops/planner/preflight.py` | 备份门禁：检查 backup_dir 可恢复性 |
 | `run_apply_preflight()` | `preflight.py` | `fileops/planner/preflight.py` | apply 前置门禁 |
 | `run_restore_preflight()` | `preflight.py` | `fileops/planner/preflight.py` | restore 前置门禁 |
 

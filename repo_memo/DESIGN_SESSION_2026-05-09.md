@@ -3,6 +3,7 @@
 > Status: active
 > Authority: authoritative
 > Read-Tier: task-scoped
+> **勘误（2026-06-03）**：`routes/pipeline.py` 已随裁定 9 整文件删除，本文档中引用该文件的 A1 任务项视为已关闭。
 > Purpose: 本轮工作会话任务分解：TODO-8 分支决策持久化、TODO-9 onDbPathBlur 校验、TODO-6 下游路径门禁强制执行、TODO-11 aggregator 层路径 ~ 展开
 > 创建：2026-05-09
 
