@@ -293,7 +293,7 @@ class TestComputePipeline:
     ) -> None:
         """SSE stream returns progress + result for workspace compute pipeline."""
 
-        def fake_compute_ws(workspace_id, *, config_index, on_progress=None):
+        def fake_dispatch(request, *, on_progress=None):
             if on_progress:
                 on_progress("compute", 0, 1, "Computing...")
                 on_progress("compute", 1, 1, "Done")
@@ -305,7 +305,7 @@ class TestComputePipeline:
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.workspace.compute_ws", fake_compute_ws
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
 
         resp = client.post(
@@ -342,14 +342,14 @@ class TestComputePipeline:
     ) -> None:
         """Workspace compute with error returns ok=false."""
 
-        def fake_compute_ws(workspace_id, *, config_index, on_progress=None):
+        def fake_dispatch(request, *, on_progress=None):
             return PipelineResult(
                 ok=False,
                 errors=["E_WORKSPACE_NOT_FOUND: workspace 'bad_ws' not found"],
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.workspace.compute_ws", fake_compute_ws
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
 
         resp = client.post(
@@ -553,7 +553,7 @@ class TestSseDisconnect:
     ) -> None:
         """If the client disconnects early, the handler should not crash."""
 
-        def fake_compute_ws(workspace_id, *, config_index, on_progress=None):
+        def fake_dispatch(request, *, on_progress=None):
             if on_progress:
                 on_progress("compute", 0, 1, "Computing...")
             return PipelineResult(
@@ -564,7 +564,7 @@ class TestSseDisconnect:
             )
 
         monkeypatch.setattr(
-            "modmgr_web.routes.workspace.compute_ws", fake_compute_ws
+            "modmgr_web.routes.workspace.dispatch", fake_dispatch
         )
 
         # Send a normal request — the important thing is that it does not

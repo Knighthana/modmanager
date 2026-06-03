@@ -68,7 +68,22 @@ def dispatch(request: TaskRequest, *, on_progress=None) -> PipelineResult:
 
     # ── 4. Dispatch by intent ───────────────────────────────────────
     if request.intent == Intent.COMPUTE_MAPPING:
-        result = _dispatch_compute(data, on_progress)
+        result_dict = compute(data, on_progress=on_progress)
+        # Attach fingerprint source so DataPort.push() can compute hashes
+        mapping_result = result_dict.get("mapping_result", {})
+        if isinstance(mapping_result, dict):
+            mapping_result["_fingerprint_inputs"] = {
+                "aggregated_rule_set": data.get("aggregated_rule_set", {}),
+                "database": data.get("database", {}),
+            }
+        result = PipelineResult(
+            ok=not result_dict.get("errors"),
+            errors=result_dict.get("errors", []),
+            warnings=result_dict.get("warnings", []),
+            trees=result_dict.get("trees", []),
+            final_mapping=result_dict.get("final_mapping", []),
+            mapping_result=mapping_result,
+        )
     elif request.intent in (Intent.BACKUP, Intent.APPLY, Intent.RESTORE, Intent.RUN):
         result = execute(
             request, data, request.intent, request.flags,
@@ -97,27 +112,6 @@ def dispatch(request: TaskRequest, *, on_progress=None) -> PipelineResult:
             pass  # push failures are non-fatal
 
     return result
-
-
-def _dispatch_compute(data: dict, on_progress) -> PipelineResult:
-    """Compute intent: compute engine → wrap in PipelineResult."""
-    result_dict = compute(data, on_progress=on_progress)
-
-    # Add fingerprint source info for DataPort.push()
-    result_dict.setdefault("mapping_result", {})
-    result_dict["mapping_result"]["_fingerprint_inputs"] = {
-        "aggregated_rule_set": data.get("aggregated_rule_set", {}),
-        "database": data.get("database", {}),
-    }
-
-    return PipelineResult(
-        ok=not result_dict.get("errors"),
-        errors=result_dict.get("errors", []),
-        warnings=result_dict.get("warnings", []),
-        trees=result_dict.get("trees", []),
-        final_mapping=result_dict.get("final_mapping", []),
-        mapping_result=result_dict.get("mapping_result", {}),
-    )
 
 
 def _select_resolver(request: TaskRequest):

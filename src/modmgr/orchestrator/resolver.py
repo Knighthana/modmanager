@@ -59,4 +59,6 @@ class RawDictResolver:
             source_type="raw_dict",
             database_dict=args.get("database", {}),
             aggregated_rule_set=args.get("aggregated_rule_set"),
+            final_mapping=args.get("final_mapping"),
+            user_config_dict=args.get("user_config"),
         )

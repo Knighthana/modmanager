@@ -42,6 +42,8 @@ class SourceDescriptor:
     database_path: str | None = None
     database_dict: dict | None = None
     aggregated_rule_set: dict | None = None
+    final_mapping: list | None = None
+    user_config_dict: dict | None = None
 
 
 @dataclass
@@ -150,8 +152,8 @@ def _fetch_raw_dict(desc: SourceDescriptor) -> dict[str, Any]:
     """Fetch data from inline dicts."""
     result: dict[str, Any] = {
         "database": desc.database_dict or {},
-        "user_config": {},
-        "final_mapping": [],
+        "user_config": desc.user_config_dict or {},
+        "final_mapping": desc.final_mapping or [],
     }
     if desc.aggregated_rule_set is not None:
         result["aggregated_rule_set"] = desc.aggregated_rule_set
