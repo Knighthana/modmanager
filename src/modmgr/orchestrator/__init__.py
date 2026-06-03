@@ -11,9 +11,10 @@ Provides:
 from __future__ import annotations
 
 from ._common import PipelineResult, ProgressCallback
-from .compute_pipeline import compute, compute_ws
+from .compute_pipeline import compute
+from .data_port import DestDescriptor, SourceDescriptor, fetch, push
 from .entry import Intent, TaskRequest
-from .resolver import CleanContext, WorkspaceResolver, FilePathResolver, RawDictResolver
+from .resolver import FilePathResolver, RawDictResolver, WorkspaceResolver
 from .fileops import execute
 
 # ── Unified dispatch ────────────────────────────────────────────────────
@@ -23,8 +24,7 @@ def dispatch(request: TaskRequest, *, on_progress=None) -> PipelineResult:
     """Unified orchestrator entry point.
 
     All callers (Web API routes, CLI) route through this single function.
-    The orchestrator inspects ``request.intent`` and delegates to the
-    appropriate pipeline.
+    Flow: Resolver.resolve → DataPort.fetch → Engine/Planner → DataPort.push
 
     Args:
         request: Canonical TaskRequest from the Entry layer.
@@ -33,78 +33,104 @@ def dispatch(request: TaskRequest, *, on_progress=None) -> PipelineResult:
     Returns:
         PipelineResult with execution outcome.
     """
+    # ── 1. Select resolver ──────────────────────────────────────────
+    resolver = _select_resolver(request)
+
+    # ── 2. Resolve → SourceDescriptor ───────────────────────────────
+    if on_progress:
+        on_progress("prepare", 0, 6, "Resolving context...")
+    try:
+        fetch_desc: SourceDescriptor = resolver.resolve(request)
+    except Exception as exc:
+        return PipelineResult(
+            ok=False,
+            errors=[f"E_RESOLVE_FAILED: {exc}"],
+            warnings=[],
+            trees=[],
+            final_mapping=[],
+            mapping_result={},
+        )
+
+    # ── 3. Fetch → clean dict ───────────────────────────────────────
+    if on_progress:
+        on_progress("prepare", 1, 6, "Reading data...")
+    try:
+        data = fetch(fetch_desc, request.intent)
+    except Exception as exc:
+        return PipelineResult(
+            ok=False,
+            errors=[f"E_FETCH_FAILED: {exc}"],
+            warnings=[],
+            trees=[],
+            final_mapping=[],
+            mapping_result={},
+        )
+
+    # ── 4. Dispatch by intent ───────────────────────────────────────
     if request.intent == Intent.COMPUTE_MAPPING:
-        return _dispatch_compute(request, on_progress)
-
-    if request.intent in (Intent.BACKUP, Intent.APPLY, Intent.RESTORE, Intent.RUN):
-        # ── 1. Select resolver ──────────────────────────────────────
-        resolver_type = request.resolver_type
-        if resolver_type == "workspace":
-            resolver = WorkspaceResolver()
-        elif resolver_type == "file_paths":
-            resolver = FilePathResolver()
-        elif resolver_type == "raw_dict":
-            resolver = RawDictResolver()
-        else:
-            return PipelineResult(
-                ok=False,
-                errors=[f"E_BAD_RESOLVER_TYPE: {resolver_type}"],
-                warnings=[],
-                trees=[],
-                final_mapping=[],
-                mapping_result={},
-            )
-
-        # ── 2. Resolve → CleanContext ───────────────────────────────
-        if on_progress:
-            on_progress("prepare", 0, 6, "Resolving context...")
-        try:
-            context: CleanContext = resolver.resolve(request)
-        except Exception as exc:
-            return PipelineResult(
-                ok=False,
-                errors=[f"E_RESOLVE_FAILED: {exc}"],
-                warnings=[],
-                trees=[],
-                final_mapping=[],
-                mapping_result={},
-            )
-
-        # ── 3. Build data dict → fileops.execute ────────────────────
-        data = {
-            "database": context.database,
-            "user_config": context.user_config,
-            "final_mapping": context.final_mapping,
-        }
-        return execute(
+        result = _dispatch_compute(data, on_progress)
+    elif request.intent in (Intent.BACKUP, Intent.APPLY, Intent.RESTORE, Intent.RUN):
+        result = execute(
             request, data, request.intent, request.flags,
             on_progress=on_progress,
         )
+    else:
+        return PipelineResult(
+            ok=False,
+            errors=[f"E_BAD_INTENT: unknown intent {request.intent}"],
+            warnings=[],
+            trees=[],
+            final_mapping=[],
+            mapping_result={},
+        )
+
+    # ── 5. Push (if output destination specified) ───────────────────
+    if request.output_type != "none":
+        dest_desc = DestDescriptor(
+            output_type=request.output_type,
+            workspace_id=request.output_args.get("workspace_id"),
+            config_index=request.output_args.get("config_index", ""),
+        )
+        try:
+            push(dest_desc, request.intent, result)
+        except Exception:
+            pass  # push failures are non-fatal
+
+    return result
+
+
+def _dispatch_compute(data: dict, on_progress) -> PipelineResult:
+    """Compute intent: compute engine → wrap in PipelineResult."""
+    result_dict = compute(data, on_progress=on_progress)
+
+    # Add fingerprint source info for DataPort.push()
+    result_dict.setdefault("mapping_result", {})
+    result_dict["mapping_result"]["_fingerprint_inputs"] = {
+        "aggregated_rule_set": data.get("aggregated_rule_set", {}),
+        "database": data.get("database", {}),
+    }
 
     return PipelineResult(
-        ok=False,
-        errors=[f"E_BAD_INTENT: unknown intent {request.intent}"],
-        warnings=[],
-        trees=[],
-        final_mapping=[],
-        mapping_result={},
+        ok=not result_dict.get("errors"),
+        errors=result_dict.get("errors", []),
+        warnings=result_dict.get("warnings", []),
+        trees=result_dict.get("trees", []),
+        final_mapping=result_dict.get("final_mapping", []),
+        mapping_result=result_dict.get("mapping_result", {}),
     )
 
 
-def _dispatch_compute(request: TaskRequest, on_progress) -> PipelineResult:
-    """Delegate compute intent to the compute pipeline.
-
-    Extracts compute parameters from resolver_args and calls compute().
-    """
-    return compute(
-        database=request.resolver_args.get("database", {}),
-        aggregated_rule_set=request.resolver_args.get("aggregated_rule_set"),
-        action_orders=request.resolver_args.get("action_orders"),
-        branch_decisions=request.resolver_args.get("branch_decisions"),
-        managed_entries=request.resolver_args.get("managed_entries"),
-        on_progress=on_progress,
-    )
-
+def _select_resolver(request: TaskRequest):
+    """Select the appropriate resolver by request.resolver_type."""
+    resolver_type = request.resolver_type
+    if resolver_type == "workspace":
+        return WorkspaceResolver()
+    elif resolver_type == "file_paths":
+        return FilePathResolver()
+    elif resolver_type == "raw_dict":
+        return RawDictResolver()
+    else:
+        raise ValueError(f"E_BAD_RESOLVER_TYPE: {resolver_type}")
 
 
 __all__ = [

@@ -109,17 +109,16 @@ class TestGateBoundary:
 
         from modmgr.orchestrator.entry import Intent, TaskRequest
         from modmgr.orchestrator.fileops.planner.planner import plan_fileops
-        from modmgr.orchestrator.resolver import CleanContext
 
-        context = CleanContext(
-            final_mapping=[{"path": "/game/file.txt", "request": {"action": "replace", "path": "/src/file.txt"}}],
-            database={
+        context = {
+            "final_mapping": [{"path": "/game/file.txt", "request": {"action": "replace", "path": "/src/file.txt"}}],
+            "database": {
                 "game": [{"basepath": "/game", "mixed_id": "game:270150"}],
                 "mod": [],
                 "steamlib": [],
             },
-            user_config={"baksuffix": "kmmbackup"},
-        )
+            "user_config": {"baksuffix": "kmmbackup"},
+        }
         request = TaskRequest(
             identity="cli",
             intent=Intent.APPLY,

@@ -7,7 +7,6 @@ from pathlib import Path
 
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.orchestrator.fileops.planner.planner import plan_fileops
-from modmgr.orchestrator.resolver import CleanContext
 
 APPID = "270150"
 CONTENTID = "2606099273"
@@ -82,16 +81,16 @@ class TestBakignoreFiltering:
             root = Path(td)
             _build_steam_fixture(root)
 
-            context = CleanContext(
-                final_mapping=_make_final_mapping(root),
-                database=_make_database(root),
-                user_config={
+            context = {
+                "final_mapping": _make_final_mapping(root),
+                "database": _make_database(root),
+                "user_config": {
                     "schema_namespace": "KMM_UserConfig",
                     "schema_version": "knighthana@0.1.0",
                     "baksuffix": "kmmbackup",
                     "bakignore": ["kmmbackup"],
                 },
-            )
+            }
             request = TaskRequest(
                 identity="cli",
                 intent=Intent.BACKUP,
@@ -114,16 +113,16 @@ class TestBakignoreFiltering:
             root = Path(td)
             _build_steam_fixture(root)
 
-            context = CleanContext(
-                final_mapping=_make_final_mapping(root),
-                database=_make_database(root),
-                user_config={
+            context = {
+                "final_mapping": _make_final_mapping(root),
+                "database": _make_database(root),
+                "user_config": {
                     "schema_namespace": "KMM_UserConfig",
                     "schema_version": "knighthana@0.1.0",
                     "baksuffix": "otherbak",
                     "bakignore": ["kmmbackup"],
                 },
-            )
+            }
             request = TaskRequest(
                 identity="cli",
                 intent=Intent.BACKUP,
@@ -145,16 +144,16 @@ class TestBakignoreFiltering:
             root = Path(td)
             _build_steam_fixture(root)
 
-            context = CleanContext(
-                final_mapping=_make_final_mapping(root),
-                database=_make_database(root),
-                user_config={
+            context = {
+                "final_mapping": _make_final_mapping(root),
+                "database": _make_database(root),
+                "user_config": {
                     "schema_namespace": "KMM_UserConfig",
                     "schema_version": "knighthana@0.1.0",
                     "baksuffix": "kmmbackup",
                     "bakignore": ["kmmbackup"],
                 },
-            )
+            }
             request = TaskRequest(
                 identity="cli",
                 intent=Intent.APPLY,
@@ -177,16 +176,16 @@ class TestBakignoreFiltering:
             root = Path(td)
             _build_steam_fixture(root)
 
-            context = CleanContext(
-                final_mapping=_make_final_mapping(root),
-                database=_make_database(root),
-                user_config={
+            context = {
+                "final_mapping": _make_final_mapping(root),
+                "database": _make_database(root),
+                "user_config": {
                     "schema_namespace": "KMM_UserConfig",
                     "schema_version": "knighthana@0.1.0",
                     "baksuffix": "kmmbackup",
                     "bakignore": ["kmmbackup"],
                 },
-            )
+            }
             request = TaskRequest(
                 identity="cli",
                 intent=Intent.RESTORE,

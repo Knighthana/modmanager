@@ -1,20 +1,12 @@
-"""Compute pipeline — managed filter + compute + compute_ws."""
+"""Compute pipeline — managed filter + compute."""
 
 from __future__ import annotations
 
 import copy
 from typing import Any
 
-from ..bootstrap import discover_user_config
 from ..engine import compute_mapping
-from ._common import (
-    PipelineResult,
-    ProgressCallback,
-    _get_workspace_manager,
-    _resolve_database,
-    _sha256_dict,
-    _utcnow,
-)
+from ._common import ProgressCallback
 
 
 # ── Managed entries filter ────────────────────────────────────────────
@@ -77,42 +69,50 @@ def _apply_managed_filter(
     return result
 
 
-# ── Phase helpers ─────────────────────────────────────────────────────
+# ── Compute ────────────────────────────────────────────────────────────
 
 
 def compute(
-    database: dict,
+    data: dict,
     *,
-    aggregated_rule_set: dict | None = None,
-    action_orders: dict[str, int] | None = None,
-    branch_decisions: dict[str, str] | None = None,
-    managed_entries: dict | None = None,
     on_progress: ProgressCallback | None = None,
-) -> PipelineResult:
+) -> dict:
     """Compute the file mapping from a pre-aggregated rule set dict.
 
+    Pure computation — no I/O. Caller (dispatch) handles DataPort.fetch
+    before and DataPort.push after.
+
     Args:
-        database: Game database dict.
-        aggregated_rule_set: Pre-aggregated rule set dict. When ``None``,
-            returns an error.
-        action_orders: Optional ``{mixed_id: int}`` overrides.
-        branch_decisions: Optional explicit branch decisions.
-        managed_entries: Optional dict to filter database entries before
-            computing. Format: ``{"game": {appid: [basepaths]}, "mod": {mixed_id: [paths]}}``.
+        data: DataPort.fetch() result with keys:
+            - ``database``
+            - ``aggregated_rule_set``
+            - ``branch_decisions`` (optional)
+            - ``managed_entries`` (optional)
         on_progress: Optional progress callback.
 
     Returns:
-        A ``PipelineResult``.  ``backup_result`` and ``apply_result`` are
-        always ``None`` from this function.
+        A dict with keys:
+        - ``mapping_result``: raw result from ``compute_mapping``
+        - ``trees``: mapping trees
+        - ``errors``: error list
+        - ``warnings``: warning list
+        - ``final_mapping``: resolved mapping list
     """
+    database = data.get("database", {})
+    aggregated_rule_set = data.get("aggregated_rule_set")
+    branch_decisions = data.get("decisions", {}).get("branch_decisions")
+    managed_entries = data.get("decisions", {}).get("managed_entries")
+
     # ── Validate rule input ────────────────────────────────────────────
     if not aggregated_rule_set:
-        return PipelineResult(
-            ok=False,
-            errors=["E_NO_RULE_INPUT: aggregated_rule_set is required"],
-        )
-    aggregated = aggregated_rule_set
-    agg_errors: list[str] = []
+        return {
+            "mapping_result": {},
+            "trees": [],
+            "errors": ["E_NO_RULE_INPUT: aggregated_rule_set is required"],
+            "warnings": [],
+            "final_mapping": [],
+        }
+
     agg_warnings: list[str] = []
 
     # ── Apply managed filter before computation ───────────────────────────
@@ -123,7 +123,7 @@ def compute(
         on_progress("compute", 0, 1, "Computing mapping...")
 
     mapping_result = compute_mapping(
-        aggregated_rule_set=aggregated,
+        aggregated_rule_set=aggregated_rule_set,
         database=filtered_database,
         branch_decisions=branch_decisions or {},
     )
@@ -131,104 +131,10 @@ def compute(
     if on_progress is not None:
         on_progress("compute", 1, 1, "Mapping computation complete")
 
-    return PipelineResult(
-        ok=not mapping_result.get("errors"),
-        errors=mapping_result.get("errors", []),
-        warnings=agg_warnings + mapping_result.get("warnings", []),
-        trees=mapping_result.get("trees", []),
-        final_mapping=mapping_result.get("final_mapping", []),
-        mapping_result=mapping_result,
-    )
-
-
-# ── Workspace-aware entry points ──────────────────────────────────────
-
-
-def compute_ws(
-    workspace_id: str,
-    *,
-    config_index: str,
-    on_progress: ProgressCallback | None = None,
-) -> PipelineResult:
-    """Compute mapping in a workspace context.
-
-    Reads ``aggregated_rule.json`` and ``decisions.json`` from the
-    workspace, resolves the bound database, and computes the mapping.
-    Results (mapping + SVG + fingerprints) are written back to the
-    workspace directory.
-
-    Args:
-        workspace_id: Target workspace identifier.
-        config_index: Path to user_config.json.
-        on_progress: Optional progress callback.
-
-    Returns:
-        A ``PipelineResult``.  ``backup_result`` and ``apply_result`` are
-        always ``None`` from this function.
-    """
-    user_config, _ = discover_user_config(config_index=config_index)
-    wm = _get_workspace_manager(user_config)
-
-    if not wm.exists(workspace_id):
-        return PipelineResult(
-            ok=False,
-            errors=[f"workspace '{workspace_id}' not found"],
-        )
-
-    # ── Load workspace context ────────────────────────────────────────
-    meta = wm.read_meta(workspace_id)
-    database_name = meta["database_name"]
-
-    if not wm.has_aggregated_rule(workspace_id):
-        return PipelineResult(
-            ok=False,
-            errors=["no aggregated rule set in workspace — aggregate rules first"],
-        )
-    aggregated_rule_set = wm.read_aggregated_rule(workspace_id)
-
-    decisions = (
-        wm.read_decisions(workspace_id) if wm.has_decisions(workspace_id) else {}
-    )
-
-    # ── Resolve and load database ─────────────────────────────────────
-    try:
-        database = _resolve_database(database_name, user_config)
-    except Exception as exc:
-        return PipelineResult(ok=False, errors=[str(exc)])
-
-    # ── Compute ───────────────────────────────────────────────────────
-    result = compute(
-        database=database,
-        aggregated_rule_set=aggregated_rule_set,
-        branch_decisions=decisions.get("branch_decisions"),
-        managed_entries=decisions.get("managed_entries"),
-        on_progress=on_progress,
-    )
-
-    if not result.ok:
-        return result
-
-    # ── Write results back to workspace ───────────────────────────────
-    wm.write_mapping(workspace_id, result.mapping_result)
-
-    # Compute and write data fingerprints for cache invalidation
-    fingerprints = {
-        "schema_namespace": "KMM_WorkspaceFingerprints",
-        "schema_version": "knighthana@0.1.0",
-        "kmmrule": _sha256_dict(aggregated_rule_set),
-        "database": _sha256_dict(database),
-        "computed_at": _utcnow(),
+    return {
+        "mapping_result": mapping_result,
+        "trees": mapping_result.get("trees", []),
+        "errors": mapping_result.get("errors", []),
+        "warnings": agg_warnings + mapping_result.get("warnings", []),
+        "final_mapping": mapping_result.get("final_mapping", []),
     }
-    wm.write_fingerprints(workspace_id, fingerprints)
-
-    # Generate and write SVG
-    if result.trees:
-        try:
-            from ..forest_visual import visualize_payload
-
-            svg = visualize_payload({"trees": result.trees}, "svg")
-            wm.write_svg(workspace_id, svg)
-        except Exception:
-            pass  # SVG generation is non-critical
-
-    return result

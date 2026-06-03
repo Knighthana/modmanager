@@ -10,15 +10,14 @@ from modmgr.orchestrator.fileops.planner.preflight import (
     run_apply_preflight,
     run_restore_preflight,
 )
-from modmgr.orchestrator.resolver import CleanContext
 
 
-def _make_context() -> CleanContext:
-    return CleanContext(
-        final_mapping=[],
-        database={"game": [], "mod": [], "steamlib": []},
-        user_config={"baksuffix": "kmmbackup"},
-    )
+def _make_context() -> dict:
+    return {
+        "final_mapping": [],
+        "database": {"game": [], "mod": [], "steamlib": []},
+        "user_config": {"baksuffix": "kmmbackup"},
+    }
 
 
 class TestApplyPreflight:

@@ -21,7 +21,6 @@ from pathlib import Path
 import pytest
 
 from modmgr.orchestrator.entry import Intent, TaskRequest
-from modmgr.orchestrator.resolver import CleanContext
 from modmgr.orchestrator.fileops.planner.planner import plan_fileops
 from modmgr.orchestrator.fileops.planner.ignore_rules import IgnoreRuleSet
 
@@ -80,13 +79,13 @@ def _make_database(root: Path) -> dict:
     }
 
 
-def _make_context(root: Path, final_mapping: list[dict]) -> CleanContext:
-    """Construct a CleanContext for plan_fileops()."""
-    return CleanContext(
-        final_mapping=final_mapping,
-        database=_make_database(root),
-        user_config={"baksuffix": "kmmbackup"},
-    )
+def _make_context(root: Path, final_mapping: list[dict]) -> dict:
+    """Construct a data dict for plan_fileops()."""
+    return {
+        "final_mapping": final_mapping,
+        "database": _make_database(root),
+        "user_config": {"baksuffix": "kmmbackup"},
+    }
 
 
 def _make_request(intent: Intent = Intent.BACKUP) -> TaskRequest:

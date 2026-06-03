@@ -16,7 +16,6 @@ from typing import Any
 
 from .._common import PipelineResult, ProgressCallback
 from ..entry import Intent
-from ..resolver import CleanContext
 from ...apply_ops import apply_entries
 from ...backup_ops import load_backup_info, run_differential_backup
 from ...prep import prep_backup_dir
@@ -48,15 +47,8 @@ def execute(
     Returns:
         PipelineResult with execution outcome.
     """
-    # Wrap data into CleanContext (interim — Phase D1 will remove CleanContext)
-    context = CleanContext(
-        final_mapping=data["final_mapping"],
-        database=data["database"],
-        user_config=data["user_config"],
-    )
-
     # ── Plan ──────────────────────────────────────────────────────────
-    plan = plan_fileops(request, context, on_progress=on_progress)
+    plan = plan_fileops(request, data, on_progress=on_progress)
 
     # ── Preflight gate ────────────────────────────────────────────────
     _notify(on_progress, "prepare", 5, 6, "Running preflight checks...")
@@ -125,7 +117,7 @@ def execute(
             on_progress,
         )
     elif intent == Intent.RUN:
-        return _execute_run_plan(plan, context, request, on_progress)
+        return _execute_run_plan(plan, data, request, on_progress)
 
     return PipelineResult(
         ok=False,
@@ -257,7 +249,7 @@ def _execute_restore_plan(
 
 def _execute_run_plan(
     plan: FileOpsPlan,
-    context: CleanContext,
+    data: dict,
     request: Any,
     on_progress: Any,
 ) -> PipelineResult:

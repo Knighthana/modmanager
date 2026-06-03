@@ -35,4 +35,6 @@ class TaskRequest:
     intent: Intent
     resolver_type: ResolverType
     resolver_args: dict[str, Any] = field(default_factory=dict)
+    output_type: Literal["workspace", "none"] = "none"
+    output_args: dict[str, Any] = field(default_factory=dict)
     flags: dict[str, Any] = field(default_factory=dict)

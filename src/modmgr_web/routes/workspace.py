@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import Response, StreamingResponse
 from modmgr.bootstrap import discover_user_config
 from modmgr.core.workspacemanager import WorkspaceManager
-from modmgr.orchestrator import dispatch, compute_ws
+from modmgr.orchestrator import dispatch
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.path_resolver import expand_path
 
@@ -256,11 +256,15 @@ async def workspace_compute(workspace_id: str, ci_path: str = Depends(resolve_co
     """
 
     def do_work(*, on_progress):
-        return compute_ws(
-            workspace_id=workspace_id,
-            config_index=ci_path,
-            on_progress=on_progress,
+        request = TaskRequest(
+            identity="web",
+            intent=Intent.COMPUTE_MAPPING,
+            resolver_type="workspace",
+            resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
+            output_type="workspace",
+            output_args={"workspace_id": workspace_id, "config_index": ci_path},
         )
+        return dispatch(request, on_progress=on_progress)
 
     return StreamingResponse(
         stream_with_progress(do_work, result_adapter=adapt_pipeline_result),

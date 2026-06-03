@@ -1,8 +1,9 @@
 """Planner layer for file operations (backup / apply / restore / run).
 
-Consumes a CleanContext and TaskRequest, derives operational parameters
-(backup_dirs, ignore rules), decides whether preflight is needed, and
-produces a FileOpsPlan ready for primitive execution.
+Consumes a data dict (from DataPort.fetch()) and TaskRequest, derives
+operational parameters (backup_dirs, ignore rules), decides whether
+preflight is needed, and produces a FileOpsPlan ready for primitive
+execution.
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ from ..._common import _utcnow
 from ...entry import Intent, TaskRequest
 from .ignore_rules import IgnoreRuleSet, collect_rules, should_ignore
 from .preflight import run_apply_preflight, run_restore_preflight
-from ...resolver import CleanContext
 
 
 def check_backup_gate(backup_dir: str) -> list[str]:
@@ -63,11 +63,11 @@ class FileOpsPlan:
 
 def plan_fileops(
     request: TaskRequest,
-    context: CleanContext,
+    data: dict,
     *,
     on_progress: Any = None,
 ) -> FileOpsPlan:
-    """Derive a FileOpsPlan from request intent and clean context.
+    """Derive a FileOpsPlan from request intent and data dict.
 
     Steps:
     1. Derive backup_dirs from final_mapping + database + user_config
@@ -80,9 +80,9 @@ def plan_fileops(
     # ── 1. Derive backup dirs ────────────────────────────────────────
     _notify(on_progress, "prepare", 0, 4, "Deriving backup directories...")
     backup_dirs, dir_warnings = build_backup_dirs(
-        context.final_mapping,
-        context.database,
-        context.user_config,
+        data["final_mapping"],
+        data["database"],
+        data["user_config"],
     )
     warnings: list[str] = list(dir_warnings)
 
@@ -104,7 +104,7 @@ def plan_fileops(
     # Group final_mapping entries by backup_dir
     _notify(on_progress, "prepare", 1, 4, "Grouping entries by backup directory...")
     entries_by_backup_dir: dict[str, list[dict[str, Any]]] = {}
-    for entry in context.final_mapping:
+    for entry in data["final_mapping"]:
         target_path = entry.get("path", "")
         for backup_dir in backup_dirs:
             if target_path in backup_dirs[backup_dir]:
@@ -113,7 +113,7 @@ def plan_fileops(
 
     # ── 2. Ignore rules (all intents) ────────────────────────────────
     _notify(on_progress, "prepare", 2, 4, "Collecting ignore rules...")
-    ignore_rules = _collect_ignore_rules(context)
+    ignore_rules = _collect_ignore_rules(data)
 
     # ── 3. Filter ignored entries ────────────────────────────────────
     _notify(on_progress, "prepare", 3, 4, "Filtering ignored entries...")
@@ -138,7 +138,7 @@ def plan_fileops(
     if request.intent == Intent.BACKUP:
         bakignore_list: list[str] = request.flags.get("bakignore", []) or []
         # Also read from user_config if available
-        user_config = context.user_config or {}
+        user_config = data.get("user_config") or {}
         bakignore_list = bakignore_list or user_config.get("bakignore") or []
 
         if bakignore_list:
@@ -185,21 +185,21 @@ def plan_fileops(
     )
 
 
-def _collect_ignore_rules(context: CleanContext) -> IgnoreRuleSet:
+def _collect_ignore_rules(data: dict) -> IgnoreRuleSet:
     """Collect ignore rules via ignore_rules module.
 
     Only scans directories that are ancestors of files in final_mapping,
     avoiding expensive full-tree walks of large game directories.
     """
-    source_roots = _derive_source_roots(context)
-    relevant_paths = [e.get("path", "") for e in context.final_mapping if e.get("path")]
+    source_roots = _derive_source_roots(data)
+    relevant_paths = [e.get("path", "") for e in data["final_mapping"] if e.get("path")]
     return collect_rules(source_roots, relevant_paths=relevant_paths)
 
 
-def _derive_source_roots(context: CleanContext) -> list[str]:
+def _derive_source_roots(data: dict) -> list[str]:
     """Derive source root directories from database game entries."""
     roots: list[str] = []
-    for game in context.database.get("game", []):
+    for game in data["database"].get("game", []):
         bp = game.get("basepath", "")
         if bp:
             roots.append(bp)

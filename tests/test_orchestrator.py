@@ -52,27 +52,26 @@ class TestCompute(TestCase):
     def test_compute_no_rule_input_returns_explicit_error(self) -> None:
         """compute() without aggregated_rule_set → explicit error."""
         result = compute(
-            database={},
+            {"database": {}},
         )
-        self.assertFalse(result.ok)
-        self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.errors))
+        self.assertTrue(any("E_NO_RULE_INPUT" in e for e in result.get("errors", [])))
 
     def test_compute_with_valid_aggregated_rule_set(self) -> None:
         """compute() with a valid aggregated_rule_set should succeed."""
-        result = compute(
-            database={"game": [], "mod": []},
-            aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
-        )
-        self.assertTrue(result.ok)
-        self.assertEqual(result.errors, [])
+        result = compute({
+            "database": {"game": [], "mod": []},
+            "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
+        })
+        # compute() returns dict now
+        self.assertFalse(result.get("errors", []))
 
     def test_compute_with_empty_aggregated_rule_set_still_works(self) -> None:
         """compute() with an empty dict as aggregated_rule_set should succeed."""
-        result = compute(
-            database={"game": [], "mod": []},
-            aggregated_rule_set={},
-        )
-        # An empty rule set is still valid input; actual success depends on compute_mapping
+        result = compute({
+            "database": {"game": [], "mod": []},
+            "aggregated_rule_set": {},
+        })
+        # An empty rule set is still valid input
         self.assertIsNotNone(result)
 
 
@@ -564,21 +563,20 @@ class TestComputeManagedEntries(TestCase):
 
     def test_compute_accepts_managed_entries(self) -> None:
         """compute() should accept managed_entries without error."""
-        result = compute(
-            database={},
-            aggregated_rule_set={},
-            managed_entries={"game": {"270150": ["/fake/path/"]}},
-        )
+        result = compute({
+            "database": {},
+            "aggregated_rule_set": {},
+            "decisions": {"managed_entries": {"game": {"270150": ["/fake/path/"]}}},
+        })
         # Should not throw; actual success depends on compute_mapping
         self.assertIsNotNone(result)
 
     def test_compute_managed_entries_none(self) -> None:
-        """compute() with managed_entries=None should still work."""
-        result = compute(
-            database={},
-            aggregated_rule_set={},
-            managed_entries=None,
-        )
+        """compute() with no managed_entries should still work."""
+        result = compute({
+            "database": {},
+            "aggregated_rule_set": {},
+        })
         self.assertIsNotNone(result)
 
 
@@ -616,8 +614,10 @@ class TestProgressCallback(TestCase):
             calls.append((step, finished, total, message))
 
         result = compute(
-            database={"game": [], "mod": []},
-            aggregated_rule_set={"schema_namespace": "KMM_RuleSet", "operation": []},
+            {
+                "database": {"game": [], "mod": []},
+                "aggregated_rule_set": {"schema_namespace": "KMM_RuleSet", "operation": []},
+            },
             on_progress=callback,
         )
 
