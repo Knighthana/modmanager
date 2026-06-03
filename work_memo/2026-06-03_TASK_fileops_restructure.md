@@ -1,9 +1,10 @@
-## Task-Card: fileops 目录重构 + kmmignore 清理 + compute 入口修正
+## Task-Card: fileops 目录重构 + compute 修正 + DataPort 实现
 
 **目标**
-1. fileops 目录结构创建、Planner 入口统一、preflight/ignore_rules 归位、kmmignore 遗留代码删除
-2. compute 入口修正：删除 `compute_ws` 和旧的 `_dispatch_compute`，compute 走 `dispatch() → resolver → compute` 统一路径
-3. 不保留任何兼容占位代码或死代码。import 最小化
+1. DataPort I/O 适配层实现：Resolver 纯解析化、CleanContext 废弃、fetch/push 唯一 I/O 通道
+2. fileops 目录结构创建、Planner 入口统一、preflight/ignore_rules 归位、kmmignore 遗留代码删除
+3. compute 入口修正：删除 `compute_ws` 和旧的 `_dispatch_compute`，compute 走 `dispatch → Resolver → DataPort → Engine → DataPort.push` 全链路
+4. 不保留任何兼容占位代码或死代码。import 最小化
 
 **L1 硬约束**
 - [ ] L1-1 不改变任何运行时行为（compute 管线路径变更后的行为等价）
@@ -33,6 +34,25 @@
 - [ ] SPEC-C1-06 测试 `test_web_api.py` 中 monkey-patch `compute_ws` 的 6 处 fake 函数更新——由 probe 独立按黑箱标准重写（不纳入 smith 实现范围）
 - [ ] SPEC-C1-07 `compute_pipeline.py` docstring（L1）删除 `compute_ws` 提及，改为 `"""Compute pipeline — managed filter + compute."""`
 - [ ] SPEC-C1-08 `repo_memo/DESIGN_MIGRATION_LAYERS.md` Layer 1 表中 `compute_ws()` 引用删除（若尚未删除）
+
+### D1 — DataPort 实现
+
+> SPEC: `repo_test/dataport_spec.md`（21 条断言）。DataPort 是 orchestrator 唯一 I/O 通道——修复 Resolver 做了 I/O 的问题，为 CleanContext 画句号，同时解决 workspace 写回过渡方案。
+
+- [ ] SPEC-D1-01 新建 `orchestrator/data_port.py`，包含 `SourceDescriptor` dataclass + `fetch()` + `push()` 函数
+- [ ] SPEC-D1-02 `SourceDescriptor` 字段：`source_type`（workspace/file_paths/raw_dict）、`workspace_id`、`config_index`、`database_path`、`database_dict`、`aggregated_rule_set`
+- [ ] SPEC-D1-03 `fetch(desc, intent)` — 按 source_type + intent 从源头读取数据，返回 clean dicts（不同 intent 返回不同 key 集合）。见 `PLAN_DATAPORT.md §七` 的逐场景行为表
+- [ ] SPEC-D1-04 `push(desc, intent, result)` — 仅 `workspace + COMPUTE_MAPPING` 时写回 mapping/SVG/fingerprints 到 workspace 目录。其他组合无操作
+- [ ] SPEC-D1-05 Resolver 重写为纯解析（无 I/O）：
+  - `WorkspaceResolver.resolve()` 返回 `SourceDescriptor(source_type="workspace", workspace_id=..., config_index=...)`，删除 `wm.read_meta/read_mapping/_resolve_database` 等 I/O 调用
+  - `FilePathResolver.resolve()` 返回 `SourceDescriptor(source_type="file_paths", database_path=..., config_index=...)`，删除文件读取 I/O
+  - `RawDictResolver.resolve()` 返回 `SourceDescriptor(source_type="raw_dict", database_dict=..., aggregated_rule_set=...)`，纯透传
+- [ ] SPEC-D1-06 `CleanContext` dataclass 从 `orchestrator/resolver.py` 中**删除**
+- [ ] SPEC-D1-07 `plan_fileops()` 签名改为接受 DataPort.fetch() 返回的 dict（而非 CleanContext 对象）——具体：参数从 `context: CleanContext` 改为 `data: dict`，函数内部 `context.final_mapping` → `data["final_mapping"]`，`context.database` → `data["database"]`，`context.user_config` → `data["user_config"]`
+- [ ] SPEC-D1-08 `dispatch()` 流程改为：`Resolver.resolve → DataPort.fetch → Engine/Planner → DataPort.push`（仅 COMPUTE_MAPPING + workspace 时 push）
+- [ ] SPEC-D1-09 `orchestrator/__init__.py` import 新增 `from .data_port import fetch, push, SourceDescriptor`
+- [ ] SPEC-D1-10 所有引用 `CleanContext` 的代码更新（测试文件、planner.py 等）。`CleanContext` 类型在整个代码库中不再存在
+- [ ] SPEC-D1-11 `database_name` 格式校验：`fetch()` 中校验 name 不含 `..` 等路径穿越字符，不合格时抛异常
 
 ### A1 — preflight 归位
 - [ ] SPEC-A1-01 创建目录 `orchestrator/fileops/planner/`
@@ -115,4 +135,5 @@
 - 新疑虑-6：`compute_ws` 删除后，`compute_pipeline.py` 的 docstring（L1: `"""Compute pipeline — managed filter + compute + compute_ws."""`）和 `DESIGN_MIGRATION_LAYERS.md` 中 compute_ws 引用需同步更新。是否本次一并修正？
 - 新疑虑-7：Web 路由 `workspace.py:14` 当前 import `compute_ws`，替换为 dispatch 调用后此 import 应删除。确认 `workspace_compute` 端点的新流程：`TaskRequest(intent=COMPUTE_MAPPING, resolver_type="workspace", ...)` → `dispatch()`？
 - 新疑虑-8：`test_web_api.py` 的 6 处 `compute_ws` monkey-patch 需重写—— ✅ 已裁决：由 probe 独立按黑箱标准处理，不纳入 smith 实现范围
-- 新疑虑-9：`compute_ws` 删除后，workspace 结果回写（mapping/SVG/fingerprints）由谁负责？当前 `compute_ws` 在 compute() 返回后写回 workspace。新流程中 `dispatch()` 调用 compute() 获取结果后，需要将结果写回 workspace。但 DataPort.push() 尚未实现。过渡方案：(A) 在 dispatch 的 compute 分支中内联写回逻辑 / (B) compute() 内部负责写回 / (C) 暂时让 workspace_compute 端点直接处理写回。倾向哪个？
+- 新疑虑-9 ~~workspace 写回过渡方案~~ ✅ 已裁决：DataPort 实现纳入本次任务卡（见 D1 条款）。`DataPort.push()` 负责写回，不再需要过渡方案
+- 新疑虑-10：本任务卡覆盖 K1(5) + C1(8) + D1(11) + A1(4) + A2(7) + A3(7) = **42 条 SPEC 条款**，涉及模块移动、函数重写、全局 import 修正、CleanContext 全量替换。probe 需同步重写多个测试文件。是否拆分任务卡，或确认一轮完成？
