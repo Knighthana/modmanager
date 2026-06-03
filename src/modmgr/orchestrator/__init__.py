@@ -24,7 +24,7 @@ from ..apply_ops import apply_entries
 from ..restore_ops import restore_entries
 from ..prep import prep_backup_dir
 from .resolver import CleanContext, WorkspaceResolver, FilePathResolver, RawDictResolver
-from .planner_fileops import plan_fileops, _copy_kmmignore_to_backup, _copy_kmmignore_from_backup
+from .planner_fileops import plan_fileops
 
 # ── Unified dispatch ────────────────────────────────────────────────────
 
@@ -146,13 +146,6 @@ def _dispatch_fileops(request: TaskRequest, on_progress) -> PipelineResult:
     if request.intent == Intent.BACKUP and plan.needs_tree_build and not plan.dry_run:
         for backup_dir in plan.backup_dirs:
             prep_backup_dir(backup_dir, plan.ignore_rules)
-
-    # ── .kmmignore preservation (Planner-managed) ──────────────
-    if not plan.dry_run:
-        if request.intent == Intent.BACKUP:
-            _copy_kmmignore_to_backup(plan.backup_dirs)
-        elif request.intent == Intent.RESTORE:
-            _copy_kmmignore_from_backup(plan.backup_dirs)
 
     # ── 5. Execute primitive ───────────────────────────────────────
     if request.intent == Intent.BACKUP:
