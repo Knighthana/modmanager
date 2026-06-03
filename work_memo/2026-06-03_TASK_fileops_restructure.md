@@ -1,17 +1,120 @@
 ## Task-Card: fileops 目录重构 + compute 修正 + DataPort 实现
 
 **目标**
-1. DataPort I/O 适配层实现：Resolver 纯解析化、CleanContext 废弃、fetch/push 唯一 I/O 通道
-2. fileops 目录结构创建、Planner 入口统一、preflight/ignore_rules 归位、kmmignore 遗留代码删除
-3. compute 入口修正：删除 `compute_ws` 和旧的 `_dispatch_compute`，compute 走 `dispatch → Resolver → DataPort → Engine → DataPort.push` 全链路
-4. 不保留任何兼容占位代码或死代码。import 最小化
+1. 先删旧代码，再按文档重构。不修补旧代码，不保留兼容占位
+2. DataPort I/O 适配层实现：Resolver 纯解析化、CleanContext 废弃、fetch/push 唯一 I/O 通道
+3. fileops 目录结构创建、Planner 入口统一、preflight/ignore_rules 归位、kmmignore 遗留代码删除
+4. compute 入口修正：删除 `compute_ws` 和 `_dispatch_compute`，compute 走 `dispatch → Resolver → DataPort → Engine → DataPort.push` 全链路
+
+**执行顺序**（每一步完成后只跑单元测试；全部完成后跑集成测试）
+```
+K1(删kmmignore死代码) → A1+A3(目录+文件移动) → A2(dispatch拆分) → D1(DataPort) → C1(compute)
+```
 
 **L1 硬约束**
-- [ ] L1-1 不改变任何运行时行为（compute 管线路径变更后的行为等价）
-- [ ] L1-2 所有现有测试必须通过（不含 pre-existing `test_backup_tree.py` 失败）
+- [ ] L1-1 先删旧再建新——死代码、旧路径、废弃类型一律先删除再重构
+- [ ] L1-2 不留兼容占位文件。旧路径引用全局一步到位
 - [ ] L1-3 原语之间互不知晓，不感知 `.kmmignore` / gate 逻辑
-- [ ] L1-4 不留兼容占位文件。旧路径引用全局一步到位改完
-- [ ] L1-5 import 保持最小必要原则
+- [ ] L1-4 import 保持最小必要原则
+- [ ] L1-5 拆分提交：每个阶段独立 commit，附带该阶段单元测试
+- [ ] L1-6 集成测试在全部阶段完成后执行；若失败由 arch 分析设计冲突
+
+## 接口契约（实现前定稿，smith 按此实现。设计问题不留到开工后）
+
+### plan_fileops()
+
+```python
+def plan_fileops(
+    request: TaskRequest,
+    data: dict,              # DataPort.fetch() 返回的 clean dict
+    *,
+    on_progress: Any = None,
+) -> FileOpsPlan:
+```
+
+**`data` dict 结构**（BACKUP/APPLY/RESTORE/RUN 通用）：
+
+```python
+{
+    "database": { ... },          # database dict
+    "user_config": { ... },       # user_config dict
+    "final_mapping": [ ... ],     # list of {path, game_name, ...}
+}
+```
+
+> COMPUTE_MAPPING 不走 `plan_fileops()`，compute 走 `compute(data)`。
+
+### fileops.execute()
+
+```python
+def execute(
+    data: dict,              # 同上
+    intent: Intent,
+    flags: dict,
+    *,
+    on_progress: Any = None,
+) -> PipelineResult:
+    plan = plan_fileops(request, data, on_progress=on_progress)
+    if not plan.preflight_manifest.ok:
+        return build_preflight_result(plan)
+    return _execute_plan(plan, on_progress)
+```
+
+### compute() — 改造后
+
+```python
+def compute(
+    data: dict,              # DataPort.fetch() 返回的 clean dict
+    *,
+    on_progress: Any = None,
+) -> dict:                   # 纯 dict 输出，不碰文件
+```
+
+**输入 `data`**：
+```python
+{
+    "database": dict,
+    "aggregated_rule_set": dict,
+    "branch_decisions": dict | None,
+    "managed_entries": dict | None,
+}
+```
+
+**输出 `dict`**：
+```python
+{
+    "mapping_result": dict,
+    "trees": list,
+    "errors": list,
+    "warnings": list,
+    "final_mapping": list,
+}
+```
+
+> **不负责持久化**——`DataPort.push(dest_desc, intent, PipelineResult)` 将结果写入 workspace（若 `output_type="workspace"`）。
+
+### dispatch() — compute 分支（改造后）
+
+```python
+desc = resolver.resolve(request)                    # SourceDescriptor
+data = data_port.fetch(desc, request.intent)         # clean dict
+result_dict = compute(data, on_progress=on_progress) # 纯 dict
+result = PipelineResult(
+    ok=not result_dict.get("errors"),
+    errors=result_dict.get("errors", []),
+    warnings=result_dict.get("warnings", []),
+    trees=result_dict.get("trees", []),
+    final_mapping=result_dict.get("final_mapping", []),
+    mapping_result=result_dict,
+)
+dest_desc = DestDescriptor(
+    output_type=request.output_type,
+    workspace_id=request.output_args.get("workspace_id"),
+    config_index=request.output_args.get("config_index", ""),
+)
+data_port.push(dest_desc, request.intent, result)
+return result
+```
 
 **SPEC 条款（可测试）**
 
@@ -130,15 +233,26 @@
 
 **前置假设与疑虑**
 
-- 假设：`planner_fileops.py` 中除 `_copy_kmmignore_*` 外无其他死代码
-- 假设：`git mv` + import 修正后 Python 能正常加载模块（无循环导入）
-- 疑虑-1 ~~ignore_rules.py 移入位置~~ ✅ 已裁决：移入 `fileops/planner/`
-- 疑虑-2 ~~_notify 位置~~ ✅ 已裁决：放 `fileops/_common.py`
-- 疑虑-3 ~~compute_ws / _dispatch_compute 去留~~ ✅ 已裁决：直接删除，走 dispatch→resolver→compute 统一路径（见 C1 条款）
-- 疑虑-4 ~~CleanContext 是否本次废除~~ ✅ 已裁决：本次不动 CleanContext。Compute 管线改造后仍通过 resolver 获取 CleanContext（DataPort 替换是后续任务卡的事）。`planner.py` 中 `plan_fileops(request, context)` 签名不变
-- 疑虑-5 ~~import 清理~~ ✅ 已裁决：`orchestrator/__init__.py` 移出原语 import 到 `fileops/__init__.py`，`__init__.py` 仅保留必要 import
-- 新疑虑-6：`compute_ws` 删除后，`compute_pipeline.py` 的 docstring（L1: `"""Compute pipeline — managed filter + compute + compute_ws."""`）和 `DESIGN_MIGRATION_LAYERS.md` 中 compute_ws 引用需同步更新。是否本次一并修正？
-- 新疑虑-7：Web 路由 `workspace.py:14` 当前 import `compute_ws`，替换为 dispatch 调用后此 import 应删除。确认 `workspace_compute` 端点的新流程：`TaskRequest(intent=COMPUTE_MAPPING, resolver_type="workspace", ...)` → `dispatch()`？
-- 新疑虑-8：`test_web_api.py` 的 6 处 `compute_ws` monkey-patch 需重写—— ✅ 已裁决：由 probe 独立按黑箱标准处理，不纳入 smith 实现范围
-- 新疑虑-9 ~~workspace 写回过渡方案~~ ✅ 已裁决：DataPort 实现纳入本次任务卡（见 D1 条款）。`DataPort.push()` 负责写回，不再需要过渡方案
-- 新疑虑-10：本任务卡覆盖 K1(5) + C1(8) + D1(11) + A1(4) + A2(7) + A3(7) = **42 条 SPEC 条款**，涉及模块移动、函数重写、全局 import 修正、CleanContext 全量替换。probe 需同步重写多个测试文件。是否拆分任务卡，或确认一轮完成？
+### 已裁决
+
+- 疑虑-1 ~~ignore_rules 位置~~ → `fileops/planner/`
+- 疑虑-2 ~~_notify 位置~~ → `fileops/_common.py`
+- 疑虑-3 ~~compute_ws 去留~~ → 删除，走 dispatch 全链路
+- 疑虑-4 ~~CleanContext 废除~~ → D1 条款，`plan_fileops()` 改接 `data: dict`
+- 疑虑-5 ~~import 清理~~ → 最小必要原则
+- 疑虑-6 ~~文档同步~~ → 已修正
+- 疑虑-7 ~~workspace_compute 新流程~~ → `TaskRequest(output_type="workspace")` + `dispatch()`
+- 疑虑-8 ~~probe 测试~~ → probe 独立按 SPEC 写黑箱测试
+- 疑虑-9 ~~写回过渡方案~~ → DataPort.push(DestDescriptor)
+- 疑虑-10 ~~规模~~ → 45 条条款，5 阶段拆分提交
+
+### 接口契约
+
+- 契约-1 ~~plan_fileops 新签名~~ → 见上方"接口契约"节：`plan_fileops(request, data: dict)`，data 含 `database/user_config/final_mapping`
+- 契约-2 ~~compute 改造~~ → 方案 A：`compute(data: dict) -> dict`，纯计算不碰文件。DataPort.push 负责持久化
+- 契约-3 ~~dict 结构定义~~ → 两种 data dict 结构已在接口契约中显式定义
+
+### 待确认
+
+- 中间态处理：每个阶段只跑该阶段相关的单元测试。smith 自行判断哪些测试属于当前阶段。集成测试在全部完成后统一执行
+- probe 边界：probe 不读实现代码——按 SPEC + schema 写黑箱测试。若 SPEC/schema 信息不足，arch 补全后再让 probe 动手
