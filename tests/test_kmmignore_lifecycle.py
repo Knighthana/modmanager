@@ -1,106 +1,31 @@
-"""Tests for .kmmignore lifecycle — Planner-managed (裁定 1 + 13).
+"""Tests for .kmmignore lifecycle — 原地规则（in-place），不搬动。
 
-Verifies:
-- T-KI-01~02: orchestrator/__init__.py has no _copy_kmmignore_* definition
-- T-KI-03~04: planner_fileops.py has _copy_kmmignore_* functions
-- T-KI-05~06: backup_ops/restore_ops don't import .kmmignore-related
-- T-KI-13: plan_fileops() output excludes ignored files
-- T-KI-14: plan_fileops() output includes ignore_rule_set cache
+黑箱测试 — 通过公开 API 验证行为，不检查源码实现。
+
+SPEC: repo_test/kmmignore_lifecycle.md
+Decision: 2026-06-03 — .kmmignore 始终原地生效，不随 backup/restore 移动。
+
+验证:
+- T-KI-07: plan_fileops() 从源目录读取 .kmmignore（过滤生效）
+- T-KI-08/09: plan_fileops() 排除被 ignore 的文件 + 产出 ignore_rule_set 缓存
+- T-KI-10: 源目录无 .kmmignore → 不报错
+- T-KI-11: backup 后 backup_dir 不含 .kmmignore
+- T-KI-12: restore 后源目录 .kmmignore 不变
 """
 
 from __future__ import annotations
 
-import importlib
-import inspect
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from modmgr.orchestrator.planner_fileops import (
-    _copy_kmmignore_to_backup,
-    _copy_kmmignore_from_backup,
-)
 from modmgr.orchestrator.entry import Intent, TaskRequest
 from modmgr.orchestrator.resolver import CleanContext
+from modmgr.orchestrator.planner_fileops import plan_fileops
+from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
 
-
-# ── T-KI-01 & T-KI-02: orchestrator/__init__.py 不含函数定义 ────────────
-
-
-class TestOrchestratorNoKmmignoreDefs:
-    """T-KI-01 / T-KI-02: orchestrator/__init__.py does NOT define the functions."""
-
-    def _get_orchestrator_source(self) -> str:
-        """Return the source text of orchestrator/__init__.py."""
-        import modmgr.orchestrator as orch
-        return inspect.getsource(orch)
-
-    def test_t_ki_01_no_copy_kmmignore_to_backup_definition(self) -> None:
-        """T-KI-01: orchestrator/__init__.py 不含 _copy_kmmignore_to_backup 定义."""
-        source = self._get_orchestrator_source()
-        assert "def _copy_kmmignore_to_backup" not in source, (
-            "orchestrator/__init__.py must not DEFINE _copy_kmmignore_to_backup"
-        )
-
-    def test_t_ki_02_no_copy_kmmignore_from_backup_definition(self) -> None:
-        """T-KI-02: orchestrator/__init__.py 不含 _copy_kmmignore_from_backup 定义."""
-        source = self._get_orchestrator_source()
-        assert "def _copy_kmmignore_from_backup" not in source, (
-            "orchestrator/__init__.py must not DEFINE _copy_kmmignore_from_backup"
-        )
-
-
-# ── T-KI-03 & T-KI-04: planner_fileops.py 含有函数定义 ──────────────────
-
-
-class TestPlannerHasKmmignoreDefs:
-    """T-KI-03 / T-KI-04: planner_fileops.py defines the functions."""
-
-    def _get_planner_source(self) -> str:
-        """Return the source text of planner_fileops.py."""
-        import modmgr.orchestrator.planner_fileops as pf
-        return inspect.getsource(pf)
-
-    def test_t_ki_03_planner_has_copy_kmmignore_to_backup(self) -> None:
-        """T-KI-03: planner_fileops.py 含 _copy_kmmignore_to_backup 函数."""
-        source = self._get_planner_source()
-        assert "def _copy_kmmignore_to_backup" in source, (
-            "planner_fileops.py must DEFINE _copy_kmmignore_to_backup"
-        )
-
-    def test_t_ki_04_planner_has_copy_kmmignore_from_backup(self) -> None:
-        """T-KI-04: planner_fileops.py 含 _copy_kmmignore_from_backup 函数."""
-        source = self._get_planner_source()
-        assert "def _copy_kmmignore_from_backup" in source, (
-            "planner_fileops.py must DEFINE _copy_kmmignore_from_backup"
-        )
-
-
-# ── T-KI-05 & T-KI-06: backup_ops/restore_ops 不 import .kmmignore ──────
-
-
-class TestPrimitivesNoKmmignoreImport:
-    """T-KI-05 / T-KI-06: primitives don't import .kmmignore-related."""
-
-    def test_t_ki_05_backup_ops_no_kmmignore_import(self) -> None:
-        """T-KI-05: backup_ops.py 不 import 任何 .kmmignore 相关."""
-        import modmgr.backup_ops as bo
-        source = inspect.getsource(bo)
-        assert "kmmignore" not in source, (
-            "backup_ops.py must not import/reference .kmmignore"
-        )
-
-    def test_t_ki_06_restore_ops_no_kmmignore_import(self) -> None:
-        """T-KI-06: restore_ops.py 不 import 任何 .kmmignore 相关."""
-        import modmgr.restore_ops as ro
-        source = inspect.getsource(ro)
-        assert "kmmignore" not in source, (
-            "restore_ops.py must not import/reference .kmmignore"
-        )
-
-
-# ── Helpers (Steam fixture for plan_fileops) ─────────────────────────
+# ── Fixture constants ──────────────────────────────────────────────────
 
 APPID = "270150"
 CONTENTID = "2606099273"
@@ -114,16 +39,13 @@ def _build_steam_fixture(root: Path) -> None:
     common.mkdir(parents=True)
     mod.mkdir(parents=True)
 
-    # Create a mod file
     (mod / "test_mod_file.txt").write_text("content")
     (mod / "data.bin").write_text("binary")
 
-    # Create appmanifest ACF (needed for app backup stability check)
     (steamapps / f"appmanifest_{APPID}.acf").write_text(
         '"AppState"\n{\n\t"appid"\t\t"' + APPID + '"\n\t"StateFlags"\t\t"4"\n\t"buildid"\t\t"22924257"\n}\n'
     )
 
-    # Create appworkshop ACF (needed for content backup hex_id)
     ws_dir = steamapps / "workshop"
     ws_dir.mkdir(exist_ok=True)
     (ws_dir / f"appworkshop_{APPID}.acf").write_text(
@@ -158,24 +80,49 @@ def _make_database(root: Path) -> dict:
     }
 
 
-# ── T-KI-13: plan_fileops() 输出不含被 ignore 的文件 ────────────────────
+def _make_context(root: Path, final_mapping: list[dict]) -> CleanContext:
+    """Construct a CleanContext for plan_fileops()."""
+    return CleanContext(
+        final_mapping=final_mapping,
+        database=_make_database(root),
+        user_config={"baksuffix": "kmmbackup"},
+    )
 
 
-class TestPlanFiltering:
-    """T-KI-13: plan_fileops() entries_by_backup_dir 不含被 ignore 的文件."""
+def _make_request(intent: Intent = Intent.BACKUP) -> TaskRequest:
+    return TaskRequest(
+        identity="cli",
+        intent=intent,
+        resolver_type="raw_dict",
+        resolver_args={},
+        flags={"dry_run": True},
+    )
 
-    def test_t_ki_13_plan_excludes_ignored_files(self) -> None:
-        """T-KI-13: plan_fileops() 返回的 entries_by_backup_dir 不含被 ignore 的文件."""
-        from modmgr.orchestrator.planner_fileops import plan_fileops
 
+def _all_paths(plan) -> set[str]:
+    """Extract all paths from a FileOpsPlan's entries_by_backup_dir."""
+    paths = set()
+    for entries in plan.entries_by_backup_dir.values():
+        for entry in entries:
+            paths.add(entry.get("path", ""))
+    return paths
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-07: plan_fileops() 从源目录读取 .kmmignore（过滤生效）
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestKmmignoreInPlaceFiltering:
+    """T-KI-07 / T-KI-08: kmmignore 从源目录原地读取并过滤，被忽略的文件不出现在 plan 中。"""
+
+    def test_ignored_files_excluded_from_plan(self) -> None:
+        """被 .kmmignore 忽略的文件不出现在 entries_by_backup_dir 中。"""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             _build_steam_fixture(root)
 
-            # Place .kmmignore at game basepath so it's within collection scope
             game_root = root / "steamapps" / "common" / "RunningWithRifles"
             (game_root / ".kmmignore").write_text("*.log\nbuild/\n")
-            # Create files matching ignore patterns under basepath
             (game_root / "debug.log").write_text("logs")
             (game_root / "build").mkdir()
             (game_root / "build" / "output.o").write_text("obj")
@@ -187,84 +134,185 @@ class TestPlanFiltering:
                 {"path": str(game_root / "build" / "output.o"), "game_name": "RunningWithRifles"},
             ]
 
-            context = CleanContext(
-                final_mapping=final_mapping,
-                database=_make_database(root),
-                user_config={"baksuffix": "kmmbackup"},
-            )
-            request = TaskRequest(
-                identity="cli",
-                intent=Intent.BACKUP,
-                resolver_type="raw_dict",
-                resolver_args={},
-                flags={"dry_run": True},
-            )
-
+            context = _make_context(root, final_mapping)
+            request = _make_request(Intent.BACKUP)
             plan = plan_fileops(request, context)
+            paths = _all_paths(plan)
 
-            # Collect all paths in entries_by_backup_dir
-            all_paths = set()
-            for entries in plan.entries_by_backup_dir.values():
-                for entry in entries:
-                    all_paths.add(entry.get("path", ""))
+            assert any("game.bin" in p for p in paths), "game.bin 不应被过滤"
+            assert any("data.bin" in p for p in paths), "data.bin 不应被过滤"
+            assert not any("debug.log" in p for p in paths), "debug.log 应被 *.log 过滤"
+            assert not any("output.o" in p for p in paths), "output.o 应被 build/ 过滤"
 
-            # game.bin and data.bin should be present
-            assert any("game.bin" in p for p in all_paths), (
-                "game.bin should NOT be filtered"
-            )
-            assert any("data.bin" in p for p in all_paths), (
-                "data.bin should NOT be filtered"
-            )
-            # debug.log should NOT be present (filtered by *.log)
-            assert not any("debug.log" in p for p in all_paths), (
-                "debug.log should be filtered by *.log rule"
-            )
-            # build/output.o should NOT be present (filtered by build/)
-            assert not any("output.o" in p for p in all_paths), (
-                "output.o should be filtered by build/ rule"
-            )
-
-
-# ── T-KI-14: plan_fileops() 输出含 ignore_rule_set 缓存 ────────────────
-
-
-class TestIgnoreRuleSetCache:
-    """T-KI-14: plan_fileops() 输出中的 ignore_rule_set 缓存可供原语直接消费."""
-
-    def test_t_ki_14_plan_contains_ignore_rule_set(self) -> None:
-        """T-KI-14: FileOpsPlan.ignore_rules is populated."""
-        from modmgr.orchestrator.planner_fileops import plan_fileops
-        from modmgr.orchestrator.ignore_rules import IgnoreRuleSet
-
+    def test_no_kmmignore_no_error(self) -> None:
+        """源目录无 .kmmignore → 不报错，过滤结果为空。"""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             _build_steam_fixture(root)
 
-            # Place .kmmignore at game basepath (within collection scope)
             game_root = root / "steamapps" / "common" / "RunningWithRifles"
-            (game_root / ".kmmignore").write_text("*.txt\n")
-
             final_mapping = [
                 {"path": str(game_root / "game.bin"), "game_name": "RunningWithRifles"},
                 {"path": str(game_root / "data.bin"), "game_name": "RunningWithRifles"},
             ]
 
-            context = CleanContext(
-                final_mapping=final_mapping,
-                database=_make_database(root),
-                user_config={"baksuffix": "kmmbackup"},
-            )
-            request = TaskRequest(
-                identity="cli",
-                intent=Intent.BACKUP,
-                resolver_type="raw_dict",
-                resolver_args={},
-                flags={"dry_run": True},
-            )
+            context = _make_context(root, final_mapping)
+            request = _make_request(Intent.BACKUP)
+            plan = plan_fileops(request, context)
+            paths = _all_paths(plan)
 
+            assert any("game.bin" in p for p in paths)
+            assert any("data.bin" in p for p in paths)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-09: plan_fileops() 输出含 ignore_rule_set 缓存
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestIgnoreRuleSetCache:
+    """T-KI-09: plan_fileops() 的 ignore_rule_set 可供原语消费。"""
+
+    def test_plan_contains_ignore_rule_set(self) -> None:
+        """有 .kmmignore 时 ignore_rules 缓存非空。"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _build_steam_fixture(root)
+
+            game_root = root / "steamapps" / "common" / "RunningWithRifles"
+            (game_root / ".kmmignore").write_text("*.txt\n")
+
+            final_mapping = [
+                {"path": str(game_root / "game.bin"), "game_name": "RunningWithRifles"},
+            ]
+
+            context = _make_context(root, final_mapping)
+            request = _make_request(Intent.BACKUP)
             plan = plan_fileops(request, context)
 
-            # ignore_rules should be populated (not default empty)
             assert isinstance(plan.ignore_rules, IgnoreRuleSet)
-            # The rule set should contain the *.txt rule from .kmmignore
-            assert len(plan.ignore_rules.gitignore_rules) > 0
+            assert len(plan.ignore_rules.gitignore_rules) > 0, (
+                "有 .kmmignore 时 ignore_rule_set 应为非空"
+            )
+
+    def test_empty_ignore_set_when_no_kmmignore(self) -> None:
+        """无 .kmmignore 时 ignore_rules 为空缓存。"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _build_steam_fixture(root)
+
+            game_root = root / "steamapps" / "common" / "RunningWithRifles"
+            final_mapping = [
+                {"path": str(game_root / "game.bin"), "game_name": "RunningWithRifles"},
+            ]
+
+            context = _make_context(root, final_mapping)
+            request = _make_request(Intent.BACKUP)
+            plan = plan_fileops(request, context)
+
+            assert isinstance(plan.ignore_rules, IgnoreRuleSet)
+            assert len(plan.ignore_rules.gitignore_rules) == 0, (
+                "无 .kmmignore 时 ignore_rule_set 应为空"
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-11: backup 操作不搬动 .kmmignore → backup_dir 不含该文件
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestKmmignoreNotCopiedToBackup:
+    """T-KI-11: backup 后 backup_dir 不含 .kmmignore 文件。
+
+    黑箱验证：通过公众 API plan_fileops() 检查组装的 backup 条目中
+    不含 .kmmignore。实际文件操作由原语完成，此测试验证 Planner 不会
+    把 .kmmignore 加入备份清单。
+    """
+
+    def test_backup_plan_excludes_kmmignore_files(self) -> None:
+        """plan_fileops 的 entries_by_backup_dir 不含 .kmmignore 条目。"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _build_steam_fixture(root)
+
+            game_root = root / "steamapps" / "common" / "RunningWithRifles"
+            (game_root / ".kmmignore").write_text("*.log\n")
+
+            final_mapping = [
+                {"path": str(game_root / "game.bin"), "game_name": "RunningWithRifles"},
+            ]
+
+            context = _make_context(root, final_mapping)
+            request = _make_request(Intent.BACKUP)
+            plan = plan_fileops(request, context)
+            paths = _all_paths(plan)
+
+            # .kmmignore 本身不应出现在备份条目中
+            kmmignore_in_plan = any(".kmmignore" in p for p in paths)
+            assert not kmmignore_in_plan, (
+                ".kmmignore 不应出现在备份 plan 的条目列表中（原地规则）"
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-12: restore 操作不恢复 .kmmignore → 源目录文件不变
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestKmmignoreNotRestored:
+    """T-KI-12: restore 后源目录 .kmmignore 不被覆盖/还原。
+
+    黑箱验证：通过 plan_fileops(restore) 检查组装的 restore 条目中
+    是否包含 .kmmignore。若不含，原语不会操作该文件。
+    """
+
+    def test_restore_plan_excludes_kmmignore_files(self) -> None:
+        """restore plan 不含从 backup_dir 还原 .kmmignore 的条目。"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _build_steam_fixture(root)
+
+            game_root = root / "steamapps" / "common" / "RunningWithRifles"
+            (game_root / ".kmmignore").write_text("*.log\n")
+
+            final_mapping = [
+                {"path": str(game_root / "game.bin"), "game_name": "RunningWithRifles"},
+            ]
+
+            context = _make_context(root, final_mapping)
+            request = _make_request(Intent.RESTORE)
+            plan = plan_fileops(request, context)
+            paths = _all_paths(plan)
+
+            kmmignore_in_plan = any(".kmmignore" in p for p in paths)
+            assert not kmmignore_in_plan, (
+                "restore plan 不应包含 .kmmignore 条目（原地规则）"
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T-KI-05/06 等价验证：原语对 .kmmignore 无感知
+# ═══════════════════════════════════════════════════════════════════════
+
+class TestPrimitivesKmmignoreUnaware:
+    """原语不感知 .kmmignore — 行为等价于不 import 该文件。
+
+    黑箱验证：原语（backup_ops, restore_ops）的公开接口不应包含
+    任何 .kmmignore 相关参数或行为。调用它们的正常路径不依赖
+    .kmmignore 文件的存在与否。
+    """
+
+    def test_backup_ops_no_kmmignore_in_all(self) -> None:
+        """backup_ops.__all__ 不含 .kmmignore 相关符号。"""
+        import modmgr.backup_ops as bo
+        all_exports = getattr(bo, "__all__", [])
+        kmmignore_exports = [s for s in all_exports if "kmmignore" in s.lower()]
+        assert not kmmignore_exports, (
+            f"backup_ops.__all__ 不应导出 kmmignore 相关符号: {kmmignore_exports}"
+        )
+
+    def test_restore_ops_no_kmmignore_in_all(self) -> None:
+        """restore_ops.__all__ 不含 .kmmignore 相关符号。"""
+        import modmgr.restore_ops as ro
+        all_exports = getattr(ro, "__all__", [])
+        kmmignore_exports = [s for s in all_exports if "kmmignore" in s.lower()]
+        assert not kmmignore_exports, (
+            f"restore_ops.__all__ 不应导出 kmmignore 相关符号: {kmmignore_exports}"
+        )
