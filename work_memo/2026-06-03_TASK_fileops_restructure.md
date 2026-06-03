@@ -1,12 +1,16 @@
-## Task-Card: fileops 目录重构 + kmmignore 代码清理
+## Task-Card: fileops 目录重构 + kmmignore 清理 + compute 入口修正
 
 **目标**
-完成 `orchestrator/` 下 fileops 目录结构创建、Planner 入口统一、preflight 归位、kmmignore 遗留代码删除。不改变任何外部行为。
+1. fileops 目录结构创建、Planner 入口统一、preflight/ignore_rules 归位、kmmignore 遗留代码删除
+2. compute 入口修正：删除 `compute_ws` 和旧的 `_dispatch_compute`，compute 走 `dispatch() → resolver → compute` 统一路径
+3. 不保留任何兼容占位代码或死代码。import 最小化
 
 **L1 硬约束**
-- [ ] L1-1 本次仅做目录/文件重组 + 死代码删除，**不改变任何运行时行为**
+- [ ] L1-1 不改变任何运行时行为（compute 管线路径变更后的行为等价）
 - [ ] L1-2 所有现有测试必须通过（不含 pre-existing `test_backup_tree.py` 失败）
 - [ ] L1-3 原语之间互不知晓，不感知 `.kmmignore` / gate 逻辑
+- [ ] L1-4 不留兼容占位文件。旧路径引用全局一步到位改完
+- [ ] L1-5 import 保持最小必要原则
 
 **SPEC 条款（可测试）**
 
@@ -16,6 +20,19 @@
 - [ ] SPEC-K1-03 `orchestrator/__init__.py` 中删除 `_dispatch_fileops` 内 kmmignore copy 调用（L150-155：`if not plan.dry_run: ... _copy_kmmignore_to_backup/copy_kmmignore_from_backup` 整段）
 - [ ] SPEC-K1-04 `orchestrator/__init__.py` 顶部 import 中删除 `from .planner_fileops import ... _copy_kmmignore_to_backup, _copy_kmmignore_from_backup`（L27）
 - [ ] SPEC-K1-05 代码库中任意 `.py` 文件不再包含 `_copy_kmmignore_to_backup` 或 `_copy_kmmignore_from_backup` 函数定义
+
+### C1 — compute 入口修正
+
+> compute_ws 废除，_dispatch_compute 删除。compute 走 dispatch → resolver → compute 统一路径（与 fileops 对称）。DataPort 和 CleanContext 的最终替换由后续任务卡处理——本次只做路径统一和死代码清退。
+
+- [ ] SPEC-C1-01 删除 `orchestrator/compute_pipeline.py` 中的 `compute_ws()` 函数（L147-234）
+- [ ] SPEC-C1-02 `orchestrator/__init__.py` 中删除 `_dispatch_compute()` 函数（L62-74）——该函数绕过 resolver，直接接受 raw dict 入参，与新设计冲突
+- [ ] SPEC-C1-03 `dispatch()` 中 `Intent.COMPUTE_MAPPING` 分支改为：选 resolver → resolve → 调 `compute()`（与 fileops 路径对称，均经 resolver）
+- [ ] SPEC-C1-04 `orchestrator/__init__.py` 顶部 import 中 `from .compute_pipeline import compute, compute_ws` → 改为 `from .compute_pipeline import compute`（仅保留 `compute`）
+- [ ] SPEC-C1-05 Web 路由 `workspace.py` 中 `workspace_compute` 端点（L244-269）：将 `compute_ws(workspace_id=..., config_index=..., ...)` 改为构造 `TaskRequest(identity="web", intent=Intent.COMPUTE_MAPPING, resolver_type="workspace", ...)` 并通过 `dispatch()` 调用
+- [ ] SPEC-C1-06 测试 `test_web_api.py` 中 monkey-patch `compute_ws` 的 6 处 fake 函数更新——由 probe 独立按黑箱标准重写（不纳入 smith 实现范围）
+- [ ] SPEC-C1-07 `compute_pipeline.py` docstring（L1）删除 `compute_ws` 提及，改为 `"""Compute pipeline — managed filter + compute."""`
+- [ ] SPEC-C1-08 `repo_memo/DESIGN_MIGRATION_LAYERS.md` Layer 1 表中 `compute_ws()` 引用删除（若尚未删除）
 
 ### A1 — preflight 归位
 - [ ] SPEC-A1-01 创建目录 `orchestrator/fileops/planner/`
@@ -64,8 +81,9 @@
 **实现约束**（repo_spec）
 - [ ] 使用 `git mv` 移动文件以保留 git 历史
 - [ ] 所有内部 import 路径修正（相对 import 层级变动）
-- [ ] 所有外部引用路径修正（`orchestrator/__init__.py`、Web 路由、测试文件）
+- [ ] 所有外部引用路径修正（`orchestrator/__init__.py`、Web 路由、测试文件、文档）
 - [ ] 不改变函数签名、不改变错误码、不改变返回值结构
+- [ ] `orchestrator/__init__.py` 的 import 最小化——移出原语 import 到 `fileops/__init__.py`，`__init__.py` 只保留 dispatch 路由所需
 
 **验收标准**
 - smith: 上述 SPEC-K1/A1/A2/A3 全部条款达成
@@ -78,15 +96,23 @@
   - 无新增 import 错误
 
 **文档落位与收尾**
-- 长期结论落位: `repo_memo/DESIGN_PLANNER.md`、`repo_memo/DESIGN_ORCHESTRATOR.md`（已更新）
+- 长期结论落位: `repo_memo/DESIGN_PLANNER.md`、`repo_memo/DESIGN_ORCHESTRATOR.md`（已在前期更新）
+- 随代码变更需同步更新的文档：
+  - `repo_memo/DESIGN_MIGRATION_LAYERS.md`：Layer 1 模块表需更新 `ignore_rules.py` 新路径
+  - `compute_pipeline.py` docstring：删除 `compute_ws` 提及
+  - `repo_test/gate_boundary.md`、`repo_test/kmmignore_lifecycle.md`：若引用了旧路径需修正
 - work_memo 收尾: 任务完成后由 arch 判定归档
 
 **前置假设与疑虑**
 
 - 假设：`planner_fileops.py` 中除 `_copy_kmmignore_*` 外无其他死代码
 - 假设：`git mv` + import 修正后 Python 能正常加载模块（无循环导入）
-- 疑虑-1：`ignore_rules.py` 被 Planner 独享，移入 `fileops/planner/` 合理。但若未来有非 Planner 模块也想用它（如 CLI 直接调用），则放 `orchestrator/` 根目录更合适。当前确认移入？
-- 疑虑-2：`_notify` 辅助函数——放入 `fileops/_common.py` 还是保留在 `_common.py`？它是 fileops 专属（进度通知），放 `fileops/_common.py` 更干净
-- 疑虑-3：`_dispatch_compute` 函数仍留在 `orchestrator/__init__.py`——不在此次范围，compute 全链路改造由后续 DataPort 任务卡处理
-- 疑虑-4：`orchestrator/__init__.py` 的 import 中有 `from .compute_pipeline import compute, compute_ws`——`compute_ws` 尚未删除（代码仍存在），本次不动它。compute 清除由后续任务卡处理
-- 疑虑-5：`CleanContext` 未在本次任务中废除——仍在 `resolver.py` 和 `planner.py` 中使用。由后续 DataPort 任务卡处理
+- 疑虑-1 ~~ignore_rules.py 移入位置~~ ✅ 已裁决：移入 `fileops/planner/`
+- 疑虑-2 ~~_notify 位置~~ ✅ 已裁决：放 `fileops/_common.py`
+- 疑虑-3 ~~compute_ws / _dispatch_compute 去留~~ ✅ 已裁决：直接删除，走 dispatch→resolver→compute 统一路径（见 C1 条款）
+- 疑虑-4 ~~CleanContext 是否本次废除~~ ✅ 已裁决：本次不动 CleanContext。Compute 管线改造后仍通过 resolver 获取 CleanContext（DataPort 替换是后续任务卡的事）。`planner.py` 中 `plan_fileops(request, context)` 签名不变
+- 疑虑-5 ~~import 清理~~ ✅ 已裁决：`orchestrator/__init__.py` 移出原语 import 到 `fileops/__init__.py`，`__init__.py` 仅保留必要 import
+- 新疑虑-6：`compute_ws` 删除后，`compute_pipeline.py` 的 docstring（L1: `"""Compute pipeline — managed filter + compute + compute_ws."""`）和 `DESIGN_MIGRATION_LAYERS.md` 中 compute_ws 引用需同步更新。是否本次一并修正？
+- 新疑虑-7：Web 路由 `workspace.py:14` 当前 import `compute_ws`，替换为 dispatch 调用后此 import 应删除。确认 `workspace_compute` 端点的新流程：`TaskRequest(intent=COMPUTE_MAPPING, resolver_type="workspace", ...)` → `dispatch()`？
+- 新疑虑-8：`test_web_api.py` 的 6 处 `compute_ws` monkey-patch 需重写—— ✅ 已裁决：由 probe 独立按黑箱标准处理，不纳入 smith 实现范围
+- 新疑虑-9：`compute_ws` 删除后，workspace 结果回写（mapping/SVG/fingerprints）由谁负责？当前 `compute_ws` 在 compute() 返回后写回 workspace。新流程中 `dispatch()` 调用 compute() 获取结果后，需要将结果写回 workspace。但 DataPort.push() 尚未实现。过渡方案：(A) 在 dispatch 的 compute 分支中内联写回逻辑 / (B) compute() 内部负责写回 / (C) 暂时让 workspace_compute 端点直接处理写回。倾向哪个？
