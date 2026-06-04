@@ -81,8 +81,8 @@ class TestBackupTreeStateMachine:
                 [str(src)],
                 tree=tree,
             )
-            # Should produce a W_BACKUP_NODE_NOT_IN_TREE warning in errors
-            assert any("W_BACKUP_NODE_NOT_IN_TREE" in e for e in result["errors"])
+            # Should produce a W_BACKUP_NODE_NOT_IN_TREE warning
+            assert any("W_BACKUP_NODE_NOT_IN_TREE" in w for w in result["warnings"])
             # Should be skipped with "node not in backup tree" reason
             skipped = [s for s in result["skipped"]
                        if "node not in backup tree" in s.get("reason", "")]
