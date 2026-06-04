@@ -120,7 +120,6 @@ class PipelineResult:
     backup_result: dict | None
     apply_result: dict | None
     restore_result: dict | None
-    workspace_id: str | None    # [planned] 替代 backup_dir——返回 workspace 标识符而非文件路径
 ```
 
 内部契约（`dry_run` 穿透、适配器同步、`__post_init__` 校验）见 `DESIGN_ORCHESTRATOR_CONTRACT.md`。

@@ -36,9 +36,9 @@ Planner 的入口 `execute()` 位于 `src/modmgr/orchestrator/fileops/__init__.p
 ### 2.1 入口：`fileops.execute()`
 
 ```python
-def execute(data: dict, intent: Intent, flags: dict, on_progress=None) -> PipelineResult:
+def execute(request: TaskRequest, data: dict, intent: Intent, flags: dict, on_progress=None) -> PipelineResult:
     """Planner 统一入口。接收 DataPort 产出的 clean dict，完成 plan → gate → execute 全链。"""
-    plan = plan_fileops(data, intent, flags, on_progress=on_progress)
+    plan = plan_fileops(request, data, intent, flags, on_progress=on_progress)
     if not plan.preflight_manifest.ok:
         return build_preflight_result(plan)
     return _execute_plan(plan, on_progress)
