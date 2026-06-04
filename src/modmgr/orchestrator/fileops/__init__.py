@@ -1,7 +1,5 @@
 """fileops package — execute primitives for file operations.
 
-Absorbed from ``_dispatch_fileops`` (previously in ``orchestrator/__init__``).
-
 Provides:
   - ``execute`` — unified entry point: plan → preflight gate → primitive.
   - ``_execute_backup_plan``
@@ -33,7 +31,6 @@ def execute(
 ) -> PipelineResult:
     """Plan → preflight gate → execute primitive.
 
-    Absorbed from the inner logic of ``_dispatch_fileops``.
     Resolver selection + resolve remain in ``dispatch()``.
 
     Args:

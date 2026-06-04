@@ -37,7 +37,7 @@ from .paths import normalize_posix
 
 
 # ── Hard-coded loop protection ──────────────────────────────────────────────
-_HARDCODED_BACKUP_SKIP_SUFFIX = ".kmmbackup"
+KMMBACKUP_SUFFIX = ".kmmbackup"
 
 
 # ── Phase 7: Version check ────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ def _collect_backup_original_paths(backup_dir: str, content_root: str = "") -> l
             continue
         rel = bak_file.relative_to(backup_path)
         # Loop protection: skip files inside *.kmmbackup directories
-        if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
+        if any(part.endswith(KMMBACKUP_SUFFIX) for part in rel.parts):
             continue
         original = cr / rel
         originals.append(_normalized(str(original)))
@@ -286,6 +286,8 @@ def inspect_conflict(backup_dir: str, final_mapping: list[dict[str, Any]] | None
     backup_dir = _normalized(backup_dir)
     final_mapping = final_mapping or []
 
+    # NOTE: Intentional defensive gate re-check. Planner performs gate in preflight;
+    # this is a secondary guard at the primitive level. Acceptable coupling per arch review.
     from .orchestrator.fileops.planner.planner import check_backup_gate as _check_backup_gate
     gate_errors = _check_backup_gate(backup_dir)
     if gate_errors:
@@ -534,6 +536,9 @@ def restore_from_backup(
     cr = Path(content_root)
 
     assert_directory_path(backup_dir, label="backup_dir")
+
+    # NOTE: Intentional defensive gate re-check. Planner performs gate in preflight;
+    # this is a secondary guard at the primitive level. Acceptable coupling per arch review.
     from .orchestrator.fileops.planner.planner import check_backup_gate as _check_backup_gate
     gate_errors = _check_backup_gate(backup_dir)
     if gate_errors:
@@ -558,7 +563,7 @@ def restore_from_backup(
         bak_files = sorted([f for f in backup_path.rglob("*") if f.is_file() and f.name != "backupinfo.json"])
         for i, bak_file in enumerate(bak_files):
             rel = bak_file.relative_to(backup_path)
-            if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
+            if any(part.endswith(KMMBACKUP_SUFFIX) for part in rel.parts):
                 continue
             original = cr / rel
             orig_norm = normalize_posix(str(original))
@@ -615,7 +620,7 @@ def restore_from_backup(
             on_progress("restore", i + 1, len(bak_files), str(bak_file))
         rel = bak_file.relative_to(backup_path)
         # Loop protection: skip files inside *.kmmbackup directories
-        if any(part.endswith(_HARDCODED_BACKUP_SKIP_SUFFIX) for part in rel.parts):
+        if any(part.endswith(KMMBACKUP_SUFFIX) for part in rel.parts):
             continue
         original = cr / rel
         orig_norm = normalize_posix(str(original))

@@ -68,27 +68,6 @@ class SaveDatabaseRequest(BaseModel):
 # ── Pipeline endpoints ────────────────────────────────────────────────────
 
 
-class ComputeRequest(BaseModel):
-    """Request body for ``POST /api/pipeline/compute``."""
-
-    database_name: str = "default"
-    aggregated_rule_set: dict | None = None
-    action_orders: dict[str, int] | None = None
-    branch_decisions: dict[str, str] | None = None
-    managed_entries: dict | None = None
-
-
-class RunRequest(BaseModel):
-    """Request body for ``POST /api/pipeline/run``."""
-
-    database_name: str = "default"
-    aggregated_rule_set: dict | None = None
-    action_orders: dict[str, int] | None = None
-    branch_decisions: dict[str, str] | None = None
-    managed_entries: dict | None = None
-    dry_run: bool = False
-
-
 class VisualizeRequest(BaseModel):
     """Request body for ``POST /api/pipeline/visualize``."""
 
@@ -143,13 +122,6 @@ class BackupInspectRequest(BaseModel):
     """Request body for ``POST /api/backups/inspect``."""
 
     path: str
-
-
-class RestoreRequest(BaseModel):
-    """Request body for ``POST /api/pipeline/restore``."""
-
-    backup_dir: str
-    target_files: list[str] | None = None
 
 
 # ── Workspace endpoints ────────────────────────────────────────────────────

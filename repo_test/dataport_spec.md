@@ -36,6 +36,8 @@ class SourceDescriptor:
     database_path: str | None = None
     database_dict: dict | None = None
     aggregated_rule_set: dict | None = None
+    final_mapping: list | None = None
+    user_config_dict: dict | None = None
 ```
 
 ### 2.2 DestDescriptor

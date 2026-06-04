@@ -85,6 +85,10 @@ def fetch(desc: SourceDescriptor, intent: Intent) -> dict[str, Any]:
 
 def _validate_database_name(name: str) -> None:
     """Validate database_name doesn't contain path traversal characters."""
+    if not name:
+        raise ValueError(
+            "E_DATABASE_NAME_EMPTY: database_name must not be empty"
+        )
     if ".." in name:
         raise ValueError(
             f"E_PATH_TRAVERSAL: database_name contains '..': {name}"

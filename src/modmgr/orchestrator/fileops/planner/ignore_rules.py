@@ -17,9 +17,9 @@ from typing import Any
 
 from gitignore_parser import parse_gitignore
 
-# ── Constants ──────────────────────────────────────────────────────────
+from ....backup_ops import KMMBACKUP_SUFFIX
 
-_HARDCODED_SKIP_SUFFIX = ".kmmbackup"
+# ── Constants ──────────────────────────────────────────────────────────
 _IGNORE_FILENAME = ".kmmignore"
 
 
@@ -30,7 +30,7 @@ _IGNORE_FILENAME = ".kmmignore"
 class IgnoreRuleSet:
     """Collected ignore rules from both layers."""
 
-    hardcoded_suffixes: list[str] = field(default_factory=lambda: [_HARDCODED_SKIP_SUFFIX])
+    hardcoded_suffixes: list[str] = field(default_factory=lambda: [KMMBACKUP_SUFFIX])
     gitignore_rules: dict[str, Any] = field(default_factory=dict)
     # ^ Maps root directory path → parsed gitignore rule object
 
