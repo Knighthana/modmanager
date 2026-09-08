@@ -208,8 +208,19 @@ async def compute(workspace_id: str, ci_path: str = Depends(resolve_config_index
 ├── decisions.json         # managed_entries + branch_decisions
 ├── mapping.json           # compute 产出的最终映射
 ├── forest.svg             # 森林可视化图
-└── fingerprints.json      # 规则文件 + database 的 sha256 指纹
+├── fingerprints.json      # 规则文件 + database 的 sha256 指纹
+└── backup_dirs.json       # 备份实际使用的容器集合（backup 时写入，restore 时消费）
 ```
+
+### 3.4.1 backup_dirs.json（2026-09-08 裁决）
+
+```json
+{
+  "/path/to/mod/2606099273.<hex>.kmmbackup/": ["/path/.../file1", "..."]
+}
+```
+
+backup 执行时由 DataPort.push 写入**实际使用**的 backup_dir 集合；restore 优先消费此记录（不重新推导）。工作区与版本的关系：**工作区是游戏+MOD 组合的规则容器（版本无关）**，版本维度由 backup_dir 命名承载（见 `DESIGN_BACKUP_DIR.md` §3.0）。版本更迭后旧版本的 backup_dir 惰性保留——不清理、不自动发现，GUI 备份列表可见。
 
 ### 3.4 各文件结构
 

@@ -323,6 +323,8 @@ async def workspace_backup(workspace_id: str, req: WorkspaceBackupRequest, ci_pa
             intent=Intent.BACKUP,
             resolver_type="workspace",
             resolver_args={"workspace_id": workspace_id, "config_index": ci_path},
+            output_type="workspace",
+            output_args={"workspace_id": workspace_id, "config_index": ci_path},
             flags={"dry_run": dry_run},
         )
         return dispatch(request, on_progress=on_progress)

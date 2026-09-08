@@ -231,7 +231,9 @@ def _check_action_entry(
     from_paths = entry.get("from")
     if isinstance(from_paths, list):
         for fp in from_paths:
-            if isinstance(fp, str) and ".." in fp:
+            # Component-level check (consistent with path_normalizer):
+            # "a..b.txt" is legal, only a bare ".." segment traverses.
+            if isinstance(fp, str) and any(seg == ".." for seg in fp.replace("\\", "/").split("/")):
                 file_errors.append(
                     f"{E_PATH_TRAVERSAL}: from path '{fp}'"
                 )
@@ -241,7 +243,7 @@ def _check_action_entry(
     into_paths = entry.get("into")
     if isinstance(into_paths, list):
         for ip in into_paths:
-            if isinstance(ip, str) and ".." in ip:
+            if isinstance(ip, str) and any(seg == ".." for seg in ip.replace("\\", "/").split("/")):
                 file_errors.append(
                     f"{E_PATH_TRAVERSAL}: into path '{ip}'"
                 )

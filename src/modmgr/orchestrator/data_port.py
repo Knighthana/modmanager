@@ -44,6 +44,7 @@ class SourceDescriptor:
     aggregated_rule_set: dict | None = None
     final_mapping: list | None = None
     user_config_dict: dict | None = None
+    backup_dirs: dict | None = None  # RESTORE: caller-provided containers
 
 
 @dataclass
@@ -137,6 +138,12 @@ def _fetch_workspace(desc: SourceDescriptor, intent: Intent) -> dict[str, Any]:
         )
         result["decisions"] = decisions
 
+    # 6. If RESTORE: provide the recorded backup_dirs when available —
+    #    restore targets the exact containers a backup created, never a
+    #    re-derivation (2026-09-08 adjudication).
+    if intent == Intent.RESTORE and wm.has_backup_dirs(desc.workspace_id):
+        result["backup_dirs"] = wm.read_backup_dirs(desc.workspace_id)
+
     return result
 
 
@@ -161,6 +168,8 @@ def _fetch_raw_dict(desc: SourceDescriptor) -> dict[str, Any]:
     }
     if desc.aggregated_rule_set is not None:
         result["aggregated_rule_set"] = desc.aggregated_rule_set
+    if desc.backup_dirs is not None:
+        result["backup_dirs"] = desc.backup_dirs
     return result
 
 
@@ -170,11 +179,25 @@ def _fetch_raw_dict(desc: SourceDescriptor) -> dict[str, Any]:
 def push(dest: DestDescriptor, intent: Intent, result: PipelineResult) -> None:
     """Write results per destination descriptor.
 
-    Only ``output_type="workspace"`` with ``intent == COMPUTE_MAPPING``
-    writes data (mapping, fingerprints, SVG). All other combinations are
-    no-ops.
+    - ``COMPUTE_MAPPING`` + workspace: writes mapping, fingerprints, SVG.
+    - ``BACKUP`` + workspace: records the backup_dirs actually used, so
+      restore can target them without re-derivation.
+    - All other combinations are no-ops.
     """
-    if dest.output_type != "workspace" or intent != Intent.COMPUTE_MAPPING:
+    if dest.output_type != "workspace":
+        return
+
+    assert dest.workspace_id is not None
+    user_config, _ = discover_user_config(config_index=dest.config_index)
+    wm = _get_workspace_manager(user_config)
+
+    if intent == Intent.BACKUP:
+        backup_result = result.backup_result or {}
+        if backup_result.get("backup_dirs"):
+            wm.write_backup_dirs(dest.workspace_id, backup_result["backup_dirs"])
+        return
+
+    if intent != Intent.COMPUTE_MAPPING:
         return
 
     assert dest.workspace_id is not None

@@ -41,6 +41,15 @@ restore 的 ignore 缓存规则与 `DESIGN_BACKUP_OPS.md` §四完全一致：Pl
 - 对应 backup_dir
 - `backupinfo.json`
 
+### 3.1 backup_dir 的来源（2026-09-08 裁决）
+
+restore 的 backup_dir 按**显式优先**获取：
+
+1. **显式提供**（优先）：调用方直接给出 backup_dirs 集合——CLI 传入 `--backup-dir`，Web 端读取工作区的 `backup_dirs.json`（备份时记录的实际容器集合）。显式模式下**不发生任何 database/ACF 推导**，条目按「目标路径位于 backup_dir 父目录（content_root）之下」分组。
+2. **推导回退**：未显式提供时，按当前 ACF 推导「当前版本」的 backup_dir（同 backup/apply 路径，见 `DESIGN_BACKUP_DIR.md` 的版本绑定语义）。
+
+**版本绑定边界（负测试固化于 `tests/test_restore_backupdir_contract.py`）**：备份目录名内嵌 ACF 版本标识，一份备份只对其创建时的版本生效。版本变更后推导指向新容器名（磁盘不存在）→ preflight 记 `E_BACKUP_DIR_MISSING`，旧备份不可达是**预期行为**——禁止任何跨版本恢复的自动发现或回退机制。
+
 ## 四、Restore 执行流程
 
 1. 根据 mapping 所确定的 scope（被命中的文件），在 ignore 的基础上，获取要操作的文件列表。
@@ -67,13 +76,15 @@ restore 不做上层门禁判断，但会在执行过程中产生 warning 或 er
 
 - 某目标在当前 restore scope 内，但树上对应文件的 `isbackuped` 为 `false`
 - 某目标在树上存在，但 `hashtype` 为 `"invalid"` 或 `hashvalue` 为 `"0"`（无有效 hash）
-- 某个 backup_dir 无法通过可恢复性检查，因此该目录下目标整体跳过
+- 批量执行时 backup_dir 中找不到对应实体文件
 
 ### 5.2 error
 
 以下情况记为 error：
 
+- 指定 backup_dir 的 `backupinfo.json` 缺失或不可读（`E_BACKUP_INFO_MISSING`，该目录整体不可恢复）
 - 复制回目标位置时发生不可恢复的 I/O 失败
+- 恢复目标路径是目录（`E_RESTORE_NOT_FILE`，file-to-file 守卫）
 - 当前 restore 动作无法继续执行该条目
 - 已进入执行阶段但关键输入损坏到无法继续工作
 

@@ -48,6 +48,14 @@
 
 ## 三、backup_dir 的目录形态
 
+### 3.0 命名即版本绑定（2026-09-08 裁决）
+
+backup_dir 名字内嵌 ACF 版本标识（game 用 `buildid`，workshop 用 `timeupdated`）——**一份备份只对其创建时的内容版本生效**。版本标识在备份入口经稳定性检查（StateFlags、T_local≥T_remote）后取得，因此：
+
+- backup_dir 命名 = 「当前版本」的事实查询，不是启发式猜测
+- 版本更迭后，旧版本的 backup_dir 成为**惰性存档**：永久保留、不清理、GUI 可见，但推导永远指向新版本容器名，旧备份结构上不可被 restore 命中（负测试见 `tests/test_restore_backupdir_contract.py`）
+- 恢复到旧版本的唯一途径是把游戏/MOD 回退到对应版本（此时推导自然命中旧容器名）
+
 ### 3.1 最小目录形态
 
 每个 `backup_dir` 至少包含：

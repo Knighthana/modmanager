@@ -123,6 +123,12 @@ def restore_entries(
                 warnings.append(f"W_RESTORE_NO_BACKUP_COPY: no backup copy found for {target_path}")
                 continue
 
+            # File-to-file guard: a directory target would make copy2
+            # silently copy INTO the directory (mis-copy).
+            if os.path.isdir(target_path):
+                errors.append(f"E_RESTORE_NOT_FILE: restore target is a directory: {target_path}")
+                continue
+
             try:
                 if not dry_run:
                     os.makedirs(os.path.dirname(target_path), exist_ok=True)
@@ -197,14 +203,22 @@ def _relative_to_backup_root(target_path: str, backup_dir: str) -> str:
 
 
 def _sha256_hex(file_path: str) -> str:
-    """Compute sha256 hex digest of a file."""
+    """Compute sha256 hex digest of a file.
+
+    Returns "" on any I/O failure (unreadable/locked file) — the caller
+    treats "" as a hash mismatch and defers to the copy step, which
+    records a per-entry error instead of aborting the whole restore.
+    """
     import hashlib
     if not os.path.isfile(file_path):
         return ""
     h = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
+    try:
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+    except OSError:
+        return ""
     return h.hexdigest()
 
 

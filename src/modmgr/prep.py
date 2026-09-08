@@ -21,6 +21,7 @@ def prep_backup_dir(
     backup_dir: str,
     ignore_rules: Any,
     *,
+    bakignore: list[str] | None = None,
     on_progress: Any = None,
 ) -> dict[str, Any]:
     """Create backup_dir structure, build initial tree, write backupinfo.json.
@@ -28,6 +29,11 @@ def prep_backup_dir(
     Args:
         backup_dir: Target backup directory path.
         ignore_rules: IgnoreRuleSet collected by the Planner.
+        bakignore: Suffix list for excluding backup container directories
+            from the tree scan (source-side only).  Names ending with any
+            suffix are skipped, which covers both historical backup dirs and
+            the (empty) target dir itself.  The hardcoded ``.kmmbackup``
+            layer always applies on top.
         on_progress: Optional progress callback.
 
     Returns:
@@ -41,7 +47,7 @@ def prep_backup_dir(
 
     # ── Build initial tree ──────────────────────────────────────────
     _notify(on_progress, "prep", 0, 1, "Building initial tree...")
-    tree = _build_initial_tree(source_root, ignore_rules)
+    tree = _build_initial_tree(source_root, ignore_rules, bakignore)
     _notify(on_progress, "prep", 1, 1, "Tree built")
 
     # ── Write backupinfo.json ───────────────────────────────────────
@@ -59,14 +65,19 @@ def prep_backup_dir(
 # ── Internal helpers ────────────────────────────────────────────────────
 
 
-def _build_initial_tree(source_root: str, ignore_rules: Any) -> dict[str, Any]:
+def _build_initial_tree(source_root: str, ignore_rules: Any, bakignore: list[str] | None = None) -> dict[str, Any]:
     """Recursively scan *source_root*, apply ignore_rules, build tree.
 
     Every FileNode: isbackuped=False, hashtype="invalid", hashvalue="0".
+
+    Directories whose name ends with ``.kmmbackup`` (hardcoded layer) or
+    with any *bakignore* suffix are excluded from the scan — backup
+    containers are outputs, never source content.
     """
+    suffixes = [s for s in (bakignore or []) if s]
     root = Path(source_root)
 
-    def _scan(path: Path) -> dict[str, Any]:
+    def _scan(path: Path) -> dict[str, Any] | None:
         if path.is_file():
             # Check ignore
             if ignore_rules is not None:
@@ -91,6 +102,8 @@ def _build_initial_tree(source_root: str, ignore_rules: Any) -> dict[str, Any]:
                     continue
                 if child.name.endswith(".kmmbackup"):
                     continue
+                if any(child.name.endswith(suffix) for suffix in suffixes):
+                    continue
                 node = _scan(child)
                 if node is not None:
                     children.append(node)
@@ -98,7 +111,10 @@ def _build_initial_tree(source_root: str, ignore_rules: Any) -> dict[str, Any]:
             pass
         return {"name": path.name, "type": "dir", "children": children}
 
-    return _scan(root)
+    tree = _scan(root)
+    if tree is None:  # pragma: no cover — root is a directory in practice
+        tree = {"name": root.name, "type": "dir", "children": []}
+    return tree
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:

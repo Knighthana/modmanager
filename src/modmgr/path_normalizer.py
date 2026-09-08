@@ -135,8 +135,10 @@ def normalize_rule_actions(rule_data: dict) -> dict:
                 if isinstance(raw_into, list):
                     for entry in raw_into:
                         if isinstance(entry, str) and not entry.endswith("/"):
-                            # Preserve "." (current dir) — never add trailing slash
-                            if entry.endswith("."):
+                            # Preserve glob patterns and the "." root — never
+                            # add a trailing slash to either (mirrors from-dir)
+                            _has_glob = any(ch in entry for ch in "*?[]")
+                            if entry == "." or _has_glob:
                                 fixed_into.append(entry)
                             else:
                                 warnings.append(

@@ -49,7 +49,7 @@ class FilePathResolver:
 
 
 class RawDictResolver:
-    """Resolve from inline dicts — pure passthrough, no I/O."""
+    """Resolve from inline dicts — pure parsing, no I/O."""
 
     def resolve(self, request: Any) -> Any:
         args = request.resolver_args
@@ -61,4 +61,5 @@ class RawDictResolver:
             aggregated_rule_set=args.get("aggregated_rule_set"),
             final_mapping=args.get("final_mapping"),
             user_config_dict=args.get("user_config"),
+            backup_dirs=args.get("backup_dirs"),
         )

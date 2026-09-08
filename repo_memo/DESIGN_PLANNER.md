@@ -152,5 +152,5 @@ Planner 不负责：
 - `.kmmignore` 原地：`.kmmignore` 物理拷贝代码不存在于任何模块中；Planner 中只读取不写入 `.kmmignore`
 - gate check：`backup_dir` 不可恢复时 `preflight_manifest.ok == false`
 - 任务清单：原语收到的 `entries_by_backup_dir` 中无不相关文件
-- 原语不 import `planner_fileops`、`preflight`、`ignore_rules`（解耦验证）
+- 原语不 import `ignore_rules`，不持有 gate **决策**逻辑（2026-09-08 裁决：原语可对 backup_dir 做防御性 gate **复查**（如 `inspect_conflict` / `restore_from_backup` 内部），但复查结果只能作为自身失败返回，不得产生门禁决策或替代 preflight）
 - `check_backup_gate` 不在 `backup_ops.__all__` 中

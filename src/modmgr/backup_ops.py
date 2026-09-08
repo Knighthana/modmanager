@@ -373,12 +373,27 @@ def run_differential_backup(
     if dry_run:
         would_backup: list[dict[str, Any]] = []
         would_skip: list[dict[str, Any]] = []
+        dry_warnings: list[str] = []
         for i, target in enumerate(files_to_backup):
             if on_progress:
                 on_progress("backup", i + 1, len(files_to_backup), target)
             src = Path(target)
             norm = normalize_posix(str(src))
             rel = norm.removeprefix(cr).lstrip("/") if norm.startswith(cr) else norm.lstrip("/")
+
+            # Dry run mirrors the real-run decision chain (§8.2/§6.2): tree
+            # state is consulted so "would backup" matches what a real run
+            # would actually copy.
+            if tree is not None:
+                status = _tree_node_status(tree, rel)
+                if status == TreeNodeStatus.BACKED_UP:
+                    would_skip.append({"path": target, "reason": "already backed up (isbackuped=true in tree)"})
+                    continue
+                elif status == TreeNodeStatus.NOT_FOUND:
+                    dry_warnings.append(f"W_BACKUP_NODE_NOT_IN_TREE: file not in backup tree: {rel}")
+                    would_skip.append({"path": target, "reason": "node not in backup tree"})
+                    continue
+
             if src.exists():
                 is_dir = src.is_dir()
                 path_out = _serialize_output_path(target, is_dir=is_dir)
@@ -412,7 +427,7 @@ def run_differential_backup(
             "backed_up": would_backup,
             "skipped": would_skip,
             "errors": [],
-            "warnings": [],
+            "warnings": dry_warnings,
             "dry_run": True,
         }
 
@@ -461,8 +476,8 @@ def run_differential_backup(
             is_dir=is_dir,
         )
         try:
-            dest.parent.mkdir(parents=True, exist_ok=True)
             _assert_is_file(src, "backup")
+            dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(str(src), str(dest))
             st = src.stat()
             backed_up.append({

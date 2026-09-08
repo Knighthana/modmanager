@@ -32,6 +32,26 @@
 | `E_APPLY_MISSING_SOURCE` | `apply` | apply 条目缺少源路径，或无法定位源文件 | `error` | apply 源路径缺失 | delete 哨兵 `!` 不适用本条 |
 | `W_APPLY_DIR_NO_MATCHED_ENTRIES` | `apply` | 某个 apply 处理单元没有匹配到可执行条目 | `warning` | 当前处理单元没有可应用条目 | 不阻断其它处理单元 |
 | `W_APPLY_NO_EFFECT` | `apply` | 本次 apply 未真正应用任何条目 | `warning` | 当前 apply 没有产生实际效果 | 用于提示空执行或全部被跳过 |
+| `E_APPLY_NOT_FILE` | `apply` | apply 目标路径不具备文件语义（以 `/` 结尾） | `error` | apply 目标不是文件 | file-to-file 守卫 |
+| `E_APPLY_DIRECTORY_NOT_ALLOWED` | `apply` | apply 源/目标路径实际是目录 | `error` | apply 目标是目录 | file-to-file 守卫 |
+| `E_APPLY_PERMISSION` | `apply` | apply 执行时权限不足 | `error` | apply 权限失败 | 当前条目失败，不阻断其它条目 |
+| `E_APPLY_FAILED` | `apply` | apply 执行时发生其它 I/O 失败 | `error` | apply 执行失败 | 当前条目失败，不阻断其它条目 |
+| `W_RESTORE_NOT_BACKED_UP` | `restore` | 树上对应结点 `isbackuped=false` | `warning` | 该文件未备份，跳过恢复 | DESIGN_RESTORE_OPS §四-4 |
+| `W_RESTORE_INVALID_HASH` | `restore` | 树上结点 `hashtype=invalid` 或 `hashvalue=0` | `warning` | 该文件无有效 hash，跳过恢复 | DESIGN_RESTORE_OPS §四-4 |
+| `W_RESTORE_NO_BACKUP_COPY` | `restore` | backup_dir 中找不到可恢复实体 | `warning` | 无备份副本，跳过 | 不隐式成功 |
+| `E_RESTORE_NOT_FILE` | `restore` | 恢复目标路径实际是目录 | `error` | 恢复目标不是文件 | file-to-file 守卫 |
+| `E_RESTORE_DELETE_FAILED` | `restore` | 树上无结点时删除源文件失败 | `error` | 恢复删除失败 | DESIGN_RESTORE_OPS §四-3 |
+| `E_RESTORE_PERMISSION` | `restore` | 恢复复制时权限不足 | `error` | 恢复权限失败 | 当前条目失败，不阻断其它条目 |
+| `E_RESTORE_FAILED` | `restore` | 恢复复制时发生其它 I/O 失败 | `error` | 恢复执行失败 | 当前条目失败，不阻断其它条目 |
+| `W_BACKUP_NODE_NOT_IN_TREE` | `backup` | 待备份文件在树上没有对应结点 | `warning` | 不属于该目录，跳过备份 | 不允许改树，DESIGN_BACKUP_OPS §六-2 |
+| `W_BACKUP_DIR_BUILD_NO_MATCH` | `backup-dir` | mapping 目标路径未匹配任何 game 条目 | `warning` | 该目标无归属 backup_dir | 该条目被排除在本次操作之外 |
+| `W_IGNORE_FILTERED` | `planner` | 条目被 kmmignore（含硬编码层）过滤 | `warning` | 有条目被忽略规则排除 | 计数展示 |
+| `W_BAKIGNORE_FILTERED` | `planner` | 条目被 bakignore（源侧后缀匹配）过滤 | `warning` | 有条目被 bakignore 排除 | 仅 BACKUP intent；见 DESIGN_KMMIGNORE_RULES §七 |
+| `W_PREFLIGHT_FAILED` | `planner` | preflight 门禁未通过 | `warning` | 前置检查失败 | 原语不会执行 |
+| `W_PATH_CASE_MISMATCH` | `engine` | 规则路径大小写与文件系统实际条目不一致 | `warning` | 提示规则作者修正大小写 | 只报告不改写（2026-09-08 裁决）；设计见 DESIGN_PATH_CASE |
+| `E_BAD_INTENT` | `orchestrator` | dispatch 收到未知 intent | `error` | 非法意图 | 编程性错误 |
+| `E_RESOLVE_FAILED` | `orchestrator` | Resolver 解析失败 | `error` | 上下文解析失败 | dispatch 顶层捕获 |
+| `E_FETCH_FAILED` | `orchestrator` | DataPort.fetch 失败 | `error` | 数据读取失败 | dispatch 顶层捕获 |
 
 ## 三、使用约束
 

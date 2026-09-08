@@ -37,6 +37,7 @@ class WorkspaceManager:
             mapping.json
             forest.svg
             fingerprints.json
+            backup_dirs.json
     """
 
     # ── file names (class-level for consistency) ─────────────────────
@@ -46,6 +47,7 @@ class WorkspaceManager:
     _MAPPING = "mapping.json"
     _SVG = "forest.svg"
     _FINGERPRINTS = "fingerprints.json"
+    _BACKUP_DIRS = "backup_dirs.json"
 
     def __init__(self, workspace_dir: str | Path) -> None:
         """*workspace_dir* – absolute path to the workspace root directory."""
@@ -183,6 +185,23 @@ class WorkspaceManager:
 
     def read_fingerprints(self, workspace_id: str) -> dict[str, Any]:
         return load_json_file(self._dir(workspace_id) / self._FINGERPRINTS)
+
+    # -- backup dirs record --------------------------------------------
+
+    def write_backup_dirs(self, workspace_id: str, backup_dirs: dict[str, Any]) -> None:
+        """Record the backup container set actually used by a backup run.
+
+        Per the 2026-09-08 adjudication, restore consumes this record
+        instead of re-deriving backup_dir from database/ACF.
+        """
+        write_json_file(self._dir(workspace_id) / self._BACKUP_DIRS, backup_dirs)
+        self._touch(workspace_id)
+
+    def read_backup_dirs(self, workspace_id: str) -> dict[str, Any]:
+        return load_json_file(self._dir(workspace_id) / self._BACKUP_DIRS)
+
+    def has_backup_dirs(self, workspace_id: str) -> bool:
+        return (self._dir(workspace_id) / self._BACKUP_DIRS).is_file()
 
     # ── internal helpers ─────────────────────────────────────────────
 

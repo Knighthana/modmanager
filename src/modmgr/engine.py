@@ -157,6 +157,46 @@ def _expand_delete_targets(dest_root: str, into_expr: str) -> tuple[str, list[st
     return dir_key, file_targets
 
 
+def _probe_case_mismatch(source_root: str, expr: str) -> str | None:
+    """Report-only case check (DESIGN_PATH_CASE / 2026-09-08 裁决).
+
+    When *expr* does not match a filesystem entry with its exact spelling
+    but DOES match case-insensitively, return the actual-cased relative
+    path so the caller can warn the rule author.  The system never
+    rewrites the rule — the author is responsible for fixing it.
+    Returns None when expr matches exactly, contains glob characters
+    (skip probing), or nothing close exists.
+    """
+    if any(ch in expr for ch in "*?[]"):
+        return None
+    root_path = Path(source_root)
+    parts = [p for p in expr.split("/") if p not in ("", ".")]
+    current = root_path
+    actual_parts: list[str] = []
+    for part in parts:
+        if not current.is_dir():
+            return None
+        try:
+            names = {child.name: child for child in current.iterdir()}
+        except OSError:
+            return None
+        hit = names.get(part)
+        if hit is not None:
+            actual_parts.append(part)
+            current = hit
+            continue
+        lowered = part.lower()
+        matched = next(
+            (child for name, child in names.items() if name.lower() == lowered),
+            None,
+        )
+        if matched is None:
+            return None
+        actual_parts.append(matched.name)
+        current = matched
+    return "/".join(actual_parts) if actual_parts else None
+
+
 def _check_dir_tree_transition(old_tree: dict[str, Any], new_tree: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
@@ -378,6 +418,14 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                         dir_key, expanded_targets = _expand_delete_targets(dest_root, str(into_target))
                         deleted_dir_targets.add(dir_key)
                         deleted_targets.update(expanded_targets)
+                        if not expanded_targets:
+                            actual = _probe_case_mismatch(dest_root, str(into_target))
+                            if actual is not None:
+                                warnings.append(
+                                    f"W_PATH_CASE_MISMATCH: {actor_id}#{idx}:into={into_target} — "
+                                    f"规则写法与实际路径大小写不一致，实际为 '{actual}'；"
+                                    "请修正规则文件，系统不会自动改写"
+                                )
                         for target in expanded_targets:
                             mapping.setdefault(target, {"path": target, "destin_mixed_id": destin, "changerequest": []})
                             mapping[target]["changerequest"].append(
@@ -421,6 +469,13 @@ def compute_mapping(aggregated_rule_set: dict[str, Any], database: dict[str, Any
                 sources = _expand_sources(source_root, src_expr, source_type=from_type)
                 if not sources:
                     warnings.append(f"W_NO_SOURCE_MATCH: {actor_id}#{idx}:{src_expr} (resolved: {source_root}/{src_expr})")
+                    actual = _probe_case_mismatch(source_root, str(src_expr))
+                    if actual is not None:
+                        warnings.append(
+                            f"W_PATH_CASE_MISMATCH: {actor_id}#{idx}:{src_expr} — "
+                            f"规则写法与实际路径大小写不一致，实际为 '{actual}'；"
+                            "请修正规则文件，系统不会自动改写"
+                        )
                 else:
                     all_sources.extend(sources)
             

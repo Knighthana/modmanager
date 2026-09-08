@@ -45,6 +45,11 @@ def apply_entries(
             target_path = entry["path"]
             request = entry.get("request")
 
+            if not target_path:
+                errors.append(f"E_APPLY_MISSING_TARGET: apply entry has empty target path")
+                finished += 1
+                continue
+
             if request is None:
                 skipped.append({"path": target_path, "reason": "no source (vacuous node)"})
                 finished += 1
@@ -61,8 +66,10 @@ def apply_entries(
 
             try:
                 if action == "delete":
+                    # File-to-file guard in BOTH modes so dry_run reports
+                    # the same errors the real run would
+                    _assert_is_file(target_path, action)
                     if not dry_run:
-                        _assert_is_file(target_path, action)
                         os.remove(target_path)
                     applied.append({
                         "action": "delete",
@@ -75,6 +82,17 @@ def apply_entries(
                 elif action in ("replace", "create"):
                     if not source_path or source_path == "!":
                         errors.append(f"E_APPLY_MISSING_SOURCE: no source for {action} on {target_path}")
+                        finished += 1
+                        continue
+
+                    # Existence + file-type checks in BOTH modes so dry_run
+                    # reports the same errors the real run would (§6.2)
+                    if os.path.isdir(source_path):
+                        errors.append(f"E_APPLY_DIRECTORY_NOT_ALLOWED: {action} source is a directory: {source_path}")
+                        finished += 1
+                        continue
+                    if not os.path.isfile(source_path):
+                        errors.append(f"E_APPLY_MISSING_SOURCE: {source_path}")
                         finished += 1
                         continue
 

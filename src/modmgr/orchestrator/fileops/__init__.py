@@ -52,8 +52,8 @@ def execute(
     if plan.preflight_ok is False:
         return PipelineResult(
             ok=False,
-            errors=plan.preflight_manifest.get("errors", []),
-            warnings=[],
+            errors=(plan.preflight_manifest or {}).get("errors", []),
+            warnings=list(plan.warnings),
             trees=[],
             final_mapping=[],
             mapping_result={},
@@ -62,7 +62,7 @@ def execute(
                     "ok": False,
                     "backed_up": [],
                     "skipped": [],
-                    "errors": plan.preflight_manifest.get("errors", []),
+                    "errors": (plan.preflight_manifest or {}).get("errors", []),
                     "dry_run": plan.dry_run,
                 }
                 if intent == Intent.APPLY
@@ -73,7 +73,7 @@ def execute(
                     "ok": False,
                     "applied": [],
                     "skipped": [],
-                    "errors": plan.preflight_manifest.get("errors", []),
+                    "errors": (plan.preflight_manifest or {}).get("errors", []),
                     "warnings": [],
                     "diagnostics": plan.preflight_manifest,
                     "dry_run": plan.dry_run,
@@ -85,10 +85,10 @@ def execute(
 
     _notify(on_progress, "prepare", 6, 6, "Ready")
 
-    # ── Build initial tree if needed (prep) ────────────────────────────
-    if intent == Intent.BACKUP and plan.needs_tree_build and not plan.dry_run:
-        for backup_dir in plan.backup_dirs:
-            prep_backup_dir(backup_dir, plan.ignore_rules)
+    # ── Build initial tree if needed (prep, per-dir) ───────────────────
+    if intent in (Intent.BACKUP, Intent.RUN) and not plan.dry_run:
+        for backup_dir in plan.needs_tree_build_dirs:
+            prep_backup_dir(backup_dir, plan.ignore_rules, bakignore=plan.bakignore)
 
     # ── Execute primitive ─────────────────────────────────────────────
     if intent == Intent.BACKUP:
@@ -96,6 +96,7 @@ def execute(
             plan.entries_by_backup_dir,
             plan.backup_dirs,
             plan.dry_run,
+            plan.warnings,
             on_progress,
         )
     elif intent == Intent.APPLY:
@@ -111,6 +112,7 @@ def execute(
             plan.backup_dirs,
             plan.dry_run,
             plan.force,
+            plan.warnings,
             on_progress,
         )
     elif intent == Intent.RUN:
@@ -130,12 +132,14 @@ def _execute_backup_plan(
     entries_by_backup_dir: dict,
     backup_dirs: dict,
     dry_run: bool,
+    plan_warnings: list[str],
     on_progress: Any,
 ) -> PipelineResult:
     """Execute backup using run_differential_backup."""
     backed_up: list[dict] = []
     skipped: list[dict] = []
     errors: list[str] = []
+    warnings: list[str] = list(plan_warnings)
 
     total_dirs = len(entries_by_backup_dir)
     _notify(on_progress, "backup", 0, max(total_dirs, 1), "Starting backup...")
@@ -157,13 +161,14 @@ def _execute_backup_plan(
         backed_up.extend(dir_result.get("backed_up", []))
         skipped.extend(dir_result.get("skipped", []))
         errors.extend(dir_result.get("errors", []))
+        warnings.extend(dir_result.get("warnings", []))
 
     _notify(on_progress, "backup", total_dirs, total_dirs, "Backup complete")
 
     return PipelineResult(
         ok=len(errors) == 0,
         errors=errors,
-        warnings=[],
+        warnings=warnings,
         trees=[],
         final_mapping=[],
         mapping_result={},
@@ -172,7 +177,11 @@ def _execute_backup_plan(
             "backed_up": backed_up,
             "skipped": skipped,
             "errors": errors,
+            "warnings": warnings,
             "dry_run": dry_run,
+            # The actual source-side backup container set used, for the
+            # workspace record (restore consumes it instead of re-deriving)
+            "backup_dirs": dict(backup_dirs),
         },
     )
 
@@ -195,7 +204,7 @@ def _execute_apply_plan(
     return PipelineResult(
         ok=result["ok"],
         errors=result["errors"],
-        warnings=list(set(result["warnings"] + [])),
+        warnings=list(set(result["warnings"] + plan_warnings)),
         trees=[],
         final_mapping=[],
         mapping_result={},
@@ -208,6 +217,7 @@ def _execute_restore_plan(
     backup_dirs: dict,
     dry_run: bool,
     force: bool,
+    plan_warnings: list[str],
     on_progress: Any,
 ) -> PipelineResult:
     """Execute restore using restore_ops.restore_entries."""
@@ -236,7 +246,7 @@ def _execute_restore_plan(
     return PipelineResult(
         ok=result["ok"],
         errors=result["errors"],
-        warnings=[],
+        warnings=list(result["warnings"]) + list(plan_warnings),
         trees=[],
         final_mapping=[],
         mapping_result={},
@@ -256,6 +266,7 @@ def _execute_run_plan(
         plan.entries_by_backup_dir,
         plan.backup_dirs,
         plan.dry_run,
+        plan.warnings,
         on_progress,
     )
     if not backup_result.ok:

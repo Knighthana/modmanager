@@ -96,6 +96,15 @@ def normalize_path(path: str, *, source_platform: str | None = None) -> str:
 
 ## 二、各模块归一化落点
 
+### 2.0 `W_PATH_CASE_MISMATCH` — 引擎层只报告不改写（2026-09-08 裁决）
+
+在 P1-P3 完成之前与之后均生效的**报告机制**：`engine.compute_mapping()` 在 `from`/`into` 路径无法按规则写法精确命中文件系统条目时，做一次大小写不敏感探测（`_probe_case_mismatch`）；若存在仅大小写不同的实际条目，产生 `W_PATH_CASE_MISMATCH` 警告，**指明实际拼写，督促规则作者自行修正**。
+
+边界（裁决原文精神）：
+- **只报告，不改写**——不自动归一化用户手写路径，不改写规则内容；
+- 含 glob 字符的表达式不做探测；
+- 该警告不阻断操作（级别 warning），被错误大小写影响的条目按既有缺失/无匹配语义处理。
+
 ### 2.1 `paths.py` — 新增 `normalize_path()`
 
 当前 `normalize_posix()` 只做 L1。新增 `normalize_path()` 做 L1+L2。
@@ -194,6 +203,8 @@ def normalize_path(path: str, *, source_platform: str | None = None) -> str:
 ---
 
 ## 七、实施顺序
+
+> 2026-09-08 状态注记：P0 已完成（`paths.normalize_path()`）。P1-P3 待推进，且推进前须先在本文档补充 **Windows 工作风格条款**——当前实现支持 `workingpathstyle=windows`（内部保留反斜杠风格），而本文档的 L1 模型默认 POSIX 内部表示；P1 入口归一化须按工作风格分派（POSIX 分支用 `normalize_path()`，Windows 分支保分隔符仅做大小写归一），并同步更新依赖混合大小写 Windows 路径的测试夹具。
 
 | 优先级 | 步骤 | 涉及模块 |
 |--------|------|---------|

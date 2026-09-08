@@ -53,7 +53,8 @@ class FileOpsPlan:
     backup_dirs: dict[str, list[str]] = field(default_factory=dict)
     entries_by_backup_dir: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     ignore_rules: IgnoreRuleSet = field(default_factory=IgnoreRuleSet)
-    needs_tree_build: bool = False
+    bakignore: list[str] = field(default_factory=list)
+    needs_tree_build_dirs: list[str] = field(default_factory=list)
     dry_run: bool = False
     force: bool = False
     preflight_ok: bool | None = None
@@ -79,37 +80,62 @@ def plan_fileops(
     """
     # ── 1. Derive backup dirs ────────────────────────────────────────
     _notify(on_progress, "prepare", 0, 4, "Deriving backup directories...")
-    backup_dirs, dir_warnings = build_backup_dirs(
-        data["final_mapping"],
-        data["database"],
-        data["user_config"],
-    )
+    explicit_backup_dirs = data.get("backup_dirs") if request.intent == Intent.RESTORE else None
+    if explicit_backup_dirs:
+        # RESTORE with caller-provided backup_dirs: consume them as-is.
+        # No database/ACF derivation — restore targets the exact dirs the
+        # caller (CLI --backup-dir / workspace record) selected.
+        backup_dirs = {
+            bd: list(files) for bd, files in explicit_backup_dirs.items()
+        }
+        dir_warnings: list[str] = []
+    else:
+        backup_dirs, dir_warnings = build_backup_dirs(
+            data["final_mapping"],
+            data["database"],
+            data["user_config"],
+        )
     warnings: list[str] = list(dir_warnings)
 
-    # Determine if any backup_dir needs initial tree build
-    needs_tree_build = False
-    if request.intent == Intent.BACKUP:
+    # Determine which backup_dirs need an initial tree build (per-dir;
+    # dirs that already carry a complete tree are never re-prepped —
+    # DESIGN_BACKUP_OPS §7.2 不重建树)
+    needs_tree_build_dirs: list[str] = []
+    if request.intent in (Intent.BACKUP, Intent.RUN):
         for backup_dir in backup_dirs:
             try:
                 from modmgr.backup_ops import load_backup_info as _lbi
                 info = _lbi(backup_dir)
                 tree = info.get("tree") if info else None
                 if not tree or not tree.get("children"):
-                    needs_tree_build = True
-                    break
+                    needs_tree_build_dirs.append(backup_dir)
             except Exception:
-                needs_tree_build = True
-                break
+                needs_tree_build_dirs.append(backup_dir)
 
     # Group final_mapping entries by backup_dir
     _notify(on_progress, "prepare", 1, 4, "Grouping entries by backup directory...")
     entries_by_backup_dir: dict[str, list[dict[str, Any]]] = {}
-    for entry in data["final_mapping"]:
-        target_path = entry.get("path", "")
-        for backup_dir in backup_dirs:
-            if target_path in backup_dirs[backup_dir]:
-                entries_by_backup_dir.setdefault(backup_dir, []).append(entry)
-                break
+    if explicit_backup_dirs:
+        # Group by content_root (the parent of each backup_dir): every
+        # mapping target under a backup container's source root belongs to
+        # it — including files apply created that the backup never held
+        # (restore deletes those per DESIGN_RESTORE_OPS §四-3).
+        for entry in data["final_mapping"]:
+            target_path = entry.get("path", "")
+            if not target_path:
+                continue
+            for backup_dir in backup_dirs:
+                content_root = str(Path(backup_dir).parent).rstrip("/") + "/"
+                if target_path.startswith(content_root):
+                    entries_by_backup_dir.setdefault(backup_dir, []).append(entry)
+                    break
+    else:
+        for entry in data["final_mapping"]:
+            target_path = entry.get("path", "")
+            for backup_dir in backup_dirs:
+                if target_path in backup_dirs[backup_dir]:
+                    entries_by_backup_dir.setdefault(backup_dir, []).append(entry)
+                    break
 
     # ── 2. Ignore rules (all intents) ────────────────────────────────
     _notify(on_progress, "prepare", 2, 4, "Collecting ignore rules...")
@@ -134,24 +160,36 @@ def plan_fileops(
     if filtered_count:
         warnings.append(f"W_IGNORE_FILTERED: {filtered_count} entry(ies) excluded by ignore rules")
 
-    # ── 3.5. Bakignore (backup only) ─────────────────────────────────
+    # ── 3.5. Bakignore (backup only, source-side) ────────────────────
+    # bakignore 屏蔽的是「旧备份容器目录中的源内容」：
+    #   - prep 树扫描跳过名字以任一后缀结尾的目录（由 prep 消费 plan.bakignore）
+    #   - 此处过滤路径组件命中后缀的 mapping 条目
+    # 本次派生的目标 backup_dir 是输出容器，永不作为 bakignore 匹配对象。
+    bakignore: list[str] = []
     if request.intent == Intent.BACKUP:
-        bakignore_list: list[str] = request.flags.get("bakignore", []) or []
-        # Also read from user_config if available
-        user_config = data.get("user_config") or {}
-        bakignore_list = bakignore_list or user_config.get("bakignore") or []
+        bakignore = request.flags.get("bakignore", []) or []
+        if not bakignore:
+            user_config = data.get("user_config") or {}
+            bakignore = list(user_config.get("bakignore") or [])
 
-        if bakignore_list:
+        if bakignore:
             bak_filtered = 0
             for backup_dir in list(backup_dirs.keys()):
-                dir_basename = Path(backup_dir).name if backup_dir else ""
-                if any(dir_basename.endswith(suffix) for suffix in bakignore_list):
-                    bak_filtered += len(backup_dirs[backup_dir])
-                    del backup_dirs[backup_dir]
-                    if backup_dir in entries_by_backup_dir:
-                        del entries_by_backup_dir[backup_dir]
+                kept_paths = [
+                    p for p in backup_dirs[backup_dir]
+                    if not _path_hits_bakignore(p, bakignore)
+                ]
+                bak_filtered += len(backup_dirs[backup_dir]) - len(kept_paths)
+                backup_dirs[backup_dir] = kept_paths
+                kept_entries: list[dict[str, Any]] = []
+                for e in entries_by_backup_dir.get(backup_dir, []):
+                    if _path_hits_bakignore(e.get("path", ""), bakignore):
+                        bak_filtered += 1
+                    else:
+                        kept_entries.append(e)
+                entries_by_backup_dir[backup_dir] = kept_entries
             if bak_filtered:
-                warnings.append(f"W_BAKIGNORE_FILTERED: {bak_filtered} entry(ies) excluded by bakignore (backup dir suffix match)")
+                warnings.append(f"W_BAKIGNORE_FILTERED: {bak_filtered} entry(ies) excluded by bakignore (source-side suffix match)")
 
     # ── 4. Preflight decision ────────────────────────────────────────
     preflight_ok: bool | None = None
@@ -176,13 +214,20 @@ def plan_fileops(
         backup_dirs=backup_dirs,
         entries_by_backup_dir=entries_by_backup_dir,
         ignore_rules=ignore_rules,
-        needs_tree_build=needs_tree_build,
+        bakignore=bakignore,
+        needs_tree_build_dirs=needs_tree_build_dirs,
         dry_run=request.flags.get("dry_run", False),
         force=request.flags.get("force", False),
         preflight_ok=preflight_ok,
         preflight_manifest=preflight_manifest,
         warnings=warnings,
     )
+
+
+def _path_hits_bakignore(path: str, bakignore: list[str]) -> bool:
+    """True when any path component ends with one of the bakignore suffixes."""
+    parts = path.replace("\\", "/").split("/")
+    return any(part.endswith(suffix) for part in parts for suffix in bakignore)
 
 
 def _collect_ignore_rules(data: dict) -> IgnoreRuleSet:
@@ -197,12 +242,19 @@ def _collect_ignore_rules(data: dict) -> IgnoreRuleSet:
 
 
 def _derive_source_roots(data: dict) -> list[str]:
-    """Derive source root directories from database game entries."""
+    """Derive source root directories from database game entries.
+
+    Both basepath (game dir) and modpath (workshop content root) are
+    returned: .kmmignore files may live at any level of either tree.
+    """
     roots: list[str] = []
     for game in data["database"].get("game", []):
         bp = game.get("basepath", "")
         if bp:
             roots.append(bp)
+        mp = game.get("modpath", "")
+        if mp:
+            roots.append(mp)
     return roots
 
 

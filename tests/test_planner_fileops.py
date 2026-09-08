@@ -1,4 +1,15 @@
-"""Tests for planner_fileops.py — bakignore filtering behavior."""
+"""Tests for planner_fileops.py — bakignore filtering behavior.
+
+Semantics per 2026-09-08 adjudication (see
+user_memo/audit_logs/2026-09-08_fileops-spec-audit.md):
+
+- bakignore applies to the SOURCE side only (BACKUP intent):
+  mapping entries / file lists whose path component ends with a
+  bakignore suffix are excluded.
+- The derived target backup_dir is an OUTPUT container and must NEVER
+  be filtered by bakignore — even when its suffix is in the list
+  (auto-sync puts the current baksuffix in bakignore by design).
+"""
 
 from __future__ import annotations
 
@@ -72,11 +83,36 @@ def _make_final_mapping(root: Path) -> list[dict]:
     ]
 
 
-class TestBakignoreFiltering:
-    """plan_fileops bakignore filtering — backup only, suffix match."""
+def _default_user_config() -> dict:
+    return {
+        "schema_namespace": "KMM_UserConfig",
+        "schema_version": "knighthana@0.1.0",
+        "baksuffix": "kmmbackup",
+        "bakignore": ["kmmbackup"],
+    }
 
-    def test_backup_filters_matching_suffix(self) -> None:
-        """BACKUP with bakignore matching baksuffix → all dirs filtered."""
+
+def _request(intent: Intent, flags: dict | None = None) -> TaskRequest:
+    return TaskRequest(
+        identity="cli",
+        intent=intent,
+        resolver_type="raw_dict",
+        resolver_args={},
+        flags=flags or {},
+    )
+
+
+def _bakignore_warnings(plan) -> list[str]:
+    return [w for w in plan.warnings if "W_BAKIGNORE_FILTERED" in w]
+
+
+class TestBakignoreSourceSideFiltering:
+    """bakignore filters SOURCE-side entries, never the target backup_dir."""
+
+    def test_backup_target_dir_not_filtered_by_matching_bakignore(self) -> None:
+        """NEGATIVE TEST for the old wrong behavior: with default config
+        (bakignore contains the current baksuffix) the derived target
+        backup_dir must NOT be filtered — backup must remain operable."""
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             _build_steam_fixture(root)
@@ -84,59 +120,69 @@ class TestBakignoreFiltering:
             context = {
                 "final_mapping": _make_final_mapping(root),
                 "database": _make_database(root),
-                "user_config": {
-                    "schema_namespace": "KMM_UserConfig",
-                    "schema_version": "knighthana@0.1.0",
-                    "baksuffix": "kmmbackup",
-                    "bakignore": ["kmmbackup"],
-                },
+                "user_config": _default_user_config(),
             }
-            request = TaskRequest(
-                identity="cli",
-                intent=Intent.BACKUP,
-                resolver_type="raw_dict",
-                resolver_args={},
+
+            plan = plan_fileops(_request(Intent.BACKUP), context)
+
+            assert plan.backup_dirs, (
+                f"target backup_dirs must survive bakignore matching, got {plan.backup_dirs}"
             )
+            assert not _bakignore_warnings(plan), (
+                f"target backup_dir must not produce bakignore warnings: {_bakignore_warnings(plan)}"
+            )
+            # All entries survive — they are not inside any backup container
+            assert all(len(v) == 2 for v in plan.entries_by_backup_dir.values())
 
-            plan = plan_fileops(request, context)
+    def test_backup_filters_entries_inside_bakignore_suffixed_dirs(self) -> None:
+        """Entries whose path lives inside a directory ending with a
+        bakignore suffix (an old backup container) are excluded on the
+        source side; the target backup_dir itself is untouched.
 
-            # All backup dirs end with ".kmmbackup" → matching bakignore → all filtered
-            assert not plan.backup_dirs, f"Expected empty backup_dirs, got {plan.backup_dirs}"
-
-            bakignore_warnings = [w for w in plan.warnings if "W_BAKIGNORE_FILTERED" in w]
-            assert len(bakignore_warnings) == 1, f"Expected 1 bakignore warning, got {bakignore_warnings}"
-            assert "excluded by bakignore" in bakignore_warnings[0]
-
-    def test_backup_does_not_filter_non_matching_suffix(self) -> None:
-        """BACKUP with bakignore not matching baksuffix → no filtering."""
+        Uses a custom baksuffix ("mybak") that the hardcoded .kmmbackup
+        layer does NOT cover — that is exactly bakignore's raison d'être.
+        """
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             _build_steam_fixture(root)
 
+            # An "old backup container" from a previous custom baksuffix
+            old_backup = (
+                root / "steamapps" / "workshop" / "content" / APPID / CONTENTID
+                / "2606099273.1716297600.mybak"
+            )
+            old_backup.mkdir()
+            old_file = old_backup / "stale.bin"
+            old_file.write_text("stale")
+
             context = {
-                "final_mapping": _make_final_mapping(root),
+                "final_mapping": [
+                    {"path": str(root / "steamapps" / "workshop" / "content" / APPID / CONTENTID / "test_mod_file.txt")},
+                    {"path": str(old_file)},
+                ],
                 "database": _make_database(root),
                 "user_config": {
                     "schema_namespace": "KMM_UserConfig",
                     "schema_version": "knighthana@0.1.0",
-                    "baksuffix": "otherbak",
-                    "bakignore": ["kmmbackup"],
+                    "baksuffix": "mybak",
+                    "bakignore": ["mybak", "kmmbackup"],
                 },
             }
-            request = TaskRequest(
-                identity="cli",
-                intent=Intent.BACKUP,
-                resolver_type="raw_dict",
-                resolver_args={},
+
+            plan = plan_fileops(_request(Intent.BACKUP), context)
+
+            assert plan.backup_dirs, "target backup_dir must not be filtered"
+            assert len(_bakignore_warnings(plan)) == 1, plan.warnings
+            # The stale entry is excluded everywhere (file list + entries)
+            for files in plan.backup_dirs.values():
+                assert all(not p.endswith("stale.bin") for p in files)
+            for entries in plan.entries_by_backup_dir.values():
+                assert all(not e["path"].endswith("stale.bin") for e in entries)
+            # The normal entry survives
+            assert any(
+                any(e["path"].endswith("test_mod_file.txt") for e in entries)
+                for entries in plan.entries_by_backup_dir.values()
             )
-
-            plan = plan_fileops(request, context)
-
-            # backup_dirs should not be empty (non-matching suffix)
-            assert plan.backup_dirs, "Expected non-empty backup_dirs"
-
-            bakignore_warnings = [w for w in plan.warnings if "W_BAKIGNORE_FILTERED" in w]
-            assert len(bakignore_warnings) == 0, f"Got unexpected bakignore warnings: {bakignore_warnings}"
 
     def test_bakignore_not_applied_to_apply(self) -> None:
         """APPLY with bakignore set → no filtering (bakignore is backup-only)."""
@@ -147,27 +193,13 @@ class TestBakignoreFiltering:
             context = {
                 "final_mapping": _make_final_mapping(root),
                 "database": _make_database(root),
-                "user_config": {
-                    "schema_namespace": "KMM_UserConfig",
-                    "schema_version": "knighthana@0.1.0",
-                    "baksuffix": "kmmbackup",
-                    "bakignore": ["kmmbackup"],
-                },
+                "user_config": _default_user_config(),
             }
-            request = TaskRequest(
-                identity="cli",
-                intent=Intent.APPLY,
-                resolver_type="raw_dict",
-                resolver_args={},
-                flags={"force": True},
-            )
 
-            plan = plan_fileops(request, context)
+            plan = plan_fileops(_request(Intent.APPLY, {"force": True}), context)
 
-            # bakignore must NOT be applied for non-backup intents
-            bakignore_warnings = [w for w in plan.warnings if "W_BAKIGNORE_FILTERED" in w]
-            assert len(bakignore_warnings) == 0, (
-                f"bakignore was incorrectly applied to APPLY intent: {bakignore_warnings}"
+            assert not _bakignore_warnings(plan), (
+                f"bakignore was incorrectly applied to APPLY intent: {_bakignore_warnings(plan)}"
             )
 
     def test_bakignore_not_applied_to_restore(self) -> None:
@@ -179,24 +211,68 @@ class TestBakignoreFiltering:
             context = {
                 "final_mapping": _make_final_mapping(root),
                 "database": _make_database(root),
-                "user_config": {
-                    "schema_namespace": "KMM_UserConfig",
-                    "schema_version": "knighthana@0.1.0",
-                    "baksuffix": "kmmbackup",
-                    "bakignore": ["kmmbackup"],
-                },
+                "user_config": _default_user_config(),
             }
-            request = TaskRequest(
-                identity="cli",
-                intent=Intent.RESTORE,
-                resolver_type="raw_dict",
-                resolver_args={},
-                flags={"force": True},
+
+            plan = plan_fileops(_request(Intent.RESTORE, {"force": True}), context)
+
+            assert not _bakignore_warnings(plan), (
+                f"bakignore was incorrectly applied to RESTORE intent: {_bakignore_warnings(plan)}"
             )
 
-            plan = plan_fileops(request, context)
 
-            bakignore_warnings = [w for w in plan.warnings if "W_BAKIGNORE_FILTERED" in w]
-            assert len(bakignore_warnings) == 0, (
-                f"bakignore was incorrectly applied to RESTORE intent: {bakignore_warnings}"
+class TestModSideKmmignoreCollection:
+    """.kmmignore files inside mod directories must be collected
+    (regression: _derive_source_roots previously only returned basepaths,
+    so mod-side .kmmignore was never honored in the production path)."""
+
+    def test_mod_side_kmmignore_filters_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _build_steam_fixture(root)
+
+            mod_root = root / "steamapps" / "workshop" / "content" / APPID / CONTENTID
+            (mod_root / ".kmmignore").write_text("data.bin\n")
+
+            context = {
+                "final_mapping": _make_final_mapping(root),
+                "database": _make_database(root),
+                "user_config": _default_user_config(),
+            }
+
+            plan = plan_fileops(_request(Intent.BACKUP), context)
+
+            assert not plan.backup_dirs.get(list(plan.backup_dirs)[0], []) or all(
+                not p.endswith("data.bin") for files in plan.backup_dirs.values() for p in files
+            ), "data.bin must be filtered by mod-side .kmmignore"
+            assert any("W_IGNORE_FILTERED" in w for w in plan.warnings), plan.warnings
+            assert any(
+                any(e["path"].endswith("test_mod_file.txt") for e in entries)
+                for entries in plan.entries_by_backup_dir.values()
+            ), "non-ignored entries must survive"
+
+    def test_base_side_kmmignore_still_collected(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            _build_steam_fixture(root)
+
+            base_root = root / "steamapps" / "common" / "RunningWithRifles"
+            (base_root / "game.cfg").write_text("cfg")
+            (base_root / ".kmmignore").write_text("game.cfg\n")
+
+            context = {
+                "final_mapping": [
+                    {"path": str(base_root / "game.cfg")},
+                    {"path": str(root / "steamapps" / "workshop" / "content" / APPID / CONTENTID / "test_mod_file.txt")},
+                ],
+                "database": _make_database(root),
+                "user_config": _default_user_config(),
+            }
+
+            plan = plan_fileops(_request(Intent.BACKUP), context)
+
+            assert any("W_IGNORE_FILTERED" in w for w in plan.warnings), plan.warnings
+            assert all(
+                not p.endswith("game.cfg")
+                for files in plan.backup_dirs.values() for p in files
             )

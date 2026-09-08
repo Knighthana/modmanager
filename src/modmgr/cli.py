@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -264,8 +265,9 @@ def _handle_backup(args: argparse.Namespace) -> int:
     except Exception as exc:
         return _emit_error(f"backup failed: {exc}")
 
-    _print_or_write(result, args.out)
-    return 0 if result.get("ok") else 2
+    result_dict = asdict(result)
+    _print_or_write(result_dict, args.out)
+    return 0 if result_dict.get("ok") else 2
 
 
 def _handle_apply(args: argparse.Namespace) -> int:
@@ -319,8 +321,9 @@ def _handle_apply(args: argparse.Namespace) -> int:
     except Exception as exc:
         return _emit_error(f"apply failed: {exc}")
 
-    _print_or_write(result, args.out)
-    return 0 if result.get("ok") else 2
+    result_dict = asdict(result)
+    _print_or_write(result_dict, args.out)
+    return 0 if result_dict.get("ok") else 2
 
 
 def _handle_restore(args: argparse.Namespace) -> int:
@@ -332,10 +335,12 @@ def _handle_restore(args: argparse.Namespace) -> int:
         from .backup_ops import load_backup_info
         info = load_backup_info(args.backup_dir)
         tree = info.get("tree", {})
-        # Walk tree to collect all backed-up file paths
+        # Walk tree to collect backed-up file paths (isbackuped=true only —
+        # un-backed-up files have nothing to restore from)
         def _collect_files(node: dict, prefix: str) -> list[str]:
             if node.get("type") == "file":
-                return [f"{prefix}/{node['name']}" if prefix else node["name"]]
+                return [f"{prefix}/{node['name']}" if prefix else node["name"]] \
+                    if node.get("isbackuped") else []
             files = []
             for child in node.get("children", []):
                 child_prefix = f"{prefix}/{node['name']}" if prefix else node["name"]
@@ -363,6 +368,10 @@ def _handle_restore(args: argparse.Namespace) -> int:
     except Exception:
         final_mapping = []
 
+    # Restore consumes the caller-provided backup_dir directly — no
+    # database/ACF derivation (2026-09-08 adjudication).
+    backup_dirs = {args.backup_dir: []}
+
     # Load user_config for dispatch
     user_config: dict[str, Any] = {}
     if args.config:
@@ -372,6 +381,9 @@ def _handle_restore(args: argparse.Namespace) -> int:
             return _emit_error(f"failed to load user config: {exc}")
 
     try:
+        from .orchestrator import dispatch
+        from .orchestrator.entry import Intent, TaskRequest
+
         result = dispatch(
             TaskRequest(
                 identity="cli",
@@ -381,6 +393,7 @@ def _handle_restore(args: argparse.Namespace) -> int:
                     "final_mapping": final_mapping,
                     "database": {"game": [], "mod": [], "steamlib": []},
                     "user_config": user_config,
+                    "backup_dirs": backup_dirs,
                 },
                 flags={"force": True},
             ),
