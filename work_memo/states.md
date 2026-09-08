@@ -42,26 +42,45 @@
 
 ---
 
-## 代码审计发现 — 待修（2026-05-25）
+## 代码审计发现（2026-05-25）— 状态校准（2026-09-08 复核）
 
-### 🔴 紧急
+> 2026-09-08 逐项复核：全部已解决，本区块仅存档。
 
-| # | 位置 | 问题 |
-|---|------|------|
-| BUG-1 | `backup_ops.py:639` | `_list_orphans()` 被调用但从未定义 → `restore_from_backup` 孤儿检测崩溃 |
-| BUG-2 | `routes/pipeline.py:107`（已删除）| restore SSE 端点不转发 `on_progress` → `routes/pipeline.py` 整文件已随裁定 9 删除，本 bug 关闭 |
+| # | 结论 |
+|---|------|
+| BUG-1 | 已解决 — `_list_orphans` 与其调用点均已随 restore 链路重构移除 |
+| BUG-2 | 已解决 — `routes/pipeline.py` 已删除（裁定 9） |
+| P11-GAP | 已解决 — `rule_aggregator.py:25` 调用 `normalize_rule_actions`；`rule_validator` 经 `orchestrator/verifier.py` 由 `modmgr_web/routes/workspace.py:185` 调用；`test_validator_normalizer_placement.py` 守护接线 |
+| P12-GAP | 已解决 — 见 2026-06-03 DataPort 重构（generate_database 磁盘写入已按架构收口；如需再核对本条，读 `DESIGN_BOOTSTRAP.md`） |
+| CODE-3 | 已解决 — `find_appmanifest_acf_files` / `find_appworkshop_acf_files` 已从 `acf_parser.py` 删除 |
+| CODE-4 | 已解决 — `isinstance(rs, list)` 分支已不存在 |
+| CODE-5 | 已解决 — `run_apply_preflight` / `run_restore_preflight` 的 `context` 参数已移除 |
+| CODE-6 | 已解决 — bootstrap.py 无 `source_path` / `first_use` 残留 |
+| CODE-7 | 已解决 — src 下无旧包名 `modmanager` 残留 |
 
-### 🟡 非紧急
+---
 
-| # | 位置 | 问题 |
-|---|------|------|
-| P11-GAP | `rule_validator.py` + `path_normalizer.py` | 模块存在但聚合器 `aggregate()` 未调用 |
-| P12-GAP | `bootstrap.py` | `generate_database()` 仍在 bootstrap 中写磁盘，违反 P12 |
-| CODE-3 | `acf_parser.py` | `find_appmanifest_acf_files` / `find_appworkshop_acf_files` 零调用方 |
-| CODE-4 | `routes/config.py:40` | `_normalize_rule_sources` 中 `isinstance(rs, list)` 分支永远不进 |
-| CODE-5 | `preflight.py` | `run_apply_preflight` / `run_restore_preflight` 的 `context` 参数从未使用 |
-| CODE-6 | `bootstrap.py:146-147` | 注释残留旧名 `source_path` / `first_use` |
-| CODE-7 | `__init__.py` / `app.py` | 残留旧包名 `modmanager` |
+## 实机失败化石收纳流程（2026-09-08 起）
+
+> 背景：此前实机测试发现文件搬运不符合预期，但失败案例未记录而遗失。
+> 纪律：任何一次实机测试中观察到的异常行为，都必须留下记录，并最终固化为夹具测试。
+
+流程：
+1. 实机发现异常 → 在 `user_memo/audit_logs/` 记录一份 field report（日期、操作序列、期望 vs 实际、环境：Windows/WSL2）；
+2. 排期把该案例固化进沙盒测试矩阵（`tests/test_full_pipeline_integration.py` 生命周期场景模式）作为永久回归测试；
+3. 固化完成后在 field report 上标记 `[fossilized: tests/xxx.py::test_yyy]`。
+
+持续有效的 invariant：实机测试的每一小时痛苦都应兑换成至少一条自动测试。
+
+---
+
+## 当前进行中
+
+- [x] (done) TASK2609-0x1 [arch] 全量文件操作 SPEC 审计 — 完成。产出：`user_memo/audit_logs/2026-09-08_fileops-spec-audit.md`（含裁决记录与执行结果）。要点：4 个 S 级实现 bug（bakignore 自匹配致备份静默空转并有一条测试固化该行为 / Planner 警告在管线层被吞 / CLI restore 必崩 / 多 backup_dir 时 prep 重扫违反 §7.2）、mod 内 .kmmignore 生产路径不生效、PATH_CASE P1-P3 未接线（normalize_path 零调用方）、错误码与 TERMS 大面积脱节
+- [x] (done) TASK2609-0x3 [arch] 四波修复执行 — 完成，646 tests / 0 skip / 0 fail。五项裁决全部落地（bakignore 源侧语义、restore 显式 backup_dirs、工作区=组合+版本绑定命名、惰性保留、大小写只报告不改写）；详见审计文档"裁决记录与执行结果"。附带修复：cli.py 三处运行时必崩（缺 import / asdict / restore 推导崩溃）、RUN intent 无 prep 缺口、E_RESTORE_NOT_FILE 守卫、dry-run 保真
+- [ ] (pending) TASK2609-0x2 [arch] 沙盒生命周期场景矩阵 — 以 `test_full_pipeline_integration.py` 为原型参数化：首次备份→应用 / 应用→恢复 / 换规则轮转 / kmmignore 跨轮次 / bakignore 交互 / 多库 / 非法规则输入；不变量：dry-run 零副作用、跨 MOD 零污染、目录树/backupinfo 树/hash 三方一致；期望值以 TASK2609-0x1 裁决后的行为为准
+- [ ] (pending) TASK2609-0x4 [arch] PATH_CASE P1 入口归一化 — 前置条件：DESIGN_PATH_CASE §七注记（Windows 工作风格条款：POSIX 分支用 normalize_path，Windows 分支保分隔符仅做大小写归一）+ 混合大小写 Windows 路径测试夹具更新
+- [ ] (pending) TASK2609-0x5 [arch] D3 裁决：backup 逐文件全量回写 backupinfo.json 在大树 + DrvFs 上为 O(N²) I/O，是否改为批量/时间窗回写（中断幂等性论证见审计文档 D3）
 
 ---
 
